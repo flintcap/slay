@@ -9,6 +9,8 @@
  *
  * Pure data. Nothing here touches three.js, so the look can be computed in
  * any context (heroes reads it to dress the body).
+ *
+ * i18n-ignore-file: the looks' names are notes for the art code, never shown to a player.
  */
 
 import { DEPTH_LOOKS } from '../../data/uniqueBatches/index';

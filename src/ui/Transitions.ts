@@ -23,19 +23,20 @@ import { Random, randomSeed } from '../core/RNG';
 import { TIPS, nextTip } from './tips';
 import { mountKeyArt } from '../art/KeyArt';
 import { dividerUri } from '../art/Ornament';
+import { tr } from '../core/I18n';
 
 /** Each build step, in words a player reads in a glance. */
 const STAGE_WORDS: Record<string, string> = {
-  map: 'Drawing the map',
-  hero: 'Arming the hero',
-  world: 'Raising the walls',
-  monsters: 'Waking the monsters',
-  boss: 'Something stirs below',
-  summons: 'Calling your allies',
-  icons: 'Painting the gear',
-  shaders: 'Lighting the torches',
-  meshing: 'Gathering the townsfolk',
-  ready: 'Ready',
+  map: tr('Drawing the map'),
+  hero: tr('Arming the hero'),
+  world: tr('Raising the walls'),
+  monsters: tr('Waking the monsters'),
+  boss: tr('Something stirs below'),
+  summons: tr('Calling your allies'),
+  icons: tr('Painting the gear'),
+  shaders: tr('Lighting the torches'),
+  meshing: tr('Gathering the townsfolk'),
+  ready: tr('Ready'),
 };
 
 /** How long one step's creep takes to get most of the way (seconds). */
@@ -55,21 +56,7 @@ export function mountTransitions(): void {
   card.className = 'ld-card';
   card.setAttribute('role', 'status');
   card.innerHTML =
-    '<div class="ld-sigil" aria-hidden="true">' +
-    '<svg viewBox="0 0 100 100"><g fill="none" stroke="currentColor">' +
-    '<circle cx="50" cy="50" r="44" stroke-width="0.8" opacity="0.5"/>' +
-    '<circle cx="50" cy="50" r="38" stroke-width="0.6" stroke-dasharray="2 5" class="ld-spin-a"/>' +
-    '<path d="M50 8 L58 50 L50 92 L42 50 Z" stroke-width="1" class="ld-spin-b"/>' +
-    '<path d="M8 50 L50 42 L92 50 L50 58 Z" stroke-width="1" class="ld-spin-b"/>' +
-    '<circle cx="50" cy="50" r="5" stroke-width="1.2"/>' +
-    '</g></svg></div>' +
-    '<div class="ld-kicker"></div>' +
-    '<div class="ld-title"></div>' +
-    '<div class="ld-load">' +
-    '<div class="ld-track"><div class="ld-run"></div></div>' +
-    '<div class="ld-meta"><span class="ld-stage"></span><span class="ld-pct"></span></div>' +
-    '</div>' +
-    '<div class="ld-tip"><span class="ld-tip-k">Tip</span><span class="ld-tip-text"></span></div>';
+    tr('<div class="ld-sigil" aria-hidden="true"><svg viewBox="0 0 100 100"><g fill="none" stroke="currentColor"><circle cx="50" cy="50" r="44" stroke-width="0.8" opacity="0.5"/><circle cx="50" cy="50" r="38" stroke-width="0.6" stroke-dasharray="2 5" class="ld-spin-a"/><path d="M50 8 L58 50 L50 92 L42 50 Z" stroke-width="1" class="ld-spin-b"/><path d="M8 50 L50 42 L92 50 L50 58 Z" stroke-width="1" class="ld-spin-b"/><circle cx="50" cy="50" r="5" stroke-width="1.2"/></g></svg></div><div class="ld-kicker"></div><div class="ld-title"></div><div class="ld-load"><div class="ld-track"><div class="ld-run"></div></div><div class="ld-meta"><span class="ld-stage"></span><span class="ld-pct"></span></div></div><div class="ld-tip"><span class="ld-tip-k">Tip</span><span class="ld-tip-text"></span></div>');
   fade.appendChild(card);
 
   // A gold filigree divider (art stream) in place of the tip's hairline.
@@ -186,12 +173,12 @@ export function mountTransitions(): void {
     if (p.to === 'dungeon') {
       const depth = Math.max(1, Number((p.payload as { depth?: number } | undefined)?.depth ?? 1));
       wanted = true;
-      show(p.from === 'dungeon' ? 'Deeper still' : 'Descending', `Tier ${depth}`);
+      show(p.from === 'dungeon' ? tr('Deeper still') : tr('Descending'), tr('Tier {0}', depth));
     } else if (p.to === 'town') {
       const c = save.account.current;
-      const k = c && p.from !== 'dungeon' ? c.name : p.from === 'dungeon' ? 'Climbing out' : 'Returning';
+      const k = c && p.from !== 'dungeon' ? c.name : p.from === 'dungeon' ? tr('Climbing out') : tr('Returning');
       wanted = true;
-      show(k, 'The Town');
+      show(k, tr('The Town'));
     } else {
       // Menus build instantly; a card would only flash.
       hide();
@@ -205,14 +192,14 @@ export function mountTransitions(): void {
       resetBar();
       wanted = true;
       const next = Math.min(lastDepth.of, lastDepth.level + 1);
-      const k = lastDepth.mapName ?? `Tier ${lastDepth.depth}`;
-      show(k, lastDepth.of > 1 ? `Area ${next} of ${lastDepth.of}` : 'Onward');
+      const k = lastDepth.mapName ?? tr('Tier {0}', lastDepth.depth);
+      show(k, lastDepth.of > 1 ? tr('Area {0} of {1}', next, lastDepth.of) : tr('Onward'));
     }
     if (!wanted) return;
     const total = Math.max(1, p.total);
     stepped = true;
     load.classList.add('is-live');
-    stageEl.textContent = STAGE_WORDS[p.stage] ?? 'Making ready';
+    stageEl.textContent = STAGE_WORDS[p.stage] ?? tr('Making ready');
     if (p.stage === 'ready') {
       base = cap = shown = 1;
       paint();
@@ -235,7 +222,7 @@ export function mountTransitions(): void {
       return;
     }
     load.classList.add('is-live');
-    stageEl.textContent = 'Fetching the old maps';
+    stageEl.textContent = tr('Fetching the old maps');
     base = cap = Math.max(shown, f);
     stepAt = performance.now();
   });

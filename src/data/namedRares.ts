@@ -17,6 +17,7 @@
  */
 
 import type { BiomeId, MonsterFamily } from '../types';
+import { tr } from '../core/I18n';
 
 export interface NamedRare {
   id: string;
@@ -45,8 +46,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- crypt -------------------------------------------------------------
   {
     id: 'named.choirmaster',
-    name: 'The Choirmaster',
-    title: 'Still Counting the Dead',
+    name: tr('The Choirmaster'),
+    title: tr('Still Counting the Dead'),
     family: 'undead',
     biomes: ['crypt'],
     minDepth: 1,
@@ -57,8 +58,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.gravewarden',
-    name: 'Ossuar, the Gravewarden',
-    title: 'He Files the Bones',
+    name: tr('Ossuar, the Gravewarden'),
+    title: tr('He Files the Bones'),
     family: 'undead',
     biomes: ['crypt', 'frostvault'],
     minDepth: 3,
@@ -69,8 +70,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.hollowbride',
-    name: 'The Hollow Bride',
-    title: 'She Waited Too Long',
+    name: tr('The Hollow Bride'),
+    title: tr('She Waited Too Long'),
     family: 'undead',
     minDepth: 6,
     weight: 6,
@@ -82,8 +83,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- caverns / hive ----------------------------------------------------
   {
     id: 'named.deepmother',
-    name: 'The Deep Mother',
-    title: 'Everything Down Here Is Hers',
+    name: tr('The Deep Mother'),
+    title: tr('Everything Down Here Is Hers'),
     family: 'insect',
     biomes: ['caverns', 'hive'],
     minDepth: 2,
@@ -94,8 +95,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.stonefather',
-    name: 'Old Stonefather',
-    title: 'Older Than The Cave',
+    name: tr('Old Stonefather'),
+    title: tr('Older Than The Cave'),
     family: 'beast',
     biomes: ['caverns'],
     minDepth: 3,
@@ -106,8 +107,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.rotcrown',
-    name: 'Rotcrown',
-    title: 'It Grew Where Something Died',
+    name: tr('Rotcrown'),
+    title: tr('It Grew Where Something Died'),
     family: 'plant',
     biomes: ['caverns', 'hive'],
     minDepth: 5,
@@ -120,8 +121,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- foundry -----------------------------------------------------------
   {
     id: 'named.bellowsknight',
-    name: 'The Bellows Knight',
-    title: 'Sealed In And Still Working',
+    name: tr('The Bellows Knight'),
+    title: tr('Sealed In And Still Working'),
     family: 'construct',
     biomes: ['foundry'],
     minDepth: 2,
@@ -132,8 +133,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.slagtongue',
-    name: 'Slagtongue',
-    title: 'It Speaks And The Floor Melts',
+    name: tr('Slagtongue'),
+    title: tr('It Speaks And The Floor Melts'),
     family: 'demon',
     biomes: ['foundry', 'ashwaste'],
     minDepth: 5,
@@ -146,8 +147,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- sunken temple -----------------------------------------------------
   {
     id: 'named.tidewarden',
-    name: 'The Tidewarden',
-    title: 'He Holds The Door For The Sea',
+    name: tr('The Tidewarden'),
+    title: tr('He Holds The Door For The Sea'),
     family: 'humanoid',
     biomes: ['sunkenTemple'],
     minDepth: 3,
@@ -158,8 +159,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.pale',
-    name: 'The Pale Congregation',
-    title: 'They Answer As One',
+    name: tr('The Pale Congregation'),
+    title: tr('They Answer As One'),
     family: 'aberration',
     biomes: ['sunkenTemple', 'voidspire'],
     minDepth: 6,
@@ -172,8 +173,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- frostvault --------------------------------------------------------
   {
     id: 'named.longwinter',
-    name: 'Long Winter',
-    title: 'It Has Not Finished Arriving',
+    name: tr('Long Winter'),
+    title: tr('It Has Not Finished Arriving'),
     family: 'elemental',
     biomes: ['frostvault'],
     minDepth: 7,
@@ -184,8 +185,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.rimehound',
-    name: 'The Rime Pack Alpha',
-    title: 'It Eats Last',
+    name: tr('The Rime Pack Alpha'),
+    title: tr('It Eats Last'),
     family: 'beast',
     biomes: ['frostvault'],
     minDepth: 8,
@@ -198,8 +199,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- ashwaste ----------------------------------------------------------
   {
     id: 'named.emberking',
-    name: 'The Ember King',
-    title: 'His Kingdom Burned First',
+    name: tr('The Ember King'),
+    title: tr('His Kingdom Burned First'),
     family: 'demon',
     biomes: ['ashwaste'],
     minDepth: 10,
@@ -210,8 +211,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.dustwidow',
-    name: 'The Dust Widow',
-    title: 'She Is What The Wind Is Carrying',
+    name: tr('The Dust Widow'),
+    title: tr('She Is What The Wind Is Carrying'),
     family: 'undead',
     biomes: ['ashwaste', 'voidspire'],
     minDepth: 12,
@@ -224,8 +225,8 @@ export const NAMED_RARES: NamedRare[] = [
   // --- voidspire ---------------------------------------------------------
   {
     id: 'named.unmaker',
-    name: 'The Unmaker',
-    title: 'It Is Undoing This Floor',
+    name: tr('The Unmaker'),
+    title: tr('It Is Undoing This Floor'),
     family: 'aberration',
     biomes: ['voidspire'],
     minDepth: 14,
@@ -236,8 +237,8 @@ export const NAMED_RARES: NamedRare[] = [
   },
   {
     id: 'named.lastecho',
-    name: 'The Last Echo',
-    title: 'Somebody Screamed Here Once',
+    name: tr('The Last Echo'),
+    title: tr('Somebody Screamed Here Once'),
     family: 'undead',
     biomes: ['voidspire'],
     minDepth: 16,

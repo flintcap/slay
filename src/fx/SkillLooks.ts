@@ -8,6 +8,8 @@
  * the family's base drawing. `tools/check-unique.mjs` fails when two active
  * skills anywhere in the game share a signature, so a new skill has to bring
  * a new motif.
+ *
+ * i18n-ignore-file: words that name what a skill draws, never shown to a player.
  */
 
 import type { MotifShape, MotifMotion } from './Motifs';

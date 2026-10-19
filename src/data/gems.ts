@@ -12,6 +12,7 @@
  */
 
 import type { ItemCategory, StatKey } from '../types';
+import { tr, trc } from '../core/I18n';
 
 export type SocketTarget = 'weapon' | 'armor' | 'jewelry';
 
@@ -26,6 +27,8 @@ export interface GemDef {
   id: string;
   name: string;
   family: string;
+  /** The family's name alone: "Ruby". */
+  familyName: string;
   quality: GemQuality;
   /** 0..5 — index into the quality ladder. */
   qualityIndex: number;
@@ -41,12 +44,12 @@ export interface GemDef {
 
 const QUALITIES: GemQuality[] = ['chipped', 'flawed', 'normal', 'flawless', 'perfect', 'divine'];
 const QUALITY_PREFIX: Record<GemQuality, string> = {
-  chipped: 'Chipped',
-  flawed: 'Flawed',
+  chipped: tr('Chipped'),
+  flawed: tr('Flawed'),
   normal: '',
-  flawless: 'Flawless',
-  perfect: 'Perfect',
-  divine: 'Divine',
+  flawless: tr('Flawless'),
+  perfect: tr('Perfect'),
+  divine: tr('Divine'),
 };
 const QUALITY_LEVEL = [1, 9, 19, 32, 48, 68];
 const QUALITY_DEPTH = [1, 8, 18, 30, 46, 70];
@@ -67,7 +70,7 @@ interface GemFamilySpec {
 const GEM_FAMILIES: GemFamilySpec[] = [
   {
     family: 'ruby',
-    name: 'Ruby',
+    name: tr('Ruby'),
     color: 0xe0323c,
     weapon: [{ stat: 'fireDamage', v: [3, 7, 13, 22, 36, 58] }],
     armor: [{ stat: 'life', v: [8, 18, 32, 55, 92, 150] }],
@@ -75,7 +78,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'sapphire',
-    name: 'Sapphire',
+    name: tr('Sapphire'),
     color: 0x3a6ce0,
     weapon: [{ stat: 'coldDamage', v: [3, 6, 11, 19, 32, 52] }],
     armor: [{ stat: 'mana', v: [9, 20, 36, 62, 104, 170] }],
@@ -83,7 +86,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'topaz',
-    name: 'Topaz',
+    name: tr('Topaz'),
     color: 0xf0d038,
     weapon: [{ stat: 'lightningDamage', v: [4, 9, 17, 29, 48, 78] }],
     armor: [{ stat: 'magicFind', v: [4, 7, 11, 16, 22, 30] }],
@@ -91,7 +94,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'emerald',
-    name: 'Emerald',
+    name: tr('Emerald'),
     color: 0x35c05a,
     weapon: [{ stat: 'poisonDamage', v: [4, 9, 16, 27, 45, 72] }],
     armor: [{ stat: 'dexterity', v: [3, 6, 10, 15, 22, 32] }],
@@ -99,7 +102,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'amethyst',
-    name: 'Amethyst',
+    name: tr('Amethyst'),
     color: 0x9a52d8,
     weapon: [{ stat: 'arcaneDamage', v: [3, 7, 13, 23, 38, 62] }],
     armor: [{ stat: 'strength', v: [3, 6, 10, 15, 22, 32] }],
@@ -107,7 +110,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'diamond',
-    name: 'Diamond',
+    name: tr('Diamond'),
     color: 0xdff0ff,
     weapon: [{ stat: 'attackRating', v: [18, 42, 78, 135, 220, 350] }],
     armor: [{ stat: 'defense', v: [12, 27, 48, 82, 138, 225] }],
@@ -115,7 +118,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'skull',
-    name: 'Skull',
+    name: tr('Skull'),
     color: 0xd6cdb4,
     weapon: [{ stat: 'lifeSteal', v: [1, 2, 3, 4, 6, 8] }],
     armor: [{ stat: 'lifeRegen', v: [2, 4, 7, 12, 19, 30] }],
@@ -123,7 +126,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'onyx',
-    name: 'Onyx',
+    name: tr('Onyx'),
     color: 0x241f2e,
     weapon: [{ stat: 'critDamage', v: [8, 15, 24, 36, 52, 75] }],
     armor: [{ stat: 'damageReduction', v: [1, 2, 3, 5, 7, 10] }],
@@ -131,7 +134,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'opal',
-    name: 'Opal',
+    name: tr('Opal'),
     color: 0xb8e0d8,
     weapon: [{ stat: 'castSpeed', v: [4, 7, 11, 15, 20, 27] }],
     armor: [{ stat: 'manaRegen', v: [3, 6, 10, 16, 25, 38] }],
@@ -139,7 +142,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'garnet',
-    name: 'Garnet',
+    name: tr('Garnet'),
     color: 0xa8202c,
     weapon: [{ stat: 'attackSpeed', v: [4, 7, 11, 15, 20, 27] }],
     armor: [{ stat: 'vitality', v: [3, 6, 10, 15, 22, 32] }],
@@ -147,7 +150,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
   },
   {
     family: 'citrine',
-    name: 'Citrine',
+    name: tr('Citrine'),
     color: 0xe0a038,
     weapon: [{ stat: 'goldFind', v: [12, 24, 40, 62, 92, 135] }],
     armor: [{ stat: 'moveSpeed', v: [2, 3, 5, 7, 9, 12] }],
@@ -163,8 +166,9 @@ function buildGems(): GemDef[] {
       const prefix = QUALITY_PREFIX[quality];
       out.push({
         id: `gem.${fam.family}.${quality}`,
-        name: prefix ? `${prefix} ${fam.name}` : fam.name,
+        name: prefix ? trc('gem name: quality, then stone', '{0} {1}', prefix, fam.name) : fam.name,
         family: fam.family,
+        familyName: fam.name,
         quality,
         qualityIndex: q,
         levelReq: QUALITY_LEVEL[q],
@@ -197,10 +201,10 @@ export type RuneVein = 'ember' | 'rime' | 'marrow' | 'umbra';
 export const RUNE_VEINS: readonly RuneVein[] = ['ember', 'rime', 'marrow', 'umbra'];
 
 export const VEIN_INFO: Record<RuneVein, { name: string; color: number; theme: string }> = {
-  ember: { name: 'Ember', color: 0xd8642a, theme: 'Fire and fury' },
-  rime: { name: 'Rime', color: 0x86c4e8, theme: 'Frost, storm and the mind' },
-  marrow: { name: 'Marrow', color: 0xd8ccaa, theme: 'Bone, blood and endurance' },
-  umbra: { name: 'Umbra', color: 0x9a68d8, theme: 'Venom, void and fortune' },
+  ember: { name: tr('Ember'), color: 0xd8642a, theme: tr('Fire and fury') },
+  rime: { name: tr('Rime'), color: 0x86c4e8, theme: tr('Frost, storm and the mind') },
+  marrow: { name: tr('Marrow'), color: 0xd8ccaa, theme: tr('Bone, blood and endurance') },
+  umbra: { name: tr('Umbra'), color: 0x9a68d8, theme: tr('Venom, void and fortune') },
 };
 
 /** How many cuts each vein has. */
@@ -228,33 +232,33 @@ type RuneRow = [string, RuneVein, number, StatKey, number, StatKey, number, Stat
 
 const RUNE_ROWS: RuneRow[] = [
   // Ember: fire and fury.
-  ['Krae', 'ember', 1, 'fireDamage', 5, 'strength', 3, 'attackSpeed', 3],
-  ['Torvek', 'ember', 2, 'enhancedDamage', 15, 'fireResist', 15, 'fireDamage', 8],
-  ['Ashmar', 'ember', 3, 'fireDamage', 18, 'strength', 8, 'critChance', 3],
-  ['Brannoc', 'ember', 4, 'attackSpeed', 10, 'enhancedDefense', 25, 'strength', 12],
-  ['Skarth', 'ember', 5, 'fireDamage', 40, 'fireResist', 30, 'enhancedDamage', 25],
-  ['Ignavar', 'ember', 6, 'enhancedDamage', 45, 'strength', 18, 'attackSpeed', 12],
+  [tr('Krae'), 'ember', 1, 'fireDamage', 5, 'strength', 3, 'attackSpeed', 3],
+  [tr('Torvek'), 'ember', 2, 'enhancedDamage', 15, 'fireResist', 15, 'fireDamage', 8],
+  [tr('Ashmar'), 'ember', 3, 'fireDamage', 18, 'strength', 8, 'critChance', 3],
+  [tr('Brannoc'), 'ember', 4, 'attackSpeed', 10, 'enhancedDefense', 25, 'strength', 12],
+  [tr('Skarth'), 'ember', 5, 'fireDamage', 40, 'fireResist', 30, 'enhancedDamage', 25],
+  [tr('Ignavar'), 'ember', 6, 'enhancedDamage', 45, 'strength', 18, 'attackSpeed', 12],
   // Rime: frost, storm and the mind.
-  ['Sile', 'rime', 1, 'coldDamage', 4, 'mana', 15, 'manaRegen', 5],
-  ['Vessa', 'rime', 2, 'manaSteal', 2, 'coldResist', 15, 'castSpeed', 5],
-  ['Hollin', 'rime', 3, 'lightningDamage', 16, 'energy', 8, 'mana', 40],
-  ['Neveth', 'rime', 4, 'castSpeed', 10, 'lightningResist', 25, 'cooldownReduction', 4],
-  ['Caelith', 'rime', 5, 'coldDamage', 34, 'coldResist', 30, 'manaRegen', 30],
-  ['Ilvren', 'rime', 6, 'cooldownReduction', 8, 'energy', 18, 'castSpeed', 14],
+  [tr('Sile'), 'rime', 1, 'coldDamage', 4, 'mana', 15, 'manaRegen', 5],
+  [tr('Vessa'), 'rime', 2, 'manaSteal', 2, 'coldResist', 15, 'castSpeed', 5],
+  [tr('Hollin'), 'rime', 3, 'lightningDamage', 16, 'energy', 8, 'mana', 40],
+  [tr('Neveth'), 'rime', 4, 'castSpeed', 10, 'lightningResist', 25, 'cooldownReduction', 4],
+  [tr('Caelith'), 'rime', 5, 'coldDamage', 34, 'coldResist', 30, 'manaRegen', 30],
+  [tr('Ilvren'), 'rime', 6, 'cooldownReduction', 8, 'energy', 18, 'castSpeed', 14],
   // Marrow: bone, blood and endurance.
-  ['Grod', 'marrow', 1, 'minDamage', 2, 'defense', 12, 'life', 10],
-  ['Osk', 'marrow', 2, 'lifeSteal', 1, 'vitality', 4, 'lifeRegen', 4],
-  ['Durgan', 'marrow', 3, 'maxDamage', 8, 'life', 35, 'physicalResist', 3],
-  ['Ossuan', 'marrow', 4, 'lifeSteal', 3, 'damageReduction', 4, 'vitality', 10],
-  ['Gorrath', 'marrow', 5, 'maxDamage', 22, 'life', 90, 'lifeRegen', 14],
-  ['Morvagh', 'marrow', 6, 'lifeSteal', 5, 'physicalResist', 8, 'life', 120],
+  [tr('Grod'), 'marrow', 1, 'minDamage', 2, 'defense', 12, 'life', 10],
+  [tr('Osk'), 'marrow', 2, 'lifeSteal', 1, 'vitality', 4, 'lifeRegen', 4],
+  [tr('Durgan'), 'marrow', 3, 'maxDamage', 8, 'life', 35, 'physicalResist', 3],
+  [tr('Ossuan'), 'marrow', 4, 'lifeSteal', 3, 'damageReduction', 4, 'vitality', 10],
+  [tr('Gorrath'), 'marrow', 5, 'maxDamage', 22, 'life', 90, 'lifeRegen', 14],
+  [tr('Morvagh'), 'marrow', 6, 'lifeSteal', 5, 'physicalResist', 8, 'life', 120],
   // Umbra: venom, void and fortune.
-  ['Thes', 'umbra', 1, 'poisonDamage', 6, 'poisonResist', 15, 'goldFind', 20],
-  ['Vyx', 'umbra', 2, 'critChance', 2, 'arcaneResist', 15, 'magicFind', 6],
-  ['Nhal', 'umbra', 3, 'arcaneDamage', 16, 'dexterity', 8, 'critDamage', 10],
-  ['Xoreth', 'umbra', 4, 'critDamage', 20, 'moveSpeed', 5, 'dexterity', 12],
-  ['Sablon', 'umbra', 5, 'critChance', 6, 'magicFind', 18, 'critDamage', 25],
-  ['Umbrael', 'umbra', 6, 'critDamage', 50, 'moveSpeed', 8, 'skillLevels', 1],
+  [tr('Thes'), 'umbra', 1, 'poisonDamage', 6, 'poisonResist', 15, 'goldFind', 20],
+  [tr('Vyx'), 'umbra', 2, 'critChance', 2, 'arcaneResist', 15, 'magicFind', 6],
+  [tr('Nhal'), 'umbra', 3, 'arcaneDamage', 16, 'dexterity', 8, 'critDamage', 10],
+  [tr('Xoreth'), 'umbra', 4, 'critDamage', 20, 'moveSpeed', 5, 'dexterity', 12],
+  [tr('Sablon'), 'umbra', 5, 'critChance', 6, 'magicFind', 18, 'critDamage', 25],
+  [tr('Umbrael'), 'umbra', 6, 'critDamage', 50, 'moveSpeed', 8, 'skillLevels', 1],
 ];
 
 /** Level and depth where each cut starts. Veins of one cut stagger by a level. */
@@ -269,7 +273,7 @@ export const RUNES: RuneDef[] = RUNE_ROWS.map((row) => {
   const ch = (shift: number) => Math.min(255, Math.round(((c >> shift) & 255) * lift));
   return {
     id: `rune.${name.toLowerCase()}`,
-    name: `${name} Rune`,
+    name: tr('{0} Rune', name),
     vein,
     cut,
     order: (cut - 1) * RUNE_VEINS.length + v + 1,
@@ -349,143 +353,143 @@ const HANDS_FEET: ItemCategory[] = ['gloves', 'boots', 'belt'];
 
 export const RUNEWORDS: RunewordDef[] = [
   // --- melee ----------------------------------------------------------------
-  rw('rw.kindling', 'Spark and Tinder', [E, E], MELEE, 'Two sparks, struck close, and the blade remembers being in the forge.', [
+  rw('rw.kindling', tr('Spark and Tinder'), [E, E], MELEE, tr('Two sparks, struck close, and the blade remembers being in the forge.'), [
     ['fireDamage', 8, 8],
     ['attackSpeed', 8, 2],
   ]),
-  rw('rw.red-tithe', 'Red Tithe', [E, M], MELEE, 'Every cut pays something back. Nobody asks to whom.', [
+  rw('rw.red-tithe', tr('Red Tithe'), [E, M], MELEE, tr('Every cut pays something back. Nobody asks to whom.'), [
     ['enhancedDamage', 20, 12],
     ['lifeSteal', 2, 1],
   ]),
-  rw('rw.hoarfang', 'Hoarfang', [R, M], MELEE, 'The wound frosts over before it can bleed.', [
+  rw('rw.hoarfang', tr('Hoarfang'), [R, M], MELEE, tr('The wound frosts over before it can bleed.'), [
     ['coldDamage', 7, 7],
     ['damageReduction', 2, 1],
   ]),
-  rw('rw.splinter', 'Splinter', [U, E], ['dagger', 'sword', 'spear'], 'It breaks off inside, and keeps working.', [
+  rw('rw.splinter', tr('Splinter'), [U, E], ['dagger', 'sword', 'spear'], tr('It breaks off inside, and keeps working.'), [
     ['critChance', 3, 1],
     ['critDamage', 10, 8],
   ]),
-  rw('rw.gravedigger', 'Gravedigger', [M, M, M], ['mace', 'axe'], 'Heavy enough to dig with. It has.', [
+  rw('rw.gravedigger', tr('Gravedigger'), [M, M, M], ['mace', 'axe'], tr('Heavy enough to dig with. It has.'), [
     ['maxDamage', 10, 8],
     ['enhancedDamage', 30, 15],
     ['strength', 5, 3],
   ]),
-  rw('rw.widows-wake', "Widow's Wake", [U, U, E], MELEE, 'Black veils, and somebody always dressed for it in advance.', [
+  rw('rw.widows-wake', tr("Widow's Wake"), [U, U, E], MELEE, tr('Black veils, and somebody always dressed for it in advance.'), [
     ['critDamage', 25, 12],
     ['critChance', 3, 1],
     ['poisonDamage', 10, 8],
   ]),
-  rw('rw.last-rites', 'Last Rites', [M, U, M, U], MELEE, 'Said quickly, and only ever over the other man.', [
+  rw('rw.last-rites', tr('Last Rites'), [M, U, M, U], MELEE, tr('Said quickly, and only ever over the other man.'), [
     ['skillLevels', 1, 0],
     ['lifeSteal', 3, 1],
     ['enhancedDamage', 40, 20],
     ['vitality', 6, 3],
   ]),
-  rw('rw.pyre-saint', 'Pyre Saint', [E, R, E, M], ['sword', 'axe', 'mace', 'spear'], 'Burned once for heresy. Came back to argue the point.', [
+  rw('rw.pyre-saint', tr('Pyre Saint'), [E, R, E, M], ['sword', 'axe', 'mace', 'spear'], tr('Burned once for heresy. Came back to argue the point.'), [
     ['fireDamage', 20, 14],
     ['coldDamage', 12, 9],
     ['enhancedDamage', 30, 18],
     ['life', 30, 20],
   ]),
   // --- ranged ---------------------------------------------------------------
-  rw('rw.gutter-wind', 'Gutter Wind', [U, E], RANGED, 'It smells of the street, and it never misses the gutter.', [
+  rw('rw.gutter-wind', tr('Gutter Wind'), [U, E], RANGED, tr('It smells of the street, and it never misses the gutter.'), [
     ['attackSpeed', 10, 3],
     ['critChance', 2, 1],
   ]),
-  rw('rw.grey-fletch', 'Grey Fletch', [R, U, R], RANGED, 'Feathers from a bird nobody has seen alive.', [
+  rw('rw.grey-fletch', tr('Grey Fletch'), [R, U, R], RANGED, tr('Feathers from a bird nobody has seen alive.'), [
     ['coldDamage', 10, 8],
     ['dexterity', 6, 3],
     ['moveSpeed', 4, 1],
   ]),
-  rw('rw.thousand-nails', 'Thousand Nails', [E, U, E, U], RANGED, 'Count them as they land. You will run out of numbers.', [
+  rw('rw.thousand-nails', tr('Thousand Nails'), [E, U, E, U], RANGED, tr('Count them as they land. You will run out of numbers.'), [
     ['skillLevels', 1, 0],
     ['enhancedDamage', 40, 20],
     ['critDamage', 20, 10],
     ['attackSpeed', 10, 3],
   ]),
   // --- casters --------------------------------------------------------------
-  rw('rw.banked-coals', 'Banked Coals', [R, E], CASTER, 'Cold on top. Lift the ash and see.', [
+  rw('rw.banked-coals', tr('Banked Coals'), [R, E], CASTER, tr('Cold on top. Lift the ash and see.'), [
     ['fireDamage', 6, 6],
     ['castSpeed', 6, 2],
     ['manaRegen', 8, 4],
   ]),
-  rw('rw.hollow-choir', 'Hollow Choir', [R, U, R], CASTER, 'Voices in the wood, singing a half beat ahead of you.', [
+  rw('rw.hollow-choir', tr('Hollow Choir'), [R, U, R], CASTER, tr('Voices in the wood, singing a half beat ahead of you.'), [
     ['skillLevels', 1, 0],
     ['mana', 30, 20],
     ['castSpeed', 8, 3],
   ]),
-  rw('rw.ash-psalm', 'Ash Psalm', [E, U, E], CASTER, 'Read aloud, it leaves soot on the tongue.', [
+  rw('rw.ash-psalm', tr('Ash Psalm'), [E, U, E], CASTER, tr('Read aloud, it leaves soot on the tongue.'), [
     ['fireDamage', 12, 10],
     ['critChance', 2, 1],
     ['cooldownReduction', 3, 1],
   ]),
-  rw('rw.drowned-psalm', 'Drowned Psalm', [R, R, M, R], ['staff', 'orb'], 'Sung under the lake, where the bells still ring.', [
+  rw('rw.drowned-psalm', tr('Drowned Psalm'), [R, R, M, R], ['staff', 'orb'], tr('Sung under the lake, where the bells still ring.'), [
     ['skillLevels', 2, 0],
     ['coldDamage', 14, 10],
     ['manaRegen', 20, 8],
     ['life', 25, 15],
   ]),
   // --- chest ----------------------------------------------------------------
-  rw('rw.bone-cage', 'Bone Cage', [M, M], BODY, 'Ribs over your ribs. Something still breathes inside.', [
+  rw('rw.bone-cage', tr('Bone Cage'), [M, M], BODY, tr('Ribs over your ribs. Something still breathes inside.'), [
     ['life', 25, 20],
     ['damageReduction', 3, 1],
   ]),
-  rw('rw.ember-mantle', 'Ember Mantle', [E, M, E], BODY, 'Warm in the coldest crypt. Too warm, some nights.', [
+  rw('rw.ember-mantle', tr('Ember Mantle'), [E, M, E], BODY, tr('Warm in the coldest crypt. Too warm, some nights.'), [
     ['fireResist', 15, 5],
     ['strength', 6, 3],
     ['enhancedDefense', 40, 20],
   ]),
-  rw('rw.pale-vigil', 'Pale Vigil', [R, U, M], BODY, 'Kept by someone who stopped sleeping a long time ago.', [
+  rw('rw.pale-vigil', tr('Pale Vigil'), [R, U, M], BODY, tr('Kept by someone who stopped sleeping a long time ago.'), [
     ['fireResist', 12, 4],
     ['coldResist', 12, 4],
     ['lightningResist', 12, 4],
     ['poisonResist', 12, 4],
     ['arcaneResist', 12, 4],
   ]),
-  rw('rw.grave-wedding', 'Grave Wedding', [U, M, U, M], BODY, 'Till death, the vows said. Nobody said whose.', [
+  rw('rw.grave-wedding', tr('Grave Wedding'), [U, M, U, M], BODY, tr('Till death, the vows said. Nobody said whose.'), [
     ['skillLevels', 1, 0],
     ['life', 40, 25],
     ['moveSpeed', 6, 1],
     ['critChance', 2, 1],
   ]),
   // --- helm -----------------------------------------------------------------
-  rw('rw.crow-hood', 'Crow Hood', [U, R], HEAD, 'It sees what glitters first, and tells you second.', [
+  rw('rw.crow-hood', tr('Crow Hood'), [U, R], HEAD, tr('It sees what glitters first, and tells you second.'), [
     ['magicFind', 8, 4],
     ['energy', 4, 2],
     ['lightningResist', 12, 4],
   ]),
-  rw('rw.iron-halo', 'Iron Halo', [M, E, M], HEAD, 'A saint wore it. The saint did not get it back.', [
+  rw('rw.iron-halo', tr('Iron Halo'), [M, E, M], HEAD, tr('A saint wore it. The saint did not get it back.'), [
     ['life', 20, 15],
     ['strength', 5, 3],
     ['physicalResist', 3, 1],
   ]),
   // --- shield ---------------------------------------------------------------
-  rw('rw.shut-door', 'Shut Door', [M, R], SHIELDS, 'Whatever is knocking can wait outside.', [
+  rw('rw.shut-door', tr('Shut Door'), [M, R], SHIELDS, tr('Whatever is knocking can wait outside.'), [
     ['blockChance', 6, 2],
     ['defense', 20, 15],
     ['coldResist', 12, 5],
   ]),
-  rw('rw.wall-of-teeth', 'Wall of Teeth', [M, E, M], SHIELDS, 'It bites the hand that strikes it.', [
+  rw('rw.wall-of-teeth', tr('Wall of Teeth'), [M, E, M], SHIELDS, tr('It bites the hand that strikes it.'), [
     ['blockChance', 8, 2],
     ['enhancedDefense', 40, 20],
     ['maxDamage', 5, 4],
   ]),
   // --- legs, hands, feet ----------------------------------------------------
-  rw('rw.long-road', 'Long Road', [U, M], LEGS, 'Walked once by a pilgrim who never stopped.', [
+  rw('rw.long-road', tr('Long Road'), [U, M], LEGS, tr('Walked once by a pilgrim who never stopped.'), [
     ['moveSpeed', 5, 1],
     ['vitality', 4, 2],
     ['poisonResist', 12, 4],
   ]),
-  rw('rw.coal-walker', 'Coal Walker', [E, R, E], LEGS, 'Barefoot over the fire pits, on a dare, every night.', [
+  rw('rw.coal-walker', tr('Coal Walker'), [E, R, E], LEGS, tr('Barefoot over the fire pits, on a dare, every night.'), [
     ['fireResist', 15, 5],
     ['coldResist', 15, 5],
     ['life', 20, 15],
   ]),
-  rw('rw.knucklebones', 'Knucklebones', [M], HANDS_FEET, 'Rolled for luck. Worn for the same reason.', [
+  rw('rw.knucklebones', tr('Knucklebones'), [M], HANDS_FEET, tr('Rolled for luck. Worn for the same reason.'), [
     ['minDamage', 2, 2],
     ['goldFind', 15, 8],
   ]),
-  rw('rw.quickfrost', 'Quickfrost', [R, E], HANDS_FEET, 'Cold feet, hot hands, and no time to think.', [
+  rw('rw.quickfrost', tr('Quickfrost'), [R, E], HANDS_FEET, tr('Cold feet, hot hands, and no time to think.'), [
     ['attackSpeed', 5, 2],
     ['castSpeed', 5, 2],
     ['moveSpeed', 3, 1],

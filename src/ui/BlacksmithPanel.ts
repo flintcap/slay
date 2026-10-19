@@ -66,6 +66,7 @@ import {
   type DragPayload,
 } from './Widgets';
 import { uiSfx } from './Sfx';
+import { tr, trn } from '../core/I18n';
 
 type ServiceId = 'upgrade' | 'reroll' | 'hone' | 'socket' | 'salvage';
 
@@ -86,8 +87,8 @@ export class BlacksmithPanel {
   constructor() {
     this.panel = new Panel({
       id: 'blacksmith',
-      title: 'Blacksmith',
-      subtitle: 'Steel remembers every blow it survives',
+      title: tr('Blacksmith'),
+      subtitle: tr('Steel remembers every blow it survives'),
       icon: 'anvil',
       width: 1140,
     });
@@ -98,7 +99,7 @@ export class BlacksmithPanel {
     // --- item picker ------------------------------------------------------
     const left = div('trade-col');
     const lhd = div('trade-colhd');
-    lhd.appendChild(span('trade-coltitle', 'Your Pack'));
+    lhd.appendChild(span('trade-coltitle', tr('Your Pack')));
     const gold = div('inv-gold');
     gold.appendChild(icon('coin', { size: 13 }));
     this.goldEl = span('inv-gold-v', '0');
@@ -117,10 +118,10 @@ export class BlacksmithPanel {
       onRightClick: (item) => this.select(item),
     });
     left.appendChild(this.packGrid.root);
-    left.appendChild(div('inv-hint', 'Click an item to bring it to the anvil.'));
+    left.appendChild(div('inv-hint', tr('Click an item to bring it to the anvil.')));
 
     const whd = div('trade-colhd');
-    whd.appendChild(span('trade-coltitle', 'Worn'));
+    whd.appendChild(span('trade-coltitle', tr('Worn')));
     left.appendChild(whd);
     const wornRow = div('smith-worn');
     for (const slot of Object.keys(SLOT_LABEL) as EquipSlot[]) {
@@ -175,7 +176,7 @@ export class BlacksmithPanel {
     if (!item) return;
     const base = safeBase(item);
     if (base && (base.category === 'potion' || base.category === 'material')) {
-      events.emit('toast', { text: 'The smith has no use for that.', kind: 'info' });
+      events.emit('toast', { text: tr('The smith has no use for that.'), kind: 'info' });
       return;
     }
     if (this.selected?.uid !== item.uid) {
@@ -217,7 +218,7 @@ export class BlacksmithPanel {
     for (const cell of this.worn.values()) cell.root.classList.toggle('is-picked', !!uid && cell.item?.uid === uid);
     const item = this.selected;
     if (!item) {
-      this.preview.appendChild(emptyState('Click an item in your pack, or one you are wearing, to put it on the anvil.', 'anvil'));
+      this.preview.appendChild(emptyState(tr('Click an item in your pack, or one you are wearing, to put it on the anvil.'), 'anvil'));
       return;
     }
     const rc = rarityHex(item.rarity);
@@ -250,7 +251,7 @@ export class BlacksmithPanel {
     titles.appendChild(nm);
     const base = safeBase(item);
     titles.appendChild(
-      div('smith-itemsub', `${base?.name ?? item.baseId} · ilvl ${item.ilvl} · +${item.upgrade} · ${item.sockets.length} socket${item.sockets.length === 1 ? '' : 's'}`)
+      div('smith-itemsub', trn(item.sockets.length, '{0} · ilvl {1} · +{2} · {3} socket', '{0} · ilvl {1} · +{2} · {3} sockets', base?.name ?? item.baseId, item.ilvl, item.upgrade, item.sockets.length))
     );
     add(head, crest, titles);
     this.preview.appendChild(head);
@@ -267,16 +268,16 @@ export class BlacksmithPanel {
     const sec = div('');
     const hd = div('section-hd');
     hd.appendChild(icon('hammer', { size: 13 }));
-    hd.appendChild(span('section-title', ok ? `Upgrade preview  +${item.upgrade} → +${item.upgrade + 1}` : 'Current stats'));
+    hd.appendChild(span('section-title', ok ? tr('Upgrade preview  +{0} → +{1}', item.upgrade, item.upgrade + 1) : tr('Current stats')));
     hd.appendChild(div('section-rule'));
     sec.appendChild(hd);
 
     const table = div('smith-diff');
     const header = div('diffrow is-head');
     header.appendChild(span('diffrow-l', ''));
-    header.appendChild(span('diffrow-a', 'Now'));
+    header.appendChild(span('diffrow-a', tr('Now')));
     header.appendChild(span('diffrow-arrow', ''));
-    header.appendChild(span('diffrow-b', after ? 'After' : ''));
+    header.appendChild(span('diffrow-b', after ? tr('After') : ''));
     table.appendChild(header);
 
     const keys = new Set<StatKey>([
@@ -305,7 +306,7 @@ export class BlacksmithPanel {
       rows++;
       if (rows > 12) break;
     }
-    if (!rows) table.appendChild(div('char-empty', 'This item has no numeric stats.'));
+    if (!rows) table.appendChild(div('char-empty', tr('This item has no numeric stats.')));
     sec.appendChild(table);
     this.preview.appendChild(sec);
 
@@ -313,7 +314,7 @@ export class BlacksmithPanel {
       const sockSec = div('');
       const shd = div('section-hd');
       shd.appendChild(icon('gem', { size: 13 }));
-      shd.appendChild(span('section-title', 'Sockets'));
+      shd.appendChild(span('section-title', tr('Sockets')));
       shd.appendChild(div('section-rule'));
       sockSec.appendChild(shd);
       const strip = div('tt-socket-strip');
@@ -325,7 +326,7 @@ export class BlacksmithPanel {
           cell.style.color = rarityHex('unique');
           cell.title = gem.name;
         } else {
-          cell.title = 'Empty — click to set a gem or rune';
+          cell.title = tr('Empty — click to set a gem or rune');
         }
         cell.style.cursor = 'var(--cursor-hot)';
         cell.addEventListener('click', () => this.openSocketPicker(item, i));
@@ -333,7 +334,7 @@ export class BlacksmithPanel {
       });
       sockSec.appendChild(strip);
       sockSec.appendChild(
-        div('craftcard-desc', 'Click a socket to set a gem, or to prise one back out.')
+        div('craftcard-desc', tr('Click a socket to set a gem, or to prise one back out.'))
       );
       this.preview.appendChild(sockSec);
     }
@@ -359,27 +360,27 @@ export class BlacksmithPanel {
       const cost = removeGemCost();
       const canKeep = attempt(() => canAfford(cost), false);
       modal({
-        title: `Remove ${gem?.name ?? 'gem'}`,
+        title: tr('Remove {0}', gem?.name ?? 'gem'),
         icon: 'gem',
         tone: 'danger',
         body: canKeep
-          ? `A Sigil of Order and ${fmtInt(cost.gold)} gold prises it out intact. Without one the gem is destroyed.`
-          : `You have no Sigil of Order, so knocking this one out will destroy it.`,
-        confirmLabel: canKeep ? 'Prise it out' : 'Destroy it',
+          ? tr('A Sigil of Order and {0} gold prises it out intact. Without one the gem is destroyed.', fmtInt(cost.gold))
+          : tr('You have no Sigil of Order, so knocking this one out will destroy it.'),
+        confirmLabel: canKeep ? tr('Prise it out') : tr('Destroy it'),
         onConfirm: () => {
           const r = attempt(
             () => removeGem(item, index, canKeep),
-            { ok: false, reason: 'Failed' } as { ok: boolean; reason?: string; gemId?: string }
+            { ok: false, reason: tr('Failed') } as { ok: boolean; reason?: string; gemId?: string }
           );
           if (!r.ok) {
-            events.emit('toast', { text: r.reason ?? 'The smith cannot.', kind: 'bad' });
+            events.emit('toast', { text: r.reason ?? tr('The smith cannot.'), kind: 'bad' });
             return;
           }
           if (canKeep && r.gemId) {
             const made = attempt(() => newItem(getBase(r.gemId!), item.ilvl, 'normal', new Random(randomSeed())), null);
             if (made) addItemToInventory(c, made);
           }
-          events.emit('toast', { text: canKeep ? 'Gem recovered.' : 'Gem shattered.', kind: canKeep ? 'good' : 'info' });
+          events.emit('toast', { text: canKeep ? tr('Gem recovered.') : tr('Gem shattered.'), kind: canKeep ? 'good' : 'info' });
           save.touch();
           events.emit('ui:refresh', {});
           this.refresh();
@@ -397,7 +398,7 @@ export class BlacksmithPanel {
 
     const body = div('socket-picker');
     if (gems.length === 0) {
-      body.appendChild(emptyState('No gems or runes in your pack.', 'gem'));
+      body.appendChild(emptyState(tr('No gems or runes in your pack.'), 'gem'));
     }
     for (const gem of gems) {
       const def = attempt(() => getSocketable(gem.baseId), undefined);
@@ -414,18 +415,18 @@ export class BlacksmithPanel {
           'socket-pick-stats',
           bonuses.length
             ? bonuses.map((b) => `${b.value >= 0 ? '+' : ''}${b.value} ${STAT_LABEL[b.stat] ?? b.stat}`).join(', ')
-            : 'No effect in this item'
+            : tr('No effect in this item')
         )
       );
       row.style.cursor = 'var(--cursor-hot)';
       row.addEventListener('click', () => {
-        const r = attempt(() => insertGem(item, gem.baseId, index), { ok: false, reason: 'Failed' });
+        const r = attempt(() => insertGem(item, gem.baseId, index), { ok: false, reason: tr('Failed') });
         if (!r.ok) {
-          events.emit('toast', { text: r.reason ?? 'It will not seat.', kind: 'bad' });
+          events.emit('toast', { text: r.reason ?? tr('It will not seat.'), kind: 'bad' });
           return;
         }
         invConsumeOne(c, gem);
-        events.emit('toast', { text: `${def?.name ?? 'Gem'} set.`, kind: 'good' });
+        events.emit('toast', { text: tr('{0} set.', def?.name ?? tr('Gem')), kind: 'good' });
         save.touch();
         events.emit('ui:refresh', {});
         this.refresh();
@@ -435,10 +436,10 @@ export class BlacksmithPanel {
     }
 
     modal({
-      title: 'Set a gem',
+      title: tr('Set a gem'),
       icon: 'gem',
       body,
-      confirmLabel: 'Done',
+      confirmLabel: tr('Done'),
     });
   }
 
@@ -449,16 +450,16 @@ export class BlacksmithPanel {
     const item = this.selected;
     const c = save.account.current;
     if (!item || !c) {
-      this.actions.appendChild(emptyState('Upgrades, sockets and salvage appear here once an item is on the anvil.', 'hammer'));
+      this.actions.appendChild(emptyState(tr('Upgrades, sockets and salvage appear here once an item is on the anvil.'), 'hammer'));
       return;
     }
 
     const cost = attempt(() => upgradeCost(item), { gold: 0, materials: {} as Record<string, number> });
 
     this.actions.appendChild(
-      this.card('upgrade', 'Upgrade', 'hammer', `Raise this item to +${item.upgrade + 1}. Scales its base values and every rolled mod.`, cost, () => {
-        const r = attempt(() => upgradeItem(item, new Random(randomSeed())), { ok: false, reason: 'Failed' });
-        return r.ok ? null : r.reason ?? 'The smith shakes his head.';
+      this.card('upgrade', tr('Upgrade'), 'hammer', tr('Raise this item to +{0}. Scales its base values and every rolled mod.', item.upgrade + 1), cost, () => {
+        const r = attempt(() => upgradeItem(item, new Random(randomSeed())), { ok: false, reason: tr('Failed') });
+        return r.ok ? null : r.reason ?? tr('The smith shakes his head.');
       })
     );
 
@@ -469,30 +470,30 @@ export class BlacksmithPanel {
     const cap = attempt(() => maxLocks(item), 0);
     const reroll = this.card(
       'reroll',
-      'Reroll Affixes',
+      tr('Reroll Affixes'),
       'sparkle',
       this.locks.size
-        ? `Rolls new prefixes and suffixes at this item level. The ${this.locks.size === 1 ? 'bound line stays' : `${this.locks.size} bound lines stay`}; every other line is lost. There is no undo.`
-        : 'Wipes every prefix and suffix and rolls new ones at this item level. There is no undo.',
+        ? tr('Rolls new prefixes and suffixes at this item level. The {0}; every other line is lost. There is no undo.', this.locks.size === 1 ? tr('bound line stays') : tr('{0} bound lines stay', this.locks.size))
+        : tr('Wipes every prefix and suffix and rolls new ones at this item level. There is no undo.'),
       attempt(() => rerollCost(item, this.locks.size), { gold: 0, materials: {} as Record<string, number> }),
       () => {
-        const r = attempt(() => rerollAffixes(item, new Random(randomSeed()), [...this.locks]), { ok: false, reason: 'Failed' });
+        const r = attempt(() => rerollAffixes(item, new Random(randomSeed()), [...this.locks]), { ok: false, reason: tr('Failed') });
         if (r.ok) {
           this.locks.clear();
           this.honePick = null;
         }
-        return r.ok ? null : r.reason ?? 'Nothing to reroll.';
+        return r.ok ? null : r.reason ?? tr('Nothing to reroll.');
       },
       true
     );
     if (rolled && cap > 0 && lines.length > 1) {
       const list = div('smith-lines');
-      list.appendChild(div('craftcard-desc', `Click up to ${cap} line${cap === 1 ? '' : 's'} to bind with cloth and keep through the reroll.`));
+      list.appendChild(div('craftcard-desc', trn(cap, 'Click up to {0} line to bind with cloth and keep through the reroll.', 'Click up to {0} lines to bind with cloth and keep through the reroll.', cap)));
       for (const { m, i } of lines) {
         const on = this.locks.has(i);
         const full = !on && this.locks.size >= cap;
         const row = div(`smith-line${on ? ' is-on' : full ? ' is-off' : ''}`);
-        add(row, span('', modLine(m)), span('smith-line-tag', on ? 'Bound' : m.kind));
+        add(row, span('', modLine(m)), span('smith-line-tag', on ? tr('Bound') : m.kind));
         row.addEventListener('click', () => {
           if (on) this.locks.delete(i);
           else if (!full) this.locks.add(i);
@@ -511,17 +512,17 @@ export class BlacksmithPanel {
       const honed = item.mods.find((m) => m.honed);
       const hone = this.card(
         'hone',
-        'Hone a Line',
+        tr('Hone a Line'),
         'hammer',
         honed
-          ? `${modLine(honed)} is honed. Only one line on an item can be.`
-          : 'Moves one prefix or suffix a rung up its ladder, a little past what the item could roll. Once per item.',
+          ? tr('{0} is honed. Only one line on an item can be.', modLine(honed))
+          : tr('Moves one prefix or suffix a rung up its ladder, a little past what the item could roll. Once per item.'),
         attempt(() => honeCost(item), { gold: 0, materials: {} as Record<string, number> }),
         () => {
-          if (this.honePick === null) return 'Pick a line to hone first.';
-          const r = attempt(() => honeLine(item, this.honePick!, new Random(randomSeed())), { ok: false, reason: 'Failed' });
+          if (this.honePick === null) return tr('Pick a line to hone first.');
+          const r = attempt(() => honeLine(item, this.honePick!, new Random(randomSeed())), { ok: false, reason: tr('Failed') });
           if (r.ok) this.honePick = null;
-          return r.ok ? null : r.reason ?? 'The smith cannot hone that.';
+          return r.ok ? null : r.reason ?? tr('The smith cannot hone that.');
         }
       );
       if (!honed) {
@@ -530,7 +531,7 @@ export class BlacksmithPanel {
           const next = attempt(() => (canHone(item, i).ok ? honeTarget(item, i) : null), null);
           const on = this.honePick === i;
           const row = div(`smith-line${on ? ' is-on' : next ? '' : ' is-off'}`);
-          add(row, span('', modLine(m)), span('smith-line-tag', next ? `tier ${m.tier} → ${next.tier}` : 'at its best'));
+          add(row, span('', modLine(m)), span('smith-line-tag', next ? tr('tier {0} → {1}', m.tier, next.tier) : tr('at its best')));
           if (next) {
             row.addEventListener('click', () => {
               this.honePick = on ? null : i;
@@ -548,13 +549,13 @@ export class BlacksmithPanel {
     this.actions.appendChild(
       this.card(
         'socket',
-        'Add Socket',
+        tr('Add Socket'),
         'gem',
-        'Punches another socket, if the item can take one.',
+        tr('Punches another socket, if the item can take one.'),
         attempt(() => socketCost(item), { gold: 0, materials: {} as Record<string, number> }),
         () => {
-          const r = attempt(() => addSocket(item, new Random(randomSeed())), { ok: false, reason: 'Failed' });
-          return r.ok ? null : r.reason ?? 'No room for another socket.';
+          const r = attempt(() => addSocket(item, new Random(randomSeed())), { ok: false, reason: tr('Failed') });
+          return r.ok ? null : r.reason ?? tr('No room for another socket.');
         }
       )
     );
@@ -564,9 +565,9 @@ export class BlacksmithPanel {
     if (!worn) this.actions.appendChild(
       this.card(
         'salvage',
-        'Salvage',
+        tr('Salvage'),
         'trash',
-        'Break the item down for crafting materials. The item is destroyed.',
+        tr('Break the item down for crafting materials. The item is destroyed.'),
         { gold: 0, materials: {} },
         () => {
           const mats = attempt(() => salvage(item), {} as Record<string, number>);
@@ -575,7 +576,7 @@ export class BlacksmithPanel {
           const summary = Object.entries(mats)
             .map(([id, n]) => `${n}x ${attempt(() => materialName(id), id)}`)
             .join(', ');
-          events.emit('toast', { text: summary ? `Salvaged: ${summary}` : 'Salvaged.', kind: 'good' });
+          events.emit('toast', { text: summary ? tr('Salvaged: {0}', summary) : tr('Salvaged.'), kind: 'good' });
           this.selected = null;
           return null;
         },
@@ -587,11 +588,11 @@ export class BlacksmithPanel {
     const wallet = div('craftcard');
     const whd = div('craftcard-hd');
     whd.appendChild(icon('material', { size: 13 }));
-    whd.appendChild(span('', 'Materials'));
+    whd.appendChild(span('', tr('Materials')));
     wallet.appendChild(whd);
     const chips = div('craftcost');
     const mats = Object.entries(save.account.materials).filter(([, n]) => n > 0);
-    if (!mats.length) chips.appendChild(span('craftcard-desc', 'None yet — salvage something.'));
+    if (!mats.length) chips.appendChild(span('craftcard-desc', tr('None yet — salvage something.')));
     for (const [id, n] of mats.slice(0, 12)) chips.appendChild(this.matChip(id, n, 0));
     wallet.appendChild(chips);
     this.actions.appendChild(wallet);
@@ -628,7 +629,7 @@ export class BlacksmithPanel {
       costs.appendChild(this.matChip(mid, have, need));
       if (have < need) affordable = false;
     }
-    if (!costs.childElementCount) costs.appendChild(span('matchip', 'Free'));
+    if (!costs.childElementCount) costs.appendChild(span('matchip', tr('Free')));
     card.appendChild(costs);
 
     const btn = new Button({
@@ -639,7 +640,7 @@ export class BlacksmithPanel {
       onClick: () => {
         const doIt = (): void => {
           if (!affordable) {
-            events.emit('toast', { text: 'You cannot afford that.', kind: 'bad' });
+            events.emit('toast', { text: tr('You cannot afford that.'), kind: 'bad' });
             btn.flash('bad');
             return;
           }
@@ -657,7 +658,7 @@ export class BlacksmithPanel {
           void card.offsetWidth;
           card.classList.add('is-success');
           uiSfx('craft.success');
-          events.emit('toast', { text: `${title} complete.`, kind: 'good' });
+          events.emit('toast', { text: tr('{0} complete.', title), kind: 'good' });
           // Worn gear changes the hero's numbers the moment it is improved.
           const worn = Object.values(c?.equipment ?? {}).find((i) => i?.uid === this.selected?.uid);
           if (worn) events.emit('item:equipped', { item: worn });
@@ -669,7 +670,7 @@ export class BlacksmithPanel {
             title: `${title}?`,
             icon: 'warn',
             tone: 'danger',
-            body: `<p>${desc}</p><p><b>This cannot be undone.</b></p>`,
+            body: tr('<p>{0}</p><p><b>This cannot be undone.</b></p>', desc),
             confirmLabel: title,
             onConfirm: doIt,
           });

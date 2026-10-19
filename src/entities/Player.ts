@@ -18,6 +18,7 @@ import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
 import { Shapeshift } from './Shapeshift';
 import { setHeroVoice } from '../audio/HeroVoice';
+import { tr } from '../core/I18n';
 
 export interface PlayerContext {
   /** Boxes, or circles where `r` is set (round props: barrels, pillars). `moves` marks one that walks (a resident). */
@@ -680,7 +681,7 @@ export class Player {
     // Knockback is carried the same way and was equally ignored.
     if (packet.knockback && !steady && !e.knockbackImmune) this.shove(packet.knockback, packet.from);
 
-    this.checkDeath(packet.source || 'the dark');
+    this.checkDeath(packet.source || tr('the dark'));
     return result.amount;
   }
 

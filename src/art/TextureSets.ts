@@ -16,6 +16,7 @@
 
 import * as THREE from 'three';
 import { loadTexture, preloadAssets } from '../core/Assets';
+import { tr } from '../core/I18n';
 
 export interface TextureSetInfo {
   /** Real-world width of one texture tile, metres (from the scan's metadata). */
@@ -127,7 +128,7 @@ export function setFiles(names: readonly TextureSetName[]): string[] {
 /** Fetch and decode sets ahead of use (boot bar, loading card). Never rejects. */
 export function preloadSets(
   names: readonly TextureSetName[],
-  label = 'Loading textures',
+  label = tr('Loading textures'),
   onProgress?: (p: number, label: string) => void,
 ): Promise<{ ok: number; missing: string[] }> {
   return preloadAssets(setFiles(names), label, onProgress);

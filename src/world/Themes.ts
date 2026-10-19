@@ -19,6 +19,7 @@
 import type { Dressing, Pool } from '../art/props/Dressing';
 import type { BiomeId, MonsterFamily, Rng } from '../types';
 import type { WeatherFall } from './Weather';
+import { tr } from '../core/I18n';
 
 export type RunThemeId = 'flooded' | 'overgrown' | 'burnt' | 'haunted';
 
@@ -56,7 +57,7 @@ export const RUN_THEMES: readonly RunTheme[] = [
   {
     id: 'flooded',
     name: 'drowned',
-    blurb: 'The water came up and never went back down.',
+    blurb: tr('The water came up and never went back down.'),
     weight: 3,
     minDepth: 3,
     not: ['hell', 'ashwaste', 'foundry', 'desert', 'desertTomb', 'voidspire'],
@@ -75,7 +76,7 @@ export const RUN_THEMES: readonly RunTheme[] = [
   {
     id: 'overgrown',
     name: 'root-choked',
-    blurb: 'Nobody has walked here for a long time. Something has grown instead.',
+    blurb: tr('Nobody has walked here for a long time. Something has grown instead.'),
     weight: 3,
     minDepth: 3,
     not: ['hell', 'ashwaste', 'foundry', 'frostvault', 'tundra', 'voidspire', 'desert'],
@@ -93,8 +94,8 @@ export const RUN_THEMES: readonly RunTheme[] = [
   },
   {
     id: 'burnt',
-    name: 'burnt out',
-    blurb: 'A fire went through. Some of it is still going.',
+    name: tr('burnt out'),
+    blurb: tr('A fire went through. Some of it is still going.'),
     weight: 3,
     minDepth: 3,
     not: ['swamp', 'sunkenTemple', 'frostvault', 'tundra'],
@@ -112,7 +113,7 @@ export const RUN_THEMES: readonly RunTheme[] = [
   {
     id: 'haunted',
     name: 'restless',
-    blurb: 'The dead here were buried badly, and they know it.',
+    blurb: tr('The dead here were buried badly, and they know it.'),
     weight: 3,
     minDepth: 3,
     not: [],

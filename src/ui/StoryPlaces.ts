@@ -21,6 +21,7 @@ import { say, showCard } from './StoryOverlay';
 import { bossFightActive } from './StoryBosses';
 import { addJournalSection, para, pageTitle, type JournalEntry } from './JournalPanel';
 import { div } from './Widgets';
+import { tr } from '../core/I18n';
 
 /** Where the hero is: biome and tier of the floor, or null in town. */
 let here: { biome: BiomeId; depth: number; floor: number } | null = null;
@@ -30,9 +31,9 @@ let notesThisFloor = 0;
 const lastWhisper = new Map<string, string>();
 
 const SOURCE_KICKER: Record<string, string> = {
-  fallen: "In a fallen delver's pack",
-  bookcase: 'Between the books',
-  chest: 'At the bottom of the chest',
+  fallen: tr("In a fallen delver's pack"),
+  bookcase: tr('Between the books'),
+  chest: tr('At the bottom of the chest'),
 };
 
 function noteCard(n: LoreNote, kicker: string): void {
@@ -109,7 +110,7 @@ export function installStoryPlaces(): void {
         setTimeout(
           () =>
             showCard({
-              kicker: `First sight · Tier ${depth}`,
+              kicker: tr('First sight · Tier {0}', depth),
               title: place.name,
               text: [place.firstEntry, place.description],
               kind: 'place',
@@ -127,7 +128,7 @@ export function installStoryPlaces(): void {
     const n = searchForNote(p.source, p.depth, here.biome);
     if (!n) return;
     notesThisFloor++;
-    noteCard(n, SOURCE_KICKER[p.source] ?? 'Found');
+    noteCard(n, SOURCE_KICKER[p.source] ?? tr('Found'));
   });
 
   events.on('player:died', () => {
@@ -149,7 +150,7 @@ export function installStoryPlaces(): void {
     };
     handle.place = (biome: BiomeId = 'crypt') => {
       const place = PLACES[biome];
-      showCard({ kicker: 'First sight · Tier 1', title: place.name, text: [place.firstEntry, place.description], kind: 'place' });
+      showCard({ kicker: tr('First sight · Tier 1'), title: place.name, text: [place.firstEntry, place.description], kind: 'place' });
     };
   }
 }
@@ -165,14 +166,14 @@ const BIOME_ORDER: BiomeId[] = [
 
 addJournalSection({
   id: 'notes',
-  label: 'Notes',
+  label: tr('Notes'),
   icon: 'scroll',
-  empty: 'No pages yet. Search bookcases, chests and the packs of the fallen.',
+  empty: tr('No pages yet. Search bookcases, chests and the packs of the fallen.'),
   entries(): JournalEntry[] {
     const found = foundNotes();
     const out: JournalEntry[] = [];
     const groups: Array<[string, LoreNote[]]> = BIOME_ORDER.map((b) => [placeName(b), found.filter((n) => n.biome === b)]);
-    groups.push(['Loose pages', found.filter((n) => !n.biome)]);
+    groups.push([tr('Loose pages'), found.filter((n) => !n.biome)]);
     for (const [group, notes] of groups) {
       for (const n of notes) {
         out.push({
@@ -181,7 +182,7 @@ addJournalSection({
           sub: n.source,
           group,
           render(page) {
-            pageTitle(page, n.title, `${n.biome ? placeName(n.biome) : 'Found below'} · ${n.source}`);
+            pageTitle(page, n.title, `${n.biome ? placeName(n.biome) : tr('Found below')} · ${n.source}`);
             para(page, n.text);
           },
         });
@@ -192,13 +193,13 @@ addJournalSection({
       if (left > 0) {
         out.push({
           id: 'more',
-          label: `${left} more`,
-          sub: 'Somewhere below',
-          group: 'Not yet found',
+          label: tr('{0} more', left),
+          sub: tr('Somewhere below'),
+          group: tr('Not yet found'),
           locked: true,
           render(page) {
-            pageTitle(page, 'Not yet found', `${found.length} of ${NOTES.length}`);
-            para(page, `There are ${left} more pages below, as far as anyone knows. Some only turn up deep.`, 'jr-quiet');
+            pageTitle(page, tr('Not yet found'), tr('{0} of {1}', found.length, NOTES.length));
+            para(page, tr('There are {0} more pages below, as far as anyone knows. Some only turn up deep.', left), 'jr-quiet');
           },
         });
       }
@@ -209,9 +210,9 @@ addJournalSection({
 
 addJournalSection({
   id: 'places',
-  label: 'Places',
+  label: tr('Places'),
   icon: 'map',
-  empty: 'You have not been below yet.',
+  empty: tr('You have not been below yet.'),
   entries(): JournalEntry[] {
     const s = story();
     return BIOME_ORDER.filter((b) => s.biomes.includes(b)).map((b) => {
@@ -220,19 +221,19 @@ addJournalSection({
       return {
         id: b,
         label: place.name,
-        sub: `From tier ${biome.minDepth}`,
-        group: 'The layers',
+        sub: tr('From tier {0}', biome.minDepth),
+        group: tr('The layers'),
         render(page: HTMLElement) {
-          pageTitle(page, place.name, `Made by ${place.makers} · from tier ${biome.minDepth}`);
+          pageTitle(page, place.name, tr('Made by {0} · from tier {1}', place.makers, biome.minDepth));
           para(page, place.firstEntry);
           para(page, place.description);
           if (s.heard.includes(deepKey(b))) {
-            page.appendChild(div('jr-group', 'Further down'));
+            page.appendChild(div('jr-group', tr('Further down')));
             para(page, place.deepEntry);
           }
           const all = NOTES.filter((n) => n.biome === b);
           const got = all.filter((n) => s.notes.includes(n.id)).length;
-          para(page, `Pages found here: ${got} of ${all.length}.`, 'jr-quiet');
+          para(page, tr('Pages found here: {0} of {1}.', got, all.length), 'jr-quiet');
         },
       };
     });

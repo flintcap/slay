@@ -25,6 +25,7 @@ import type { Enemy } from './Enemy';
 import { events } from '../core/Events';
 import { SAFE_TONE } from '../fx/Decals';
 import { after, angleDelta, angleTo, dashToward, dist, getAbility, hitPlayer, spawnAt, spawnHazard, type CombatContext } from './Abilities';
+import { tr } from '../core/I18n';
 
 export const RULE_KINDS = [
   'wardPortals',
@@ -159,28 +160,28 @@ class WardPortals extends RoomRule {
   private open(ctx: CombatContext): void {
     this.place(ctx, 'ward_portal', 3, 8, Math.PI / 6 + this.solved);
     this.feed = 6;
-    this.say('Ward portals open. Break them to drop its shield.', 'bad');
+    this.say(tr('Ward portals open. Break them to drop its shield.'), 'bad');
   }
 
   override tick(dt: number, ctx: CombatContext): void {
     const live = this.living('ward_portal');
     if (this.closed) {
       this.reopen -= dt;
-      this.meter('Portals closed', this.reopen / 24);
+      this.meter(tr('Portals closed'), this.reopen / 24);
       if (this.reopen <= 0) {
         this.closed = false;
         this.open(ctx);
       }
       return;
     }
-    this.meter('Ward portals', live.length / 3);
+    this.meter(tr('Ward portals'), live.length / 3);
     if (live.length === 0) {
       this.closed = true;
       this.reopen = 24;
       this.solved++;
       this.boss.shield = 0;
       this.boss.buff('ward_down', 8, { taken: 1.25 });
-      this.say('The portals close. Its ward falls.', 'good');
+      this.say(tr('The portals close. Its ward falls.'), 'good');
       return;
     }
     // A portal left standing feeds it: a ward layer every few seconds.
@@ -234,19 +235,19 @@ class Heartstones extends RoomRule {
     const live = this.living('heartstone');
     if (this.bare > 0) {
       this.bare -= dt;
-      this.meter('Its heart is bare', this.bare / Heartstones.BARE);
+      this.meter(tr('Its heart is bare'), this.bare / Heartstones.BARE);
       if (this.bare <= 0) {
         this.grow(ctx);
-        this.say('The heartstones beat again.', 'bad');
+        this.say(tr('The heartstones beat again.'), 'bad');
       }
       return;
     }
-    this.meter('Heartstones beating', live.length / 3);
+    this.meter(tr('Heartstones beating'), live.length / 3);
     if (live.length === 0 && this.grown) {
       this.grown = false;
       this.bare = Heartstones.BARE;
       this.solved++;
-      this.say('The heartstones are still. Strike now!', 'good');
+      this.say(tr('The heartstones are still. Strike now!'), 'good');
       return;
     }
     this.beat -= dt;
@@ -278,13 +279,13 @@ class Bells extends RoomRule {
     }
     this.casting -= dt;
     const left = this.living('rite_bell').length;
-    this.meter('Bells rung', (3 - left) / 3);
+    this.meter(tr('Bells rung'), (3 - left) / 3);
     if (left === 0) {
       this.end();
       this.solved++;
       this.boss.rootTimer = 3;
       this.boss.buff('knell_broken', 5, { taken: 1.4 });
-      this.say('The knell breaks!', 'good');
+      this.say(tr('The knell breaks!'), 'good');
       return;
     }
     if (this.casting <= 0) {
@@ -293,7 +294,7 @@ class Bells extends RoomRule {
       this.fumbled++;
       this.boss.fumble('heal', ctx);
       this.boss.fumble('shield', ctx);
-      this.say(`The knell lands. ${this.boss.bossDef.name} mends and wards.`, 'bad');
+      this.say(tr('The knell lands. {0} mends and wards.', this.boss.bossDef.name), 'bad');
     }
   }
 
@@ -303,8 +304,8 @@ class Bells extends RoomRule {
     this.place(ctx, 'rite_bell', 3, 9, ctx.rng.next() * TAU);
     this.boss.channel = Bells.CAST;
     this.boss.rootTimer = Bells.CAST;
-    events.emit('boss:cast', { name: this.boss.bossDef.name, ability: 'The Knell', windup: Bells.CAST });
-    this.say('A long knell begins. Ring the three bells!', 'bad');
+    events.emit('boss:cast', { name: this.boss.bossDef.name, ability: tr('The Knell'), windup: Bells.CAST });
+    this.say(tr('A long knell begins. Ring the three bells!'), 'bad');
   }
 
   private end(): void {
@@ -331,7 +332,7 @@ class Braziers extends RoomRule {
     if (this.set) return;
     this.set = true;
     this.place(ctx, 'rite_brazier', 4, 8);
-    this.say('The dark hides it. Light the braziers.', 'bad');
+    this.say(tr('The dark hides it. Light the braziers.'), 'bad');
   }
 
   private get seen(): boolean {
@@ -350,12 +351,12 @@ class Braziers extends RoomRule {
       ctx.fx.burst('fire', e.root.position.x, 1.1, e.root.position.z, { count: 30 });
       if (this.lit.length === 2) {
         this.solved++;
-        this.say('Firelight finds it!', 'good');
+        this.say(tr('Firelight finds it!'), 'good');
       }
     }
     this.objects = this.objects.filter((e) => e.alive);
     this.boss.setHidden(!this.seen, ctx);
-    this.meter('Braziers lit', this.lit.length / 4);
+    this.meter(tr('Braziers lit'), this.lit.length / 4);
 
     this.flicker -= dt;
     if (this.flicker <= 0) {
@@ -378,7 +379,7 @@ class Braziers extends RoomRule {
       if (out) {
         this.putAt(ctx, 'rite_brazier', out.x, out.z);
         ctx.fx.burst('dust', out.x, 1, out.z, { count: 12 });
-        this.say('A brazier gutters out.', 'bad');
+        this.say(tr('A brazier gutters out.'), 'bad');
       }
     }
   }
@@ -420,7 +421,7 @@ class Linked extends RoomRule {
     this.boss.buff('kneel', Linked.WINDOW, { invulnerable: 1 });
     this.boss.channel = Linked.WINDOW;
     this.boss.rootTimer = Linked.WINDOW;
-    this.say(`${this.boss.bossDef.name} kneels. Bring down ${this.partner.name} before it rises!`, 'bad');
+    this.say(tr('{0} kneels. Bring down {1} before it rises!', this.boss.bossDef.name, this.partner.name), 'bad');
     void ctx;
     return true;
   }
@@ -434,7 +435,7 @@ class Linked extends RoomRule {
     if (!partner) return;
     if (this.kneel > 0) {
       this.kneel -= dt;
-      this.meter('Bring them down together', this.kneel / Linked.WINDOW);
+      this.meter(tr('Bring them down together'), this.kneel / Linked.WINDOW);
       if (!partner.alive) {
         this.kneel = 0;
         this.solved++;
@@ -448,7 +449,7 @@ class Linked extends RoomRule {
         this.boss.rootTimer = 0;
         this.fumbled++;
         this.boss.fumble('heal', ctx);
-        this.say(`${this.boss.bossDef.name} stands again.`, 'bad');
+        this.say(tr('{0} stands again.', this.boss.bossDef.name), 'bad');
       }
       return;
     }
@@ -456,17 +457,17 @@ class Linked extends RoomRule {
       if (this.window <= 0) {
         this.window = Linked.WINDOW;
         this.partnerAt = { x: partner.root.position.x, z: partner.root.position.z };
-        this.say(`${partner.name} falls. Bring ${this.boss.bossDef.name} down before it rises!`, 'info');
+        this.say(tr('{0} falls. Bring {1} down before it rises!', partner.name, this.boss.bossDef.name), 'info');
       }
       this.window -= dt;
-      this.meter('Bring them down together', this.window / Linked.WINDOW);
+      this.meter(tr('Bring them down together'), this.window / Linked.WINDOW);
       if (this.window <= 0) {
         this.window = 0;
         this.fumbled++;
         this.boss.fumble('reset', ctx, 6);
         this.raise(ctx, 0.5);
         if (this.partner) this.partner.root.position.set(this.partnerAt.x, 0, this.partnerAt.z);
-        this.say(`${partner.name} rises again.`, 'bad');
+        this.say(tr('{0} rises again.', partner.name), 'bad');
       }
       return;
     }
@@ -501,7 +502,7 @@ class Lure extends RoomRule {
     this.pools = this.pools.filter((p) => p.until > now);
     this.cracked = Math.max(0, this.cracked - dt);
     this.soakCd = Math.max(0, this.soakCd - dt);
-    this.meter(this.cracked > 0 ? 'Glaze cracked' : 'Glazed: lead it into its pools', this.cracked / Lure.CRACK);
+    this.meter(this.cracked > 0 ? tr('Glaze cracked') : tr('Glazed: lead it into its pools'), this.cracked / Lure.CRACK);
 
     // It sheds a quench pool where you stand. Step off; then make it walk through.
     this.dropT -= dt;
@@ -530,7 +531,7 @@ class Lure extends RoomRule {
     ctx.fx.burst('frost', pool.x, 0.6, pool.z, { count: 40, scale: 3 });
     events.emit('shake', { amount: 0.4, duration: 0.3 });
     this.wound(ctx, 0.03, 'arena.quench');
-    this.say('Steam bursts. The glaze cracks!', 'good');
+    this.say(tr('Steam bursts. The glaze cracks!'), 'good');
   }
 }
 
@@ -561,23 +562,23 @@ class Tiles extends RoomRule {
     this.wrongCd = Math.max(0, this.wrongCd - dt);
     if (this.open > 0) {
       this.open -= dt;
-      this.meter('Open', this.open / Tiles.OPEN);
+      this.meter(tr('Open'), this.open / Tiles.OPEN);
     }
     if (this.t < 0) {
-      if (this.open <= 0) this.meter('Warded: wait for the tiles', 0);
+      if (this.open <= 0) this.meter(tr('Warded: wait for the tiles'), 0);
       this.next -= dt;
       if (this.next <= 0) this.begin(ctx);
       return;
     }
     this.t += dt;
-    this.meter('Tiles walked', this.step / 3);
+    this.meter(tr('Tiles walked'), this.step / 3);
     const h = ctx.heroPos ?? ctx.playerPos;
     if (this.wrongCd <= 0 && this.decoys.some((d) => dist(d.x, d.z, h.x, h.z) < Tiles.R)) {
       this.wrongCd = 2;
       this.fumbled++;
       ctx.applyHeroStatus?.('chill', 1.2, 0.5);
       this.boss.fumble('shield', ctx);
-      this.say('Wrong tile.', 'bad');
+      this.say(tr('Wrong tile.'), 'bad');
     }
     const tile = this.tiles[this.step]!;
     const from = this.step * Tiles.GAP;
@@ -589,7 +590,7 @@ class Tiles extends RoomRule {
         this.next = Tiles.OPEN + 4;
         this.open = Tiles.OPEN;
         this.solved++;
-        this.say('You walked the measure. It is open!', 'good');
+        this.say(tr('You walked the measure. It is open!'), 'good');
       }
       return;
     }
@@ -598,7 +599,7 @@ class Tiles extends RoomRule {
       this.next = 3;
       this.fumbled++;
       this.boss.fumble('reset', ctx, 4);
-      this.say('The measure fades.', 'bad');
+      this.say(tr('The measure fades.'), 'bad');
     }
   }
 
@@ -629,7 +630,7 @@ class Tiles extends RoomRule {
       });
     });
     for (const d of this.decoys) ctx.decals.telegraph('circle', d.x, d.z, Tiles.R, 0, span, 0xff4040);
-    this.say('The floor lights in order. Follow it.', 'info');
+    this.say(tr('The floor lights in order. Follow it.'), 'info');
   }
 }
 
@@ -648,7 +649,7 @@ class Stalker extends RoomRule {
     const p = this.boss.root.position;
     this.last = { x: p.x, z: p.z };
     this.boss.setHidden(true, ctx);
-    this.say('It fades from sight. Watch for its tracks.', 'bad');
+    this.say(tr('It fades from sight. Watch for its tracks.'), 'bad');
   }
 
   override intake(): number {
@@ -664,7 +665,7 @@ class Stalker extends RoomRule {
   override tick(dt: number, ctx: CombatContext): void {
     this.seen = Math.max(0, this.seen - dt);
     this.boss.setHidden(this.seen <= 0, ctx);
-    this.meter(this.seen > 0 ? 'Seen' : 'Unseen: follow the tracks', this.seen / Stalker.SEEN);
+    this.meter(this.seen > 0 ? tr('Seen') : tr('Unseen: follow the tracks'), this.seen / Stalker.SEEN);
     const p = this.boss.root.position;
     this.walked += dist(p.x, p.z, this.last.x, this.last.z);
     this.last = { x: p.x, z: p.z };
@@ -690,7 +691,7 @@ class Mirror extends RoomRule {
 
   override tick(dt: number, ctx: CombatContext): void {
     const live = this.living('hero_echo');
-    this.meter(live.length ? 'Your echoes stand' : '', live.length / 2);
+    this.meter(live.length ? tr('Your echoes stand') : '', live.length / 2);
     this.next -= dt;
     if (this.next <= 0 && live.length < 2) {
       this.next = 20;
@@ -704,7 +705,7 @@ class Mirror extends RoomRule {
         e.life = e.maxLife;
         this.born.set(e, ctx.elapsed);
       }
-      this.say('Your own shape steps out of the glass.', 'bad');
+      this.say(tr('Your own shape steps out of the glass.'), 'bad');
     }
     for (const e of live) {
       const at = this.born.get(e) ?? ctx.elapsed;
@@ -748,19 +749,19 @@ class BreakingCast extends RoomRule {
         this.need = this.boss.maxLife * 0.1;
         this.boss.channel = BreakingCast.CAST;
         this.boss.rootTimer = BreakingCast.CAST;
-        events.emit('boss:cast', { name: this.boss.bossDef.name, ability: 'The Hour', windup: BreakingCast.CAST });
-        this.say('A great cast begins. Break it with damage!', 'bad');
+        events.emit('boss:cast', { name: this.boss.bossDef.name, ability: tr('The Hour'), windup: BreakingCast.CAST });
+        this.say(tr('A great cast begins. Break it with damage!'), 'bad');
       }
       return;
     }
     this.casting -= dt;
-    this.meter('Break the cast', this.done / this.need);
+    this.meter(tr('Break the cast'), this.done / this.need);
     if (this.done >= this.need) {
       this.end();
       this.solved++;
       this.boss.rootTimer = 3;
       this.boss.buff('cast_broken', 5, { taken: 1.3 });
-      this.say('The cast breaks!', 'good');
+      this.say(tr('The cast breaks!'), 'good');
       return;
     }
     if (this.casting <= 0) {
@@ -768,7 +769,7 @@ class BreakingCast extends RoomRule {
       this.fumbled++;
       this.boss.fumble('heal', ctx);
       this.boss.fumble('adds', ctx);
-      this.say(`The cast lands. ${this.boss.bossDef.name} winds back its wounds.`, 'bad');
+      this.say(tr('The cast lands. {0} winds back its wounds.', this.boss.bossDef.name), 'bad');
     }
   }
 
@@ -800,7 +801,7 @@ class Chase extends RoomRule {
 
   override tick(): void {
     const n = this.boss.bossDef.phases.length;
-    this.meter(`Room ${Math.min(n, this.leg)} of ${n}`, Math.min(n, this.leg) / n);
+    this.meter(tr('Room {0} of {1}', Math.min(n, this.leg), n), Math.min(n, this.leg) / n);
   }
 }
 
@@ -829,14 +830,14 @@ class Defend extends RoomRule {
     let r = Math.min(7.5, this.boss.arenaRadius - 2);
     while (r > 3 && !ctx.nav.lineOfSight(s.x, s.z, s.x + Math.sin(side) * r, s.z + Math.cos(side) * r)) r -= 0.5;
     this.at = { x: s.x + Math.sin(side) * r, z: s.z + Math.cos(side) * r };
-    this.say('Keep the lantern lit! It cannot stand in the light.', 'info');
+    this.say(tr('Keep the lantern lit! It cannot stand in the light.'), 'info');
   }
 
   override tick(dt: number, ctx: CombatContext): void {
     const at = this.at;
     if (!at) return;
     const near = this.heroNear(ctx, at.x, at.z, Defend.R);
-    this.meter(this.out ? 'The lantern is out: relight it' : 'Lantern', this.out ? this.relight / 2 : this.light);
+    this.meter(this.out ? tr('The lantern is out: relight it') : tr('Lantern'), this.out ? this.relight / 2 : this.light);
     this.mark -= dt;
     if (this.mark <= 0) {
       this.mark = 2;
@@ -862,7 +863,7 @@ class Defend extends RoomRule {
         this.solved++;
         this.boss.setHidden(false, ctx);
         ctx.fx.burst('fire', at.x, 1.2, at.z, { count: 30 });
-        this.say('The lantern burns again.', 'good');
+        this.say(tr('The lantern burns again.'), 'good');
       }
       return;
     }
@@ -897,7 +898,7 @@ class Defend extends RoomRule {
         this.light = 0;
         this.out = true;
         this.feed = 1;
-        this.say('The lantern goes out. It feeds in the dark.', 'bad');
+        this.say(tr('The lantern goes out. It feeds in the dark.'), 'bad');
       }
     });
   }
@@ -936,20 +937,20 @@ class GuardBreak extends RoomRule {
     const p = this.boss.root.position;
     ctx.fx.burst('crit', p.x, 1.4 * this.boss.sizeScale, p.z, { count: 40, color: 0xffe066 });
     events.emit('shake', { amount: 0.5, duration: 0.3 });
-    this.say('Guard broken!', 'good');
+    this.say(tr('Guard broken!'), 'good');
   }
 
   override tick(dt: number): void {
     if (this.broken > 0) {
       this.broken -= dt;
-      this.meter('Guard broken', this.broken / GuardBreak.OPEN);
+      this.meter(tr('Guard broken'), this.broken / GuardBreak.OPEN);
       if (this.broken <= 0) {
         this.guard = this.max;
-        this.say(`${this.boss.bossDef.name} raises its guard.`, 'info');
+        this.say(tr('{0} raises its guard.', this.boss.bossDef.name), 'info');
       }
       return;
     }
-    this.meter('Guard', this.guard / this.max);
+    this.meter(tr('Guard'), this.guard / this.max);
   }
 }
 
@@ -963,7 +964,7 @@ class WeakPoints extends RoomRule {
 
   override start(): void {
     if (!this.limbs.length) {
-      const named = this.boss.bossDef.limbs ?? [{ name: 'left arm' }, { name: 'right arm' }, { name: 'left leg' }, { name: 'right leg' }];
+      const named = this.boss.bossDef.limbs ?? [{ name: tr('left arm') }, { name: tr('right arm') }, { name: tr('left leg') }, { name: tr('right leg') }];
       this.limbs = named.slice(0, 4).map((l) => ({ ...l, life: this.boss.maxLife * 0.08, broken: false }));
     }
     // A new phase brings a new kit; what is broken stays broken.
@@ -992,7 +993,7 @@ class WeakPoints extends RoomRule {
     const p = this.boss.root.position;
     ctx.fx.burst('bossSlam', p.x, 1.2 * this.boss.sizeScale, p.z, { count: 40, scale: 3 });
     events.emit('shake', { amount: 0.8, duration: 0.4 });
-    this.say(lost ? `Its ${l.name} breaks! No more ${lost}.` : `Its ${l.name} breaks!`, 'good');
+    this.say(lost ? tr('Its {0} breaks! No more {1}.', l.name, lost) : tr('Its {0} breaks!', l.name), 'good');
     this.wound(ctx, 0.03, 'arena.limb');
   }
 
@@ -1019,7 +1020,7 @@ class WeakPoints extends RoomRule {
   }
 
   override tick(): void {
-    this.meter('Limbs broken', this.limbs.filter((l) => l.broken).length / Math.max(1, this.limbs.length));
+    this.meter(tr('Limbs broken'), this.limbs.filter((l) => l.broken).length / Math.max(1, this.limbs.length));
   }
 
   get broken(): number {
@@ -1044,7 +1045,7 @@ class Chains extends RoomRule {
     this.set = true;
     this.place(ctx, 'chain_anchor', 4, 8);
     this.held = 4;
-    this.say('It is chained down. Cut a chain and it charges.', 'info');
+    this.say(tr('It is chained down. Cut a chain and it charges.'), 'info');
   }
 
   override intake(): number {
@@ -1053,7 +1054,7 @@ class Chains extends RoomRule {
 
   override tick(dt: number, ctx: CombatContext): void {
     const anchors = this.living('chain_anchor');
-    this.meter('Chains holding', anchors.length / 4);
+    this.meter(tr('Chains holding'), anchors.length / 4);
     if (anchors.length < this.held) {
       this.held = anchors.length;
       this.charge(ctx);
@@ -1086,7 +1087,7 @@ class Chains extends RoomRule {
     this.boss.channel = 1.3;
     this.boss.rootTimer = 1.2;
     ctx.decals.telegraph('line', b.x, b.z, Chains.REACH, heading, 1.2, 0xff8030);
-    this.say('A chain snaps. It charges!', 'bad');
+    this.say(tr('A chain snaps. It charges!'), 'bad');
     after(1.2, (c) => {
       if (!this.boss.alive) return;
       const s = this.boss.root.position;
@@ -1116,7 +1117,7 @@ class Chains extends RoomRule {
           cc.fx.burst('bossSlam', ex, 1, ez, { count: 50, scale: 3 });
           cc.decals.add('crack', ex, ez, 3);
           events.emit('shake', { amount: 1.0, duration: 0.5 });
-          this.say('It slams into the wall, stunned!', 'good');
+          this.say(tr('It slams into the wall, stunned!'), 'good');
         },
       });
     });

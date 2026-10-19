@@ -10,6 +10,8 @@ import { GAMBLE_ODDS, GAMBLE_OFFERS, gamble, gamblePrice } from '../sim/TownServ
 import { Panel, Button, div, span, clear, add, fmtInt } from './Widgets';
 import { itemName } from './DepthWidgets';
 import type { Item } from '../types';
+import { tr } from '../core/I18n';
+import { itemDisplayName } from '../sim/Loot';
 
 export class GamblerPanel {
   readonly panel: Panel;
@@ -19,8 +21,8 @@ export class GamblerPanel {
   constructor() {
     this.panel = new Panel({
       id: 'gambler',
-      title: 'The Gambler',
-      subtitle: 'Sealed goods. No refunds.',
+      title: tr('The Gambler'),
+      subtitle: tr('Sealed goods. No refunds.'),
       icon: 'coin',
       width: 560,
     });
@@ -49,12 +51,12 @@ export class GamblerPanel {
     if (!c) return;
     const total = GAMBLE_ODDS.reduce((s, o) => s + o.weight, 0);
     const odds = GAMBLE_ODDS.map((o) => `${o.rarity} ${((o.weight / total) * 100).toFixed(o.weight < 20 ? 1 : 0)}%`).join(' · ');
-    this.body.appendChild(div('depth-note', `Every seal holds a magic item or better, near your level. ${odds}.`));
+    this.body.appendChild(div('depth-note', tr('Every seal holds a magic item or better, near your level. {0}.', odds)));
 
     if (this.last) {
       const card = div('depth-card is-done');
       const b = div('depth-card-body');
-      add(b, span('depth-dim', 'The seal breaks:'), itemName(this.last));
+      add(b, span('depth-dim', tr('The seal breaks:')), itemName(this.last));
       card.appendChild(b);
       this.body.appendChild(card);
     }
@@ -67,19 +69,19 @@ export class GamblerPanel {
       add(b, div('depth-card-title', offer.name), span(c.gold < price ? 'depth-bad' : 'depth-gold', `${fmtInt(price)}g`));
       card.appendChild(b);
       const btn = new Button({
-        label: 'Buy',
+        label: tr('Buy'),
         small: true,
         variant: 'gold',
         onClick: () => {
           const r = gamble(c, offer.id);
           if (!r.ok || !r.item) {
-            toast(r.reason ?? 'No.', 'bad');
+            toast(r.reason ?? tr('No.'), 'bad');
             audio.play('ui.error');
             return;
           }
           this.last = r.item;
           audio.play(r.item.rarity === 'magic' ? 'ui.open' : 'levelup');
-          toast(`The seal breaks: ${r.item.name}`, r.item.rarity === 'magic' || r.item.rarity === 'rare' ? 'good' : 'epic', r.item.rarity);
+          toast(tr('The seal breaks: {0}', itemDisplayName(r.item)), r.item.rarity === 'magic' || r.item.rarity === 'rare' ? 'good' : 'epic', r.item.rarity);
           save.touch();
           events.emit('ui:refresh', {});
         },
@@ -90,7 +92,7 @@ export class GamblerPanel {
     }
     this.body.appendChild(grid);
     const foot = div('depth-row depth-foot');
-    add(foot, span('depth-dim', `You carry ${fmtInt(c.gold)} gold.`));
+    add(foot, span('depth-dim', tr('You carry {0} gold.', fmtInt(c.gold))));
     this.body.appendChild(foot);
   }
 }

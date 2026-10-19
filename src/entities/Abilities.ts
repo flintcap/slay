@@ -29,6 +29,7 @@ import type { DecalSystem } from '../fx/Decals';
 import type { EffectHandle } from '../fx/Effects';
 import { HAZARD_GLOW, HAZARD_LOOK, monsterFX } from '../fx/MonsterFX';
 import type { Enemy } from './Enemy';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // The world surface entities are handed each frame
@@ -1302,7 +1303,7 @@ const P = (self: Combatant): THREE.Vector3 => self.position();
 
 def({
   id: 'basic_strike',
-  name: 'Strike',
+  name: tr('Strike'),
   tags: ['basic'],
   kind: 'melee',
   cooldown: 0,
@@ -1320,7 +1321,7 @@ def({
 
 def({
   id: 'cleave',
-  name: 'Cleave',
+  name: tr('Cleave'),
   kind: 'cone',
   cooldown: 4.5,
   windup: 0.55,
@@ -1342,7 +1343,7 @@ def({
 
 def({
   id: 'double_swipe',
-  name: 'Double Swipe',
+  name: tr('Double Swipe'),
   kind: 'melee',
   cooldown: 5,
   windup: 0.3,
@@ -1368,7 +1369,7 @@ def({
 
 def({
   id: 'heavy_slam',
-  name: 'Heavy Slam',
+  name: tr('Heavy Slam'),
   kind: 'aoe',
   cooldown: 7,
   windup: 1.05,
@@ -1391,7 +1392,7 @@ def({
 
 def({
   id: 'ground_slam',
-  name: 'Ground Slam',
+  name: tr('Ground Slam'),
   kind: 'aoe',
   cooldown: 9,
   windup: 1.2,
@@ -1425,7 +1426,7 @@ def({
 
 def({
   id: 'quake_stomp',
-  name: 'Quake Stomp',
+  name: tr('Quake Stomp'),
   kind: 'aoe',
   cooldown: 12,
   windup: 1.4,
@@ -1454,7 +1455,7 @@ def({
 
 def({
   id: 'whirlwind',
-  name: 'Whirlwind',
+  name: tr('Whirlwind'),
   kind: 'aoe',
   cooldown: 11,
   windup: 0.7,
@@ -1479,7 +1480,7 @@ def({
 
 def({
   id: 'shield_bash',
-  name: 'Shield Bash',
+  name: tr('Shield Bash'),
   kind: 'melee',
   cooldown: 6.5,
   windup: 0.6,
@@ -1499,7 +1500,7 @@ def({
 
 def({
   id: 'impale',
-  name: 'Impale',
+  name: tr('Impale'),
   kind: 'melee',
   cooldown: 8,
   windup: 0.85,
@@ -1522,7 +1523,7 @@ def({
 
 def({
   id: 'rend',
-  name: 'Rend',
+  name: tr('Rend'),
   kind: 'melee',
   cooldown: 7,
   windup: 0.45,
@@ -1539,7 +1540,7 @@ def({
 
 def({
   id: 'tail_sweep',
-  name: 'Tail Sweep',
+  name: tr('Tail Sweep'),
   kind: 'cone',
   cooldown: 8,
   windup: 0.75,
@@ -1560,7 +1561,7 @@ def({
 
 def({
   id: 'gore_charge',
-  name: 'Gore',
+  name: tr('Gore'),
   kind: 'movement',
   cooldown: 10,
   windup: 0.95,
@@ -1596,7 +1597,7 @@ def({
 
 def({
   id: 'charge',
-  name: 'Charge',
+  name: tr('Charge'),
   kind: 'movement',
   cooldown: 9,
   windup: 0.7,
@@ -1622,7 +1623,7 @@ def({
 
 def({
   id: 'leap_slam',
-  name: 'Leap Slam',
+  name: tr('Leap Slam'),
   kind: 'movement',
   cooldown: 10,
   windup: 0.6,
@@ -1653,7 +1654,7 @@ def({
 
 def({
   id: 'ambush_leap',
-  name: 'Pounce',
+  name: tr('Pounce'),
   kind: 'movement',
   cooldown: 7,
   // Long enough to see coming, and it lands where the marker was put down:
@@ -1684,7 +1685,7 @@ def({
 
 def({
   id: 'knockback_punt',
-  name: 'Punt',
+  name: tr('Punt'),
   kind: 'melee',
   cooldown: 9,
   windup: 0.6,
@@ -1700,7 +1701,7 @@ def({
 
 def({
   id: 'grapple_pull',
-  name: 'Hooked Chain',
+  name: tr('Hooked Chain'),
   kind: 'ranged',
   cooldown: 11,
   windup: 0.8,
@@ -1724,7 +1725,7 @@ def({
 
 def({
   id: 'execute_low',
-  name: 'Execute',
+  name: tr('Execute'),
   kind: 'melee',
   cooldown: 14,
   windup: 1.1,
@@ -1745,7 +1746,7 @@ def({
 
 def({
   id: 'arrow_shot',
-  name: 'Arrow',
+  name: tr('Arrow'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 1.8,
@@ -1770,7 +1771,7 @@ def({
 // marker, a short draw, and a bolt in the colour of what the monster deals.
 def({
   id: 'basic_shot',
-  name: 'Shot',
+  name: tr('Shot'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 1.4,
@@ -1793,7 +1794,7 @@ def({
 
 def({
   id: 'arrow_volley',
-  name: 'Volley',
+  name: tr('Volley'),
   kind: 'ranged',
   cooldown: 8,
   windup: 0.9,
@@ -1816,7 +1817,7 @@ def({
 
 def({
   id: 'piercing_shot',
-  name: 'Piercing Shot',
+  name: tr('Piercing Shot'),
   kind: 'ranged',
   cooldown: 6,
   windup: 1.0,
@@ -1842,7 +1843,7 @@ def({
 
 def({
   id: 'crossbow_bolt',
-  name: 'Bolt',
+  name: tr('Bolt'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 3.0,
@@ -1866,7 +1867,7 @@ def({
 
 def({
   id: 'ballista_bolt',
-  name: 'Ballista Bolt',
+  name: tr('Ballista Bolt'),
   kind: 'ranged',
   cooldown: 7,
   windup: 1.6,
@@ -1893,7 +1894,7 @@ def({
 
 def({
   id: 'javelin_toss',
-  name: 'Javelin',
+  name: tr('Javelin'),
   kind: 'ranged',
   cooldown: 4.5,
   windup: 0.7,
@@ -1918,7 +1919,7 @@ def({
 
 def({
   id: 'stone_hurl',
-  name: 'Hurl Boulder',
+  name: tr('Hurl Boulder'),
   kind: 'ranged',
   cooldown: 6.5,
   windup: 1.0,
@@ -1950,7 +1951,7 @@ def({
 
 def({
   id: 'bomb_lob',
-  name: 'Firebomb',
+  name: tr('Firebomb'),
   kind: 'ranged',
   cooldown: 7,
   windup: 0.8,
@@ -1984,7 +1985,7 @@ def({
 
 def({
   id: 'caltrops',
-  name: 'Caltrops',
+  name: tr('Caltrops'),
   kind: 'ranged',
   cooldown: 12,
   windup: 0.35,
@@ -2011,7 +2012,7 @@ def({
 
 def({
   id: 'quill_burst',
-  name: 'Quill Burst',
+  name: tr('Quill Burst'),
   kind: 'aoe',
   cooldown: 8,
   windup: 0.7,
@@ -2036,7 +2037,7 @@ def({
 
 def({
   id: 'bone_shard_spray',
-  name: 'Bone Spray',
+  name: tr('Bone Spray'),
   kind: 'cone',
   cooldown: 7,
   windup: 0.75,
@@ -2057,7 +2058,7 @@ def({
 
 def({
   id: 'acid_spit',
-  name: 'Acid Spit',
+  name: tr('Acid Spit'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 4,
@@ -2085,7 +2086,7 @@ def({
 
 def({
   id: 'poison_spit',
-  name: 'Venom Spray',
+  name: tr('Venom Spray'),
   kind: 'cone',
   cooldown: 6.5,
   windup: 0.8,
@@ -2120,7 +2121,7 @@ def({
 
 def({
   id: 'web_snare',
-  name: 'Web Snare',
+  name: tr('Web Snare'),
   kind: 'ranged',
   cooldown: 10,
   windup: 0.55,
@@ -2154,7 +2155,7 @@ def({
 
 def({
   id: 'spore_burst',
-  name: 'Spore Burst',
+  name: tr('Spore Burst'),
   kind: 'aoe',
   cooldown: 9,
   windup: 0.9,
@@ -2179,7 +2180,7 @@ def({
 
 def({
   id: 'fire_bolt',
-  name: 'Fire Bolt',
+  name: tr('Fire Bolt'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 2.6,
@@ -2205,7 +2206,7 @@ def({
 
 def({
   id: 'frost_bolt',
-  name: 'Frost Bolt',
+  name: tr('Frost Bolt'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 3.0,
@@ -2231,7 +2232,7 @@ def({
 
 def({
   id: 'shock_bolt',
-  name: 'Shock',
+  name: tr('Shock'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 2.2,
@@ -2256,7 +2257,7 @@ def({
 
 def({
   id: 'arcane_orb',
-  name: 'Arcane Orb',
+  name: tr('Arcane Orb'),
   kind: 'ranged',
   cooldown: 6,
   windup: 1.0,
@@ -2285,7 +2286,7 @@ def({
 
 def({
   id: 'homing_bolt',
-  name: 'Seeker',
+  name: tr('Seeker'),
   kind: 'ranged',
   cooldown: 7,
   windup: 0.9,
@@ -2316,7 +2317,7 @@ def({
 
 def({
   id: 'chain_lightning',
-  name: 'Chain Lightning',
+  name: tr('Chain Lightning'),
   kind: 'beam',
   cooldown: 9,
   windup: 1.1,
@@ -2353,7 +2354,7 @@ def({
 
 def({
   id: 'meteor',
-  name: 'Meteor',
+  name: tr('Meteor'),
   kind: 'aoe',
   cooldown: 14,
   windup: 1.3,
@@ -2387,7 +2388,7 @@ def({
 
 def({
   id: 'firestorm',
-  name: 'Firestorm',
+  name: tr('Firestorm'),
   kind: 'aoe',
   cooldown: 18,
   windup: 1.4,
@@ -2420,7 +2421,7 @@ def({
 
 def({
   id: 'lava_pool',
-  name: 'Magma Well',
+  name: tr('Magma Well'),
   kind: 'aoe',
   cooldown: 11,
   windup: 0.9,
@@ -2448,7 +2449,7 @@ def({
 
 def({
   id: 'molten_trail',
-  name: 'Molten Trail',
+  name: tr('Molten Trail'),
   kind: 'aura',
   cooldown: 1.2,
   windup: 0,
@@ -2468,7 +2469,7 @@ def({
 
 def({
   id: 'ice_nova',
-  name: 'Ice Nova',
+  name: tr('Ice Nova'),
   kind: 'aoe',
   cooldown: 9,
   windup: 0.8,
@@ -2493,7 +2494,7 @@ def({
 
 def({
   id: 'frozen_pulse',
-  name: 'Frozen Pulse',
+  name: tr('Frozen Pulse'),
   kind: 'aoe',
   cooldown: 6,
   windup: 0.5,
@@ -2519,7 +2520,7 @@ def({
 
 def({
   id: 'blizzard',
-  name: 'Blizzard',
+  name: tr('Blizzard'),
   kind: 'aoe',
   cooldown: 16,
   windup: 1.5,
@@ -2548,7 +2549,7 @@ def({
 
 def({
   id: 'cone_breath_fire',
-  name: 'Flame Breath',
+  name: tr('Flame Breath'),
   kind: 'cone',
   cooldown: 11,
   windup: 1.15,
@@ -2578,7 +2579,7 @@ def({
 
 def({
   id: 'cone_breath_frost',
-  name: 'Rime Breath',
+  name: tr('Rime Breath'),
   kind: 'cone',
   cooldown: 12,
   windup: 1.2,
@@ -2602,7 +2603,7 @@ def({
 
 def({
   id: 'cone_breath_poison',
-  name: 'Miasma Breath',
+  name: tr('Miasma Breath'),
   kind: 'cone',
   cooldown: 12,
   windup: 1.1,
@@ -2626,7 +2627,7 @@ def({
 
 def({
   id: 'cone_breath_void',
-  name: 'Unmaking Breath',
+  name: tr('Unmaking Breath'),
   kind: 'cone',
   cooldown: 13,
   windup: 1.35,
@@ -2648,7 +2649,7 @@ def({
 
 def({
   id: 'death_beam',
-  name: 'Annihilation Beam',
+  name: tr('Annihilation Beam'),
   kind: 'beam',
   cooldown: 16,
   windup: 1.6,
@@ -2677,7 +2678,7 @@ def({
 
 def({
   id: 'life_drain',
-  name: 'Life Drain',
+  name: tr('Life Drain'),
   kind: 'beam',
   cooldown: 12,
   windup: 0.9,
@@ -2704,7 +2705,7 @@ def({
 
 def({
   id: 'void_rift',
-  name: 'Void Rift',
+  name: tr('Void Rift'),
   kind: 'aoe',
   cooldown: 15,
   windup: 1.3,
@@ -2734,7 +2735,7 @@ def({
 
 def({
   id: 'vortex_pull',
-  name: 'Vortex',
+  name: tr('Vortex'),
   kind: 'aoe',
   cooldown: 14,
   windup: 1.0,
@@ -2761,7 +2762,7 @@ def({
 
 def({
   id: 'arcane_nova',
-  name: 'Arcane Nova',
+  name: tr('Arcane Nova'),
   kind: 'aoe',
   cooldown: 10,
   windup: 1.0,
@@ -2782,7 +2783,7 @@ def({
 
 def({
   id: 'hex_bolt',
-  name: 'Hex',
+  name: tr('Hex'),
   kind: 'debuff',
   cooldown: 12,
   windup: 1.0,
@@ -2808,7 +2809,7 @@ def({
 
 def({
   id: 'curse_frailty',
-  name: 'Curse of Frailty',
+  name: tr('Curse of Frailty'),
   kind: 'debuff',
   cooldown: 16,
   windup: 1.2,
@@ -2835,7 +2836,7 @@ def({
 
 def({
   id: 'mind_lash',
-  name: 'Mind Lash',
+  name: tr('Mind Lash'),
   kind: 'debuff',
   cooldown: 10,
   windup: 1.0,
@@ -2859,7 +2860,7 @@ def({
 
 def({
   id: 'banshee_wail',
-  name: 'Wail of the Grave',
+  name: tr('Wail of the Grave'),
   kind: 'aoe',
   cooldown: 15,
   windup: 1.5,
@@ -2887,7 +2888,7 @@ def({
 
 def({
   id: 'petrify_gaze',
-  name: 'Petrifying Gaze',
+  name: tr('Petrifying Gaze'),
   kind: 'debuff',
   cooldown: 14,
   windup: 1.7,
@@ -2909,7 +2910,7 @@ def({
 
 def({
   id: 'corpse_burst',
-  name: 'Corpse Burst',
+  name: tr('Corpse Burst'),
   kind: 'aoe',
   cooldown: 9,
   windup: 0.9,
@@ -2936,7 +2937,7 @@ def({
 
 def({
   id: 'death_explode',
-  name: 'Volatile Death',
+  name: tr('Volatile Death'),
   kind: 'aoe',
   cooldown: 0,
   // Documentary: the blast puts down its own 0.8s marker when it fires.
@@ -2962,7 +2963,7 @@ def({
 
 def({
   id: 'plague_death',
-  name: 'Plague Burst',
+  name: tr('Plague Burst'),
   kind: 'aoe',
   cooldown: 0,
   // The body swells for 0.6s before it bursts, inside the circle shown.
@@ -2993,7 +2994,7 @@ def({
 
 def({
   id: 'shatter_death',
-  name: 'Shatter',
+  name: tr('Shatter'),
   kind: 'aoe',
   cooldown: 0,
   // The corpse cracks for 0.6s before the shards fly, along the lines shown.
@@ -3029,7 +3030,7 @@ def({
 
 def({
   id: 'teleport_strike',
-  name: 'Blink Strike',
+  name: tr('Blink Strike'),
   kind: 'movement',
   cooldown: 8,
   windup: 0.6,
@@ -3058,7 +3059,7 @@ def({
 
 def({
   id: 'blink_away',
-  name: 'Blink',
+  name: tr('Blink'),
   kind: 'movement',
   cooldown: 7,
   windup: 0.25,
@@ -3077,7 +3078,7 @@ def({
 
 def({
   id: 'phase_shift',
-  name: 'Phase Shift',
+  name: tr('Phase Shift'),
   kind: 'buff',
   cooldown: 16,
   windup: 0.3,
@@ -3095,7 +3096,7 @@ def({
 
 def({
   id: 'burrow_emerge',
-  name: 'Burrow',
+  name: tr('Burrow'),
   kind: 'movement',
   cooldown: 13,
   windup: 0.7,
@@ -3127,7 +3128,7 @@ def({
 
 def({
   id: 'swarm_dive',
-  name: 'Dive',
+  name: tr('Dive'),
   kind: 'movement',
   cooldown: 5,
   windup: 0.3,
@@ -3149,7 +3150,7 @@ def({
 
 def({
   id: 'split_self',
-  name: 'Split',
+  name: tr('Split'),
   kind: 'summon',
   cooldown: 30,
   windup: 0.5,
@@ -3170,7 +3171,7 @@ def({
 
 def({
   id: 'summon_adds',
-  name: 'Call Reinforcements',
+  name: tr('Call Reinforcements'),
   kind: 'summon',
   cooldown: 22,
   windup: 1.4,
@@ -3189,7 +3190,7 @@ def({
 
 def({
   id: 'raise_dead',
-  name: 'Raise Dead',
+  name: tr('Raise Dead'),
   kind: 'summon',
   cooldown: 18,
   windup: 1.6,
@@ -3209,7 +3210,7 @@ def({
 
 def({
   id: 'summon_swarm',
-  name: 'Release Brood',
+  name: tr('Release Brood'),
   kind: 'summon',
   cooldown: 20,
   windup: 1.2,
@@ -3227,7 +3228,7 @@ def({
 
 def({
   id: 'summon_imps',
-  name: 'Open the Gate',
+  name: tr('Open the Gate'),
   kind: 'summon',
   cooldown: 24,
   windup: 1.5,
@@ -3246,7 +3247,7 @@ def({
 
 def({
   id: 'summon_totem',
-  name: 'Plant Totem',
+  name: tr('Plant Totem'),
   kind: 'summon',
   cooldown: 20,
   windup: 1.0,
@@ -3263,7 +3264,7 @@ def({
 
 def({
   id: 'arcane_sentry',
-  name: 'Arcane Sentry',
+  name: tr('Arcane Sentry'),
   tags: ['basic'],
   kind: 'ranged',
   cooldown: 3.5,
@@ -3286,7 +3287,7 @@ def({
 
 def({
   id: 'wall_of_bone',
-  name: 'Bone Prison',
+  name: tr('Bone Prison'),
   kind: 'debuff',
   cooldown: 18,
   windup: 1.0,
@@ -3325,7 +3326,7 @@ def({
 
 def({
   id: 'enrage',
-  name: 'Enrage',
+  name: tr('Enrage'),
   kind: 'buff',
   cooldown: 30,
   windup: 0.8,
@@ -3344,7 +3345,7 @@ def({
 
 def({
   id: 'shield_self',
-  name: 'Ward',
+  name: tr('Ward'),
   kind: 'buff',
   cooldown: 20,
   windup: 0.9,
@@ -3363,7 +3364,7 @@ def({
 
 def({
   id: 'parry_stance',
-  name: 'Parry',
+  name: tr('Parry'),
   kind: 'buff',
   cooldown: 8,
   windup: 0.4,
@@ -3381,7 +3382,7 @@ def({
 
 def({
   id: 'shield_ally',
-  name: 'Aegis',
+  name: tr('Aegis'),
   kind: 'buff',
   cooldown: 14,
   windup: 1.0,
@@ -3403,7 +3404,7 @@ def({
 
 def({
   id: 'heal_ally',
-  name: 'Mend',
+  name: tr('Mend'),
   kind: 'heal',
   cooldown: 10,
   windup: 1.3,
@@ -3432,7 +3433,7 @@ def({
 
 def({
   id: 'heal_self',
-  name: 'Knit Flesh',
+  name: tr('Knit Flesh'),
   kind: 'heal',
   cooldown: 16,
   windup: 1.4,
@@ -3452,7 +3453,7 @@ def({
 
 def({
   id: 'battle_cry',
-  name: 'Battle Cry',
+  name: tr('Battle Cry'),
   kind: 'buff',
   cooldown: 24,
   windup: 0.9,
@@ -3475,7 +3476,7 @@ def({
 
 def({
   id: 'haste_aura',
-  name: 'Frenzy Chant',
+  name: tr('Frenzy Chant'),
   kind: 'buff',
   cooldown: 18,
   windup: 1.1,
@@ -3495,7 +3496,7 @@ def({
 
 def({
   id: 'repair_construct',
-  name: 'Field Repair',
+  name: tr('Field Repair'),
   kind: 'heal',
   cooldown: 12,
   windup: 1.5,
@@ -3523,7 +3524,7 @@ def({
 
 def({
   id: 'blood_link',
-  name: 'Blood Link',
+  name: tr('Blood Link'),
   kind: 'buff',
   cooldown: 26,
   windup: 1.2,
@@ -3543,7 +3544,7 @@ def({
 
 def({
   id: 'resurrect_ally',
-  name: 'Unearth',
+  name: tr('Unearth'),
   kind: 'summon',
   cooldown: 26,
   windup: 2.0,
@@ -3562,7 +3563,7 @@ def({
 
 def({
   id: 'cleanse_allies',
-  name: 'Purge',
+  name: tr('Purge'),
   kind: 'buff',
   cooldown: 20,
   windup: 1.0,
@@ -3582,7 +3583,7 @@ def({
 
 def({
   id: 'tentacle_grasp',
-  name: 'Tentacle Grasp',
+  name: tr('Tentacle Grasp'),
   kind: 'aoe',
   cooldown: 13,
   windup: 1.1,
@@ -3608,7 +3609,7 @@ def({
 
 def({
   id: 'thorn_lash',
-  name: 'Thorn Lash',
+  name: tr('Thorn Lash'),
   kind: 'melee',
   cooldown: 5,
   windup: 0.55,
@@ -3629,7 +3630,7 @@ def({
 
 def({
   id: 'root_snare',
-  name: 'Grasping Roots',
+  name: tr('Grasping Roots'),
   kind: 'aoe',
   cooldown: 12,
   windup: 0.9,
@@ -3661,7 +3662,7 @@ def({
 
 def({
   id: 'mana_burn',
-  name: 'Mana Burn',
+  name: tr('Mana Burn'),
   kind: 'debuff',
   cooldown: 11,
   windup: 0.9,
@@ -3687,7 +3688,7 @@ def({
 
 def({
   id: 'static_field',
-  name: 'Static Field',
+  name: tr('Static Field'),
   kind: 'aoe',
   cooldown: 8,
   windup: 0.7,
@@ -3709,7 +3710,7 @@ def({
 
 def({
   id: 'lightning_storm',
-  name: 'Storm Call',
+  name: tr('Storm Call'),
   kind: 'aoe',
   cooldown: 17,
   windup: 1.4,
@@ -3741,7 +3742,7 @@ def({
 
 def({
   id: 'shrapnel_nova',
-  name: 'Shrapnel Nova',
+  name: tr('Shrapnel Nova'),
   kind: 'aoe',
   cooldown: 10,
   windup: 1.0,
@@ -3772,7 +3773,7 @@ def({
 
 def({
   id: 'siphon_soul',
-  name: 'Siphon Soul',
+  name: tr('Siphon Soul'),
   kind: 'debuff',
   cooldown: 14,
   windup: 1.3,
@@ -3796,7 +3797,7 @@ def({
 
 def({
   id: 'flame_wave',
-  name: 'Flame Wave',
+  name: tr('Flame Wave'),
   kind: 'cone',
   cooldown: 12,
   windup: 1.1,
@@ -3828,7 +3829,7 @@ def({
 
 def({
   id: 'ink_cloud',
-  name: 'Ink Cloud',
+  name: tr('Ink Cloud'),
   kind: 'aoe',
   cooldown: 15,
   windup: 0.6,
@@ -3855,7 +3856,7 @@ def({
 
 def({
   id: 'gaze_beam',
-  name: 'Disintegration Gaze',
+  name: tr('Disintegration Gaze'),
   kind: 'beam',
   cooldown: 10,
   windup: 1.2,
@@ -3885,7 +3886,7 @@ def({
 
 def({
   id: 'sunder_armor',
-  name: 'Sunder',
+  name: tr('Sunder'),
   kind: 'melee',
   cooldown: 9,
   windup: 0.8,
@@ -3904,7 +3905,7 @@ def({
 
 def({
   id: 'terrify',
-  name: 'Terrify',
+  name: tr('Terrify'),
   kind: 'debuff',
   cooldown: 20,
   windup: 1.2,
@@ -3927,7 +3928,7 @@ def({
 
 def({
   id: 'iron_maiden',
-  name: 'Iron Maiden',
+  name: tr('Iron Maiden'),
   kind: 'debuff',
   cooldown: 18,
   windup: 1.1,
@@ -3949,7 +3950,7 @@ def({
 
 def({
   id: 'gravity_well',
-  name: 'Gravity Well',
+  name: tr('Gravity Well'),
   kind: 'aoe',
   cooldown: 16,
   windup: 1.2,
@@ -3980,7 +3981,7 @@ def({
 
 def({
   id: 'flesh_hooks',
-  name: 'Flesh Hooks',
+  name: tr('Flesh Hooks'),
   kind: 'ranged',
   cooldown: 12,
   windup: 0.9,
@@ -4006,7 +4007,7 @@ def({
 
 def({
   id: 'rally_pack',
-  name: 'Howl',
+  name: tr('Howl'),
   kind: 'buff',
   cooldown: 22,
   windup: 0.8,
@@ -4028,7 +4029,7 @@ def({
 
 def({
   id: 'stealth',
-  name: 'Fade',
+  name: tr('Fade'),
   kind: 'buff',
   cooldown: 18,
   windup: 0.4,
@@ -4046,7 +4047,7 @@ def({
 
 def({
   id: 'mirror_images',
-  name: 'Mirror Images',
+  name: tr('Mirror Images'),
   kind: 'summon',
   cooldown: 28,
   windup: 1.0,

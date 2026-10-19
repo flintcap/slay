@@ -8,15 +8,14 @@
  */
 import type { CharClassDef } from '../../types';
 import type { ClassEquipRules } from '../classes';
+import { tr } from '../../core/I18n';
 
 export const PALADIN: CharClassDef = {
   id: 'paladin',
-  name: 'Paladin',
-  title: 'Bellwarden of the Ashen Chapel',
+  name: tr('Paladin'),
+  title: tr('Bellwarden of the Ashen Chapel'),
   blurb:
-    'They rang the chapel bell until the rope burned through, then carried the clapper down the stair to ring it ' +
-    'by hand. A Paladin brings iron, a shield scorched with old prayers, and one aura at a time: a ring of candle ' +
-    'smoke at his feet that the dark does not cross cheaply. He picks one thing in the room and hits it until it stops.',
+    tr('They rang the chapel bell until the rope burned through, then carried the clapper down the stair to ring it by hand. A Paladin brings iron, a shield scorched with old prayers, and one aura at a time: a ring of candle smoke at his feet that the dark does not cross cheaply. He picks one thing in the room and hits it until it stops.'),
   base: { strength: 27, dexterity: 20, vitality: 26, energy: 14 },
   perLevel: { life: 2.3, mana: 1.2, attackRating: 6 },
   lifePerVit: 3.6,
@@ -29,9 +28,9 @@ export const PALADIN: CharClassDef = {
 export const PALADIN_HINTS: string[] = ['tollingBlow', 'oathCut', 'tallowLight', 'shieldCrack'];
 
 export const PALADIN_TAGLINES: string[] = [
-  'One target. One aura. No retreat.',
-  'Ring it until it stops.',
-  'Candle smoke and broken plate.',
+  tr('One target. One aura. No retreat.'),
+  tr('Ring it until it stops.'),
+  tr('Candle smoke and broken plate.'),
 ];
 
 export const PALADIN_EQUIP: ClassEquipRules = {
@@ -40,5 +39,5 @@ export const PALADIN_EQUIP: ClassEquipRules = {
   denied: ['bow', 'crossbow', 'wand', 'staff', 'orb', 'dagger', 'quiver'],
   dualWield: false,
   offHandExtra: [],
-  note: 'Paladins fight with a mace or a sword, and a shield or both hands on the haft.',
+  note: tr('Paladins fight with a mace or a sword, and a shield or both hands on the haft.'),
 };

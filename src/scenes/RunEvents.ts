@@ -37,6 +37,7 @@ import { BARGAINS, getBargain, type BargainDef } from '../data/boons';
 import { rollDrops, rollItem } from '../sim/Loot';
 import { PAYOUT, payoutGold, payoutIlvl, sourceFind, type Find } from '../sim/Payout';
 import { offerChoice } from '../ui/ChoiceSeam';
+import { tr } from '../core/I18n';
 
 export interface EventHost {
   scene: THREE.Scene;
@@ -84,7 +85,7 @@ interface Runner {
   coinCd: number;
 }
 
-const RUNNER_NAMES = ['Gildgrub the Hoarder', 'Sackback Mott', 'Old Tallow, Who Took It All', 'The Pilfering Saint'];
+const RUNNER_NAMES = [tr('Gildgrub the Hoarder'), tr('Sackback Mott'), tr('Old Tallow, Who Took It All'), tr('The Pilfering Saint')];
 
 export class RunEvents {
   private host: EventHost;
@@ -136,11 +137,11 @@ export class RunEvents {
   static prompt(kind: string): string | null {
     switch (kind) {
       case 'chest.cursed':
-        return 'Open the cursed chest';
+        return tr('Open the cursed chest');
       case 'corpse.ambush':
-        return 'Search the fallen adventurer';
+        return tr('Search the fallen adventurer');
       case 'shrine.choice':
-        return 'Kneel at the shrine of choices';
+        return tr('Kneel at the shrine of choices');
       default:
         return null;
     }
@@ -152,7 +153,7 @@ export class RunEvents {
 
   private openCursedChest(it: Interactable): void {
     if (this.trials.some((t) => t.it === it)) {
-      toast('The curse is still on it. Kill what it called.', 'bad');
+      toast(tr('The curse is still on it. Kill what it called.'), 'bad');
       return;
     }
     const at = new THREE.Vector3(it.x, 0, it.z);
@@ -175,7 +176,7 @@ export class RunEvents {
     this.host.effects.summonCircle(at.x, at.z, 5, 2.4, 0xa82040);
     this.host.fx.burst('void', at.x, 1.0, at.z, { count: 50, color: 0xa82040, scale: 1.4 });
     audio.play('ambush');
-    toast('The chest is cursed! Slay what answers within 45 seconds.', 'epic');
+    toast(tr('The chest is cursed! Slay what answers within 45 seconds.'), 'epic');
   }
 
   // -------------------------------------------------------------------------
@@ -204,7 +205,7 @@ export class RunEvents {
       lastAnnounce: 0,
     };
     this.trials.push(trial);
-    toast('Whatever killed them is still here.', 'bad');
+    toast(tr('Whatever killed them is still here.'), 'bad');
     // The dead carry pages; the story layer decides which (ui/StoryPlaces.ts).
     events.emit('lore:search', { source: 'fallen', depth: this.host.depth });
   }
@@ -233,14 +234,14 @@ export class RunEvents {
     const player = this.host.player();
     const gold = player.character.gold;
     offerChoice(
-      'Shrine of Choices',
-      'It offers three bargains. It will answer only once.',
+      tr('Shrine of Choices'),
+      tr('It offers three bargains. It will answer only once.'),
       picks.map((b) => ({
         id: b.id,
         title: b.name,
         gain: b.gain,
         cost: b.cost || undefined,
-        disabled: b.costKind === 'gold20' && gold < 50 ? 'You carry too little gold.' : undefined,
+        disabled: b.costKind === 'gold20' && gold < 50 ? tr('You carry too little gold.') : undefined,
       })),
       (id) => {
         if (!id) return;
@@ -325,7 +326,7 @@ export class RunEvents {
     const named: NamedRare = {
       id: 'event.runner',
       name: rng.pick(RUNNER_NAMES),
-      title: 'Carrying Far Too Much Gold',
+      title: tr('Carrying Far Too Much Gold'),
       minDepth: 1,
       weight: 0,
       affixes: [],
@@ -354,7 +355,7 @@ export class RunEvents {
     const d = e.root.position.distanceTo(player.position);
     if (!r.seen && d < 16) {
       r.seen = true;
-      toast(`${e.name} bolts with the gold! Catch it before it escapes.`, 'epic');
+      toast(tr('{0} bolts with the gold! Catch it before it escapes.', e.name), 'epic');
     }
     if (!r.seen) return;
     r.escapeIn -= dt;
@@ -363,7 +364,7 @@ export class RunEvents {
     if (r.escapeIn <= 0) {
       const p = e.root.position;
       this.host.effects.teleportOut(p.x, 0.8, p.z, 0xffd66b);
-      toast(`${e.name} escaped.`, 'bad');
+      toast(tr('{0} escaped.', e.name), 'bad');
       e.alive = false;
       e.life = 0;
       e.lootGranted = true;
@@ -449,8 +450,8 @@ export class RunEvents {
       }
       if (t.timed) {
         t.timeLeft -= dt;
-        if (t.timeLeft <= 15 && t.lastAnnounce > 15) toast('15 seconds!', 'bad');
-        if (t.timeLeft <= 30 && t.lastAnnounce > 30) toast('30 seconds left.', 'info');
+        if (t.timeLeft <= 15 && t.lastAnnounce > 15) toast(tr('15 seconds!'), 'bad');
+        if (t.timeLeft <= 30 && t.lastAnnounce > 30) toast(tr('30 seconds left.'), 'info');
         t.lastAnnounce = t.timeLeft;
         if (t.timeLeft <= 0) {
           this.failTrial(t);
@@ -477,10 +478,10 @@ export class RunEvents {
       this.host.addMaterials(drops.materials);
       this.host.effects.explosion(t.at.x, 0.7, t.at.z, { radius: 2, element: 'arcane', color: 0xffd66b });
       audio.play('quest.complete');
-      toast('The curse breaks. The chest is yours.', 'epic');
+      toast(tr('The curse breaks. The chest is yours.'), 'epic');
       this.host.renown(25 + this.host.depth * 4, 'cursedChest');
     } else {
-      toast(t.kind === 'hunt' ? 'The hunt is over.' : 'The ambush is broken.', 'good');
+      toast(t.kind === 'hunt' ? tr('The hunt is over.') : tr('The ambush is broken.'), 'good');
       this.host.renown(12 + this.host.depth * 2, t.kind);
     }
   }
@@ -490,7 +491,7 @@ export class RunEvents {
       this.host.consume(t.it);
       this.host.fx.burst('dust', t.at.x, 0.7, t.at.z, { count: 40, scale: 1.3 });
     }
-    toast('Too slow. The chest crumbles to dust.', 'bad');
+    toast(tr('Too slow. The chest crumbles to dust.'), 'bad');
   }
 
   // -------------------------------------------------------------------------
@@ -512,7 +513,7 @@ export class RunEvents {
       const mats = rollDrops(ilvl, 'rare', rng).materials;
       this.host.addMaterials(mats);
       this.host.fx.burst('pickup', at.x, 1.2, at.z, { count: 60, color: 0xffc63a, scale: 1.5 });
-      toast(`${e.name} falls. The sack splits open.`, 'epic');
+      toast(tr('{0} falls. The sack splits open.', e.name), 'epic');
       this.host.renown(20 + this.host.depth * 3, 'treasureRunner');
     }
     if (this.carriers.delete(e.id)) {

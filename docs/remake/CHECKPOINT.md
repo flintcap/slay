@@ -406,7 +406,26 @@ Update this file and push it after every finished step.
   `.github/workflows/checks.yml`: typecheck plus fast checkers, release
   builds plus lock, and `tools/smoke.mjs` on a Mac runner (real GPU through
   Metal): the release build reaches the title, the test build reaches town
-  and tier 1, pictures not blank, no page errors. Translation layer next.
+  and tier 1, pictures not blank, no page errors. CI run 39301821781 green.
+- #134 done: translation layer. `core/I18n.ts` (`tr`, `trn` plurals,
+  `trc` patterns, `trk` kept English, `numText`/`numGrouped` number
+  style); `src/boot.ts` sets the language before the game loads, then
+  imports main. About 9,160 lines wrapped across 150 files;
+  `tools/i18n-extract.mjs` lists them in `locales/strings.json` and
+  `--template=<code>` starts a language file in `src/locales/`.
+  `tools/check-i18n.mjs` (in the fast checks) fails on unwrapped text,
+  English matched against shown text, a stale list, and language files
+  that lose gaps, tags or plural forms; it also proves maps, items and
+  drops come out the same in English and pseudo. Item names are rebuilt
+  where shown (`itemDisplayName`): magic from affix words, rare from the
+  saved English words, uniques and sets from their defs. Settings,
+  Gameplay has Language (test builds add "Pseudo (test)") with a restart
+  button. Translator guide: `locales/README.md`. English is the only
+  language so far. Known limits: saved text (death records, written quest
+  lines, hero names) stays in its first language; built names use one
+  pattern each; most counts are not plural-aware (14 are). English
+  changes: "0 points" (was "0 point"), crafted magic items show names from
+  their current affixes. Next: #135 Settings.
 
 ## Phase 0d log
 

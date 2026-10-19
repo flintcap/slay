@@ -20,7 +20,7 @@
 
 import type { Character, Item, ItemCategory } from '../types';
 import { INVENTORY_SIZE, STASH_TAB_SIZE, save } from '../core/Save';
-import { getBase, rarityRank, vendorPrice } from './Loot';
+import { getBase, itemDisplayName, rarityRank, vendorPrice } from './Loot';
 import { isStackableCategory } from '../data/itemBases';
 import { getMaterial } from '../data/materials';
 import { GEMS, RUNES, getGem } from '../data/gems';
@@ -322,14 +322,14 @@ function sortKey(item: Item): Array<number | string> {
   const base = getBase(item.baseId);
   const c = CATEGORY_ORDER.indexOf(base.category);
   const cat = c < 0 ? 99 : c;
-  if (item.rarity === 'set' && item.setId) return [SET_BLOCK, item.setId, cat, item.name];
+  if (item.rarity === 'set' && item.setId) return [SET_BLOCK, item.setId, cat, itemDisplayName(item)];
   if (base.category === 'gem') {
     const g = getGem(item.baseId);
-    return g ? [cat, GEM_FAMILY_ORDER.indexOf(g.family), -g.qualityIndex, item.name] : [cat, 99, 0, item.name];
+    return g ? [cat, GEM_FAMILY_ORDER.indexOf(g.family), -g.qualityIndex, itemDisplayName(item)] : [cat, 99, 0, itemDisplayName(item)];
   }
-  if (base.category === 'rune') return [cat, RUNE_ORDER.get(item.baseId) ?? 999, 0, item.name];
-  if (base.category === 'potion' || base.category === 'material') return [cat, item.baseId, -base.levelReq, item.name];
-  return [cat, -rarityRank(item.rarity), -base.levelReq, item.baseId, item.uniqueId ?? '', -(item.ilvl ?? 0), item.name];
+  if (base.category === 'rune') return [cat, RUNE_ORDER.get(item.baseId) ?? 999, 0, itemDisplayName(item)];
+  if (base.category === 'potion' || base.category === 'material') return [cat, item.baseId, -base.levelReq, itemDisplayName(item)];
+  return [cat, -rarityRank(item.rarity), -base.levelReq, item.baseId, item.uniqueId ?? '', -(item.ilvl ?? 0), itemDisplayName(item)];
 }
 
 function compareItems(a: Item, b: Item): number {

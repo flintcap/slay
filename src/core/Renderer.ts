@@ -27,6 +27,7 @@ import { setShaftSun, shaftNode, shaftStrength } from './Shafts';
 import { events } from './Events';
 import { rippleOffset, writeRipples } from './Ripples';
 import { onScreenRatio } from './Screen';
+import { tr } from './I18n';
 
 type F = THREE.Node<'float'>;
 type V2 = THREE.Node<'vec2'>;
@@ -460,7 +461,7 @@ interface ShadowBase {
 /** The browser has no WebGPU (or no GPU it will hand out). */
 export class NoWebGPUError extends Error {
   constructor() {
-    super('This game needs WebGPU. Update your browser (Chrome, Edge, Safari or Firefox), or turn on hardware acceleration in its settings.');
+    super(tr('This game needs WebGPU. Update your browser (Chrome, Edge, Safari or Firefox), or turn on hardware acceleration in its settings.'));
     this.name = 'NoWebGPUError';
   }
 }

@@ -22,11 +22,15 @@ import { save } from '../core/Save';
 import { remapKey, keyFor } from '../core/Access';
 import { keyLabel } from './AccessibilitySettings';
 import { uiSfx } from './Sfx';
+import { tr } from '../core/I18n';
+
+/** Keycaps that are not one key: shown in the player's language. */
+const CAP_WORDS: Record<string, string> = { 'Right click': tr('Right click'), Shift: tr('Shift') };
 
 /** `{Q}` -> the key the player has bound to the Q action now; names pass through. */
 function boundCap(name: string): string {
   const code = /^[A-Z]$/.test(name) ? `Key${name}` : /^\d$/.test(name) ? `Digit${name}` : name === 'Space' ? 'Space' : '';
-  return code ? keyLabel(keyFor(code, save.settings.keybinds)) : name;
+  return code ? keyLabel(keyFor(code, save.settings.keybinds)) : (CAP_WORDS[name] ?? name);
 }
 
 type Signal = { kind: 'key'; code: string } | { kind: 'mouse'; button: number } | { kind: 'event'; name: string };
@@ -48,68 +52,69 @@ const event = (...names: string[]) => (s: Signal): boolean => s.kind === 'event'
 const HINTS: Record<string, Hint> = {
   move: {
     id: 'move',
-    text: 'Left click the ground to walk there, or move with {W}{A}{S}{D}.',
+    text: tr('Left click the ground to walk there, or move with {W}{A}{S}{D}.'),
     where: 'world',
     done: (s) => key('KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight')(s) || (s.kind === 'mouse' && s.button === 0),
   },
   talk: {
     id: 'talk',
-    text: 'Walk up to anyone in town and press {E} to trade, craft or open the vault.',
+    text: tr('Walk up to anyone in town and press {E} to trade, craft or open the vault.'),
     where: 'town',
     done: key('KeyE'),
     patience: 16,
   },
   attack: {
     id: 'attack',
-    text: '{Right click} a monster to attack it. You will close the distance on your own.',
+    text: tr('{Right click} a monster to attack it. You will close the distance on your own.'),
     where: 'dungeon',
     done: (s) => s.kind === 'mouse' && s.button === 2,
   },
   skills: {
     id: 'skills',
-    text: 'Keys {1} to {6} cast the skills on your bar. Spend skill points with {T} to fill it.',
+    // i18n: {1}, {6} and {T} are keycaps, not numbered gaps: keep them as they are.
+    text: tr('Keys {1} to {6} cast the skills on your bar. Spend skill points with {T} to fill it.'),
     where: 'dungeon',
     done: key('Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'KeyT'),
     patience: 14,
   },
   dodge: {
     id: 'dodge',
-    text: 'Press {Space} to dodge. It carries you straight through a swing.',
+    text: tr('Press {Space} to dodge. It carries you straight through a swing.'),
     where: 'dungeon',
     done: key('Space'),
     patience: 14,
   },
   potion: {
     id: 'potion',
-    text: 'Life is low. {Q} drinks a life potion, {F} a mana potion.',
+    text: tr('Life is low. {Q} drinks a life potion, {F} a mana potion.'),
     where: 'dungeon',
     done: (s) => key('KeyQ', 'KeyF')(s) || event('potion')(s),
     patience: 10,
   },
   points: {
     id: 'points',
-    text: 'Level up! Spend your points: {C} for attributes, {T} for skills.',
+    text: tr('Level up! Spend your points: {C} for attributes, {T} for skills.'),
     where: 'world',
     done: key('KeyC', 'KeyT'),
     patience: 18,
   },
   loot: {
     id: 'loot',
-    text: 'Something dropped. Click its name to pick it up. Hold {Shift} to see everything on the floor.',
+    text: tr('Something dropped. Click its name to pick it up. Hold {Shift} to see everything on the floor.'),
     where: 'dungeon',
     done: (s) => event('pickup')(s) || key('ShiftLeft', 'ShiftRight')(s),
     patience: 16,
   },
   inventory: {
     id: 'inventory',
-    text: 'Press {I} to open your pack and put on what you found.',
+    text: tr('Press {I} to open your pack and put on what you found.'),
     where: 'world',
     done: key('KeyI'),
     patience: 16,
   },
   map: {
     id: 'map',
-    text: 'Press {M} for the map. Each map runs through several areas, and the last one has a boss.',
+    text: tr('Press {M} for the map. Each map runs through several areas, and the last one has a boss.'),
     where: 'dungeon',
     done: key('KeyM'),
     patience: 14,
@@ -194,7 +199,7 @@ function show(h: Hint): void {
   card.replaceChildren();
   const head = document.createElement('div');
   head.className = 'ob-head';
-  head.innerHTML = '<span class="ob-kicker">How to play</span>';
+  head.innerHTML = tr('<span class="ob-kicker">How to play</span>');
   const count = document.createElement('span');
   count.className = 'ob-count';
   count.textContent = `${done + 1} / ${total}`;
@@ -202,7 +207,7 @@ function show(h: Hint): void {
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'ob-close';
-  close.title = 'Dismiss this hint';
+  close.title = tr('Dismiss this hint');
   close.textContent = '×';
   close.addEventListener('click', () => finish(true));
   head.appendChild(close);

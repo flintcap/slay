@@ -20,6 +20,7 @@
  */
 import type { SkillDef, SkillTreeDef } from '../../types';
 import { build, dim, per, syn, type SynergyLink } from './kit';
+import { tr } from '../../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Trees
@@ -28,21 +29,21 @@ import { build, dim, per, syn, type SynergyLink } from './kit';
 export const SHIFTER_TREES: SkillTreeDef[] = [
   {
     id: 'feral',
-    name: 'Feral',
+    name: tr('Feral'),
     classId: 'shapeshifter',
-    blurb: 'The great black cat. Speed, the leap, and one throat at a time.',
+    blurb: tr('The great black cat. Speed, the leap, and one throat at a time.'),
   },
   {
     id: 'teeth',
-    name: 'Teeth',
+    name: tr('Teeth'),
     classId: 'shapeshifter',
-    blurb: 'The grey wolf. Bites that do not let go, howls that make the hunt, and the pack behind you.',
+    blurb: tr('The grey wolf. Bites that do not let go, howls that make the hunt, and the pack behind you.'),
   },
   {
     id: 'claw',
-    name: 'Claw',
+    name: tr('Claw'),
     classId: 'shapeshifter',
-    blurb: 'The bear. Wide swipes, a hide that bites back, and a body that stands in the door.',
+    blurb: tr('The bear. Wide swipes, a hide that bites back, and a body that stands in the door.'),
   },
 ];
 
@@ -61,8 +62,8 @@ const FERAL = build('feral', [
   // --- tier 1 ---------------------------------------------------------------
   {
     id: 'catForm',
-    name: 'Shadowcat',
-    desc: 'Become the great black cat: +12% movement speed (+1% per rank), +10% attack speed (+1% per rank) and +4% critical chance (+0.4% per rank). Feral skills are fought in this form. Use it again to stand up as a man.',
+    name: tr('Shadowcat'),
+    desc: tr('Become the great black cat: +12% movement speed (+1% per rank), +10% attack speed (+1% per rank) and +4% critical chance (+0.4% per rank). Feral skills are fought in this form. Use it again to stand up as a man.'),
     tier: 1,
     col: 0,
     icon: 'ss-catform',
@@ -74,8 +75,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'rake',
-    name: 'Rake',
-    desc: 'Three quick swipes at one enemy, each 50% weapon damage (+7% per rank). The last one leaves it Bleeding for 4s.',
+    name: tr('Rake'),
+    desc: tr('Three quick swipes at one enemy, each 50% weapon damage (+7% per rank). The last one leaves it Bleeding for 4s.'),
     tier: 1,
     col: 1,
     icon: 'ss-rake',
@@ -88,8 +89,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'lithe',
-    name: 'Lithe',
-    desc: 'Long bones and loose joints. +2 dexterity per rank and up to +15% movement speed.',
+    name: tr('Lithe'),
+    desc: tr('Long bones and loose joints. +2 dexterity per rank and up to +15% movement speed.'),
     tier: 1,
     col: 2,
     icon: 'ss-lithe',
@@ -98,8 +99,8 @@ const FERAL = build('feral', [
   // --- tier 2 ---------------------------------------------------------------
   {
     id: 'pounce',
-    name: 'Pounce',
-    desc: 'Leap up to 9m onto one enemy and land claws first: 150% weapon damage (+22% per rank) and a 0.8s stun.',
+    name: tr('Pounce'),
+    desc: tr('Leap up to 9m onto one enemy and land claws first: 150% weapon damage (+22% per rank) and a 0.8s stun.'),
     tier: 2,
     col: 0,
     icon: 'ss-pounce',
@@ -114,8 +115,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'catsEyes',
-    name: "Cat's Eyes",
-    desc: 'You see the gap before it opens. Up to +20% critical chance and +12 attack rating per rank.',
+    name: tr("Cat's Eyes"),
+    desc: tr('You see the gap before it opens. Up to +20% critical chance and +12 attack rating per rank.'),
     tier: 2,
     col: 1,
     icon: 'ss-catseyes',
@@ -123,8 +124,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'tasteOfBlood',
-    name: 'Taste of Blood',
-    desc: 'A bleeding thing is a slow thing. +5% damage per rank against Bleeding enemies.',
+    name: tr('Taste of Blood'),
+    desc: tr('A bleeding thing is a slow thing. +5% damage per rank against Bleeding enemies.'),
     tier: 2,
     col: 2,
     icon: 'ss-tasteofblood',
@@ -134,8 +135,8 @@ const FERAL = build('feral', [
   // --- tier 3 ---------------------------------------------------------------
   {
     id: 'slink',
-    name: 'Slink',
-    desc: 'Drop low and go quiet for 4s: +30% movement speed (+1.5% per rank) and +20% critical chance (+0.5% per rank). Your next Feral skill deals +60% damage (+8% per rank) and ends it.',
+    name: tr('Slink'),
+    desc: tr('Drop low and go quiet for 4s: +30% movement speed (+1.5% per rank) and +20% critical chance (+0.5% per rank). Your next Feral skill deals +60% damage (+8% per rank) and ends it.'),
     tier: 3,
     col: 0,
     icon: 'ss-slink',
@@ -148,8 +149,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'hamstring',
-    name: 'Hamstring',
-    desc: 'A low swipe at the back of the legs: 110% weapon damage (+16% per rank). The enemy is Crippled for 4s and Bleeds 2 stacks.',
+    name: tr('Hamstring'),
+    desc: tr('A low swipe at the back of the legs: 110% weapon damage (+16% per rank). The enemy is Crippled for 4s and Bleeds 2 stacks.'),
     tier: 3,
     col: 1,
     icon: 'ss-hamstring',
@@ -163,8 +164,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'stalker',
-    name: 'Stalker',
-    desc: 'You hunt the lame. +4% damage per rank against any enemy carrying a debuff you put on it.',
+    name: tr('Stalker'),
+    desc: tr('You hunt the lame. +4% damage per rank against any enemy carrying a debuff you put on it.'),
     tier: 3,
     col: 2,
     icon: 'ss-stalker',
@@ -174,8 +175,8 @@ const FERAL = build('feral', [
   // --- tier 4 ---------------------------------------------------------------
   {
     id: 'throatTear',
-    name: 'Throat Tear',
-    desc: 'Clamp the jaws on one throat and wrench: 160% weapon damage (+24% per rank). Under 30% life it deals 2.5 times as much and leaves a Hemorrhage for 5s.',
+    name: tr('Throat Tear'),
+    desc: tr('Clamp the jaws on one throat and wrench: 160% weapon damage (+24% per rank). Under 30% life it deals 2.5 times as much and leaves a Hemorrhage for 5s.'),
     tier: 4,
     col: 0,
     icon: 'ss-throattear',
@@ -190,8 +191,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'feralGrace',
-    name: 'Feral Grace',
-    desc: '+1 dexterity per rank. In cat form, also +2% attack speed and +1% movement speed per rank.',
+    name: tr('Feral Grace'),
+    desc: tr('+1 dexterity per rank. In cat form, also +2% attack speed and +1% movement speed per rank.'),
     tier: 4,
     col: 1,
     icon: 'ss-feralgrace',
@@ -200,8 +201,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'openVeins',
-    name: 'Open Veins',
-    desc: 'Your critical strikes leave 1 stack of Bleeding, plus 1 more every 5 ranks.',
+    name: tr('Open Veins'),
+    desc: tr('Your critical strikes leave 1 stack of Bleeding, plus 1 more every 5 ranks.'),
     tier: 4,
     col: 2,
     icon: 'ss-openveins',
@@ -211,8 +212,8 @@ const FERAL = build('feral', [
   // --- tier 5 ---------------------------------------------------------------
   {
     id: 'killingDance',
-    name: 'Killing Dance',
-    desc: 'Circle one enemy and strike from every side: 6 blows (+1 every 5 ranks), each 45% weapon damage (+6% per rank), each one faster than the last.',
+    name: tr('Killing Dance'),
+    desc: tr('Circle one enemy and strike from every side: 6 blows (+1 every 5 ranks), each 45% weapon damage (+6% per rank), each one faster than the last.'),
     tier: 5,
     col: 0,
     icon: 'ss-killingdance',
@@ -227,8 +228,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'ninthLife',
-    name: 'Ninth Life',
-    desc: 'A blow that would kill you leaves you on your feet with 30% life (+1% per rank) and 1.5s of untouchable grace. Once every 120s (4s less per rank, never under 60s).',
+    name: tr('Ninth Life'),
+    desc: tr('A blow that would kill you leaves you on your feet with 30% life (+1% per rank) and 1.5s of untouchable grace. Once every 120s (4s less per rank, never under 60s).'),
     tier: 5,
     col: 1,
     icon: 'ss-ninthlife',
@@ -237,8 +238,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'keenClaws',
-    name: 'Keen Claws',
-    desc: '+5% critical damage per rank.',
+    name: tr('Keen Claws'),
+    desc: tr('+5% critical damage per rank.'),
     tier: 5,
     col: 2,
     icon: 'ss-keenclaws',
@@ -247,8 +248,8 @@ const FERAL = build('feral', [
   // --- tier 6 ---------------------------------------------------------------
   {
     id: 'nightHunt',
-    name: 'Night Hunt',
-    desc: 'The dark comes with you for 8s (+0.4s per rank): +25% movement speed (+1% per rank), +25% critical chance (+1% per rank) and +50% critical damage (+3% per rank), and Feral skills cost no mana while it lasts.',
+    name: tr('Night Hunt'),
+    desc: tr('The dark comes with you for 8s (+0.4s per rank): +25% movement speed (+1% per rank), +25% critical chance (+1% per rank) and +50% critical damage (+3% per rank), and Feral skills cost no mana while it lasts.'),
     tier: 6,
     col: 0,
     icon: 'ss-nighthunt',
@@ -262,8 +263,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'nightKing',
-    name: 'King of the Night',
-    desc: 'Each kill heals 1% of your life (+0.2% per rank). In cat form, +6% damage per rank.',
+    name: tr('King of the Night'),
+    desc: tr('Each kill heals 1% of your life (+0.2% per rank). In cat form, +6% damage per rank.'),
     tier: 6,
     col: 1,
     icon: 'ss-nightking',
@@ -272,8 +273,8 @@ const FERAL = build('feral', [
   },
   {
     id: 'feralMastery',
-    name: 'Feral Mastery',
-    desc: '+6% damage and +1 dexterity per rank.',
+    name: tr('Feral Mastery'),
+    desc: tr('+6% damage and +1 dexterity per rank.'),
     tier: 6,
     col: 2,
     icon: 'ss-feralmastery',
@@ -289,8 +290,8 @@ const TEETH = build('teeth', [
   // --- tier 1 ---------------------------------------------------------------
   {
     id: 'wolfForm',
-    name: 'Grey Wolf',
-    desc: 'Become the grey wolf: +20% damage (+3% per rank), +3% life steal (+0.2% per rank) and +40 attack rating (+15 per rank). Teeth skills are fought in this form. Use it again to stand up as a man.',
+    name: tr('Grey Wolf'),
+    desc: tr('Become the grey wolf: +20% damage (+3% per rank), +3% life steal (+0.2% per rank) and +40 attack rating (+15 per rank). Teeth skills are fought in this form. Use it again to stand up as a man.'),
     tier: 1,
     col: 0,
     icon: 'ss-wolfform',
@@ -302,8 +303,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'snap',
-    name: 'Snap',
-    desc: 'A fast bite: 90% weapon damage (+13% per rank). Each Snap adds a stack of Pack Frenzy for 6s, +4% attack speed and +4% damage a stack, up to 5.',
+    name: tr('Snap'),
+    desc: tr('A fast bite: 90% weapon damage (+13% per rank). Each Snap adds a stack of Pack Frenzy for 6s, +4% attack speed and +4% damage a stack, up to 5.'),
     tier: 1,
     col: 1,
     icon: 'ss-snap',
@@ -316,8 +317,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'packBlood',
-    name: 'Pack Blood',
-    desc: 'Up to +8% life steal, and +1 vitality per rank.',
+    name: tr('Pack Blood'),
+    desc: tr('Up to +8% life steal, and +1 vitality per rank.'),
     tier: 1,
     col: 2,
     icon: 'ss-packblood',
@@ -326,8 +327,8 @@ const TEETH = build('teeth', [
   // --- tier 2 ---------------------------------------------------------------
   {
     id: 'huntingHowl',
-    name: 'Hunting Howl',
-    desc: 'Throw your head back and howl. For 12s (+0.5s per rank) you and your wolves deal +15% damage (+3% per rank) and gain +60 attack rating (+20 per rank).',
+    name: tr('Hunting Howl'),
+    desc: tr('Throw your head back and howl. For 12s (+0.5s per rank) you and your wolves deal +15% damage (+3% per rank) and gain +60 attack rating (+20 per rank).'),
     tier: 2,
     col: 0,
     icon: 'ss-huntinghowl',
@@ -340,8 +341,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'thickRuff',
-    name: 'Thick Ruff',
-    desc: '+2 vitality per rank. In wolf form, also +14 defense per rank.',
+    name: tr('Thick Ruff'),
+    desc: tr('+2 vitality per rank. In wolf form, also +14 defense per rank.'),
     tier: 2,
     col: 1,
     icon: 'ss-thickruff',
@@ -349,8 +350,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'sharpTeeth',
-    name: 'Sharp Teeth',
-    desc: '+1 minimum and +2 maximum damage per rank.',
+    name: tr('Sharp Teeth'),
+    desc: tr('+1 minimum and +2 maximum damage per rank.'),
     tier: 2,
     col: 2,
     icon: 'ss-sharpteeth',
@@ -359,8 +360,8 @@ const TEETH = build('teeth', [
   // --- tier 3 ---------------------------------------------------------------
   {
     id: 'lunge',
-    name: 'Lunge',
-    desc: 'Rush up to 8m in a straight line and bite what is at the end: 130% weapon damage (+20% per rank). The bite throws it back 1.5m.',
+    name: tr('Lunge'),
+    desc: tr('Rush up to 8m in a straight line and bite what is at the end: 130% weapon damage (+20% per rank). The bite throws it back 1.5m.'),
     tier: 3,
     col: 0,
     icon: 'ss-lunge',
@@ -375,8 +376,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'worry',
-    name: 'Worry',
-    desc: 'Clamp on and shake. The enemy is held (stunned) while you shake it 4 times, each 40% weapon damage (+6% per rank), then thrown aside.',
+    name: tr('Worry'),
+    desc: tr('Clamp on and shake. The enemy is held (stunned) while you shake it 4 times, each 40% weapon damage (+6% per rank), then thrown aside.'),
     tier: 3,
     col: 1,
     icon: 'ss-worry',
@@ -391,8 +392,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'packInstinct',
-    name: 'Pack Instinct',
-    desc: 'Every hit you land adds +2% attack speed (+0.3% per rank) for a few seconds, stacking 5 times.',
+    name: tr('Pack Instinct'),
+    desc: tr('Every hit you land adds +2% attack speed (+0.3% per rank) for a few seconds, stacking 5 times.'),
     tier: 3,
     col: 2,
     icon: 'ss-packinstinct',
@@ -402,8 +403,8 @@ const TEETH = build('teeth', [
   // --- tier 4 ---------------------------------------------------------------
   {
     id: 'callThePack',
-    name: 'Call the Pack',
-    desc: 'Two grey wolves come out of the dark and fight beside you (one more every 6 ranks). Each bites for 45% of your weapon damage (+3% per rank) and has 30% of your life (+1% per rank).',
+    name: tr('Call the Pack'),
+    desc: tr('Two grey wolves come out of the dark and fight beside you (one more every 6 ranks). Each bites for 45% of your weapon damage (+3% per rank) and has 30% of your life (+1% per rank).'),
     tier: 4,
     col: 0,
     icon: 'ss-callthepack',
@@ -417,8 +418,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'bloodHowl',
-    name: 'Blood Howl',
-    desc: 'A low, wet howl. Heals you and your wolves 10% of life at once (+0.5% per rank), and for 8s every hit steals +6% life (+0.4% per rank).',
+    name: tr('Blood Howl'),
+    desc: tr('A low, wet howl. Heals you and your wolves 10% of life at once (+0.5% per rank), and for 8s every hit steals +6% life (+0.4% per rank).'),
     tier: 4,
     col: 1,
     icon: 'ss-bloodhowl',
@@ -431,8 +432,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'alpha',
-    name: 'Alpha',
-    desc: 'Your wolves deal +8% damage and have +6% life per rank.',
+    name: tr('Alpha'),
+    desc: tr('Your wolves deal +8% damage and have +6% life per rank.'),
     tier: 4,
     col: 2,
     icon: 'ss-alpha',
@@ -441,8 +442,8 @@ const TEETH = build('teeth', [
   // --- tier 5 ---------------------------------------------------------------
   {
     id: 'goForTheThroat',
-    name: 'Go for the Throat',
-    desc: 'Drop low and spring up at the throat from up to 4m: 220% weapon damage (+30% per rank). Leaves a Hemorrhage for 6s and the enemy Weakened for 4s.',
+    name: tr('Go for the Throat'),
+    desc: tr('Drop low and spring up at the throat from up to 4m: 220% weapon damage (+30% per rank). Leaves a Hemorrhage for 6s and the enemy Weakened for 4s.'),
     tier: 5,
     col: 0,
     icon: 'ss-gofor',
@@ -457,8 +458,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'frenzyMastery',
-    name: 'Blood Frenzy',
-    desc: '+1% attack speed per rank. Pack Frenzy holds 1 more stack every 4 ranks.',
+    name: tr('Blood Frenzy'),
+    desc: tr('+1% attack speed per rank. Pack Frenzy holds 1 more stack every 4 ranks.'),
     tier: 5,
     col: 1,
     icon: 'ss-frenzymastery',
@@ -468,8 +469,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'scentOfWeakness',
-    name: 'Scent of Weakness',
-    desc: '+3% damage per rank against any enemy carrying a debuff you put on it.',
+    name: tr('Scent of Weakness'),
+    desc: tr('+3% damage per rank against any enemy carrying a debuff you put on it.'),
     tier: 5,
     col: 2,
     icon: 'ss-scent',
@@ -479,8 +480,8 @@ const TEETH = build('teeth', [
   // --- tier 6 ---------------------------------------------------------------
   {
     id: 'bloodmoon',
-    name: 'Bloodmoon',
-    desc: 'The moon comes up red in your eyes for 10s (+0.5s per rank): Pack Frenzy goes to full and stays there, +40% damage (+2% per rank), and every hit steals +10% life (+0.5% per rank).',
+    name: tr('Bloodmoon'),
+    desc: tr('The moon comes up red in your eyes for 10s (+0.5s per rank): Pack Frenzy goes to full and stays there, +40% damage (+2% per rank), and every hit steals +10% life (+0.5% per rank).'),
     tier: 6,
     col: 0,
     icon: 'ss-bloodmoon',
@@ -494,8 +495,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'lastWolf',
-    name: 'Last Wolf Standing',
-    desc: 'Below 35% life, +1.5% of every hit returns as life per rank.',
+    name: tr('Last Wolf Standing'),
+    desc: tr('Below 35% life, +1.5% of every hit returns as life per rank.'),
     tier: 6,
     col: 1,
     icon: 'ss-lastwolf',
@@ -504,8 +505,8 @@ const TEETH = build('teeth', [
   },
   {
     id: 'teethMastery',
-    name: 'Teeth Mastery',
-    desc: '+6% damage per rank. In wolf form, also +25 attack rating per rank.',
+    name: tr('Teeth Mastery'),
+    desc: tr('+6% damage per rank. In wolf form, also +25 attack rating per rank.'),
     tier: 6,
     col: 2,
     icon: 'ss-teethmastery',
@@ -521,8 +522,8 @@ const CLAW = build('claw', [
   // --- tier 1 ---------------------------------------------------------------
   {
     id: 'bearForm',
-    name: 'Great Bear',
-    desc: 'Become the bear: +30% life (+2% per rank), +40% defense (+6% per rank) and +6% damage reduction (+0.4% per rank), but 8% slower. Claw skills are fought in this form. Use it again to stand up as a man.',
+    name: tr('Great Bear'),
+    desc: tr('Become the bear: +30% life (+2% per rank), +40% defense (+6% per rank) and +6% damage reduction (+0.4% per rank), but 8% slower. Claw skills are fought in this form. Use it again to stand up as a man.'),
     tier: 1,
     col: 0,
     icon: 'ss-bearform',
@@ -534,8 +535,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'maul',
-    name: 'Maul',
-    desc: 'A wide swipe that takes everything in front of you: 100% weapon damage (+15% per rank).',
+    name: tr('Maul'),
+    desc: tr('A wide swipe that takes everything in front of you: 100% weapon damage (+15% per rank).'),
     tier: 1,
     col: 1,
     icon: 'ss-maul',
@@ -548,8 +549,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'thickHide',
-    name: 'Thick Hide',
-    desc: '+15 defense per rank and up to +20% physical resistance.',
+    name: tr('Thick Hide'),
+    desc: tr('+15 defense per rank and up to +20% physical resistance.'),
     tier: 1,
     col: 2,
     icon: 'ss-thickhide',
@@ -558,8 +559,8 @@ const CLAW = build('claw', [
   // --- tier 2 ---------------------------------------------------------------
   {
     id: 'rattlingRoar',
-    name: 'Rattling Roar',
-    desc: 'Roar in their faces. Every enemy within 7m flinches (0.6s stun) and is Rattled for 5s (+0.2s per rank): it deals 20% less damage (+1.5% per rank).',
+    name: tr('Rattling Roar'),
+    desc: tr('Roar in their faces. Every enemy within 7m flinches (0.6s stun) and is Rattled for 5s (+0.2s per rank): it deals 20% less damage (+1.5% per rank).'),
     tier: 2,
     col: 0,
     icon: 'ss-roar',
@@ -572,8 +573,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'fatReserves',
-    name: 'Fat Reserves',
-    desc: '+2 vitality per rank. In bear form, also +2.5% life per rank (up to +60%).',
+    name: tr('Fat Reserves'),
+    desc: tr('+2 vitality per rank. In bear form, also +2.5% life per rank (up to +60%).'),
     tier: 2,
     col: 1,
     icon: 'ss-fat',
@@ -581,8 +582,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'bruiser',
-    name: 'Bruiser',
-    desc: 'Hitting you hurts. 8% of every melee hit you take (+3% per rank) goes back to the attacker.',
+    name: tr('Bruiser'),
+    desc: tr('Hitting you hurts. 8% of every melee hit you take (+3% per rank) goes back to the attacker.'),
     tier: 2,
     col: 2,
     icon: 'ss-bruiser',
@@ -592,8 +593,8 @@ const CLAW = build('claw', [
   // --- tier 3 ---------------------------------------------------------------
   {
     id: 'hammerfall',
-    name: 'Hammerfall',
-    desc: 'Both paws up and down on the floor ahead: 160% weapon damage (+24% per rank) to everything within 3.2m of where they land, and knocks it down for 0.8s.',
+    name: tr('Hammerfall'),
+    desc: tr('Both paws up and down on the floor ahead: 160% weapon damage (+24% per rank) to everything within 3.2m of where they land, and knocks it down for 0.8s.'),
     tier: 3,
     col: 0,
     icon: 'ss-hammerfall',
@@ -608,8 +609,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'bristle',
-    name: 'Bristle',
-    desc: 'Your fur stands up in spines for 8s: +10% damage reduction (+0.5% per rank), and 30% of every melee hit you take (+2% per rank) goes back into the attacker.',
+    name: tr('Bristle'),
+    desc: tr('Your fur stands up in spines for 8s: +10% damage reduction (+0.5% per rank), and 30% of every melee hit you take (+2% per rank) goes back into the attacker.'),
     tier: 3,
     col: 1,
     icon: 'ss-bristle',
@@ -622,8 +623,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'immovableBulk',
-    name: 'Immovable Bulk',
-    desc: '+1 life regeneration per rank. In bear form, also +1% damage reduction per rank (up to +20%).',
+    name: tr('Immovable Bulk'),
+    desc: tr('+1 life regeneration per rank. In bear form, also +1% damage reduction per rank (up to +20%).'),
     tier: 3,
     col: 2,
     icon: 'ss-bulk',
@@ -632,8 +633,8 @@ const CLAW = build('claw', [
   // --- tier 4 ---------------------------------------------------------------
   {
     id: 'overrun',
-    name: 'Overrun',
-    desc: 'Charge up to 8m on all fours and run them down: 120% weapon damage (+18% per rank) to everything in your path, thrown 3m aside.',
+    name: tr('Overrun'),
+    desc: tr('Charge up to 8m on all fours and run them down: 120% weapon damage (+18% per rank) to everything in your path, thrown 3m aside.'),
     tier: 4,
     col: 0,
     icon: 'ss-overrun',
@@ -648,8 +649,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'grizzled',
-    name: 'Grizzled',
-    desc: 'Up to +25% fire, cold, lightning and poison resistance.',
+    name: tr('Grizzled'),
+    desc: tr('Up to +25% fire, cold, lightning and poison resistance.'),
     tier: 4,
     col: 1,
     icon: 'ss-grizzled',
@@ -662,8 +663,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'scarTissue',
-    name: 'Scar Tissue',
-    desc: 'Below 35% life you take 4% less damage per rank.',
+    name: tr('Scar Tissue'),
+    desc: tr('Below 35% life you take 4% less damage per rank.'),
     tier: 4,
     col: 2,
     icon: 'ss-scartissue',
@@ -673,8 +674,8 @@ const CLAW = build('claw', [
   // --- tier 5 ---------------------------------------------------------------
   {
     id: 'reapingSwipe',
-    name: 'Reaping Swipe',
-    desc: 'Turn on the spot with both paws out: 130% weapon damage (+20% per rank) to everything within 3.4m, +8% for every enemy it hits (up to 5).',
+    name: tr('Reaping Swipe'),
+    desc: tr('Turn on the spot with both paws out: 130% weapon damage (+20% per rank) to everything within 3.4m, +8% for every enemy it hits (up to 5).'),
     tier: 5,
     col: 0,
     icon: 'ss-reaping',
@@ -689,8 +690,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'bearHug',
-    name: 'Bear Hug',
-    desc: 'Take one enemy in your arms and crush it 3 times, each 50% weapon damage (+8% per rank). It is held (stunned) for 2s, and each squeeze heals you 2% of your life.',
+    name: tr('Bear Hug'),
+    desc: tr('Take one enemy in your arms and crush it 3 times, each 50% weapon damage (+8% per rank). It is held (stunned) for 2s, and each squeeze heals you 2% of your life.'),
     tier: 5,
     col: 1,
     icon: 'ss-bearhug',
@@ -705,8 +706,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'unbowed',
-    name: 'Unbowed',
-    desc: '+2 life regeneration and +1 vitality per rank.',
+    name: tr('Unbowed'),
+    desc: tr('+2 life regeneration and +1 vitality per rank.'),
     tier: 5,
     col: 2,
     icon: 'ss-unbowed',
@@ -715,8 +716,8 @@ const CLAW = build('claw', [
   // --- tier 6 ---------------------------------------------------------------
   {
     id: 'ursaMajor',
-    name: 'Ursa Major',
-    desc: 'Grow into the great bear of the old stories for 12s (+0.5s per rank): bigger still, +30% life (+1.5% per rank), +30% damage (+2% per rank), and your swipes reach 40% further.',
+    name: tr('Ursa Major'),
+    desc: tr('Grow into the great bear of the old stories for 12s (+0.5s per rank): bigger still, +30% life (+1.5% per rank), +30% damage (+2% per rank), and your swipes reach 40% further.'),
     tier: 6,
     col: 0,
     icon: 'ss-ursamajor',
@@ -730,8 +731,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'clawMastery',
-    name: 'Claw Mastery',
-    desc: '+5% damage and +1 strength per rank.',
+    name: tr('Claw Mastery'),
+    desc: tr('+5% damage and +1 strength per rank.'),
     tier: 6,
     col: 1,
     icon: 'ss-clawmastery',
@@ -739,8 +740,8 @@ const CLAW = build('claw', [
   },
   {
     id: 'oldScars',
-    name: 'Old Scars',
-    desc: 'Every 400 life you have adds +1% damage (+0.2% per rank).',
+    name: tr('Old Scars'),
+    desc: tr('Every 400 life you have adds +1% damage (+0.2% per rank).'),
     tier: 6,
     col: 2,
     icon: 'ss-oldscars',

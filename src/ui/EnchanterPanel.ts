@@ -28,6 +28,7 @@ import {
 import { powerLines } from '../sim/ItemPowers';
 import { Panel, Button, div, span, clear, add } from './Widgets';
 import { costText, itemName } from './DepthWidgets';
+import { tr } from '../core/I18n';
 
 export class EnchanterPanel {
   readonly panel: Panel;
@@ -37,8 +38,8 @@ export class EnchanterPanel {
   constructor() {
     this.panel = new Panel({
       id: 'enchanter',
-      title: 'The Enchanter',
-      subtitle: 'One property, made over',
+      title: tr('The Enchanter'),
+      subtitle: tr('One property, made over'),
       icon: 'sparkle',
       width: 600,
     });
@@ -79,11 +80,11 @@ export class EnchanterPanel {
     this.body.appendChild(
       div(
         'depth-note',
-        'Choose a magic or rare item. Reforging lays out three new versions of one property: take one, or keep what you had. After that, only that property can be reforged again. An item with room can take a new property the same way, if none has been reforged yet. A rare with no power can be imbued with one.',
+        tr('Choose a magic or rare item. Reforging lays out three new versions of one property: take one, or keep what you had. After that, only that property can be reforged again. An item with room can take a new property the same way, if none has been reforged yet. A rare with no power can be imbued with one.'),
       ),
     );
     if (items.length === 0) {
-      this.body.appendChild(div('depth-card-sub', 'You carry nothing I can work with.'));
+      this.body.appendChild(div('depth-card-sub', tr('You carry nothing I can work with.')));
       return;
     }
 
@@ -94,7 +95,7 @@ export class EnchanterPanel {
       card.style.cursor = 'var(--cursor-hot)';
       const b = div('depth-card-body');
       const worn = Object.values(c.equipment).includes(it);
-      add(b, itemName(it), span('depth-dim', `${worn ? 'Worn' : 'In pack'} · item level ${it.ilvl}${it.offers ? ' · choice waiting' : it.enchantedMod ? ' · reforged' : ''}`));
+      add(b, itemName(it), span('depth-dim', tr('{0} · item level {1}{2}', worn ? tr('Worn') : tr('In pack'), it.ilvl, it.offers ? tr(' · choice waiting') : it.enchantedMod ? tr(' · reforged') : '')));
       card.appendChild(b);
       card.addEventListener('click', () => {
         this.selected = it.uid;
@@ -107,9 +108,9 @@ export class EnchanterPanel {
     const item = items.find((i) => i.uid === this.selected);
     if (!item) return;
     const pay = (cost: Parameters<typeof spendCost>[0]) => spendCost(cost);
-    const done = (ok: boolean, reason?: string, what = 'The enchantment takes.') => {
+    const done = (ok: boolean, reason?: string, what = tr('The enchantment takes.')) => {
       if (!ok) {
-        toast(reason ?? 'No.', 'bad');
+        toast(reason ?? tr('No.'), 'bad');
         audio.play('ui.error');
         return;
       }
@@ -125,19 +126,19 @@ export class EnchanterPanel {
     const offers = item.offers;
     if (offers) {
       const table = div('depth-list');
-      table.appendChild(div('depth-note', offers.line ? 'Take one of these in its place, or keep the line you had.' : `Take one of these as a new ${offers.kind}, or leave the slot open.`));
+      table.appendChild(div('depth-note', offers.line ? tr('Take one of these in its place, or keep the line you had.') : tr('Take one of these as a new {0}, or leave the slot open.', offers.kind)));
       offers.mods.forEach((m, k) => {
         const card = div('depth-card');
         const b = div('depth-card-body');
-        add(b, div('depth-card-title', modLine(m)), span('depth-dim', `${m.kind} · tier ${m.tier}`));
+        add(b, div('depth-card-title', modLine(m)), span('depth-dim', tr('{0} · tier {1}', m.kind, m.tier)));
         card.appendChild(b);
         const btn = new Button({
-          label: 'Take',
+          label: tr('Take'),
           small: true,
           variant: 'gold',
           onClick: () => {
             const r = takeOffer(item, k);
-            done(r.ok, r.reason, r.ok ? `Enchanted: ${modLine(m)}` : undefined);
+            done(r.ok, r.reason, r.ok ? tr('Enchanted: {0}', modLine(m)) : undefined);
           },
         });
         card.appendChild(btn.root);
@@ -146,14 +147,14 @@ export class EnchanterPanel {
       const old = offers.line ? item.mods.find((m) => m.affixId === offers.line && m.kind === offers.kind) : undefined;
       const keep = div('depth-card');
       const kb = div('depth-card-body');
-      add(kb, div('depth-card-title', old ? modLine(old) : 'Nothing'), span('depth-dim', old ? 'keep what you had' : 'leave the slot open'));
+      add(kb, div('depth-card-title', old ? modLine(old) : tr('Nothing')), span('depth-dim', old ? tr('keep what you had') : tr('leave the slot open')));
       keep.appendChild(kb);
       const kbtn = new Button({
-        label: old ? 'Keep' : 'Leave',
+        label: old ? tr('Keep') : tr('Leave'),
         small: true,
         onClick: () => {
           const r = takeOffer(item, null);
-          done(r.ok, r.reason, old ? 'You keep what you had.' : 'The slot stays open.');
+          done(r.ok, r.reason, old ? tr('You keep what you had.') : tr('The slot stays open.'));
         },
       });
       keep.appendChild(kbtn.root);
@@ -169,17 +170,17 @@ export class EnchanterPanel {
       if (m.kind !== 'prefix' && m.kind !== 'suffix') return;
       const card = div(`depth-card${can.has(i) ? '' : ' is-locked'}`);
       const b = div('depth-card-body');
-      add(b, div('depth-card-title', modLine(m)), span('depth-dim', m.affixId === item.enchantedMod ? 'Reforged' : m.kind));
+      add(b, div('depth-card-title', modLine(m)), span('depth-dim', m.affixId === item.enchantedMod ? tr('Reforged') : m.kind));
       card.appendChild(b);
       if (can.has(i)) {
         add(card, costText(rcost, rok));
         const btn = new Button({
-          label: 'Reforge',
+          label: tr('Reforge'),
           small: true,
           variant: 'gold',
           onClick: () => {
             const r = reforgeMod(c, item, i, pay);
-            done(r.ok, r.reason, 'Three lines are laid out. Choose one.');
+            done(r.ok, r.reason, tr('Three lines are laid out. Choose one.'));
           },
         });
         btn.setDisabled(!rok);
@@ -197,17 +198,17 @@ export class EnchanterPanel {
       const fill = canFillSlot(item, kind);
       const card = div(`depth-card${fill.ok ? '' : ' is-locked'}`);
       const b = div('depth-card-body');
-      add(b, div('depth-card-title', `Add a ${kind}`), span('depth-dim', fill.ok ? `${room[kind]} open` : fill.reason ?? ''));
+      add(b, div('depth-card-title', tr('Add a {0}', kind)), span('depth-dim', fill.ok ? tr('{0} open', room[kind]) : fill.reason ?? ''));
       card.appendChild(b);
       if (fill.ok) {
         add(card, costText(fcost, fok));
         const btn = new Button({
-          label: 'Add',
+          label: tr('Add'),
           small: true,
           variant: 'gold',
           onClick: () => {
             const r = fillSlot(c, item, kind, pay);
-            done(r.ok, r.reason, 'Three lines are laid out. Choose one.');
+            done(r.ok, r.reason, tr('Three lines are laid out. Choose one.'));
           },
         });
         btn.setDisabled(!fok);
@@ -225,20 +226,20 @@ export class EnchanterPanel {
     const has = powerLines(item).find((p) => p.source === 'affix');
     add(
       pb,
-      div('depth-card-title', 'Imbue a power'),
-      span(has ? 'depth-power' : 'depth-dim', has ? `${has.name}: ${has.text}` : imb.reason ?? 'A behaviour, not a number: arcs, explosions, echoes.'),
+      div('depth-card-title', tr('Imbue a power')),
+      span(has ? 'depth-power' : 'depth-dim', has ? `${has.name}: ${has.text}` : imb.reason ?? tr('A behaviour, not a number: arcs, explosions, echoes.')),
     );
     power.appendChild(pb);
     if (imb.ok) {
       add(power, costText(icost, iok));
       const btn = new Button({
-        label: 'Imbue',
+        label: tr('Imbue'),
         small: true,
         variant: 'gold',
         onClick: () => {
           const r = imbuePower(c, item, pay);
           const got = r.ok ? powerLines(item).find((p) => p.source === 'affix') : undefined;
-          done(r.ok, r.reason, got ? `Imbued: ${got.name}` : undefined);
+          done(r.ok, r.reason, got ? tr('Imbued: {0}', got.name) : undefined);
         },
       });
       btn.setDisabled(!iok);

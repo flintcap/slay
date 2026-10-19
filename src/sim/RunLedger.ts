@@ -15,6 +15,7 @@
  */
 import type { Character, Item, RunLedger } from '../types';
 import { MAX_LEVEL, xpForLevel } from './Stats';
+import { tr, trn, numGrouped } from '../core/I18n';
 
 /** Share of the current level's experience a map left early costs. */
 export const LEAVE_XP_SHARE = 0.1;
@@ -79,8 +80,8 @@ export function forfeitRun(c: Character, materials: Record<string, number>): For
 /** One line for a toast: what leaving cost. */
 export function forfeitText(f: Forfeit): string {
   const lost: string[] = [];
-  if (f.items) lost.push(`${f.items} item${f.items === 1 ? '' : 's'}`);
-  if (f.gold) lost.push(`${f.gold.toLocaleString('en-US')} gold`);
-  if (f.xp) lost.push(`${f.xp.toLocaleString('en-US')} experience`);
-  return lost.length ? `${f.name} is back in town. Lost: ${lost.join(', ')}.` : `${f.name} is back in town.`;
+  if (f.items) lost.push(trn(f.items, '{0} item', '{0} items', f.items));
+  if (f.gold) lost.push(tr('{0} gold', numGrouped(f.gold)));
+  if (f.xp) lost.push(tr('{0} experience', numGrouped(f.xp)));
+  return lost.length ? tr('{0} is back in town. Lost: {1}.', f.name, lost.join(', ')) : tr('{0} is back in town.', f.name);
 }

@@ -42,6 +42,7 @@
 import type { CharClassId, EquipSlot, ItemBase, ItemCategory, ItemVisual, StatKey } from '../types';
 import { GEMS, RUNES } from './gems';
 import { MATERIALS } from './materials';
+import { tr } from '../core/I18n';
 
 type Implicit = { stat: StatKey; min: number; max: number };
 
@@ -152,40 +153,40 @@ const CASTERS: CharClassId[] = ['mage', 'revenant'];
 // SWORDS — the reference weapon. Narrow damage band, middling speed.
 // ===========================================================================
 
-wpn('sword.short', 'Short Sword', 'sword', 1, 1, 15, 10, 3, 6, 1.4, 'sword.short', 'metal.iron');
-wpn('sword.gladius', 'Gladius', 'sword', 1, 25, 45, 28, 13, 27, 1.4, 'sword.short', 'metal.steel', { ornate: 0.2 });
-wpn('sword.falchion', 'Falchion', 'sword', 1, 50, 78, 45, 23, 49, 1.4, 'sword.short', 'metal.silver', { ornate: 0.32 });
-wpn('sword.phase', 'Phase Blade', 'sword', 1, 78, 105, 80, 35, 73, 1.4, 'sword.short', 'crystal.gem', {
+wpn('sword.short', tr('Short Sword'), 'sword', 1, 1, 15, 10, 3, 6, 1.4, 'sword.short', 'metal.iron');
+wpn('sword.gladius', tr('Gladius'), 'sword', 1, 25, 45, 28, 13, 27, 1.4, 'sword.short', 'metal.steel', { ornate: 0.2 });
+wpn('sword.falchion', tr('Falchion'), 'sword', 1, 50, 78, 45, 23, 49, 1.4, 'sword.short', 'metal.silver', { ornate: 0.32 });
+wpn('sword.phase', tr('Phase Blade'), 'sword', 1, 78, 105, 80, 35, 73, 1.4, 'sword.short', 'crystal.gem', {
   ornate: 0.5,
   glow: 0x6fa8ff,
   imp: [{ stat: 'attackSpeed', min: 6, max: 12 }],
 });
 
-wpn('sword.broad', 'Broad Sword', 'sword', 1, 8, 30, 12, 7, 14, 1.2, 'sword.broad', 'metal.iron');
-wpn('sword.tusk', 'Tusk Sword', 'sword', 1, 33, 62, 30, 19, 40, 1.2, 'sword.broad', 'bone.pale', { ornate: 0.24 });
-wpn('sword.conquest', 'Conquest Sword', 'sword', 1, 58, 95, 48, 31, 65, 1.2, 'sword.broad', 'metal.gold', { ornate: 0.4 });
+wpn('sword.broad', tr('Broad Sword'), 'sword', 1, 8, 30, 12, 7, 14, 1.2, 'sword.broad', 'metal.iron');
+wpn('sword.tusk', tr('Tusk Sword'), 'sword', 1, 33, 62, 30, 19, 40, 1.2, 'sword.broad', 'bone.pale', { ornate: 0.24 });
+wpn('sword.conquest', tr('Conquest Sword'), 'sword', 1, 58, 95, 48, 31, 65, 1.2, 'sword.broad', 'metal.gold', { ornate: 0.4 });
 
-wpn('sword.rapier', 'Rapier', 'sword', 1, 4, 12, 22, 4, 8, 1.55, 'sword.thin', 'metal.iron', {
+wpn('sword.rapier', tr('Rapier'), 'sword', 1, 4, 12, 22, 4, 8, 1.55, 'sword.thin', 'metal.iron', {
   imp: [{ stat: 'attackRating', min: 10, max: 25 }],
 });
-wpn('sword.foil', 'Foil', 'sword', 1, 29, 26, 55, 14, 27, 1.55, 'sword.thin', 'metal.steel', {
+wpn('sword.foil', tr('Foil'), 'sword', 1, 29, 26, 55, 14, 27, 1.55, 'sword.thin', 'metal.steel', {
   ornate: 0.22,
   imp: [{ stat: 'attackRating', min: 45, max: 90 }],
 });
-wpn('sword.estoc', 'Estoc', 'sword', 1, 54, 42, 92, 24, 46, 1.55, 'sword.thin', 'metal.silver', {
+wpn('sword.estoc', tr('Estoc'), 'sword', 1, 54, 42, 92, 24, 46, 1.55, 'sword.thin', 'metal.silver', {
   ornate: 0.34,
   imp: [{ stat: 'attackRating', min: 110, max: 200 }],
 });
 
-wpn('sword.great', 'Great Sword', 'sword', 2, 12, 50, 18, 19, 39, 0.85, 'sword.great', 'metal.iron');
-wpn('sword.zweihander', 'Zweihander', 'sword', 2, 37, 92, 32, 45, 92, 0.85, 'sword.great', 'metal.steel', { ornate: 0.26 });
-wpn('sword.colossus', 'Colossus Blade', 'sword', 2, 62, 140, 52, 70, 146, 0.85, 'sword.great', 'metal.dark', { ornate: 0.42 });
-wpn('sword.godslayer', 'Godslayer', 'sword', 2, 84, 182, 70, 93, 193, 0.85, 'sword.great', 'metal.mithril', {
+wpn('sword.great', tr('Great Sword'), 'sword', 2, 12, 50, 18, 19, 39, 0.85, 'sword.great', 'metal.iron');
+wpn('sword.zweihander', tr('Zweihander'), 'sword', 2, 37, 92, 32, 45, 92, 0.85, 'sword.great', 'metal.steel', { ornate: 0.26 });
+wpn('sword.colossus', tr('Colossus Blade'), 'sword', 2, 62, 140, 52, 70, 146, 0.85, 'sword.great', 'metal.dark', { ornate: 0.42 });
+wpn('sword.godslayer', tr('Godslayer'), 'sword', 2, 84, 182, 70, 93, 193, 0.85, 'sword.great', 'metal.mithril', {
   ornate: 0.6,
   glow: 0xffd24a,
   imp: [{ stat: 'critDamage', min: 15, max: 30 }],
 });
-wpn('sword.sunblade', 'Sunblade', 'sword', 1, 84, 120, 105, 42, 88, 1.25, 'sword.broad', 'metal.gold', {
+wpn('sword.sunblade', tr('Sunblade'), 'sword', 1, 84, 120, 105, 42, 88, 1.25, 'sword.broad', 'metal.gold', {
   ornate: 0.55,
   glow: 0xffb040,
   imp: [{ stat: 'fireDamage', min: 20, max: 45 }],
@@ -195,34 +196,34 @@ wpn('sword.sunblade', 'Sunblade', 'sword', 1, 84, 120, 105, 42, 88, 1.25, 'sword
 // AXES — wide damage bands. Big top end, unreliable bottom end.
 // ===========================================================================
 
-wpn('axe.hand', 'Hand Axe', 'axe', 1, 1, 17, 8, 3, 8, 1.25, 'axe.hand', 'metal.iron');
-wpn('axe.cleaver', 'Cleaver', 'axe', 1, 25, 48, 22, 13, 33, 1.25, 'axe.hand', 'metal.steel', { ornate: 0.18 });
-wpn('axe.tomahawk', 'Tomahawk', 'axe', 1, 50, 82, 38, 23, 60, 1.25, 'axe.hand', 'metal.dark', { ornate: 0.3 });
+wpn('axe.hand', tr('Hand Axe'), 'axe', 1, 1, 17, 8, 3, 8, 1.25, 'axe.hand', 'metal.iron');
+wpn('axe.cleaver', tr('Cleaver'), 'axe', 1, 25, 48, 22, 13, 33, 1.25, 'axe.hand', 'metal.steel', { ornate: 0.18 });
+wpn('axe.tomahawk', tr('Tomahawk'), 'axe', 1, 50, 82, 38, 23, 60, 1.25, 'axe.hand', 'metal.dark', { ornate: 0.3 });
 
-wpn('axe.war', 'War Axe', 'axe', 1, 10, 36, 12, 7, 20, 1.1, 'axe.war', 'metal.iron');
-wpn('axe.naga', 'Naga', 'axe', 1, 35, 68, 26, 19, 50, 1.1, 'axe.war', 'metal.steel', { ornate: 0.22 });
-wpn('axe.berserker', 'Berserker Axe', 'axe', 1, 60, 104, 42, 31, 81, 1.1, 'axe.war', 'metal.dark', {
+wpn('axe.war', tr('War Axe'), 'axe', 1, 10, 36, 12, 7, 20, 1.1, 'axe.war', 'metal.iron');
+wpn('axe.naga', tr('Naga'), 'axe', 1, 35, 68, 26, 19, 50, 1.1, 'axe.war', 'metal.steel', { ornate: 0.22 });
+wpn('axe.berserker', tr('Berserker Axe'), 'axe', 1, 60, 104, 42, 31, 81, 1.1, 'axe.war', 'metal.dark', {
   ornate: 0.38,
   imp: [{ stat: 'critChance', min: 3, max: 6 }],
 });
 
-wpn('axe.battle', 'Battle Axe', 'axe', 2, 14, 58, 14, 19, 51, 0.8, 'axe.great', 'metal.iron');
-wpn('axe.ettin', 'Ettin Axe', 'axe', 2, 39, 100, 28, 43, 114, 0.8, 'axe.great', 'metal.steel', { ornate: 0.24 });
-wpn('axe.glorious', 'Glorious Axe', 'axe', 2, 64, 148, 46, 67, 177, 0.8, 'axe.great', 'metal.gold', { ornate: 0.44 });
+wpn('axe.battle', tr('Battle Axe'), 'axe', 2, 14, 58, 14, 19, 51, 0.8, 'axe.great', 'metal.iron');
+wpn('axe.ettin', tr('Ettin Axe'), 'axe', 2, 39, 100, 28, 43, 114, 0.8, 'axe.great', 'metal.steel', { ornate: 0.24 });
+wpn('axe.glorious', tr('Glorious Axe'), 'axe', 2, 64, 148, 46, 67, 177, 0.8, 'axe.great', 'metal.gold', { ornate: 0.44 });
 
-wpn('axe.greataxe', 'Great Axe', 'axe', 2, 20, 72, 16, 29, 75, 0.7, 'axe.broad', 'metal.iron');
-wpn('axe.gothic', 'Gothic Axe', 'axe', 2, 45, 116, 30, 56, 148, 0.7, 'axe.broad', 'metal.dark', { ornate: 0.3 });
-wpn('axe.decapitator', 'Decapitator', 'axe', 2, 70, 162, 48, 83, 220, 0.7, 'axe.broad', 'metal.dark', {
+wpn('axe.greataxe', tr('Great Axe'), 'axe', 2, 20, 72, 16, 29, 75, 0.7, 'axe.broad', 'metal.iron');
+wpn('axe.gothic', tr('Gothic Axe'), 'axe', 2, 45, 116, 30, 56, 148, 0.7, 'axe.broad', 'metal.dark', { ornate: 0.3 });
+wpn('axe.decapitator', tr('Decapitator'), 'axe', 2, 70, 162, 48, 83, 220, 0.7, 'axe.broad', 'metal.dark', {
   ornate: 0.48,
   imp: [{ stat: 'critDamage', min: 20, max: 40 }],
 });
 
-wpn('axe.rune', 'Rune Axe', 'axe', 1, 80, 128, 55, 38, 101, 1.15, 'axe.war', 'metal.mithril', {
+wpn('axe.rune', tr('Rune Axe'), 'axe', 1, 80, 128, 55, 38, 101, 1.15, 'axe.war', 'metal.mithril', {
   ornate: 0.55,
   glow: 0xd8a860,
   imp: [{ stat: 'lifeSteal', min: 2, max: 4 }],
 });
-wpn('axe.worldcleaver', 'Worldcleaver', 'axe', 2, 88, 200, 60, 111, 293, 0.65, 'axe.broad', 'metal.mithril', {
+wpn('axe.worldcleaver', tr('Worldcleaver'), 'axe', 2, 88, 200, 60, 111, 293, 0.65, 'axe.broad', 'metal.mithril', {
   ornate: 0.65,
   glow: 0xff5a33,
   imp: [{ stat: 'areaDamagePct', min: 15, max: 30 }],
@@ -232,35 +233,35 @@ wpn('axe.worldcleaver', 'Worldcleaver', 'axe', 2, 88, 200, 60, 111, 293, 0.65, '
 // MACES — armour-breakers. Slowest swings, flattest requirement curve on dex.
 // ===========================================================================
 
-wpn('mace.club', 'Club', 'mace', 1, 1, 16, 0, 3, 8, 1.2, 'mace.club', 'wood.oak');
-wpn('mace.cudgel', 'Cudgel', 'mace', 1, 24, 46, 0, 14, 33, 1.2, 'mace.club', 'wood.ash', { ornate: 0.16 });
-wpn('mace.truncheon', 'Truncheon', 'mace', 1, 49, 80, 0, 26, 60, 1.2, 'mace.club', 'metal.dark', { ornate: 0.28 });
+wpn('mace.club', tr('Club'), 'mace', 1, 1, 16, 0, 3, 8, 1.2, 'mace.club', 'wood.oak');
+wpn('mace.cudgel', tr('Cudgel'), 'mace', 1, 24, 46, 0, 14, 33, 1.2, 'mace.club', 'wood.ash', { ornate: 0.16 });
+wpn('mace.truncheon', tr('Truncheon'), 'mace', 1, 49, 80, 0, 26, 60, 1.2, 'mace.club', 'metal.dark', { ornate: 0.28 });
 
-wpn('mace.mace', 'Mace', 'mace', 1, 9, 34, 0, 8, 19, 1.05, 'mace.flanged', 'metal.iron');
-wpn('mace.flanged', 'Flanged Mace', 'mace', 1, 34, 66, 0, 21, 50, 1.05, 'mace.flanged', 'metal.steel', { ornate: 0.24 });
-wpn('mace.devilstar', 'Devil Star', 'mace', 1, 59, 102, 0, 35, 81, 1.05, 'mace.flanged', 'metal.dark', {
+wpn('mace.mace', tr('Mace'), 'mace', 1, 9, 34, 0, 8, 19, 1.05, 'mace.flanged', 'metal.iron');
+wpn('mace.flanged', tr('Flanged Mace'), 'mace', 1, 34, 66, 0, 21, 50, 1.05, 'mace.flanged', 'metal.steel', { ornate: 0.24 });
+wpn('mace.devilstar', tr('Devil Star'), 'mace', 1, 59, 102, 0, 35, 81, 1.05, 'mace.flanged', 'metal.dark', {
   ornate: 0.4,
   imp: [{ stat: 'physicalResist', min: 2, max: 5 }],
 });
 
-wpn('mace.warhammer', 'War Hammer', 'mace', 2, 15, 62, 0, 21, 50, 0.85, 'hammer.war', 'metal.iron');
-wpn('mace.battlehammer', 'Battle Hammer', 'mace', 2, 40, 104, 0, 47, 109, 0.85, 'hammer.war', 'metal.steel', { ornate: 0.26 });
-wpn('mace.legendhammer', 'Legend Hammer', 'mace', 2, 65, 150, 0, 72, 169, 0.85, 'hammer.war', 'metal.gold', { ornate: 0.44 });
+wpn('mace.warhammer', tr('War Hammer'), 'mace', 2, 15, 62, 0, 21, 50, 0.85, 'hammer.war', 'metal.iron');
+wpn('mace.battlehammer', tr('Battle Hammer'), 'mace', 2, 40, 104, 0, 47, 109, 0.85, 'hammer.war', 'metal.steel', { ornate: 0.26 });
+wpn('mace.legendhammer', tr('Legend Hammer'), 'mace', 2, 65, 150, 0, 72, 169, 0.85, 'hammer.war', 'metal.gold', { ornate: 0.44 });
 
-wpn('mace.maul', 'Maul', 'mace', 2, 21, 78, 0, 38, 88, 0.62, 'maul.great', 'stone.crypt');
-wpn('mace.greatmaul', 'Great Maul', 'mace', 2, 46, 122, 0, 73, 169, 0.62, 'maul.great', 'stone.crypt', { ornate: 0.28 });
-wpn('mace.thundermaul', 'Thunder Maul', 'mace', 2, 71, 172, 0, 107, 251, 0.62, 'maul.great', 'metal.dark', {
+wpn('mace.maul', tr('Maul'), 'mace', 2, 21, 78, 0, 38, 88, 0.62, 'maul.great', 'stone.crypt');
+wpn('mace.greatmaul', tr('Great Maul'), 'mace', 2, 46, 122, 0, 73, 169, 0.62, 'maul.great', 'stone.crypt', { ornate: 0.28 });
+wpn('mace.thundermaul', tr('Thunder Maul'), 'mace', 2, 71, 172, 0, 107, 251, 0.62, 'maul.great', 'metal.dark', {
   ornate: 0.46,
   glow: 0xf0e05a,
   imp: [{ stat: 'lightningDamage', min: 10, max: 60 }],
 });
 
-wpn('mace.sanctified', 'Sanctified Mace', 'mace', 1, 80, 126, 20, 44, 102, 1.1, 'mace.flanged', 'metal.gold', {
+wpn('mace.sanctified', tr('Sanctified Mace'), 'mace', 1, 80, 126, 20, 44, 102, 1.1, 'mace.flanged', 'metal.gold', {
   ornate: 0.56,
   glow: 0xffe8b0,
   imp: [{ stat: 'lifeRegen', min: 8, max: 18 }],
 });
-wpn('mace.ruinhammer', 'Ruinhammer', 'mace', 2, 88, 208, 0, 140, 327, 0.58, 'maul.great', 'metal.mithril', {
+wpn('mace.ruinhammer', tr('Ruinhammer'), 'mace', 2, 88, 208, 0, 140, 327, 0.58, 'maul.great', 'metal.mithril', {
   ornate: 0.66,
   glow: 0xff5a33,
   imp: [{ stat: 'areaDamagePct', min: 20, max: 40 }],
@@ -270,45 +271,45 @@ wpn('mace.ruinhammer', 'Ruinhammer', 'mace', 2, 88, 208, 0, 140, 327, 0.58, 'mau
 // DAGGERS — lowest raw DPS in the game, highest attack rate and native crit.
 // ===========================================================================
 
-wpn('dagger.dagger', 'Dagger', 'dagger', 1, 1, 8, 14, 2, 4, 1.65, 'dagger', 'metal.iron', {
+wpn('dagger.dagger', tr('Dagger'), 'dagger', 1, 1, 8, 14, 2, 4, 1.65, 'dagger', 'metal.iron', {
   imp: [{ stat: 'critChance', min: 2, max: 4 }],
 });
-wpn('dagger.dirk', 'Dirk', 'dagger', 1, 22, 20, 42, 9, 16, 1.65, 'dagger', 'metal.steel', {
+wpn('dagger.dirk', tr('Dirk'), 'dagger', 1, 22, 20, 42, 9, 16, 1.65, 'dagger', 'metal.steel', {
   ornate: 0.2,
   imp: [{ stat: 'critChance', min: 3, max: 6 }],
 });
-wpn('dagger.boneknife', 'Bone Knife', 'dagger', 1, 47, 32, 74, 16, 30, 1.65, 'dagger', 'bone.pale', {
+wpn('dagger.boneknife', tr('Bone Knife'), 'dagger', 1, 47, 32, 74, 16, 30, 1.65, 'dagger', 'bone.pale', {
   ornate: 0.32,
   imp: [{ stat: 'critChance', min: 5, max: 9 }],
 });
 
-wpn('dagger.kris', 'Kris', 'dagger', 1, 11, 14, 26, 6, 11, 1.5, 'dagger.wavy', 'metal.iron', {
+wpn('dagger.kris', tr('Kris'), 'dagger', 1, 11, 14, 26, 6, 11, 1.5, 'dagger.wavy', 'metal.iron', {
   imp: [{ stat: 'critDamage', min: 8, max: 16 }],
 });
-wpn('dagger.blade', 'Blade', 'dagger', 1, 36, 28, 58, 14, 26, 1.5, 'dagger.wavy', 'metal.steel', {
+wpn('dagger.blade', tr('Blade'), 'dagger', 1, 36, 28, 58, 14, 26, 1.5, 'dagger.wavy', 'metal.steel', {
   ornate: 0.24,
   imp: [{ stat: 'critDamage', min: 16, max: 30 }],
 });
-wpn('dagger.fanged', 'Fanged Knife', 'dagger', 1, 61, 40, 96, 23, 42, 1.5, 'dagger.wavy', 'bone.pale', {
+wpn('dagger.fanged', tr('Fanged Knife'), 'dagger', 1, 61, 40, 96, 23, 42, 1.5, 'dagger.wavy', 'bone.pale', {
   ornate: 0.4,
   glow: 0x7ec24a,
   imp: [{ stat: 'critDamage', min: 26, max: 48 }],
 });
 
-wpn('dagger.stiletto', 'Stiletto', 'dagger', 1, 6, 6, 20, 3, 6, 1.75, 'dagger.needle', 'metal.iron', {
+wpn('dagger.stiletto', tr('Stiletto'), 'dagger', 1, 6, 6, 20, 3, 6, 1.75, 'dagger.needle', 'metal.iron', {
   imp: [{ stat: 'attackSpeed', min: 3, max: 6 }],
 });
-wpn('dagger.poignard', 'Poignard', 'dagger', 1, 31, 18, 52, 11, 20, 1.75, 'dagger.needle', 'metal.silver', {
+wpn('dagger.poignard', tr('Poignard'), 'dagger', 1, 31, 18, 52, 11, 20, 1.75, 'dagger.needle', 'metal.silver', {
   ornate: 0.22,
   imp: [{ stat: 'attackSpeed', min: 5, max: 10 }],
 });
-wpn('dagger.nightblade', 'Nightblade', 'dagger', 1, 56, 30, 88, 18, 33, 1.75, 'dagger.needle', 'metal.dark', {
+wpn('dagger.nightblade', tr('Nightblade'), 'dagger', 1, 56, 30, 88, 18, 33, 1.75, 'dagger.needle', 'metal.dark', {
   ornate: 0.36,
   glow: 0x8a4fd8,
   imp: [{ stat: 'attackSpeed', min: 8, max: 14 }],
 });
 
-wpn('dagger.mindrender', 'Mindrender', 'dagger', 1, 80, 46, 120, 27, 50, 1.6, 'dagger.wavy', 'crystal.void', {
+wpn('dagger.mindrender', tr('Mindrender'), 'dagger', 1, 80, 46, 120, 27, 50, 1.6, 'dagger.wavy', 'crystal.void', {
   ornate: 0.6,
   glow: 0xc060ff,
   imp: [
@@ -321,38 +322,38 @@ wpn('dagger.mindrender', 'Mindrender', 'dagger', 1, 80, 46, 120, 27, 50, 1.6, 'd
 // SPEARS & POLEARMS — reach weapons. Native attack rating, two-handed.
 // ===========================================================================
 
-wpn('spear.spear', 'Spear', 'spear', 2, 5, 26, 20, 8, 18, 1.15, 'spear', 'wood.oak', {
+wpn('spear.spear', tr('Spear'), 'spear', 2, 5, 26, 20, 8, 18, 1.15, 'spear', 'wood.oak', {
   imp: [{ stat: 'attackRating', min: 15, max: 35 }],
 });
-wpn('spear.warspear', 'War Spear', 'spear', 2, 30, 58, 46, 27, 59, 1.15, 'spear', 'wood.ash', {
+wpn('spear.warspear', tr('War Spear'), 'spear', 2, 30, 58, 46, 27, 59, 1.15, 'spear', 'wood.ash', {
   ornate: 0.2,
   imp: [{ stat: 'attackRating', min: 60, max: 120 }],
 });
-wpn('spear.hyperion', 'Hyperion Spear', 'spear', 2, 55, 92, 72, 45, 100, 1.15, 'spear', 'metal.silver', {
+wpn('spear.hyperion', tr('Hyperion Spear'), 'spear', 2, 55, 92, 72, 45, 100, 1.15, 'spear', 'metal.silver', {
   ornate: 0.34,
   imp: [{ stat: 'attackRating', min: 140, max: 260 }],
 });
 
-wpn('spear.pike', 'Pike', 'spear', 2, 13, 46, 28, 17, 38, 0.95, 'pike', 'wood.oak');
-wpn('spear.lance', 'Lance', 'spear', 2, 38, 84, 52, 39, 88, 0.95, 'pike', 'metal.steel', { ornate: 0.22 });
-wpn('spear.ghost', 'Ghost Spear', 'spear', 2, 63, 122, 78, 62, 137, 0.95, 'pike', 'crystal.gem', {
+wpn('spear.pike', tr('Pike'), 'spear', 2, 13, 46, 28, 17, 38, 0.95, 'pike', 'wood.oak');
+wpn('spear.lance', tr('Lance'), 'spear', 2, 38, 84, 52, 39, 88, 0.95, 'pike', 'metal.steel', { ornate: 0.22 });
+wpn('spear.ghost', tr('Ghost Spear'), 'spear', 2, 63, 122, 78, 62, 137, 0.95, 'pike', 'crystal.gem', {
   ornate: 0.4,
   glow: 0x9fd8ff,
   imp: [{ stat: 'arcaneDamage', min: 10, max: 40 }],
 });
 
-wpn('spear.halberd', 'Halberd', 'spear', 2, 18, 60, 24, 24, 54, 0.85, 'halberd', 'metal.iron');
-wpn('spear.bardiche', 'Bardiche', 'spear', 2, 43, 106, 40, 49, 109, 0.85, 'halberd', 'metal.steel', { ornate: 0.26 });
-wpn('spear.thresher', 'Giant Thresher', 'spear', 2, 68, 156, 58, 74, 165, 0.85, 'halberd', 'metal.dark', {
+wpn('spear.halberd', tr('Halberd'), 'spear', 2, 18, 60, 24, 24, 54, 0.85, 'halberd', 'metal.iron');
+wpn('spear.bardiche', tr('Bardiche'), 'spear', 2, 43, 106, 40, 49, 109, 0.85, 'halberd', 'metal.steel', { ornate: 0.26 });
+wpn('spear.thresher', tr('Giant Thresher'), 'spear', 2, 68, 156, 58, 74, 165, 0.85, 'halberd', 'metal.dark', {
   ornate: 0.42,
   imp: [{ stat: 'areaDamagePct', min: 10, max: 22 }],
 });
 
-wpn('spear.trident', 'Trident', 'spear', 2, 26, 68, 34, 27, 61, 1.0, 'trident', 'metal.iron');
-wpn('spear.brandistock', 'Brandistock', 'spear', 2, 51, 108, 56, 48, 108, 1.0, 'trident', 'metal.steel', { ornate: 0.3 });
-wpn('spear.mancatcher', 'Mancatcher', 'spear', 2, 74, 158, 76, 68, 151, 1.0, 'trident', 'metal.dark', { ornate: 0.44 });
+wpn('spear.trident', tr('Trident'), 'spear', 2, 26, 68, 34, 27, 61, 1.0, 'trident', 'metal.iron');
+wpn('spear.brandistock', tr('Brandistock'), 'spear', 2, 51, 108, 56, 48, 108, 1.0, 'trident', 'metal.steel', { ornate: 0.3 });
+wpn('spear.mancatcher', tr('Mancatcher'), 'spear', 2, 74, 158, 76, 68, 151, 1.0, 'trident', 'metal.dark', { ornate: 0.44 });
 
-wpn('spear.worldspine', 'Worldspine Pike', 'spear', 2, 86, 190, 92, 87, 193, 0.9, 'pike', 'bone.pale', {
+wpn('spear.worldspine', tr('Worldspine Pike'), 'spear', 2, 86, 190, 92, 87, 193, 0.9, 'pike', 'bone.pale', {
   ornate: 0.62,
   glow: 0xc060ff,
   imp: [
@@ -365,34 +366,34 @@ wpn('spear.worldspine', 'Worldspine Pike', 'spear', 2, 86, 190, 92, 87, 193, 0.9
 // BOWS — two-handed, dex-gated, pair with a quiver in the off-hand.
 // ===========================================================================
 
-wpn('bow.short', 'Short Bow', 'bow', 2, 1, 6, 18, 4, 8, 1.35, 'bow.short', 'wood.oak');
-wpn('bow.hunters', "Hunter's Bow", 'bow', 2, 24, 14, 48, 16, 32, 1.35, 'bow.short', 'wood.ash', { ornate: 0.18 });
-wpn('bow.spider', 'Spider Bow', 'bow', 2, 49, 24, 82, 30, 58, 1.35, 'bow.short', 'bone.pale', { ornate: 0.32 });
+wpn('bow.short', tr('Short Bow'), 'bow', 2, 1, 6, 18, 4, 8, 1.35, 'bow.short', 'wood.oak');
+wpn('bow.hunters', tr("Hunter's Bow"), 'bow', 2, 24, 14, 48, 16, 32, 1.35, 'bow.short', 'wood.ash', { ornate: 0.18 });
+wpn('bow.spider', tr('Spider Bow'), 'bow', 2, 49, 24, 82, 30, 58, 1.35, 'bow.short', 'bone.pale', { ornate: 0.32 });
 
-wpn('bow.long', 'Long Bow', 'bow', 2, 8, 10, 30, 9, 18, 1.15, 'bow.long', 'wood.oak');
-wpn('bow.composite', 'Composite Bow', 'bow', 2, 33, 20, 62, 25, 48, 1.15, 'bow.long', 'wood.ash', { ornate: 0.2 });
-wpn('bow.shadow', 'Shadow Bow', 'bow', 2, 58, 30, 96, 41, 79, 1.15, 'bow.long', 'wood.dark', {
+wpn('bow.long', tr('Long Bow'), 'bow', 2, 8, 10, 30, 9, 18, 1.15, 'bow.long', 'wood.oak');
+wpn('bow.composite', tr('Composite Bow'), 'bow', 2, 33, 20, 62, 25, 48, 1.15, 'bow.long', 'wood.ash', { ornate: 0.2 });
+wpn('bow.shadow', tr('Shadow Bow'), 'bow', 2, 58, 30, 96, 41, 79, 1.15, 'bow.long', 'wood.dark', {
   ornate: 0.36,
   glow: 0x8a4fd8,
   imp: [{ stat: 'critChance', min: 4, max: 8 }],
 });
 
-wpn('bow.war', 'War Bow', 'bow', 2, 16, 18, 40, 16, 32, 1.0, 'bow.war', 'wood.ash');
-wpn('bow.double', 'Double Bow', 'bow', 2, 41, 30, 72, 35, 67, 1.0, 'bow.war', 'metal.steel', { ornate: 0.24 });
-wpn('bow.diamond', 'Diamond Bow', 'bow', 2, 66, 42, 108, 53, 103, 1.0, 'bow.war', 'crystal.gem', {
+wpn('bow.war', tr('War Bow'), 'bow', 2, 16, 18, 40, 16, 32, 1.0, 'bow.war', 'wood.ash');
+wpn('bow.double', tr('Double Bow'), 'bow', 2, 41, 30, 72, 35, 67, 1.0, 'bow.war', 'metal.steel', { ornate: 0.24 });
+wpn('bow.diamond', tr('Diamond Bow'), 'bow', 2, 66, 42, 108, 53, 103, 1.0, 'bow.war', 'crystal.gem', {
   ornate: 0.42,
   glow: 0xdff0ff,
 });
 
-wpn('bow.great', 'Great Bow', 'bow', 2, 22, 26, 46, 24, 47, 0.85, 'bow.great', 'wood.oak');
-wpn('bow.rune', 'Rune Bow', 'bow', 2, 47, 40, 80, 46, 89, 0.85, 'bow.great', 'wood.dark', { ornate: 0.3 });
-wpn('bow.hydra', 'Hydra Bow', 'bow', 2, 72, 54, 116, 67, 131, 0.85, 'bow.great', 'bone.pale', {
+wpn('bow.great', tr('Great Bow'), 'bow', 2, 22, 26, 46, 24, 47, 0.85, 'bow.great', 'wood.oak');
+wpn('bow.rune', tr('Rune Bow'), 'bow', 2, 47, 40, 80, 46, 89, 0.85, 'bow.great', 'wood.dark', { ornate: 0.3 });
+wpn('bow.hydra', tr('Hydra Bow'), 'bow', 2, 72, 54, 116, 67, 131, 0.85, 'bow.great', 'bone.pale', {
   ornate: 0.46,
   glow: 0x35c05a,
   imp: [{ stat: 'poisonDamage', min: 15, max: 60 }],
 });
 
-wpn('bow.matron', 'Grand Matron Bow', 'bow', 2, 82, 60, 140, 59, 114, 1.1, 'bow.long', 'metal.mithril', {
+wpn('bow.matron', tr('Grand Matron Bow'), 'bow', 2, 82, 60, 140, 59, 114, 1.1, 'bow.long', 'metal.mithril', {
   ornate: 0.6,
   glow: 0xffd24a,
   imp: [
@@ -405,39 +406,39 @@ wpn('bow.matron', 'Grand Matron Bow', 'bow', 2, 82, 60, 140, 59, 114, 1.1, 'bow.
 // CROSSBOWS — slower and heavier than bows, but the highest per-shot numbers.
 // ===========================================================================
 
-wpn('xbow.light', 'Light Crossbow', 'crossbow', 2, 3, 16, 20, 8, 14, 1.0, 'crossbow.light', 'wood.oak', {
+wpn('xbow.light', tr('Light Crossbow'), 'crossbow', 2, 3, 16, 20, 8, 14, 1.0, 'crossbow.light', 'wood.oak', {
   imp: [{ stat: 'critDamage', min: 5, max: 12 }],
 });
-wpn('xbow.arbalest', 'Arbalest', 'crossbow', 2, 27, 44, 44, 28, 50, 1.0, 'crossbow.light', 'wood.ash', {
+wpn('xbow.arbalest', tr('Arbalest'), 'crossbow', 2, 27, 44, 44, 28, 50, 1.0, 'crossbow.light', 'wood.ash', {
   ornate: 0.2,
   imp: [{ stat: 'critDamage', min: 12, max: 24 }],
 });
-wpn('xbow.pellet', 'Pellet Bow', 'crossbow', 2, 52, 74, 70, 49, 87, 1.0, 'crossbow.light', 'metal.steel', {
+wpn('xbow.pellet', tr('Pellet Bow'), 'crossbow', 2, 52, 74, 70, 49, 87, 1.0, 'crossbow.light', 'metal.steel', {
   ornate: 0.34,
   imp: [{ stat: 'critDamage', min: 22, max: 42 }],
 });
 
-wpn('xbow.crossbow', 'Crossbow', 'crossbow', 2, 11, 32, 26, 18, 32, 0.8, 'crossbow.heavy', 'wood.oak');
-wpn('xbow.siege', 'Siege Crossbow', 'crossbow', 2, 36, 66, 50, 44, 79, 0.8, 'crossbow.heavy', 'metal.iron', { ornate: 0.22 });
-wpn('xbow.ballista', 'Ballista', 'crossbow', 2, 61, 106, 76, 71, 126, 0.8, 'crossbow.heavy', 'metal.dark', {
+wpn('xbow.crossbow', tr('Crossbow'), 'crossbow', 2, 11, 32, 26, 18, 32, 0.8, 'crossbow.heavy', 'wood.oak');
+wpn('xbow.siege', tr('Siege Crossbow'), 'crossbow', 2, 36, 66, 50, 44, 79, 0.8, 'crossbow.heavy', 'metal.iron', { ornate: 0.22 });
+wpn('xbow.ballista', tr('Ballista'), 'crossbow', 2, 61, 106, 76, 71, 126, 0.8, 'crossbow.heavy', 'metal.dark', {
   ornate: 0.38,
   imp: [{ stat: 'areaDamagePct', min: 8, max: 18 }],
 });
 
-wpn('xbow.repeating', 'Repeating Crossbow', 'crossbow', 2, 19, 30, 44, 18, 31, 1.2, 'crossbow.repeat', 'wood.ash', {
+wpn('xbow.repeating', tr('Repeating Crossbow'), 'crossbow', 2, 19, 30, 44, 18, 31, 1.2, 'crossbow.repeat', 'wood.ash', {
   imp: [{ stat: 'attackSpeed', min: 4, max: 8 }],
 });
-wpn('xbow.chukonu', 'Chu-Ko-Nu', 'crossbow', 2, 44, 54, 78, 35, 63, 1.2, 'crossbow.repeat', 'metal.steel', {
+wpn('xbow.chukonu', tr('Chu-Ko-Nu'), 'crossbow', 2, 44, 54, 78, 35, 63, 1.2, 'crossbow.repeat', 'metal.steel', {
   ornate: 0.26,
   imp: [{ stat: 'attackSpeed', min: 8, max: 14 }],
 });
-wpn('xbow.demon', 'Demon Crossbow', 'crossbow', 2, 69, 84, 112, 53, 94, 1.2, 'crossbow.repeat', 'metal.dark', {
+wpn('xbow.demon', tr('Demon Crossbow'), 'crossbow', 2, 69, 84, 112, 53, 94, 1.2, 'crossbow.repeat', 'metal.dark', {
   ornate: 0.44,
   glow: 0xe04a20,
   imp: [{ stat: 'attackSpeed', min: 12, max: 20 }],
 });
 
-wpn('xbow.colossus', 'Colossus Crossbow', 'crossbow', 2, 83, 130, 130, 107, 191, 0.7, 'crossbow.heavy', 'metal.mithril', {
+wpn('xbow.colossus', tr('Colossus Crossbow'), 'crossbow', 2, 83, 130, 130, 107, 191, 0.7, 'crossbow.heavy', 'metal.mithril', {
   ornate: 0.6,
   glow: 0xff5a33,
   imp: [{ stat: 'critDamage', min: 40, max: 80 }],
@@ -447,16 +448,16 @@ wpn('xbow.colossus', 'Colossus Crossbow', 'crossbow', 2, 83, 130, 130, 107, 191,
 // WANDS — the worst melee weapons and the best spell conduits.
 // ===========================================================================
 
-wpn('wand.wand', 'Wand', 'wand', 1, 1, 4, 4, 4, 8, 1.45, 'wand', 'wood.oak', {
+wpn('wand.wand', tr('Wand'), 'wand', 1, 1, 4, 4, 4, 8, 1.45, 'wand', 'wood.oak', {
   classes: CASTERS,
   imp: [{ stat: 'castSpeed', min: 3, max: 6 }],
 });
-wpn('wand.yew', 'Yew Wand', 'wand', 1, 23, 8, 8, 14, 29, 1.45, 'wand', 'wood.ash', {
+wpn('wand.yew', tr('Yew Wand'), 'wand', 1, 23, 8, 8, 14, 29, 1.45, 'wand', 'wood.ash', {
   ornate: 0.2,
   classes: CASTERS,
   imp: [{ stat: 'castSpeed', min: 6, max: 11 }],
 });
-wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 26, 54, 1.45, 'wand', 'wood.dark', {
+wpn('wand.burnt', tr('Burnt Wand'), 'wand', 1, 48, 12, 12, 26, 54, 1.45, 'wand', 'wood.dark', {
   ornate: 0.34,
   glow: 0xd8632a,
   classes: CASTERS,
@@ -467,44 +468,44 @@ wpn('wand.burnt', 'Burnt Wand', 'wand', 1, 48, 12, 12, 26, 54, 1.45, 'wand', 'wo
 // The bottom of the necromantic wand ladder. The Revenant starts holding this
 // one: `wand.bone` sits at level 10 and the class was being handed a weapon it
 // could not equip for its first nine levels.
-wpn('wand.femur', 'Femur Wand', 'wand', 1, 1, 4, 4, 4, 9, 1.3, 'wand.bone', 'bone.pale', {
+wpn('wand.femur', tr('Femur Wand'), 'wand', 1, 1, 4, 4, 4, 9, 1.3, 'wand.bone', 'bone.pale', {
   classes: ['revenant'],
   imp: [{ stat: 'manaRegen', min: 1, max: 2 }],
 });
-wpn('wand.bone', 'Bone Wand', 'wand', 1, 10, 6, 6, 9, 19, 1.3, 'wand.bone', 'bone.pale', {
+wpn('wand.bone', tr('Bone Wand'), 'wand', 1, 10, 6, 6, 9, 19, 1.3, 'wand.bone', 'bone.pale', {
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
-wpn('wand.grim', 'Grim Wand', 'wand', 1, 35, 10, 10, 22, 46, 1.3, 'wand.bone', 'bone.pale', {
+wpn('wand.grim', tr('Grim Wand'), 'wand', 1, 35, 10, 10, 22, 46, 1.3, 'wand.bone', 'bone.pale', {
   ornate: 0.26,
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }, { stat: 'arcaneDamage', min: 6, max: 16 }],
 });
-wpn('wand.lich', 'Lich Wand', 'wand', 1, 60, 14, 14, 36, 73, 1.3, 'wand.bone', 'crystal.void', {
+wpn('wand.lich', tr('Lich Wand'), 'wand', 1, 60, 14, 14, 36, 73, 1.3, 'wand.bone', 'crystal.void', {
   ornate: 0.44,
   glow: 0xc060ff,
   classes: CASTERS,
   imp: [{ stat: 'skillLevels', min: 1, max: 2 }, { stat: 'arcaneDamage', min: 18, max: 44 }],
 });
 
-wpn('wand.tomb', 'Tomb Wand', 'wand', 1, 17, 6, 6, 10, 22, 1.55, 'wand.crystal', 'crystal.gem', {
+wpn('wand.tomb', tr('Tomb Wand'), 'wand', 1, 17, 6, 6, 10, 22, 1.55, 'wand.crystal', 'crystal.gem', {
   classes: CASTERS,
   imp: [{ stat: 'mana', min: 15, max: 30 }],
 });
-wpn('wand.grave', 'Grave Wand', 'wand', 1, 42, 10, 10, 13, 26, 1.55, 'wand.crystal', 'crystal.gem', {
+wpn('wand.grave', tr('Grave Wand'), 'wand', 1, 42, 10, 10, 13, 26, 1.55, 'wand.crystal', 'crystal.gem', {
   ornate: 0.28,
   glow: 0x6f8cff,
   classes: CASTERS,
   imp: [{ stat: 'mana', min: 40, max: 80 }, { stat: 'manaRegen', min: 8, max: 16 }],
 });
-wpn('wand.unearthed', 'Unearthed Wand', 'wand', 1, 67, 14, 14, 19, 40, 1.55, 'wand.crystal', 'crystal.void', {
+wpn('wand.unearthed', tr('Unearthed Wand'), 'wand', 1, 67, 14, 14, 19, 40, 1.55, 'wand.crystal', 'crystal.void', {
   ornate: 0.46,
   glow: 0x8a4fd8,
   classes: CASTERS,
   imp: [{ stat: 'mana', min: 90, max: 160 }, { stat: 'manaRegen', min: 18, max: 34 }],
 });
 
-wpn('wand.heartstone', 'Heartstone Wand', 'wand', 1, 81, 18, 18, 25, 53, 1.4, 'wand.crystal', 'crystal.void', {
+wpn('wand.heartstone', tr('Heartstone Wand'), 'wand', 1, 81, 18, 18, 25, 53, 1.4, 'wand.crystal', 'crystal.void', {
   ornate: 0.65,
   glow: 0xff8adf,
   classes: CASTERS,
@@ -518,42 +519,42 @@ wpn('wand.heartstone', 'Heartstone Wand', 'wand', 1, 81, 18, 18, 25, 53, 1.4, 'w
 // STAVES — two-handed caster weapons. Real melee damage, real spell support.
 // ===========================================================================
 
-wpn('staff.short', 'Short Staff', 'staff', 2, 1, 10, 0, 4, 9, 1.0, 'staff', 'wood.oak', {
+wpn('staff.short', tr('Short Staff'), 'staff', 2, 1, 10, 0, 4, 9, 1.0, 'staff', 'wood.oak', {
   imp: [{ stat: 'mana', min: 10, max: 20 }],
 });
-wpn('staff.long', 'Long Staff', 'staff', 2, 12, 18, 0, 10, 24, 1.0, 'staff', 'wood.oak', {
+wpn('staff.long', tr('Long Staff'), 'staff', 2, 12, 18, 0, 10, 24, 1.0, 'staff', 'wood.oak', {
   ornate: 0.16,
   imp: [{ stat: 'mana', min: 25, max: 50 }],
 });
-wpn('staff.gnarled', 'Gnarled Staff', 'staff', 2, 26, 28, 0, 18, 42, 1.0, 'staff', 'wood.ash', {
+wpn('staff.gnarled', tr('Gnarled Staff'), 'staff', 2, 26, 28, 0, 18, 42, 1.0, 'staff', 'wood.ash', {
   ornate: 0.26,
   imp: [{ stat: 'mana', min: 50, max: 90 }, { stat: 'skillLevels', min: 1, max: 1 }],
 });
 
-wpn('staff.battle', 'Battle Staff', 'staff', 2, 20, 30, 0, 16, 38, 0.9, 'staff.battle', 'wood.ash');
-wpn('staff.war', 'War Staff', 'staff', 2, 40, 52, 0, 29, 68, 0.9, 'staff.battle', 'metal.iron', { ornate: 0.24 });
-wpn('staff.elder', 'Elder Staff', 'staff', 2, 64, 78, 0, 44, 103, 0.9, 'staff.battle', 'metal.dark', {
+wpn('staff.battle', tr('Battle Staff'), 'staff', 2, 20, 30, 0, 16, 38, 0.9, 'staff.battle', 'wood.ash');
+wpn('staff.war', tr('War Staff'), 'staff', 2, 40, 52, 0, 29, 68, 0.9, 'staff.battle', 'metal.iron', { ornate: 0.24 });
+wpn('staff.elder', tr('Elder Staff'), 'staff', 2, 64, 78, 0, 44, 103, 0.9, 'staff.battle', 'metal.dark', {
   ornate: 0.42,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
 
-wpn('staff.cedar', 'Cedar Staff', 'staff', 2, 32, 26, 0, 20, 46, 1.1, 'staff.rune', 'wood.ash', {
+wpn('staff.cedar', tr('Cedar Staff'), 'staff', 2, 32, 26, 0, 20, 46, 1.1, 'staff.rune', 'wood.ash', {
   ornate: 0.3,
   glow: 0x6f8cff,
   imp: [{ stat: 'castSpeed', min: 8, max: 15 }],
 });
-wpn('staff.archon', 'Archon Staff', 'staff', 2, 56, 40, 0, 32, 75, 1.1, 'staff.rune', 'crystal.gem', {
+wpn('staff.archon', tr('Archon Staff'), 'staff', 2, 56, 40, 0, 32, 75, 1.1, 'staff.rune', 'crystal.gem', {
   ornate: 0.44,
   glow: 0x8fa8ff,
   imp: [{ stat: 'castSpeed', min: 14, max: 24 }, { stat: 'skillLevels', min: 1, max: 2 }],
 });
-wpn('staff.eldritch', 'Eldritch Staff', 'staff', 2, 76, 56, 0, 42, 99, 1.1, 'staff.rune', 'crystal.void', {
+wpn('staff.eldritch', tr('Eldritch Staff'), 'staff', 2, 76, 56, 0, 42, 99, 1.1, 'staff.rune', 'crystal.void', {
   ornate: 0.56,
   glow: 0xc060ff,
   imp: [{ stat: 'castSpeed', min: 20, max: 32 }, { stat: 'skillLevels', min: 2, max: 2 }],
 });
 
-wpn('staff.worldtree', 'Worldtree Staff', 'staff', 2, 87, 70, 0, 56, 130, 0.95, 'staff.rune', 'wood.dark', {
+wpn('staff.worldtree', tr('Worldtree Staff'), 'staff', 2, 87, 70, 0, 56, 130, 0.95, 'staff.rune', 'wood.dark', {
   ornate: 0.7,
   glow: 0x35c05a,
   imp: [
@@ -567,51 +568,51 @@ wpn('staff.worldtree', 'Worldtree Staff', 'staff', 2, 87, 70, 0, 56, 130, 0.95, 
 // SCEPTERS — one-handed caster weapons; shield-compatible, support-flavoured.
 // ===========================================================================
 
-wpn('scepter.scepter', 'Scepter', 'scepter', 1, 2, 14, 6, 4, 8, 1.2, 'scepter', 'metal.iron', {
+wpn('scepter.scepter', tr('Scepter'), 'scepter', 1, 2, 14, 6, 4, 8, 1.2, 'scepter', 'metal.iron', {
   imp: [{ stat: 'lifeRegen', min: 2, max: 5 }],
 });
-wpn('scepter.grand', 'Grand Scepter', 'scepter', 1, 25, 36, 16, 14, 31, 1.2, 'scepter', 'metal.silver', {
+wpn('scepter.grand', tr('Grand Scepter'), 'scepter', 1, 25, 36, 16, 14, 31, 1.2, 'scepter', 'metal.silver', {
   ornate: 0.24,
   imp: [{ stat: 'lifeRegen', min: 6, max: 13 }],
 });
-wpn('scepter.war', 'War Scepter', 'scepter', 1, 50, 62, 28, 25, 55, 1.2, 'scepter', 'metal.gold', {
+wpn('scepter.war', tr('War Scepter'), 'scepter', 1, 50, 62, 28, 25, 55, 1.2, 'scepter', 'metal.gold', {
   ornate: 0.38,
   imp: [{ stat: 'lifeRegen', min: 14, max: 26 }],
 });
 
-wpn('scepter.sprinkler', 'Holy Water Sprinkler', 'scepter', 1, 14, 26, 10, 10, 23, 1.05, 'scepter.orbed', 'metal.silver', {
+wpn('scepter.sprinkler', tr('Holy Water Sprinkler'), 'scepter', 1, 14, 26, 10, 10, 23, 1.05, 'scepter.orbed', 'metal.silver', {
   ornate: 0.3,
   glow: 0xffe8b0,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
-wpn('scepter.divine', 'Divine Scepter', 'scepter', 1, 39, 48, 20, 23, 51, 1.05, 'scepter.orbed', 'metal.gold', {
+wpn('scepter.divine', tr('Divine Scepter'), 'scepter', 1, 39, 48, 20, 23, 51, 1.05, 'scepter.orbed', 'metal.gold', {
   ornate: 0.42,
   glow: 0xffd24a,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }, { stat: 'manaRegen', min: 10, max: 20 }],
 });
-wpn('scepter.caduceus', 'Caduceus', 'scepter', 1, 64, 74, 32, 35, 79, 1.05, 'scepter.orbed', 'metal.gold', {
+wpn('scepter.caduceus', tr('Caduceus'), 'scepter', 1, 64, 74, 32, 35, 79, 1.05, 'scepter.orbed', 'metal.gold', {
   ornate: 0.56,
   glow: 0xffd24a,
   imp: [{ stat: 'skillLevels', min: 1, max: 2 }, { stat: 'manaRegen', min: 22, max: 38 }],
 });
 
-wpn('scepter.wrath', 'Rod of Wrath', 'scepter', 1, 28, 34, 22, 13, 30, 1.35, 'scepter.spiked', 'metal.dark', {
+wpn('scepter.wrath', tr('Rod of Wrath'), 'scepter', 1, 28, 34, 22, 13, 30, 1.35, 'scepter.spiked', 'metal.dark', {
   ornate: 0.3,
   glow: 0xd8632a,
   imp: [{ stat: 'fireDamage', min: 6, max: 20 }],
 });
-wpn('scepter.mirrored', 'Mirrored Scepter', 'scepter', 1, 53, 56, 36, 23, 52, 1.35, 'scepter.spiked', 'metal.silver', {
+wpn('scepter.mirrored', tr('Mirrored Scepter'), 'scepter', 1, 53, 56, 36, 23, 52, 1.35, 'scepter.spiked', 'metal.silver', {
   ornate: 0.44,
   glow: 0xdff0ff,
   imp: [{ stat: 'blockChance', min: 3, max: 7 }],
 });
-wpn('scepter.solar', 'Solar Scepter', 'scepter', 1, 73, 82, 46, 31, 69, 1.35, 'scepter.spiked', 'metal.gold', {
+wpn('scepter.solar', tr('Solar Scepter'), 'scepter', 1, 73, 82, 46, 31, 69, 1.35, 'scepter.spiked', 'metal.gold', {
   ornate: 0.58,
   glow: 0xffb040,
   imp: [{ stat: 'fireDamage', min: 30, max: 80 }],
 });
 
-wpn('scepter.judgement', 'Judgement Scepter', 'scepter', 1, 85, 96, 54, 42, 93, 1.15, 'scepter.orbed', 'metal.mithril', {
+wpn('scepter.judgement', tr('Judgement Scepter'), 'scepter', 1, 85, 96, 54, 42, 93, 1.15, 'scepter.orbed', 'metal.mithril', {
   ornate: 0.72,
   glow: 0xfff0c0,
   imp: [
@@ -624,68 +625,68 @@ wpn('scepter.judgement', 'Judgement Scepter', 'scepter', 1, 85, 96, 54, 42, 93, 
 // SHIELDS — defence plus block. Heavier families block more and cost strength.
 // ===========================================================================
 
-arm('shield.buckler', 'Buckler', 'shield', 'offHand', 1, 12, 0, 6, 'shield.buckler', 'wood.oak', { block: 0.14 });
-arm('shield.defender', 'Defender', 'shield', 'offHand', 24, 42, 0, 32, 'shield.buckler', 'metal.iron', {
+arm('shield.buckler', tr('Buckler'), 'shield', 'offHand', 1, 12, 0, 6, 'shield.buckler', 'wood.oak', { block: 0.14 });
+arm('shield.defender', tr('Defender'), 'shield', 'offHand', 24, 42, 0, 32, 'shield.buckler', 'metal.iron', {
   block: 0.16,
   ornate: 0.2,
 });
-arm('shield.heater', 'Heater', 'shield', 'offHand', 49, 72, 0, 60, 'shield.buckler', 'metal.steel', {
+arm('shield.heater', tr('Heater'), 'shield', 'offHand', 49, 72, 0, 60, 'shield.buckler', 'metal.steel', {
   block: 0.18,
   ornate: 0.32,
 });
 
-arm('shield.small', 'Small Shield', 'shield', 'offHand', 5, 20, 0, 12, 'shield.round', 'wood.oak', { block: 0.18 });
-arm('shield.round', 'Round Shield', 'shield', 'offHand', 28, 50, 0, 41, 'shield.round', 'metal.iron', {
+arm('shield.small', tr('Small Shield'), 'shield', 'offHand', 5, 20, 0, 12, 'shield.round', 'wood.oak', { block: 0.18 });
+arm('shield.round', tr('Round Shield'), 'shield', 'offHand', 28, 50, 0, 41, 'shield.round', 'metal.iron', {
   block: 0.2,
   ornate: 0.22,
 });
-arm('shield.luna', 'Luna', 'shield', 'offHand', 53, 80, 0, 73, 'shield.round', 'metal.silver', {
+arm('shield.luna', tr('Luna'), 'shield', 'offHand', 53, 80, 0, 73, 'shield.round', 'metal.silver', {
   block: 0.22,
   ornate: 0.36,
   glow: 0xdff0ff,
 });
 
-arm('shield.kite', 'Kite Shield', 'shield', 'offHand', 12, 34, 0, 24, 'shield.kite', 'metal.iron', { block: 0.22 });
-arm('shield.dragon', 'Dragon Shield', 'shield', 'offHand', 35, 66, 0, 59, 'shield.kite', 'metal.steel', {
+arm('shield.kite', tr('Kite Shield'), 'shield', 'offHand', 12, 34, 0, 24, 'shield.kite', 'metal.iron', { block: 0.22 });
+arm('shield.dragon', tr('Dragon Shield'), 'shield', 'offHand', 35, 66, 0, 59, 'shield.kite', 'metal.steel', {
   block: 0.24,
   ornate: 0.26,
 });
-arm('shield.monarch', 'Monarch', 'shield', 'offHand', 60, 106, 0, 96, 'shield.kite', 'metal.gold', {
+arm('shield.monarch', tr('Monarch'), 'shield', 'offHand', 60, 106, 0, 96, 'shield.kite', 'metal.gold', {
   block: 0.26,
   ornate: 0.42,
 });
 
-arm('shield.tower', 'Tower Shield', 'shield', 'offHand', 18, 52, 0, 41, 'shield.tower', 'metal.iron', {
+arm('shield.tower', tr('Tower Shield'), 'shield', 'offHand', 18, 52, 0, 41, 'shield.tower', 'metal.iron', {
   block: 0.26,
   imp: [{ stat: 'damageReduction', min: 1, max: 3 }],
 });
-arm('shield.pavise', 'Pavise', 'shield', 'offHand', 42, 96, 0, 86, 'shield.tower', 'metal.steel', {
+arm('shield.pavise', tr('Pavise'), 'shield', 'offHand', 42, 96, 0, 86, 'shield.tower', 'metal.steel', {
   block: 0.28,
   ornate: 0.28,
   imp: [{ stat: 'damageReduction', min: 3, max: 6 }],
 });
-arm('shield.aegis', 'Aegis', 'shield', 'offHand', 66, 142, 0, 131, 'shield.tower', 'metal.dark', {
+arm('shield.aegis', tr('Aegis'), 'shield', 'offHand', 66, 142, 0, 131, 'shield.tower', 'metal.dark', {
   block: 0.3,
   ornate: 0.44,
   imp: [{ stat: 'damageReduction', min: 5, max: 10 }],
 });
 
-arm('shield.bone', 'Bone Shield', 'shield', 'offHand', 9, 24, 0, 18, 'shield.bone', 'bone.pale', {
+arm('shield.bone', tr('Bone Shield'), 'shield', 'offHand', 9, 24, 0, 18, 'shield.bone', 'bone.pale', {
   block: 0.19,
   imp: [{ stat: 'lifeRegen', min: 2, max: 5 }],
 });
-arm('shield.grim', 'Grim Shield', 'shield', 'offHand', 32, 52, 0, 49, 'shield.bone', 'bone.pale', {
+arm('shield.grim', tr('Grim Shield'), 'shield', 'offHand', 32, 52, 0, 49, 'shield.bone', 'bone.pale', {
   block: 0.21,
   ornate: 0.26,
   imp: [{ stat: 'lifeRegen', min: 6, max: 12 }],
 });
-arm('shield.trollnest', 'Troll Nest', 'shield', 'offHand', 57, 82, 0, 82, 'shield.bone', 'flesh.rotted', {
+arm('shield.trollnest', tr('Troll Nest'), 'shield', 'offHand', 57, 82, 0, 82, 'shield.bone', 'flesh.rotted', {
   block: 0.23,
   ornate: 0.4,
   imp: [{ stat: 'lifeRegen', min: 14, max: 28 }],
 });
 
-arm('shield.aeons', 'Ward of Aeons', 'shield', 'offHand', 84, 170, 0, 172, 'shield.tower', 'metal.mithril', {
+arm('shield.aeons', tr('Ward of Aeons'), 'shield', 'offHand', 84, 170, 0, 172, 'shield.tower', 'metal.mithril', {
   block: 0.32,
   ornate: 0.66,
   glow: 0xfff0c0,
@@ -703,7 +704,7 @@ arm('shield.aeons', 'Ward of Aeons', 'shield', 'offHand', 84, 170, 0, 172, 'shie
 // there was no orb below level eight, so a caster's off-hand sat empty for the
 // first eight levels and a caster whose whole kit was one wand opened
 // the game with half the damage of anyone else.
-arm('orb.cracked', 'Cracked Focus', 'orb', 'offHand', 1, 0, 0, 0, 'orb', 'crystal.gem', {
+arm('orb.cracked', tr('Cracked Focus'), 'orb', 'offHand', 1, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
   glow: 0x6f8cff,
   imp: [
@@ -711,63 +712,63 @@ arm('orb.cracked', 'Cracked Focus', 'orb', 'offHand', 1, 0, 0, 0, 'orb', 'crysta
     { stat: 'mana', min: 6, max: 12 },
   ],
 });
-arm('orb.eagle', 'Eagle Orb', 'orb', 'offHand', 8, 0, 0, 0, 'orb', 'crystal.gem', {
+arm('orb.eagle', tr('Eagle Orb'), 'orb', 'offHand', 8, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
   glow: 0x6f8cff,
   imp: [{ stat: 'mana', min: 15, max: 30 }, { stat: 'castSpeed', min: 3, max: 7 }],
 });
-arm('orb.sacred', 'Sacred Globe', 'orb', 'offHand', 16, 0, 0, 0, 'orb', 'crystal.gem', {
+arm('orb.sacred', tr('Sacred Globe'), 'orb', 'offHand', 16, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
   glow: 0x8fa8ff,
   ornate: 0.3,
   imp: [{ stat: 'mana', min: 30, max: 55 }, { stat: 'skillLevels', min: 1, max: 1 }],
 });
-arm('orb.smoked', 'Smoked Sphere', 'orb', 'offHand', 24, 0, 0, 0, 'orb', 'crystal.void', {
+arm('orb.smoked', tr('Smoked Sphere'), 'orb', 'offHand', 24, 0, 0, 0, 'orb', 'crystal.void', {
   classes: CASTERS,
   glow: 0x8a4fd8,
   ornate: 0.34,
   imp: [{ stat: 'arcaneDamage', min: 8, max: 22 }, { stat: 'castSpeed', min: 6, max: 12 }],
 });
 
-arm('orb.crystalline', 'Crystalline Globe', 'orb', 'offHand', 32, 0, 0, 0, 'orb.faceted', 'crystal.gem', {
+arm('orb.crystalline', tr('Crystalline Globe'), 'orb', 'offHand', 32, 0, 0, 0, 'orb.faceted', 'crystal.gem', {
   classes: CASTERS,
   glow: 0x9fd8ff,
   ornate: 0.38,
   imp: [{ stat: 'mana', min: 60, max: 100 }, { stat: 'manaRegen', min: 10, max: 20 }],
 });
-arm('orb.glowing', 'Glowing Orb', 'orb', 'offHand', 40, 0, 0, 0, 'orb.faceted', 'crystal.gem', {
+arm('orb.glowing', tr('Glowing Orb'), 'orb', 'offHand', 40, 0, 0, 0, 'orb.faceted', 'crystal.gem', {
   classes: CASTERS,
   glow: 0xffe8b0,
   ornate: 0.42,
   imp: [{ stat: 'elementalDamagePct', min: 6, max: 14 }, { stat: 'skillLevels', min: 1, max: 1 }],
 });
-arm('orb.heavenly', 'Heavenly Stone', 'orb', 'offHand', 50, 0, 0, 0, 'orb.faceted', 'metal.gold', {
+arm('orb.heavenly', tr('Heavenly Stone'), 'orb', 'offHand', 50, 0, 0, 0, 'orb.faceted', 'metal.gold', {
   classes: CASTERS,
   glow: 0xffd24a,
   ornate: 0.5,
   imp: [{ stat: 'mana', min: 100, max: 160 }, { stat: 'skillLevels', min: 1, max: 2 }],
 });
 
-arm('orb.eldritch', 'Eldritch Orb', 'orb', 'offHand', 58, 0, 0, 0, 'orb.rune', 'crystal.void', {
+arm('orb.eldritch', tr('Eldritch Orb'), 'orb', 'offHand', 58, 0, 0, 0, 'orb.rune', 'crystal.void', {
   classes: CASTERS,
   glow: 0xc060ff,
   ornate: 0.52,
   imp: [{ stat: 'arcaneDamage', min: 30, max: 70 }, { stat: 'castSpeed', min: 12, max: 20 }],
 });
-arm('orb.demonheart', 'Demon Heart', 'orb', 'offHand', 66, 0, 0, 0, 'orb.rune', 'flesh.rotted', {
+arm('orb.demonheart', tr('Demon Heart'), 'orb', 'offHand', 66, 0, 0, 0, 'orb.rune', 'flesh.rotted', {
   classes: CASTERS,
   glow: 0xe04a20,
   ornate: 0.56,
   imp: [{ stat: 'fireDamage', min: 40, max: 95 }, { stat: 'lifeSteal', min: 2, max: 4 }],
 });
-arm('orb.vortex', 'Vortex Orb', 'orb', 'offHand', 74, 0, 0, 0, 'orb.rune', 'crystal.void', {
+arm('orb.vortex', tr('Vortex Orb'), 'orb', 'offHand', 74, 0, 0, 0, 'orb.rune', 'crystal.void', {
   classes: CASTERS,
   glow: 0x8a4fd8,
   ornate: 0.6,
   imp: [{ stat: 'skillLevels', min: 2, max: 2 }, { stat: 'cooldownReduction', min: 5, max: 10 }],
 });
 
-arm('orb.void', 'Void Sphere', 'orb', 'offHand', 84, 0, 0, 0, 'orb.rune', 'crystal.void', {
+arm('orb.void', tr('Void Sphere'), 'orb', 'offHand', 84, 0, 0, 0, 'orb.rune', 'crystal.void', {
   classes: CASTERS,
   glow: 0xff8adf,
   ornate: 0.75,
@@ -782,10 +783,10 @@ arm('orb.void', 'Void Sphere', 'orb', 'offHand', 84, 0, 0, 0, 'orb.rune', 'cryst
 // QUIVERS — bow/crossbow off-hands.
 // ===========================================================================
 
-misc('quiver.ragged', 'Ragged Quiver', 'quiver', 'offHand', 1, 'quiver', 'leather.worn', {
+misc('quiver.ragged', tr('Ragged Quiver'), 'quiver', 'offHand', 1, 'quiver', 'leather.worn', {
   imp: [{ stat: 'maxDamage', min: 1, max: 3 }, { stat: 'attackRating', min: 10, max: 25 }],
 });
-misc('quiver.hunters', "Hunter's Quiver", 'quiver', 'offHand', 20, 'quiver', 'leather.worn', {
+misc('quiver.hunters', tr("Hunter's Quiver"), 'quiver', 'offHand', 20, 'quiver', 'leather.worn', {
   ornate: 0.25,
   imp: [
     { stat: 'minDamage', min: 2, max: 5 },
@@ -793,7 +794,7 @@ misc('quiver.hunters', "Hunter's Quiver", 'quiver', 'offHand', 20, 'quiver', 'le
     { stat: 'attackRating', min: 40, max: 90 },
   ],
 });
-misc('quiver.runic', 'Runic Quiver', 'quiver', 'offHand', 45, 'quiver', 'leather.dark', {
+misc('quiver.runic', tr('Runic Quiver'), 'quiver', 'offHand', 45, 'quiver', 'leather.dark', {
   ornate: 0.4,
   glow: 0xd8a860,
   imp: [
@@ -802,7 +803,7 @@ misc('quiver.runic', 'Runic Quiver', 'quiver', 'offHand', 45, 'quiver', 'leather
     { stat: 'critChance', min: 3, max: 6 },
   ],
 });
-misc('quiver.endless', 'Quiver of the Endless Hunt', 'quiver', 'offHand', 70, 'quiver', 'metal.mithril', {
+misc('quiver.endless', tr('Quiver of the Endless Hunt'), 'quiver', 'offHand', 70, 'quiver', 'metal.mithril', {
   ornate: 0.6,
   glow: 0x35c05a,
   imp: [
@@ -817,43 +818,43 @@ misc('quiver.endless', 'Quiver of the Endless Hunt', 'quiver', 'offHand', 70, 'q
 // HELMS
 // ===========================================================================
 
-arm('helm.cap', 'Cap', 'helm', 'helm', 1, 8, 0, 5, 'helm.cap', 'leather.worn');
-arm('helm.skullcap', 'Skull Cap', 'helm', 'helm', 16, 24, 0, 21, 'helm.cap', 'metal.iron', { ornate: 0.18 });
-arm('helm.casque', 'Casque', 'helm', 'helm', 41, 44, 0, 49, 'helm.cap', 'metal.steel', { ornate: 0.3 });
+arm('helm.cap', tr('Cap'), 'helm', 'helm', 1, 8, 0, 5, 'helm.cap', 'leather.worn');
+arm('helm.skullcap', tr('Skull Cap'), 'helm', 'helm', 16, 24, 0, 21, 'helm.cap', 'metal.iron', { ornate: 0.18 });
+arm('helm.casque', tr('Casque'), 'helm', 'helm', 41, 44, 0, 49, 'helm.cap', 'metal.steel', { ornate: 0.3 });
 
-arm('helm.helm', 'Helm', 'helm', 'helm', 8, 28, 0, 20, 'helm.full', 'metal.iron');
-arm('helm.full', 'Full Helm', 'helm', 'helm', 30, 62, 0, 61, 'helm.full', 'metal.steel', { ornate: 0.24 });
-arm('helm.great', 'Great Helm', 'helm', 'helm', 55, 104, 0, 107, 'helm.full', 'metal.dark', { ornate: 0.38 });
+arm('helm.helm', tr('Helm'), 'helm', 'helm', 8, 28, 0, 20, 'helm.full', 'metal.iron');
+arm('helm.full', tr('Full Helm'), 'helm', 'helm', 30, 62, 0, 61, 'helm.full', 'metal.steel', { ornate: 0.24 });
+arm('helm.great', tr('Great Helm'), 'helm', 'helm', 55, 104, 0, 107, 'helm.full', 'metal.dark', { ornate: 0.38 });
 
-arm('helm.bone', 'Bone Helm', 'helm', 'helm', 12, 26, 0, 23, 'helm.horned', 'bone.pale', {
+arm('helm.bone', tr('Bone Helm'), 'helm', 'helm', 12, 26, 0, 23, 'helm.horned', 'bone.pale', {
   imp: [{ stat: 'mana', min: 8, max: 18 }],
 });
-arm('helm.grim', 'Grim Helm', 'helm', 'helm', 36, 52, 0, 60, 'helm.horned', 'bone.pale', {
+arm('helm.grim', tr('Grim Helm'), 'helm', 'helm', 36, 52, 0, 60, 'helm.horned', 'bone.pale', {
   ornate: 0.28,
   imp: [{ stat: 'mana', min: 25, max: 48 }],
 });
-arm('helm.spired', 'Spired Helm', 'helm', 'helm', 62, 88, 0, 99, 'helm.horned', 'metal.dark', {
+arm('helm.spired', tr('Spired Helm'), 'helm', 'helm', 62, 88, 0, 99, 'helm.horned', 'metal.dark', {
   ornate: 0.44,
   imp: [{ stat: 'mana', min: 55, max: 95 }],
 });
 
-arm('helm.circlet', 'Circlet', 'helm', 'helm', 14, 0, 0, 16, 'helm.circlet', 'metal.silver', {
+arm('helm.circlet', tr('Circlet'), 'helm', 'helm', 14, 0, 0, 16, 'helm.circlet', 'metal.silver', {
   ornate: 0.4,
   glow: 0x8fa8ff,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
-arm('helm.coronet', 'Coronet', 'helm', 'helm', 38, 0, 0, 40, 'helm.circlet', 'metal.gold', {
+arm('helm.coronet', tr('Coronet'), 'helm', 'helm', 38, 0, 0, 40, 'helm.circlet', 'metal.gold', {
   ornate: 0.5,
   glow: 0xffd24a,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }, { stat: 'castSpeed', min: 4, max: 9 }],
 });
-arm('helm.diadem', 'Diadem', 'helm', 'helm', 64, 0, 0, 64, 'helm.circlet', 'metal.mithril', {
+arm('helm.diadem', tr('Diadem'), 'helm', 'helm', 64, 0, 0, 64, 'helm.circlet', 'metal.mithril', {
   ornate: 0.62,
   glow: 0xdff0ff,
   imp: [{ stat: 'skillLevels', min: 1, max: 2 }, { stat: 'castSpeed', min: 8, max: 15 }],
 });
 
-arm('helm.corona', 'Corona', 'helm', 'helm', 86, 150, 0, 171, 'helm.full', 'metal.mithril', {
+arm('helm.corona', tr('Corona'), 'helm', 'helm', 86, 150, 0, 171, 'helm.full', 'metal.mithril', {
   ornate: 0.7,
   glow: 0xfff0c0,
   imp: [
@@ -866,47 +867,47 @@ arm('helm.corona', 'Corona', 'helm', 'helm', 86, 150, 0, 171, 'helm.full', 'meta
 // BODY ARMOUR
 // ===========================================================================
 
-arm('chest.quilted', 'Quilted Armor', 'chest', 'chest', 1, 10, 0, 7, 'chest.robe', 'cloth.linen');
-arm('chest.ghost', 'Ghost Armor', 'chest', 'chest', 25, 24, 0, 50, 'chest.robe', 'cloth.silk', {
+arm('chest.quilted', tr('Quilted Armor'), 'chest', 'chest', 1, 10, 0, 7, 'chest.robe', 'cloth.linen');
+arm('chest.ghost', tr('Ghost Armor'), 'chest', 'chest', 25, 24, 0, 50, 'chest.robe', 'cloth.silk', {
   ornate: 0.24,
   imp: [{ stat: 'mana', min: 20, max: 40 }],
 });
-arm('chest.dusk', 'Dusk Shroud', 'chest', 'chest', 52, 40, 0, 97, 'chest.robe', 'cloth.silk', {
+arm('chest.dusk', tr('Dusk Shroud'), 'chest', 'chest', 52, 40, 0, 97, 'chest.robe', 'cloth.silk', {
   ornate: 0.4,
   glow: 0x8a4fd8,
   imp: [{ stat: 'mana', min: 55, max: 100 }],
 });
 
-arm('chest.leather', 'Leather Armor', 'chest', 'chest', 5, 20, 0, 21, 'chest.leather', 'leather.worn');
-arm('chest.studded', 'Studded Leather', 'chest', 'chest', 28, 48, 0, 80, 'chest.leather', 'leather.worn', { ornate: 0.2 });
-arm('chest.wyrmhide', 'Wyrmhide', 'chest', 'chest', 56, 84, 0, 151, 'chest.leather', 'leather.dark', {
+arm('chest.leather', tr('Leather Armor'), 'chest', 'chest', 5, 20, 0, 21, 'chest.leather', 'leather.worn');
+arm('chest.studded', tr('Studded Leather'), 'chest', 'chest', 28, 48, 0, 80, 'chest.leather', 'leather.worn', { ornate: 0.2 });
+arm('chest.wyrmhide', tr('Wyrmhide'), 'chest', 'chest', 56, 84, 0, 151, 'chest.leather', 'leather.dark', {
   ornate: 0.36,
   imp: [{ stat: 'fireResist', min: 8, max: 16 }],
 });
 
-arm('chest.ringmail', 'Ring Mail', 'chest', 'chest', 10, 34, 0, 42, 'chest.mail', 'metal.iron');
-arm('chest.chainmail', 'Chain Mail', 'chest', 'chest', 33, 76, 0, 116, 'chest.mail', 'metal.iron', { ornate: 0.2 });
-arm('chest.boneweave', 'Boneweave', 'chest', 'chest', 60, 122, 0, 202, 'chest.mail', 'bone.pale', {
+arm('chest.ringmail', tr('Ring Mail'), 'chest', 'chest', 10, 34, 0, 42, 'chest.mail', 'metal.iron');
+arm('chest.chainmail', tr('Chain Mail'), 'chest', 'chest', 33, 76, 0, 116, 'chest.mail', 'metal.iron', { ornate: 0.2 });
+arm('chest.boneweave', tr('Boneweave'), 'chest', 'chest', 60, 122, 0, 202, 'chest.mail', 'bone.pale', {
   ornate: 0.4,
   imp: [{ stat: 'physicalResist', min: 3, max: 7 }],
 });
 
-arm('chest.scale', 'Scale Mail', 'chest', 'chest', 14, 44, 0, 49, 'chest.scale', 'metal.bronze');
-arm('chest.splint', 'Splint Mail', 'chest', 'chest', 38, 88, 0, 118, 'chest.scale', 'metal.steel', { ornate: 0.22 });
-arm('chest.kraken', 'Kraken Shell', 'chest', 'chest', 64, 134, 0, 193, 'chest.scale', 'metal.dark', {
+arm('chest.scale', tr('Scale Mail'), 'chest', 'chest', 14, 44, 0, 49, 'chest.scale', 'metal.bronze');
+arm('chest.splint', tr('Splint Mail'), 'chest', 'chest', 38, 88, 0, 118, 'chest.scale', 'metal.steel', { ornate: 0.22 });
+arm('chest.kraken', tr('Kraken Shell'), 'chest', 'chest', 64, 134, 0, 193, 'chest.scale', 'metal.dark', {
   ornate: 0.42,
   imp: [{ stat: 'coldResist', min: 10, max: 20 }],
 });
 
-arm('chest.plate', 'Plate Mail', 'chest', 'chest', 18, 62, 0, 85, 'chest.plate', 'metal.iron');
-arm('chest.gothic', 'Gothic Plate', 'chest', 'chest', 44, 118, 0, 189, 'chest.plate', 'metal.steel', { ornate: 0.3 });
-arm('chest.sacred', 'Sacred Armor', 'chest', 'chest', 68, 178, 0, 285, 'chest.plate', 'metal.gold', {
+arm('chest.plate', tr('Plate Mail'), 'chest', 'chest', 18, 62, 0, 85, 'chest.plate', 'metal.iron');
+arm('chest.gothic', tr('Gothic Plate'), 'chest', 'chest', 44, 118, 0, 189, 'chest.plate', 'metal.steel', { ornate: 0.3 });
+arm('chest.sacred', tr('Sacred Armor'), 'chest', 'chest', 68, 178, 0, 285, 'chest.plate', 'metal.gold', {
   ornate: 0.5,
   glow: 0xffd24a,
   imp: [{ stat: 'damageReduction', min: 4, max: 8 }],
 });
 
-arm('chest.archon', 'Archon Plate', 'chest', 'chest', 85, 220, 0, 366, 'chest.plate', 'metal.mithril', {
+arm('chest.archon', tr('Archon Plate'), 'chest', 'chest', 85, 220, 0, 366, 'chest.plate', 'metal.mithril', {
   ornate: 0.68,
   glow: 0xfff0c0,
   imp: [
@@ -914,7 +915,7 @@ arm('chest.archon', 'Archon Plate', 'chest', 'chest', 85, 220, 0, 366, 'chest.pl
     { stat: 'physicalResist', min: 5, max: 10 },
   ],
 });
-arm('chest.aeonshroud', 'Shroud of Aeons', 'chest', 'chest', 82, 60, 0, 163, 'chest.robe', 'cloth.silk', {
+arm('chest.aeonshroud', tr('Shroud of Aeons'), 'chest', 'chest', 82, 60, 0, 163, 'chest.robe', 'cloth.silk', {
   ornate: 0.68,
   glow: 0xc060ff,
   imp: [
@@ -927,34 +928,34 @@ arm('chest.aeonshroud', 'Shroud of Aeons', 'chest', 'chest', 82, 60, 0, 163, 'ch
 // GLOVES
 // ===========================================================================
 
-arm('gloves.leather', 'Leather Gloves', 'gloves', 'gloves', 2, 8, 0, 3, 'gloves.light', 'leather.worn');
-arm('gloves.heavy', 'Heavy Gloves', 'gloves', 'gloves', 22, 26, 0, 16, 'gloves.light', 'leather.worn', { ornate: 0.18 });
-arm('gloves.bramble', 'Bramble Mitts', 'gloves', 'gloves', 48, 46, 0, 32, 'gloves.light', 'leather.dark', {
+arm('gloves.leather', tr('Leather Gloves'), 'gloves', 'gloves', 2, 8, 0, 3, 'gloves.light', 'leather.worn');
+arm('gloves.heavy', tr('Heavy Gloves'), 'gloves', 'gloves', 22, 26, 0, 16, 'gloves.light', 'leather.worn', { ornate: 0.18 });
+arm('gloves.bramble', tr('Bramble Mitts'), 'gloves', 'gloves', 48, 46, 0, 32, 'gloves.light', 'leather.dark', {
   ornate: 0.32,
   imp: [{ stat: 'attackSpeed', min: 3, max: 7 }],
 });
 
-arm('gloves.gauntlets', 'Gauntlets', 'gloves', 'gloves', 12, 30, 0, 17, 'gloves.plate', 'metal.iron');
-arm('gloves.war', 'War Gauntlets', 'gloves', 'gloves', 36, 62, 0, 43, 'gloves.plate', 'metal.steel', { ornate: 0.24 });
-arm('gloves.ogre', 'Ogre Gauntlets', 'gloves', 'gloves', 60, 102, 0, 68, 'gloves.plate', 'metal.dark', {
+arm('gloves.gauntlets', tr('Gauntlets'), 'gloves', 'gloves', 12, 30, 0, 17, 'gloves.plate', 'metal.iron');
+arm('gloves.war', tr('War Gauntlets'), 'gloves', 'gloves', 36, 62, 0, 43, 'gloves.plate', 'metal.steel', { ornate: 0.24 });
+arm('gloves.ogre', tr('Ogre Gauntlets'), 'gloves', 'gloves', 60, 102, 0, 68, 'gloves.plate', 'metal.dark', {
   ornate: 0.4,
   imp: [{ stat: 'strength', min: 4, max: 9 }],
 });
 
-arm('gloves.silk', 'Silk Gloves', 'gloves', 'gloves', 6, 0, 0, 4, 'gloves.silk', 'cloth.silk', {
+arm('gloves.silk', tr('Silk Gloves'), 'gloves', 'gloves', 6, 0, 0, 4, 'gloves.silk', 'cloth.silk', {
   imp: [{ stat: 'manaRegen', min: 2, max: 5 }],
 });
-arm('gloves.vampirebone', 'Vampirebone Gloves', 'gloves', 'gloves', 30, 12, 0, 15, 'gloves.silk', 'bone.pale', {
+arm('gloves.vampirebone', tr('Vampirebone Gloves'), 'gloves', 'gloves', 30, 12, 0, 15, 'gloves.silk', 'bone.pale', {
   ornate: 0.28,
   imp: [{ stat: 'manaSteal', min: 1, max: 3 }],
 });
-arm('gloves.sorcerer', "Sorcerer's Wraps", 'gloves', 'gloves', 58, 20, 0, 28, 'gloves.silk', 'cloth.silk', {
+arm('gloves.sorcerer', tr("Sorcerer's Wraps"), 'gloves', 'gloves', 58, 20, 0, 28, 'gloves.silk', 'cloth.silk', {
   ornate: 0.42,
   glow: 0x8fa8ff,
   imp: [{ stat: 'castSpeed', min: 6, max: 12 }],
 });
 
-arm('gloves.eclipse', 'Gauntlets of the Eclipse', 'gloves', 'gloves', 83, 138, 0, 97, 'gloves.plate', 'metal.mithril', {
+arm('gloves.eclipse', tr('Gauntlets of the Eclipse'), 'gloves', 'gloves', 83, 138, 0, 97, 'gloves.plate', 'metal.mithril', {
   ornate: 0.62,
   glow: 0xc060ff,
   imp: [
@@ -967,46 +968,46 @@ arm('gloves.eclipse', 'Gauntlets of the Eclipse', 'gloves', 'gloves', 83, 138, 0
 // PANTS — every pair rolls vitality. Leather, mail and plate, and silk.
 // ===========================================================================
 
-arm('pants.trousers', 'Trousers', 'pants', 'legs', 1, 0, 0, 4, 'pants.light', 'cloth.wool|0x3e3226', {
+arm('pants.trousers', tr('Trousers'), 'pants', 'legs', 1, 0, 0, 4, 'pants.light', 'cloth.wool|0x3e3226', {
   imp: [{ stat: 'vitality', min: 2, max: 4 }],
 });
-arm('pants.studded', 'Studded Leggings', 'pants', 'legs', 22, 30, 0, 24, 'pants.light', 'leather.studded', {
+arm('pants.studded', tr('Studded Leggings'), 'pants', 'legs', 22, 30, 0, 24, 'pants.light', 'leather.studded', {
   ornate: 0.2,
   imp: [{ stat: 'vitality', min: 5, max: 9 }],
 });
-arm('pants.drakeskin', 'Drakeskin Leggings', 'pants', 'legs', 48, 48, 0, 46, 'pants.light', 'leather.dark', {
+arm('pants.drakeskin', tr('Drakeskin Leggings'), 'pants', 'legs', 48, 48, 0, 46, 'pants.light', 'leather.dark', {
   ornate: 0.36,
   glow: 0xd8632a,
   imp: [{ stat: 'vitality', min: 9, max: 15 }, { stat: 'fireResist', min: 8, max: 16 }],
 });
 
-arm('pants.chausses', 'Mail Chausses', 'pants', 'legs', 12, 40, 0, 30, 'pants.plate', 'metal.iron', {
+arm('pants.chausses', tr('Mail Chausses'), 'pants', 'legs', 12, 40, 0, 30, 'pants.plate', 'metal.iron', {
   imp: [{ stat: 'vitality', min: 3, max: 6 }],
 });
-arm('pants.cuisses', 'Plate Cuisses', 'pants', 'legs', 36, 82, 0, 64, 'pants.plate', 'metal.steel', {
+arm('pants.cuisses', tr('Plate Cuisses'), 'pants', 'legs', 36, 82, 0, 64, 'pants.plate', 'metal.steel', {
   ornate: 0.26,
   imp: [{ stat: 'vitality', min: 6, max: 11 }],
 });
-arm('pants.legion', 'Legion Legplates', 'pants', 'legs', 60, 130, 0, 104, 'pants.plate', 'metal.dark', {
+arm('pants.legion', tr('Legion Legplates'), 'pants', 'legs', 60, 130, 0, 104, 'pants.plate', 'metal.dark', {
   ornate: 0.42,
   imp: [{ stat: 'vitality', min: 10, max: 16 }, { stat: 'damageReduction', min: 2, max: 5 }],
 });
 
-arm('pants.silk', 'Silk Trousers', 'pants', 'legs', 4, 0, 0, 3, 'pants.silk', 'cloth.silk|0x6a4a8a', {
+arm('pants.silk', tr('Silk Trousers'), 'pants', 'legs', 4, 0, 0, 3, 'pants.silk', 'cloth.silk|0x6a4a8a', {
   imp: [{ stat: 'vitality', min: 2, max: 3 }, { stat: 'mana', min: 6, max: 12 }],
 });
-arm('pants.mystic', 'Mystic Breeches', 'pants', 'legs', 30, 16, 0, 18, 'pants.silk', 'cloth.silk|0x2a3a7a', {
+arm('pants.mystic', tr('Mystic Breeches'), 'pants', 'legs', 30, 16, 0, 18, 'pants.silk', 'cloth.silk|0x2a3a7a', {
   ornate: 0.3,
   glow: 0x8fa8ff,
   imp: [{ stat: 'vitality', min: 4, max: 8 }, { stat: 'manaRegen', min: 4, max: 9 }],
 });
-arm('pants.astral', 'Astral Leggings', 'pants', 'legs', 54, 26, 0, 34, 'pants.silk', 'cloth.silk|0xd8d0f0', {
+arm('pants.astral', tr('Astral Leggings'), 'pants', 'legs', 54, 26, 0, 34, 'pants.silk', 'cloth.silk|0xd8d0f0', {
   ornate: 0.44,
   glow: 0xc8b8ff,
   imp: [{ stat: 'vitality', min: 8, max: 13 }, { stat: 'castSpeed', min: 6, max: 12 }],
 });
 
-arm('pants.titan', 'Legplates of the Titan', 'pants', 'legs', 82, 170, 0, 150, 'pants.plate', 'metal.mithril', {
+arm('pants.titan', tr('Legplates of the Titan'), 'pants', 'legs', 82, 170, 0, 150, 'pants.plate', 'metal.mithril', {
   ornate: 0.62,
   glow: 0xf0c060,
   imp: [
@@ -1019,44 +1020,44 @@ arm('pants.titan', 'Legplates of the Titan', 'pants', 'legs', 82, 170, 0, 150, '
 // BOOTS — every boot rolls movement speed.
 // ===========================================================================
 
-arm('boots.boots', 'Boots', 'boots', 'boots', 2, 8, 0, 3, 'boots.light', 'leather.worn', {
+arm('boots.boots', tr('Boots'), 'boots', 'boots', 2, 8, 0, 3, 'boots.light', 'leather.worn', {
   imp: [{ stat: 'moveSpeed', min: 3, max: 6 }],
 });
-arm('boots.heavy', 'Heavy Boots', 'boots', 'boots', 20, 26, 0, 15, 'boots.light', 'leather.worn', {
+arm('boots.heavy', tr('Heavy Boots'), 'boots', 'boots', 20, 26, 0, 15, 'boots.light', 'leather.worn', {
   ornate: 0.18,
   imp: [{ stat: 'moveSpeed', min: 5, max: 9 }],
 });
-arm('boots.sharkskin', 'Sharkskin Boots', 'boots', 'boots', 46, 46, 0, 33, 'boots.light', 'leather.dark', {
+arm('boots.sharkskin', tr('Sharkskin Boots'), 'boots', 'boots', 46, 46, 0, 33, 'boots.light', 'leather.dark', {
   ornate: 0.32,
   imp: [{ stat: 'moveSpeed', min: 8, max: 13 }],
 });
 
-arm('boots.greaves', 'Greaves', 'boots', 'boots', 14, 34, 0, 20, 'boots.plate', 'metal.iron', {
+arm('boots.greaves', tr('Greaves'), 'boots', 'boots', 14, 34, 0, 20, 'boots.plate', 'metal.iron', {
   imp: [{ stat: 'moveSpeed', min: 2, max: 5 }],
 });
-arm('boots.war', 'War Boots', 'boots', 'boots', 38, 68, 0, 47, 'boots.plate', 'metal.steel', {
+arm('boots.war', tr('War Boots'), 'boots', 'boots', 38, 68, 0, 47, 'boots.plate', 'metal.steel', {
   ornate: 0.24,
   imp: [{ stat: 'moveSpeed', min: 4, max: 8 }],
 });
-arm('boots.myrmidon', 'Myrmidon Greaves', 'boots', 'boots', 62, 110, 0, 74, 'boots.plate', 'metal.dark', {
+arm('boots.myrmidon', tr('Myrmidon Greaves'), 'boots', 'boots', 62, 110, 0, 74, 'boots.plate', 'metal.dark', {
   ornate: 0.4,
   imp: [{ stat: 'moveSpeed', min: 6, max: 11 }, { stat: 'damageReduction', min: 2, max: 5 }],
 });
 
-arm('boots.slippers', 'Slippers', 'boots', 'boots', 4, 0, 0, 3, 'boots.silk', 'cloth.silk', {
+arm('boots.slippers', tr('Slippers'), 'boots', 'boots', 4, 0, 0, 3, 'boots.silk', 'cloth.silk', {
   imp: [{ stat: 'moveSpeed', min: 4, max: 8 }],
 });
-arm('boots.scarabshell', 'Scarabshell Boots', 'boots', 'boots', 32, 14, 0, 17, 'boots.silk', 'leather.dark', {
+arm('boots.scarabshell', tr('Scarabshell Boots'), 'boots', 'boots', 32, 14, 0, 17, 'boots.silk', 'leather.dark', {
   ornate: 0.28,
   imp: [{ stat: 'moveSpeed', min: 7, max: 12 }, { stat: 'manaRegen', min: 4, max: 9 }],
 });
-arm('boots.wyrmhide', 'Wyrmhide Boots', 'boots', 'boots', 56, 22, 0, 28, 'boots.silk', 'leather.dark', {
+arm('boots.wyrmhide', tr('Wyrmhide Boots'), 'boots', 'boots', 56, 22, 0, 28, 'boots.silk', 'leather.dark', {
   ornate: 0.42,
   glow: 0xd8632a,
   imp: [{ stat: 'moveSpeed', min: 10, max: 16 }, { stat: 'fireResist', min: 8, max: 16 }],
 });
 
-arm('boots.gale', 'Striders of the Gale', 'boots', 'boots', 80, 60, 0, 87, 'boots.light', 'metal.mithril', {
+arm('boots.gale', tr('Striders of the Gale'), 'boots', 'boots', 80, 60, 0, 87, 'boots.light', 'metal.mithril', {
   ornate: 0.62,
   glow: 0xf0e05a,
   imp: [
@@ -1069,46 +1070,46 @@ arm('boots.gale', 'Striders of the Gale', 'boots', 'boots', 80, 60, 0, 87, 'boot
 // BELTS
 // ===========================================================================
 
-arm('belt.sash', 'Sash', 'belt', 'belt', 2, 4, 0, 2, 'belt.sash', 'cloth.linen', {
+arm('belt.sash', tr('Sash'), 'belt', 'belt', 2, 4, 0, 2, 'belt.sash', 'cloth.linen', {
   imp: [{ stat: 'life', min: 4, max: 10 }],
 });
-arm('belt.light', 'Light Belt', 'belt', 'belt', 18, 16, 0, 9, 'belt.sash', 'leather.worn', {
+arm('belt.light', tr('Light Belt'), 'belt', 'belt', 18, 16, 0, 9, 'belt.sash', 'leather.worn', {
   ornate: 0.18,
   imp: [{ stat: 'life', min: 14, max: 28 }],
 });
-arm('belt.spiderweb', 'Spiderweb Sash', 'belt', 'belt', 44, 28, 0, 21, 'belt.sash', 'cloth.silk', {
+arm('belt.spiderweb', tr('Spiderweb Sash'), 'belt', 'belt', 44, 28, 0, 21, 'belt.sash', 'cloth.silk', {
   ornate: 0.34,
   glow: 0x8a4fd8,
   imp: [{ stat: 'mana', min: 30, max: 60 }, { stat: 'manaRegen', min: 6, max: 14 }],
 });
 
-arm('belt.belt', 'Belt', 'belt', 'belt', 10, 22, 0, 10, 'belt.plate', 'leather.worn', {
+arm('belt.belt', tr('Belt'), 'belt', 'belt', 10, 22, 0, 10, 'belt.plate', 'leather.worn', {
   imp: [{ stat: 'life', min: 10, max: 20 }],
 });
-arm('belt.war', 'War Belt', 'belt', 'belt', 34, 58, 0, 28, 'belt.plate', 'metal.iron', {
+arm('belt.war', tr('War Belt'), 'belt', 'belt', 34, 58, 0, 28, 'belt.plate', 'metal.iron', {
   ornate: 0.24,
   imp: [{ stat: 'life', min: 32, max: 60 }],
 });
-arm('belt.troll', 'Troll Belt', 'belt', 'belt', 58, 98, 0, 46, 'belt.plate', 'leather.dark', {
+arm('belt.troll', tr('Troll Belt'), 'belt', 'belt', 58, 98, 0, 46, 'belt.plate', 'leather.dark', {
   ornate: 0.38,
   imp: [{ stat: 'life', min: 60, max: 105 }, { stat: 'lifeRegen', min: 6, max: 14 }],
 });
 
-arm('belt.girdle', 'Girdle', 'belt', 'belt', 24, 46, 0, 26, 'belt.chain', 'metal.steel', {
+arm('belt.girdle', tr('Girdle'), 'belt', 'belt', 24, 46, 0, 26, 'belt.chain', 'metal.steel', {
   ornate: 0.3,
   imp: [{ stat: 'strength', min: 3, max: 7 }],
 });
-arm('belt.vampirefang', 'Vampirefang Belt', 'belt', 'belt', 48, 82, 0, 49, 'belt.chain', 'metal.dark', {
+arm('belt.vampirefang', tr('Vampirefang Belt'), 'belt', 'belt', 48, 82, 0, 49, 'belt.chain', 'metal.dark', {
   ornate: 0.42,
   glow: 0xa02c30,
   imp: [{ stat: 'lifeSteal', min: 1, max: 3 }, { stat: 'life', min: 40, max: 75 }],
 });
-arm('belt.colossus', 'Colossus Girdle', 'belt', 'belt', 70, 128, 0, 71, 'belt.chain', 'metal.gold', {
+arm('belt.colossus', tr('Colossus Girdle'), 'belt', 'belt', 70, 128, 0, 71, 'belt.chain', 'metal.gold', {
   ornate: 0.52,
   imp: [{ stat: 'strength', min: 8, max: 15 }, { stat: 'life', min: 80, max: 140 }],
 });
 
-arm('belt.worldheart', 'Cord of the Worldheart', 'belt', 'belt', 82, 150, 0, 86, 'belt.chain', 'metal.mithril', {
+arm('belt.worldheart', tr('Cord of the Worldheart'), 'belt', 'belt', 82, 150, 0, 86, 'belt.chain', 'metal.mithril', {
   ornate: 0.68,
   glow: 0xff8adf,
   imp: [
@@ -1122,22 +1123,22 @@ arm('belt.worldheart', 'Cord of the Worldheart', 'belt', 'belt', 82, 150, 0, 86,
 // JEWELLERY — no implicits worth speaking of; these are pure affix platforms.
 // ===========================================================================
 
-misc('amulet.amulet', 'Amulet', 'amulet', 'amulet', 5, 'amulet', 'metal.bronze');
-misc('amulet.talisman', 'Talisman', 'amulet', 'amulet', 25, 'amulet', 'metal.silver', { ornate: 0.4 });
-misc('amulet.reliquary', 'Reliquary', 'amulet', 'amulet', 45, 'amulet', 'metal.gold', { ornate: 0.5, glow: 0xffd24a });
-misc('amulet.sigil', 'Sigil', 'amulet', 'amulet', 65, 'amulet', 'crystal.void', { ornate: 0.6, glow: 0x8a4fd8 });
-misc('amulet.heartstone', 'Heartstone', 'amulet', 'amulet', 85, 'amulet', 'metal.mithril', {
+misc('amulet.amulet', tr('Amulet'), 'amulet', 'amulet', 5, 'amulet', 'metal.bronze');
+misc('amulet.talisman', tr('Talisman'), 'amulet', 'amulet', 25, 'amulet', 'metal.silver', { ornate: 0.4 });
+misc('amulet.reliquary', tr('Reliquary'), 'amulet', 'amulet', 45, 'amulet', 'metal.gold', { ornate: 0.5, glow: 0xffd24a });
+misc('amulet.sigil', tr('Sigil'), 'amulet', 'amulet', 65, 'amulet', 'crystal.void', { ornate: 0.6, glow: 0x8a4fd8 });
+misc('amulet.heartstone', tr('Heartstone'), 'amulet', 'amulet', 85, 'amulet', 'metal.mithril', {
   ornate: 0.8,
   glow: 0xff8adf,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
 });
 
-misc('ring.ring', 'Ring', 'ring', 'ring1', 3, 'ring', 'metal.bronze');
-misc('ring.signet', 'Signet', 'ring', 'ring1', 20, 'ring', 'metal.silver', { ornate: 0.35 });
-misc('ring.band', 'Band', 'ring', 'ring1', 38, 'ring', 'metal.gold', { ornate: 0.45 });
-misc('ring.circle', 'Circle', 'ring', 'ring1', 56, 'ring', 'metal.dark', { ornate: 0.55, glow: 0x6f8cff });
-misc('ring.halo', 'Halo', 'ring', 'ring1', 74, 'ring', 'crystal.gem', { ornate: 0.65, glow: 0xdff0ff });
-misc('ring.eternity', 'Eternity Loop', 'ring', 'ring1', 88, 'ring', 'metal.mithril', {
+misc('ring.ring', tr('Ring'), 'ring', 'ring1', 3, 'ring', 'metal.bronze');
+misc('ring.signet', tr('Signet'), 'ring', 'ring1', 20, 'ring', 'metal.silver', { ornate: 0.35 });
+misc('ring.band', tr('Band'), 'ring', 'ring1', 38, 'ring', 'metal.gold', { ornate: 0.45 });
+misc('ring.circle', tr('Circle'), 'ring', 'ring1', 56, 'ring', 'metal.dark', { ornate: 0.55, glow: 0x6f8cff });
+misc('ring.halo', tr('Halo'), 'ring', 'ring1', 74, 'ring', 'crystal.gem', { ornate: 0.65, glow: 0xdff0ff });
+misc('ring.eternity', tr('Eternity Loop'), 'ring', 'ring1', 88, 'ring', 'metal.mithril', {
   ornate: 0.85,
   glow: 0xff8adf,
   imp: [{ stat: 'skillLevels', min: 1, max: 1 }],
@@ -1146,15 +1147,15 @@ misc('ring.eternity', 'Eternity Loop', 'ring', 'ring1', 88, 'ring', 'metal.mithr
 // Charms do nothing in a hand. Carried in the pack they lend their power, so
 // every cell of the pack is a choice between loot and strength. The bigger the
 // charm, the more it can hold and the more room it takes.
-misc('charm.small', 'Small Charm', 'charm', 'none', 1, 'charm.small', 'crystal.gem', { glow: 0x6f8cff });
-misc('charm.medium', 'Medium Charm', 'charm', 'none', 8, 'charm.medium', 'crystal.gem', { glow: 0x6f8cff });
-misc('charm.large', 'Large Charm', 'charm', 'none', 16, 'charm.large', 'crystal.gem', { glow: 0x7f9cff });
-misc('charm.grand', 'Grand Charm', 'charm', 'none', 28, 'charm.grand', 'crystal.gem', { glow: 0x8fa8ff });
+misc('charm.small', tr('Small Charm'), 'charm', 'none', 1, 'charm.small', 'crystal.gem', { glow: 0x6f8cff });
+misc('charm.medium', tr('Medium Charm'), 'charm', 'none', 8, 'charm.medium', 'crystal.gem', { glow: 0x6f8cff });
+misc('charm.large', tr('Large Charm'), 'charm', 'none', 16, 'charm.large', 'crystal.gem', { glow: 0x7f9cff });
+misc('charm.grand', tr('Grand Charm'), 'charm', 'none', 28, 'charm.grand', 'crystal.gem', { glow: 0x8fa8ff });
 
 // Trinkets are spent, not worn: each does one thing once and breaks
 // (`sim/Trinkets.ts`). They take one cell of the pack, and only bosses drop them.
-misc('trinket.town', 'Trinket of Town', 'trinket', 'none', 1, 'trinket.town', 'metal.bronze', { ornate: 0.5, glow: 0x7ec8ff });
-misc('trinket.death', 'Trinket of Death', 'trinket', 'none', 1, 'trinket.death', 'bone.pale', { ornate: 0.6, glow: 0xff3a3a });
+misc('trinket.town', tr('Trinket of Town'), 'trinket', 'none', 1, 'trinket.town', 'metal.bronze', { ornate: 0.5, glow: 0x7ec8ff });
+misc('trinket.death', tr('Trinket of Death'), 'trinket', 'none', 1, 'trinket.death', 'bone.pale', { ornate: 0.6, glow: 0xff3a3a });
 
 // ===========================================================================
 // CONSUMABLES
@@ -1195,44 +1196,44 @@ export const POTION_EFFECTS: Record<string, PotionEffect> = {
   'potion.oil.venom': { buff: { poisonDamage: 45, critChance: 5 }, buffDuration: 60 },
 };
 
-misc('potion.heal.minor', 'Minor Healing Potion', 'potion', 'consumable', 1, 'potion.flask', 'crystal.gem', {
+misc('potion.heal.minor', tr('Minor Healing Potion'), 'potion', 'consumable', 1, 'potion.flask', 'crystal.gem', {
   glow: 0xe0323c,
 });
-misc('potion.heal.light', 'Light Healing Potion', 'potion', 'consumable', 10, 'potion.flask', 'crystal.gem', {
+misc('potion.heal.light', tr('Light Healing Potion'), 'potion', 'consumable', 10, 'potion.flask', 'crystal.gem', {
   glow: 0xe0323c,
 });
-misc('potion.heal.greater', 'Greater Healing Potion', 'potion', 'consumable', 26, 'potion.flask', 'crystal.gem', {
+misc('potion.heal.greater', tr('Greater Healing Potion'), 'potion', 'consumable', 26, 'potion.flask', 'crystal.gem', {
   glow: 0xe0323c,
 });
-misc('potion.heal.super', 'Super Healing Potion', 'potion', 'consumable', 48, 'potion.flask', 'crystal.gem', {
+misc('potion.heal.super', tr('Super Healing Potion'), 'potion', 'consumable', 48, 'potion.flask', 'crystal.gem', {
   glow: 0xe0323c,
 });
-misc('potion.heal.full', 'Elixir of Renewal', 'potion', 'consumable', 70, 'potion.round', 'crystal.gem', {
+misc('potion.heal.full', tr('Elixir of Renewal'), 'potion', 'consumable', 70, 'potion.round', 'crystal.gem', {
   glow: 0xff8adf,
 });
-misc('potion.mana.minor', 'Minor Mana Potion', 'potion', 'consumable', 1, 'potion.flask', 'crystal.gem', {
+misc('potion.mana.minor', tr('Minor Mana Potion'), 'potion', 'consumable', 1, 'potion.flask', 'crystal.gem', {
   glow: 0x3a6ce0,
 });
-misc('potion.mana.light', 'Light Mana Potion', 'potion', 'consumable', 10, 'potion.flask', 'crystal.gem', {
+misc('potion.mana.light', tr('Light Mana Potion'), 'potion', 'consumable', 10, 'potion.flask', 'crystal.gem', {
   glow: 0x3a6ce0,
 });
-misc('potion.mana.greater', 'Greater Mana Potion', 'potion', 'consumable', 26, 'potion.flask', 'crystal.gem', {
+misc('potion.mana.greater', tr('Greater Mana Potion'), 'potion', 'consumable', 26, 'potion.flask', 'crystal.gem', {
   glow: 0x3a6ce0,
 });
-misc('potion.mana.super', 'Super Mana Potion', 'potion', 'consumable', 48, 'potion.flask', 'crystal.gem', {
+misc('potion.mana.super', tr('Super Mana Potion'), 'potion', 'consumable', 48, 'potion.flask', 'crystal.gem', {
   glow: 0x3a6ce0,
 });
-misc('potion.rejuv.lesser', 'Rejuvenation Potion', 'potion', 'consumable', 20, 'potion.round', 'crystal.gem', {
+misc('potion.rejuv.lesser', tr('Rejuvenation Potion'), 'potion', 'consumable', 20, 'potion.round', 'crystal.gem', {
   glow: 0x9a52d8,
 });
-misc('potion.rejuv.full', 'Full Rejuvenation Potion', 'potion', 'consumable', 55, 'potion.round', 'crystal.gem', {
+misc('potion.rejuv.full', tr('Full Rejuvenation Potion'), 'potion', 'consumable', 55, 'potion.round', 'crystal.gem', {
   glow: 0xc060ff,
 });
-misc('potion.antidote', 'Antidote', 'potion', 'consumable', 6, 'potion.vial', 'crystal.gem', { glow: 0x35c05a });
-misc('potion.thawing', 'Thawing Draught', 'potion', 'consumable', 6, 'potion.vial', 'crystal.gem', { glow: 0x74c2e0 });
-misc('potion.stamina', 'Stamina Tonic', 'potion', 'consumable', 4, 'potion.vial', 'crystal.gem', { glow: 0xf0e05a });
-misc('potion.oil.fire', 'Blazing Oil', 'potion', 'consumable', 30, 'potion.vial', 'crystal.gem', { glow: 0xd8632a });
-misc('potion.oil.venom', 'Venom Oil', 'potion', 'consumable', 30, 'potion.vial', 'crystal.gem', { glow: 0x7ec24a });
+misc('potion.antidote', tr('Antidote'), 'potion', 'consumable', 6, 'potion.vial', 'crystal.gem', { glow: 0x35c05a });
+misc('potion.thawing', tr('Thawing Draught'), 'potion', 'consumable', 6, 'potion.vial', 'crystal.gem', { glow: 0x74c2e0 });
+misc('potion.stamina', tr('Stamina Tonic'), 'potion', 'consumable', 4, 'potion.vial', 'crystal.gem', { glow: 0xf0e05a });
+misc('potion.oil.fire', tr('Blazing Oil'), 'potion', 'consumable', 30, 'potion.vial', 'crystal.gem', { glow: 0xd8632a });
+misc('potion.oil.venom', tr('Venom Oil'), 'potion', 'consumable', 30, 'potion.vial', 'crystal.gem', { glow: 0x7ec24a });
 
 // ===========================================================================
 // GENERATED BASES — gems, runes and materials are items too.
@@ -1290,7 +1291,7 @@ const ALWAYS_TWO_HANDED = new Set<ItemCategory>(['bow', 'crossbow', 'staff', 'sp
 const TWO_HANDED_WORDS = [
   'great', 'giant', 'huge', 'massive', 'maul', 'two-hand', 'twohand', 'zweihander',
   'claymore', 'flamberge', 'bardiche', 'halberd', 'poleaxe', 'glaive', 'pike',
-  'warhammer', 'battle staff', 'longstaff', 'executioner', 'colossus', 'titan',
+  'warhammer', tr('battle staff'), 'longstaff', 'executioner', 'colossus', 'titan',
 ];
 
 const ONE_HANDED_CATEGORIES = new Set<ItemCategory>([

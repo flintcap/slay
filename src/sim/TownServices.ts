@@ -28,6 +28,7 @@ import { addItemToInventory, countInInventory, consumeFromInventory, inventoryIs
 import { gemUpgradeRecipe, getSocketable, runeUpgradeRecipe } from '../data/gems';
 import { legacyPriceMultiplier } from './Legacy';
 import type { CraftCost } from './Crafting';
+import { tr } from '../core/I18n';
 
 export const TOWN_STATE_VERSION = 1;
 /** How many bounties the board shows at once, and how many you may hold. */
@@ -128,16 +129,16 @@ const WEAPON_CATEGORIES: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'sp
 const OFFHAND_CATEGORIES: ItemCategory[] = ['shield', 'orb', 'quiver'];
 
 export const GAMBLE_OFFERS: GambleOffer[] = [
-  { id: 'weapon', name: 'Weapon', categories: [], priceMul: 1.3 },
-  { id: 'offhand', name: 'Off-hand', categories: OFFHAND_CATEGORIES, priceMul: 1.1 },
-  { id: 'helm', name: 'Helm', categories: ['helm'], priceMul: 1.0 },
-  { id: 'chest', name: 'Body Armour', categories: ['chest'], priceMul: 1.15 },
-  { id: 'gloves', name: 'Gloves', categories: ['gloves'], priceMul: 0.9 },
-  { id: 'pants', name: 'Pants', categories: ['pants'], priceMul: 1.0 },
-  { id: 'boots', name: 'Boots', categories: ['boots'], priceMul: 0.9 },
-  { id: 'belt', name: 'Belt', categories: ['belt'], priceMul: 0.85 },
-  { id: 'ring', name: 'Ring', categories: ['ring'], priceMul: 1.4 },
-  { id: 'amulet', name: 'Amulet', categories: ['amulet'], priceMul: 1.6 },
+  { id: 'weapon', name: tr('Weapon'), categories: [], priceMul: 1.3 },
+  { id: 'offhand', name: tr('Off-hand'), categories: OFFHAND_CATEGORIES, priceMul: 1.1 },
+  { id: 'helm', name: tr('Helm'), categories: ['helm'], priceMul: 1.0 },
+  { id: 'chest', name: tr('Body Armour'), categories: ['chest'], priceMul: 1.15 },
+  { id: 'gloves', name: tr('Gloves'), categories: ['gloves'], priceMul: 0.9 },
+  { id: 'pants', name: tr('Pants'), categories: ['pants'], priceMul: 1.0 },
+  { id: 'boots', name: tr('Boots'), categories: ['boots'], priceMul: 0.9 },
+  { id: 'belt', name: tr('Belt'), categories: ['belt'], priceMul: 0.85 },
+  { id: 'ring', name: tr('Ring'), categories: ['ring'], priceMul: 1.4 },
+  { id: 'amulet', name: tr('Amulet'), categories: ['amulet'], priceMul: 1.6 },
 ];
 
 /** What a sealed item turns out to be. Out of 1000. */
@@ -178,13 +179,13 @@ export interface ServiceResult {
 /** Pays and rolls a sealed item into the pack. */
 export function gamble(c: Character, offerId: string): ServiceResult {
   const offer = GAMBLE_OFFERS.find((o) => o.id === offerId);
-  if (!offer) return { ok: false, reason: 'Nothing like that for sale.' };
+  if (!offer) return { ok: false, reason: tr('Nothing like that for sale.') };
   const price = gamblePrice(c, offerId);
-  if (c.gold < price) return { ok: false, reason: `Not enough gold (need ${price}).` };
-  if (inventoryIsFull(c)) return { ok: false, reason: 'Your pack is full.' };
+  if (c.gold < price) return { ok: false, reason: tr('Not enough gold (need {0}).', price) };
+  if (inventoryIsFull(c)) return { ok: false, reason: tr('Your pack is full.') };
   const rng = rollRng(c, 'gamble');
   const item = rollGambleItem(c, offer, rng);
-  if (!addItemToInventory(c, item)) return { ok: false, reason: 'Your pack is full.' };
+  if (!addItemToInventory(c, item)) return { ok: false, reason: tr('Your pack is full.') };
   c.gold -= price;
   return { ok: true, item };
 }
@@ -212,9 +213,9 @@ function essenceFor(ilvl: number): string {
 
 /** Magic and rare items can be enchanted; authored items keep their rolls. */
 export function canEnchantItem(item: Item): { ok: boolean; reason?: string } {
-  if (item.rarity !== 'magic' && item.rarity !== 'rare') return { ok: false, reason: 'Only magic and rare items take an enchantment.' };
+  if (item.rarity !== 'magic' && item.rarity !== 'rare') return { ok: false, reason: tr('Only magic and rare items take an enchantment.') };
   const base = getBase(item.baseId);
-  if (base.slot === 'consumable' || base.slot === 'none') return { ok: false, reason: 'That cannot be enchanted.' };
+  if (base.slot === 'consumable' || base.slot === 'none') return { ok: false, reason: tr('That cannot be enchanted.') };
   return { ok: true };
 }
 
@@ -248,14 +249,14 @@ export function reforgeCost(item: Item): CraftCost {
 export function reforgeMod(c: Character, item: Item, index: number, pay: (cost: CraftCost) => { ok: boolean; reason?: string }): ServiceResult {
   const can = canEnchantItem(item);
   if (!can.ok) return can;
-  if (item.offers) return { ok: false, reason: 'Choose from the lines on the table first.' };
+  if (item.offers) return { ok: false, reason: tr('Choose from the lines on the table first.') };
   const mod = item.mods[index];
-  if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix')) return { ok: false, reason: 'Only a prefix or suffix can be reforged.' };
+  if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix')) return { ok: false, reason: tr('Only a prefix or suffix can be reforged.') };
   if (item.enchantedMod && item.enchantedMod !== mod.affixId) {
-    return { ok: false, reason: 'Another property has already been reforged. Only that one may change.' };
+    return { ok: false, reason: tr('Another property has already been reforged. Only that one may change.') };
   }
   const offers = rollLineOffers(item, mod.kind, index, OFFER_COUNT, rollRng(c, 'reforge'));
-  if (offers.length === 0) return { ok: false, reason: 'The enchantment would not take.' };
+  if (offers.length === 0) return { ok: false, reason: tr('The enchantment would not take.') };
   const paid = pay(reforgeCost(item));
   if (!paid.ok) return paid;
   item.offers = { line: mod.affixId, kind: mod.kind, mods: offers };
@@ -272,14 +273,14 @@ export function reforgeMod(c: Character, item: Item, index: number, pay: (cost: 
  */
 export function takeOffer(item: Item, pick: number | null): ServiceResult {
   const o = item.offers;
-  if (!o) return { ok: false, reason: 'Nothing is on the table.' };
+  if (!o) return { ok: false, reason: tr('Nothing is on the table.') };
   const chosen = pick === null ? null : o.mods[pick];
-  if (pick !== null && !chosen) return { ok: false, reason: 'No such line.' };
+  if (pick !== null && !chosen) return { ok: false, reason: tr('No such line.') };
   if (chosen && o.line !== null) {
     const index = item.mods.findIndex((m) => m.affixId === o.line && m.kind === o.kind);
     if (index < 0) {
       item.offers = undefined;
-      return { ok: false, reason: 'That line is no longer on the item.' };
+      return { ok: false, reason: tr('That line is no longer on the item.') };
     }
     item.mods[index] = { ...chosen };
     item.enchantedMod = chosen.affixId;
@@ -305,9 +306,9 @@ export function takeOffer(item: Item, pick: number | null): ServiceResult {
 export function canFillSlot(item: Item, kind: 'prefix' | 'suffix'): { ok: boolean; reason?: string } {
   const can = canEnchantItem(item);
   if (!can.ok) return can;
-  if (item.offers) return { ok: false, reason: 'Choose from the lines on the table first.' };
-  if (item.enchantedMod) return { ok: false, reason: 'A property has already been reforged. Only that one may change.' };
-  if (openAffixSlots(item)[kind] <= 0) return { ok: false, reason: `There is no room for another ${kind}.` };
+  if (item.offers) return { ok: false, reason: tr('Choose from the lines on the table first.') };
+  if (item.enchantedMod) return { ok: false, reason: tr('A property has already been reforged. Only that one may change.') };
+  if (openAffixSlots(item)[kind] <= 0) return { ok: false, reason: tr('There is no room for another {0}.', kind) };
   return { ok: true };
 }
 
@@ -327,7 +328,7 @@ export function fillSlot(c: Character, item: Item, kind: 'prefix' | 'suffix', pa
   const can = canFillSlot(item, kind);
   if (!can.ok) return can;
   const offers = rollLineOffers(item, kind, null, OFFER_COUNT, rollRng(c, 'fill'));
-  if (offers.length === 0) return { ok: false, reason: `No ${kind} will take hold in this item.` };
+  if (offers.length === 0) return { ok: false, reason: tr('No {0} will take hold in this item.', kind) };
   const paid = pay(fillCost(item));
   if (!paid.ok) return paid;
   item.offers = { line: null, kind, mods: offers };
@@ -337,10 +338,10 @@ export function fillSlot(c: Character, item: Item, kind: 'prefix' | 'suffix', pa
 
 /** A rare with no power of its own may be given one. */
 export function canImbue(item: Item): { ok: boolean; reason?: string } {
-  if (item.rarity !== 'rare') return { ok: false, reason: 'Only a rare item can be imbued.' };
-  if (item.powers && item.powers.length > 0) return { ok: false, reason: 'It already carries a power.' };
+  if (item.rarity !== 'rare') return { ok: false, reason: tr('Only a rare item can be imbued.') };
+  if (item.powers && item.powers.length > 0) return { ok: false, reason: tr('It already carries a power.') };
   const base = getBase(item.baseId);
-  if (base.slot === 'consumable' || base.slot === 'none') return { ok: false, reason: 'That cannot be imbued.' };
+  if (base.slot === 'consumable' || base.slot === 'none') return { ok: false, reason: tr('That cannot be imbued.') };
   return { ok: true };
 }
 
@@ -357,7 +358,7 @@ export function imbuePower(c: Character, item: Item, pay: (cost: CraftCost) => {
   // Roll before paying: a base with no power pool must not cost anything.
   const rng = rollRng(c, 'imbue');
   const roll = rollPowerAffix(base.category, item.rarity, item.ilvl, rng, true);
-  if (!roll) return { ok: false, reason: 'Nothing will take hold in this kind of item.' };
+  if (!roll) return { ok: false, reason: tr('Nothing will take hold in this kind of item.') };
   const paid = pay(imbueCost(item));
   if (!paid.ok) return paid;
   item.powers = [roll];
@@ -385,28 +386,28 @@ export const BOUNTY_KINDS: BountyKindDef[] = [
     weight: 10,
     target: (d, rng) => Math.round((60 + d * 3) * rng.range(0.9, 1.25) / 5) * 5,
     worth: 1,
-    text: (b) => `Slay ${b.target} monsters at tier ${b.minDepth} or higher`,
+    text: (b) => tr('Slay {0} monsters at tier {1} or higher', b.target, b.minDepth),
   },
   {
     kind: 'elites',
     weight: 8,
     target: (d, rng) => Math.round((6 + d * 0.25) * rng.range(0.9, 1.2)),
     worth: 1.2,
-    text: (b) => `Slay ${b.target} champions or elites at tier ${b.minDepth} or higher`,
+    text: (b) => tr('Slay {0} champions or elites at tier {1} or higher', b.target, b.minDepth),
   },
   {
     kind: 'boss',
     weight: 6,
     target: () => 1,
     worth: 1.3,
-    text: (b) => `Slay the master of a map at tier ${b.minDepth} or higher`,
+    text: (b) => tr('Slay the master of a map at tier {0} or higher', b.minDepth),
   },
   {
     kind: 'clear',
     weight: 5,
     target: () => 1,
     worth: 1.4,
-    text: (b) => `Clear a map at tier ${b.minDepth} or higher`,
+    text: (b) => tr('Clear a map at tier {0} or higher', b.minDepth),
   },
   {
     kind: 'events',
@@ -414,12 +415,12 @@ export const BOUNTY_KINDS: BountyKindDef[] = [
     target: (d) => (d >= 20 ? 3 : 2),
     worth: 1.1,
     text: (b) =>
-      `Survive ${b.target} dungeon events (cursed chests, ambushes, bargains, runners) at tier ${b.minDepth} or higher`,
+      tr('Survive {0} dungeon events (cursed chests, ambushes, bargains, runners) at tier {1} or higher', b.target, b.minDepth),
   },
 ];
 
 export function bountyText(b: Bounty): string {
-  return BOUNTY_KINDS.find((k) => k.kind === b.kind)?.text(b) ?? 'A bounty';
+  return BOUNTY_KINDS.find((k) => k.kind === b.kind)?.text(b) ?? tr('A bounty');
 }
 
 /** One new bounty for the board, aimed a little past where the character has been. */
@@ -461,9 +462,9 @@ export function refreshBoard(c: Character): TownState {
 export function acceptBounty(c: Character, id: string): { ok: boolean; reason?: string } {
   const t = townOf(c);
   const b = t.bounties.find((x) => x.id === id);
-  if (!b || b.state !== 'open') return { ok: false, reason: 'That bounty is not on the board.' };
+  if (!b || b.state !== 'open') return { ok: false, reason: tr('That bounty is not on the board.') };
   if (t.bounties.filter((x) => x.state === 'active' || x.state === 'done').length >= MAX_ACTIVE_BOUNTIES) {
-    return { ok: false, reason: `You can hold ${MAX_ACTIVE_BOUNTIES} bounties at once.` };
+    return { ok: false, reason: tr('You can hold {0} bounties at once.', MAX_ACTIVE_BOUNTIES) };
   }
   b.state = 'active';
   refreshBoard(c);
@@ -521,10 +522,10 @@ export function claimBounty(c: Character, id: string): { ok: boolean; reason?: s
   const t = townOf(c);
   const i = t.bounties.findIndex((x) => x.id === id);
   const b = t.bounties[i];
-  if (!b || b.state !== 'done') return { ok: false, reason: 'That bounty is not finished.' };
+  if (!b || b.state !== 'done') return { ok: false, reason: tr('That bounty is not finished.') };
   const rng = rollRng(c, 'claim');
   const item = rollItem(b.minDepth + 6, rng, { forceRarity: b.reward.rarity, classId: c.classId });
-  if (!addItemToInventory(c, item)) return { ok: false, reason: 'Make room in your pack first.' };
+  if (!addItemToInventory(c, item)) return { ok: false, reason: tr('Make room in your pack first.') };
   c.gold += b.reward.gold;
   t.bounties.splice(i, 1);
   t.claimed++;
@@ -587,12 +588,12 @@ export function fuseStones(
   pay: (cost: CraftCost) => { ok: boolean; reason?: string },
 ): { ok: boolean; reason?: string; made: number; to?: string } {
   const recipe = fuseRecipe(baseId);
-  if (!recipe) return { ok: false, reason: 'That cannot be fused any higher.', made: 0 };
+  if (!recipe) return { ok: false, reason: tr('That cannot be fused any higher.'), made: 0 };
   let made = 0;
   let reason: string | undefined;
   for (let n = 0; n < Math.max(1, times); n++) {
     if (countInInventory(c, baseId) < recipe.count) {
-      reason = made ? undefined : `You need ${recipe.count} of them.`;
+      reason = made ? undefined : tr('You need {0} of them.', recipe.count);
       break;
     }
     const slots = c.inventory;
@@ -609,7 +610,7 @@ export function fuseStones(
         const it = before[i];
         if (it) setStackCount(it, counts[i]!);
       }
-      reason = 'Make room in your pack first.';
+      reason = tr('Make room in your pack first.');
       break;
     }
     const paid = pay({ gold: recipe.gold, materials: {} });
@@ -620,7 +621,7 @@ export function fuseStones(
         const it = before[i];
         if (it) setStackCount(it, counts[i]!);
       }
-      reason = paid.reason ?? 'Not enough gold.';
+      reason = paid.reason ?? tr('Not enough gold.');
       break;
     }
     made++;

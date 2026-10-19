@@ -5,6 +5,7 @@
  */
 
 import type { Character } from '../types';
+import { tr } from '../core/I18n';
 
 export interface NameCheck {
   ok: boolean;
@@ -21,21 +22,21 @@ export interface NameCheck {
  */
 export function checkName(raw: string, roster: Character[], fallen: Array<{ name: string }>): NameCheck {
   const name = raw.trim().replace(/\s+/g, ' ');
-  if (!name) return { ok: false, name, message: 'Every grave needs a name.', tone: 'bad' };
-  if (name.length < 2) return { ok: false, name, message: 'At least two letters.', tone: 'bad' };
-  if (name.length > 16) return { ok: false, name, message: 'Sixteen characters at most.', tone: 'bad' };
+  if (!name) return { ok: false, name, message: tr('Every grave needs a name.'), tone: 'bad' };
+  if (name.length < 2) return { ok: false, name, message: tr('At least two letters.'), tone: 'bad' };
+  if (name.length > 16) return { ok: false, name, message: tr('Sixteen characters at most.'), tone: 'bad' };
   if (!/^\p{L}[\p{L}' -]*$/u.test(name)) {
-    return { ok: false, name, message: 'Letters, spaces, hyphens and apostrophes only.', tone: 'bad' };
+    return { ok: false, name, message: tr('Letters, spaces, hyphens and apostrophes only.'), tone: 'bad' };
   }
   if (/['\- ]{2,}/.test(name) || /['\- ]$/.test(name)) {
-    return { ok: false, name, message: 'That name trails off. Finish it with a letter.', tone: 'bad' };
+    return { ok: false, name, message: tr('That name trails off. Finish it with a letter.'), tone: 'bad' };
   }
   const lower = name.toLowerCase();
   if (roster.some((c) => c.name.toLowerCase() === lower)) {
-    return { ok: false, name, message: `${name} is already alive on this account.`, tone: 'bad' };
+    return { ok: false, name, message: tr('{0} is already alive on this account.', name), tone: 'bad' };
   }
   if (fallen.some((f) => f.name.toLowerCase() === lower)) {
-    return { ok: true, name, message: `A ${name} already lies in the memorial. The name is free.`, tone: 'warn' };
+    return { ok: true, name, message: tr('A {0} already lies in the memorial. The name is free.', name), tone: 'warn' };
   }
   return { ok: true, name, message: '', tone: 'ok' };
 }

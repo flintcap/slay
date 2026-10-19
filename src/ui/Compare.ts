@@ -16,6 +16,7 @@ import { computeStats, STAT_KEYS } from '../sim/Stats';
 import { effectiveLife, resistAgainst } from '../sim/Combat';
 import { powerLines } from '../sim/ItemPowers';
 import { estimateAttack } from './AttackEstimate';
+import { tr } from '../core/I18n';
 
 /** The stats players weigh first, in the order the tooltip lists them. */
 const LEAD_KEYS: StatKey[] = [
@@ -161,11 +162,11 @@ export function compareChoices(c: Character, item: Item): Item[][] | null {
 // ---------------------------------------------------------------------------
 
 const ELEMENTS: Array<{ type: DamageType; label: string }> = [
-  { type: 'fire', label: 'Fire' },
-  { type: 'cold', label: 'Cold' },
-  { type: 'lightning', label: 'Lightning' },
-  { type: 'poison', label: 'Poison' },
-  { type: 'arcane', label: 'Arcane' },
+  { type: 'fire', label: tr('Fire') },
+  { type: 'cold', label: tr('Cold') },
+  { type: 'lightning', label: tr('Lightning') },
+  { type: 'poison', label: tr('Poison') },
+  { type: 'arcane', label: tr('Arcane') },
 ];
 const ALL_TYPES: DamageType[] = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
 

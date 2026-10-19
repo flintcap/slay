@@ -58,6 +58,8 @@ import { bountyText, heldBounties } from '../sim/TownServices';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks } from './ZoneInk';
 import { FONT_UI } from './Fonts';
 import { onScreenRatio, screenRatio } from '../core/Screen';
+import { tr, numText } from '../core/I18n';
+import { itemDisplayName } from '../sim/Loot';
 
 // Tile ids as stored in DungeonLevel.tiles (mirrors world/Layouts TILE_VALUES).
 const T_VOID = 0;
@@ -648,8 +650,8 @@ export class HUD {
     const crest = div('hud-crest');
     crest.innerHTML = iconSvg('descend', { size: 17 });
     const headText = div('hud-header-text');
-    this.depthLabel = span('hud-depth', 'The Town');
-    this.biomeLabel = span('hud-biome', 'Sanctuary');
+    this.depthLabel = span('hud-depth', tr('The Town'));
+    this.biomeLabel = span('hud-biome', tr('Sanctuary'));
     add(headText, this.depthLabel, this.biomeLabel);
     add(header, crest, headText);
 
@@ -666,11 +668,11 @@ export class HUD {
     // On the CPU, like the orbs: small and redrawn every frame.
     this.minimapCtx = this.minimapCanvas.getContext('2d', { willReadFrequently: true });
     this.sharpenMinimap(screenRatio());
-    this.minimapLabel = div('minimap-label', 'Tier 0');
+    this.minimapLabel = div('minimap-label', tr('Tier 0'));
     const mapFrame = div('minimap-frame');
     const mapBtn = div('minimap-expand');
     mapBtn.innerHTML = iconSvg('map', { size: 14 });
-    mapBtn.title = 'Open map (M)';
+    mapBtn.title = tr('Open map (M)');
     mapBtn.addEventListener('click', () => events.emit('ui:open', { panel: 'map' }));
     add(mapWrap, this.minimapCanvas, mapFrame, this.minimapLabel, mapBtn);
 
@@ -682,7 +684,7 @@ export class HUD {
     // Its header folds it away (and back), remembered with the settings.
     this.tracker = div('hud-tracker ui-interactive');
     this.trackerHd = div('hud-track-hd');
-    this.trackerHd.title = 'Hide or show the quest list';
+    this.trackerHd.title = tr('Hide or show the quest list');
     this.trackerHd.addEventListener('click', () => {
       save.settings.trackerHidden = !save.settings.trackerHidden;
       save.touch();
@@ -690,7 +692,7 @@ export class HUD {
       attempt(() => this.renderTracker(), undefined);
     });
     this.trackerBody = div('hud-track-body');
-    this.trackerBody.title = 'Open the journal (J)';
+    this.trackerBody.title = tr('Open the journal (J)');
     this.trackerBody.addEventListener('click', () => events.emit('ui:open', { panel: 'journal' }));
     add(this.tracker, this.trackerHd, this.trackerBody);
 
@@ -730,7 +732,7 @@ export class HUD {
     ruleTrack.appendChild(this.bossRuleFill);
     add(this.bossRule, this.bossRuleName, ruleTrack);
     this.bossPoise = div('bosspoise');
-    this.bossPoiseName = span('bosspoise-name', 'Poise');
+    this.bossPoiseName = span('bosspoise-name', tr('Poise'));
     const poiseTrack = div('bosspoise-track');
     this.bossPoiseFill = div('bosspoise-fill');
     poiseTrack.appendChild(this.bossPoiseFill);
@@ -754,11 +756,11 @@ export class HUD {
     // XP bar with the level badge riding on its left edge.
     const xpRow = div('xprow');
     this.levelBadge = div('level-badge');
-    this.levelBadge.innerHTML = '<span class="level-num">1</span><span class="level-word">LVL</span>';
+    this.levelBadge.innerHTML = tr('<span class="level-num">1</span><span class="level-word">LVL</span>');
     const xpTrack = div('xp-track ui-interactive');
     this.xpTrack = xpTrack;
     this.xpFill = div('xp-fill');
-    this.xpText = span('xp-text', '0 / 0 XP');
+    this.xpText = span('xp-text', tr('0 / 0 XP'));
     // Ten cells, so "a tenth of a level" is something you can see at a glance.
     const xpNotches = div('xp-notches');
     const xpFlare = div('xp-flare');
@@ -772,7 +774,8 @@ export class HUD {
     this.rmbSlot = div('hotslot hotslot-rmb ui-interactive');
     this.rmbArt = div('hotslot-art');
     const rmbCd = div('hotslot-cd');
-    const rmbKey = div('hotslot-key', 'RMB');
+    // i18n: keycap for the right mouse button: three or four letters.
+    const rmbKey = div('hotslot-key', tr('RMB'));
     add(this.rmbSlot, this.rmbArt, rmbCd, div('hotslot-edge'), div('hotslot-cdtext'), div('hotslot-tint'), rmbKey);
     slots.appendChild(this.rmbSlot);
     this.rmbCd = rmbCd;
@@ -787,7 +790,7 @@ export class HUD {
         save.touch();
         this.buildHotbar(true);
         events.emit('toast', {
-          text: `${skillById(p.skillId)?.name ?? 'Skill'} bound to right click`,
+          text: tr('{0} bound to right click', skillById(p.skillId)?.name ?? tr('Skill')),
           kind: 'good',
         });
         return true;
@@ -801,7 +804,7 @@ export class HUD {
       setPrimaryAttack(c, null);
       save.touch();
       this.buildHotbar(true);
-      events.emit('toast', { text: 'Right click set to basic attack', kind: 'info' });
+      events.emit('toast', { text: tr('Right click set to basic attack'), kind: 'info' });
     });
 
     for (let i = 0; i < 6; i++) {
@@ -833,7 +836,7 @@ export class HUD {
           if (!setHotbarSlot(c, i, p.skillId)) return false;
           save.touch();
           this.buildHotbar(true);
-          events.emit('toast', { text: `Bound ${skillById(p.skillId)?.name ?? 'skill'} to slot ${i + 1}`, kind: 'good' });
+          events.emit('toast', { text: tr('Bound {0} to slot {1}', skillById(p.skillId)?.name ?? 'skill', i + 1), kind: 'good' });
           return true;
         }
       );
@@ -946,8 +949,8 @@ export class HUD {
       if (p.to === 'town' || p.to === 'dungeon') this.show();
       else this.hide();
       if (p.to === 'town') {
-        this.depthLabel.textContent = 'The Town';
-        this.biomeLabel.textContent = 'Sanctuary — no monsters walk here';
+        this.depthLabel.textContent = tr('The Town');
+        this.biomeLabel.textContent = tr('Sanctuary — no monsters walk here');
         this.hideBoss();
         this.quest = null;
         this.questBox.style.display = 'none';
@@ -1013,7 +1016,7 @@ export class HUD {
       // anything less is just a note that it went in the pack.
       const r = p.item.rarity;
       const kind = r === 'normal' || r === 'magic' ? 'info' : r === 'rare' ? 'good' : 'epic';
-      this.toast(attempt(() => p.item.name, 'Item'), kind, r);
+      this.toast(attempt(() => itemDisplayName(p.item), tr('Item')), kind, r);
       this.refreshPotions();
       // Draw its inventory icon now, in the quiet frames after the pickup,
       // rather than all of them at once the next time the pack is opened.
@@ -1029,19 +1032,19 @@ export class HUD {
       runtime.levelsTotal = p.of;
       runtime.inTown = p.depth <= 0;
       if (p.depth <= 0) {
-        this.depthLabel.textContent = 'The Town';
-        this.biomeLabel.textContent = 'Sanctuary';
-        this.minimapLabel.textContent = 'Town';
+        this.depthLabel.textContent = tr('The Town');
+        this.biomeLabel.textContent = tr('Sanctuary');
+        this.minimapLabel.textContent = tr('Town');
       } else {
         // A map: its name and tier on top, the zone you are in below.
         if (p.mapName) {
-          this.depthLabel.textContent = `${p.mapName} · Tier ${p.depth}`;
+          this.depthLabel.textContent = tr('{0} · Tier {1}', p.mapName, p.depth);
           this.biomeLabel.textContent = p.place ?? '';
         } else {
-          this.depthLabel.textContent = p.place ? `Tier ${p.depth} · ${p.place}` : `Tier ${p.depth}`;
-          this.biomeLabel.textContent = p.of > 0 ? `Area ${p.level} of ${p.of}` : '';
+          this.depthLabel.textContent = p.place ? tr('Tier {0} · {1}', p.depth, p.place) : tr('Tier {0}', p.depth);
+          this.biomeLabel.textContent = p.of > 0 ? tr('Area {0} of {1}', p.level, p.of) : '';
         }
-        this.minimapLabel.textContent = `Tier ${p.depth}`;
+        this.minimapLabel.textContent = tr('Tier {0}', p.depth);
       }
       runtime.explored.clear();
     });
@@ -1085,7 +1088,7 @@ export class HUD {
     on('boss:poise', (p) => {
       if (this.bossPoise.classList.contains('is-broken') !== p.broken) {
         this.bossPoise.classList.toggle('is-broken', p.broken);
-        this.bossPoiseName.textContent = p.broken ? 'Broken' : 'Poise';
+        this.bossPoiseName.textContent = p.broken ? tr('Broken') : tr('Poise');
       }
       this.bossPoiseFill.style.width = `${Math.round(p.value * 100)}%`;
     });
@@ -1098,7 +1101,7 @@ export class HUD {
     on('miniboss:engaged', (p) => this.showMiniBoss(p.name, p.title, p.kind));
     on('miniboss:killed', (p) => {
       this.hideMiniBoss();
-      this.toast(`${p.name} is slain`, 'epic');
+      this.toast(tr('{0} is slain', p.name), 'epic');
     });
     on('boss:killed', () => {
       this.endBossCast();
@@ -1110,7 +1113,7 @@ export class HUD {
     });
     on('quest:progress', (p) => this.questProgress(p));
     on('quest:complete', (p) => {
-      this.toast(`Quest complete — ${p.name}`, 'epic');
+      this.toast(tr('Quest complete — {0}', p.name), 'epic');
       if (this.quest) {
         for (const o of this.quest.objectives) o.done = true;
         this.renderQuest();
@@ -1282,7 +1285,7 @@ export class HUD {
   private setXp(into: number, need: number, level: number): void {
     const k = need > 0 ? Math.max(0, Math.min(1, into / need)) : 0;
     this.xpFill.style.width = `${k * 100}%`;
-    this.xpText.textContent = `${fmtInt(into)} / ${fmtInt(need)} XP`;
+    this.xpText.textContent = tr('{0} / {1} XP', fmtInt(into), fmtInt(need));
     const num = this.levelBadge.querySelector<HTMLElement>('.level-num');
     if (num && num.textContent !== String(level)) num.textContent = String(level);
   }
@@ -1310,7 +1313,7 @@ export class HUD {
       const rrank = c.skills[rmb] ?? 0;
       this.rmbSlot.dataset.cost = String(rd?.manaCost ? attempt(() => rd.manaCost?.(rrank) ?? 0, 0) : 0);
       this.rmbSlot.dataset.range = String(castRange(rd));
-      this.rmbSlot.title = `${skillById(rmb)?.name ?? 'Skill'} — right click to attack. Right-click this slot to clear it.`;
+      this.rmbSlot.title = tr('{0} — right click to attack. Right-click this slot to clear it.', skillById(rmb)?.name ?? tr('Skill'));
     } else {
       // A crossed-swords mark reads as "plain attack" without needing words.
       this.rmbArt.innerHTML =
@@ -1323,8 +1326,8 @@ export class HUD {
       // A caster's hands have no basic attack: right click does nothing until a spell sits here.
       const e = c.equipment;
       this.rmbSlot.title = castsOnly(c.classId, e.mainHand?.baseId, e.offHand?.baseId)
-        ? 'No basic attack with a caster weapon — drag a spell here.'
-        : 'Basic attack — drag a skill here to replace it.';
+        ? tr('No basic attack with a caster weapon — drag a spell here.')
+        : tr('Basic attack — drag a skill here to replace it.');
     }
 
     for (let i = 0; i < 6; i++) {
@@ -1338,7 +1341,7 @@ export class HUD {
       if (!id) {
         if (rankEl) rankEl.textContent = '';
         if (costEl) costEl.textContent = '';
-        slotEl.title = 'Empty — drag a skill here from the skill tree (T)';
+        slotEl.title = tr('Empty — drag a skill here from the skill tree (T)');
         continue;
       }
       const def = skillById(id);
@@ -1382,7 +1385,7 @@ export class HUD {
 
       const t = part(slotEl, '.hotslot-cdtext');
       if (t) {
-        const txt = remain > 0.05 ? (remain >= 10 ? String(Math.ceil(remain)) : remain.toFixed(1)) : '';
+        const txt = remain > 0.05 ? (remain >= 10 ? String(Math.ceil(remain)) : numText(remain, 1)) : '';
         if (t.textContent !== txt) t.textContent = txt;
       }
       const cost = Number(slotEl.dataset.cost ?? 0);
@@ -1515,12 +1518,11 @@ export class HUD {
         add(chip, art, div('buff-sweep'));
         chip.appendChild(span('buff-stacks', String(p.count)));
         chip.dataset.minion = p.skillId;
-        const name = skillById(p.skillId)?.name ?? 'Summons';
+        const name = skillById(p.skillId)?.name ?? tr('Summons');
         tip(
           chip,
           name,
-          `<p>${p.count} under your command.</p><ul class="tip-mods"><li>${Math.round(p.life)} / ${Math.round(p.maxLife)} life</li>` +
-            `<li>${Number.isFinite(p.left) ? `${Math.ceil(p.left)}s left` : 'Stays until it falls'}</li></ul>`,
+          tr('<p>{0} under your command.</p><ul class="tip-mods"><li>{1} / {2} life</li><li>{3}</li></ul>', p.count, Math.round(p.life), Math.round(p.maxLife), Number.isFinite(p.left) ? `${Math.ceil(p.left)}s left` : tr('Stays until it falls')),
         );
         this.buffStrip.appendChild(chip);
       }
@@ -1590,7 +1592,7 @@ export class HUD {
     for (let i = 0; i < phases.length; i++) this.bossPips.appendChild(div(`bosspip ${i === 0 ? 'is-current' : ''}`.trim()));
     this.bossBark.textContent = '';
     this.bossPoise.classList.remove('is-broken');
-    this.bossPoiseName.textContent = 'Poise';
+    this.bossPoiseName.textContent = tr('Poise');
     this.bossPoiseFill.style.width = '0%';
     this.endBossCast();
     this.bossBar.classList.remove('is-slain', 'is-enraged', 'enrage-in');
@@ -1654,7 +1656,7 @@ export class HUD {
   private showMiniBoss(name: string, title: string, kind: string): void {
     if (this.bossVisible) return;
     clear(this.miniCard);
-    this.miniCard.appendChild(span('minicard-kicker', 'Mini-boss'));
+    this.miniCard.appendChild(span('minicard-kicker', tr('Mini-boss')));
     const row = div('minicard-row');
     const ornL = span('minicard-orn');
     const ornR = span('minicard-orn is-r');
@@ -1688,7 +1690,7 @@ export class HUD {
       const scene = this.engine.currentScene as unknown as object | null;
       const found = scene ? probeScene(scene).quest : null;
       this.quest = {
-        name: found?.name ?? 'Contract',
+        name: found?.name ?? tr('Contract'),
         objectives: (found?.objectives ?? []).map((o) => ({
           desc: o.desc,
           progress: o.progress,
@@ -1751,18 +1753,18 @@ export class HUD {
         const st = stepState(chain, index);
         if (st !== 'active' && st !== 'ready') continue;
         if (st === 'active' && chain.id === carried) continue;
-        const giver = NPCS[step.giver ?? chain.giver]?.name ?? 'the giver';
+        const giver = NPCS[step.giver ?? chain.giver]?.name ?? tr('the giver');
         rows.push(
           st === 'ready'
-            ? { title: step.title, note: `Back to ${giver}`, done: true }
-            : { title: step.title, note: `Tier ${step.minDepth}+`, done: false },
+            ? { title: step.title, note: tr('Back to {0}', giver), done: true }
+            : { title: step.title, note: tr('Tier {0}+', step.minDepth), done: false },
         );
       }
       for (const b of heldBounties(c)) {
         const text = bountyText(b).replace(/\s*\([^)]*\)/g, '');
         rows.push(
           b.state === 'done'
-            ? { title: text, note: 'Claim at the board', done: true }
+            ? { title: text, note: tr('Claim at the board'), done: true }
             : { title: text, note: `${Math.min(b.progress, b.target)}/${b.target}`, done: false },
         );
       }
@@ -1774,7 +1776,7 @@ export class HUD {
     this.tracker.style.display = rows.length ? '' : 'none';
     this.tracker.classList.toggle('folded', hidden);
     const ready = rows.filter((r) => r.done).length;
-    this.trackerHd.textContent = `Quests ${rows.length}${ready ? ` · ${ready} ready` : ''} ${hidden ? '+' : '\u2212'}`;
+    this.trackerHd.textContent = tr('Quests {0}{1} {2}', rows.length, ready ? tr(' · {0} ready', ready) : '', hidden ? '+' : '\u2212');
     clear(this.trackerBody);
     if (hidden) return;
     for (const r of rows) {
@@ -1887,7 +1889,7 @@ export class HUD {
       ctx.fillStyle = 'rgba(160,140,105,0.35)';
       ctx.font = `11px ${FONT_UI}`;
       ctx.textAlign = 'center';
-      ctx.fillText('no map', S / 2, S / 2);
+      ctx.fillText(tr('no map'), S / 2, S / 2);
       return;
     }
 
@@ -2101,11 +2103,7 @@ export class HUD {
     }
     const wrap = div('levelup');
     wrap.innerHTML =
-      `<div class="levelup-rays"></div><div class="levelup-ring"></div>` +
-      `<div class="levelup-kicker">You grow stronger</div>` +
-      `<div class="levelup-word">LEVEL ${level}</div>` +
-      `<div class="levelup-orn">${ORNAMENT.crest}</div>` +
-      `<div class="levelup-sub">Spend your points <span class="keycap">${capLabel('KeyC')}</span> attributes <span class="keycap">${capLabel('KeyT')}</span> skills</div>`;
+      tr('<div class="levelup-rays"></div><div class="levelup-ring"></div><div class="levelup-kicker">You grow stronger</div><div class="levelup-word">LEVEL {0}</div><div class="levelup-orn">{1}</div><div class="levelup-sub">Spend your points <span class="keycap">{2}</span> attributes <span class="keycap">{3}</span> skills</div>', level, ORNAMENT.crest, capLabel('KeyC'), capLabel('KeyT'));
     this.centerLayer.appendChild(wrap);
     setTimeout(() => wrap.remove(), 3000);
   }
@@ -2130,9 +2128,9 @@ export class HUD {
 
   /** Writes the player's current keys onto the bar's key caps and tooltips. */
   private refreshKeys(): void {
-    for (const [cap, code] of this.keyCaps) cap.textContent = code === 'Space' && !save.settings.keybinds?.Space ? 'SPC' : capLabel(code);
-    this.potionLife.title = `Drink a healing potion (${capLabel('KeyQ')})`;
-    this.potionMana.title = `Drink a mana potion (${capLabel('KeyF')})`;
+    for (const [cap, code] of this.keyCaps) cap.textContent = code === 'Space' && !save.settings.keybinds?.Space ? tr('SPC') : capLabel(code); // i18n: keycap for the space bar: three or four letters.
+    this.potionLife.title = tr('Drink a healing potion ({0})', capLabel('KeyQ'));
+    this.potionMana.title = tr('Drink a mana potion ({0})', capLabel('KeyF'));
   }
 
   toast(text: string, kind: 'info' | 'good' | 'bad' | 'epic' = 'info', rarity?: ItemRarity): void {
@@ -2196,11 +2194,11 @@ function tileColor(t: number): string {
  * built for it, and the combo it finishes with (`entities/Combos.ts`).
  */
 function skillSlotTitle(def: SkillDef, rank: number, skills: Record<string, number>): string {
-  const parts = [`${def.name} — Rank ${rank}`];
+  const parts = [tr('{0} — Rank {1}', def.name, rank)];
   const syn = synergyPct(def.id, skills);
-  if (syn > 0) parts.push(`Synergies +${Math.round(syn)}%`);
+  if (syn > 0) parts.push(tr('Synergies +{0}%', Math.round(syn)));
   const combo = comboForSkill(def);
-  if (combo && canCombo(def)) parts.push(`Combo: ${combo.name} +${comboBonusPct(def)}% after a different skill`);
+  if (combo && canCombo(def)) parts.push(tr('Combo: {0} +{1}% after a different skill', combo.name, comboBonusPct(def)));
   return parts.join('\n');
 }
 
@@ -2214,7 +2212,7 @@ function skillSlotTitle(def: SkillDef, rank: number, skills: Record<string, numb
  */
 function statusTooltip(id: string, stacks: number): string {
   const def = attempt(() => getStatus(id) ?? null, null);
-  if (!def) return '<p>No description.</p>';
+  if (!def) return tr('<p>No description.</p>');
   const out: string[] = [];
   if (def.desc) out.push(`<p>${def.desc}</p>`);
 
@@ -2228,14 +2226,14 @@ function statusTooltip(id: string, stacks: number): string {
     });
     out.push(`<ul class="tip-mods">${rows.join('')}</ul>`);
   }
-  if (def.dot) out.push(`<p>${fmt(def.dot.perSecond * Math.max(1, stacks))} ${def.dot.type} damage per second.</p>`);
-  if (def.hot) out.push(`<p>Restores ${fmt(def.hot * Math.max(1, stacks))} life per second.</p>`);
-  if (def.manaPerSecond) out.push(`<p>Restores ${fmt(def.manaPerSecond * Math.max(1, stacks))} mana per second.</p>`);
-  if (def.absorb) out.push(`<p>Absorbs ${fmt(def.absorb * Math.max(1, stacks))} damage before it breaks.</p>`);
-  if (def.reflect) out.push(`<p>Reflects ${Math.round(def.reflect * 100 * Math.max(1, stacks))}% of damage taken.</p>`);
-  if (def.incapacitates) out.push('<p>You cannot act while this lasts.</p>');
-  else if (def.immobilises) out.push('<p>You cannot move while this lasts.</p>');
-  if (stacks > 1) out.push(`<p class="tip-dim">${stacks} stacks.</p>`);
+  if (def.dot) out.push(tr('<p>{0} {1} damage per second.</p>', fmt(def.dot.perSecond * Math.max(1, stacks)), def.dot.type));
+  if (def.hot) out.push(tr('<p>Restores {0} life per second.</p>', fmt(def.hot * Math.max(1, stacks))));
+  if (def.manaPerSecond) out.push(tr('<p>Restores {0} mana per second.</p>', fmt(def.manaPerSecond * Math.max(1, stacks))));
+  if (def.absorb) out.push(tr('<p>Absorbs {0} damage before it breaks.</p>', fmt(def.absorb * Math.max(1, stacks))));
+  if (def.reflect) out.push(tr('<p>Reflects {0}% of damage taken.</p>', Math.round(def.reflect * 100 * Math.max(1, stacks))));
+  if (def.incapacitates) out.push(tr('<p>You cannot act while this lasts.</p>'));
+  else if (def.immobilises) out.push(tr('<p>You cannot move while this lasts.</p>'));
+  if (stacks > 1) out.push(tr('<p class="tip-dim">{0} stacks.</p>', stacks));
   return out.join('');
 }
 
@@ -2247,9 +2245,10 @@ function prettyKind(kind: string): string {
 
 function buffTime(sec: number): string {
   if (sec <= 0) return '';
-  if (sec >= 120) return `${Math.round(sec / 60)}m`;
-  if (sec >= 10) return `${Math.ceil(sec)}s`;
-  return `${sec.toFixed(1)}s`;
+  // i18n: minutes, as short as it can be.
+  if (sec >= 120) return tr('{0}m', Math.round(sec / 60));
+  if (sec >= 10) return tr('{0}s', Math.ceil(sec));
+  return tr('{0}s', numText(sec, 1));
 }
 
 /** Maps a status id to the closest icon in the authored set. */

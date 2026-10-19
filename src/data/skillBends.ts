@@ -15,6 +15,7 @@
  */
 import type { CharClassId, Character, Item } from '../types';
 import { getSkill } from './skills';
+import { tr } from '../core/I18n';
 
 export interface SkillBend {
   /** The skill it changes. */
@@ -55,65 +56,65 @@ const KNOB: Record<string, string> = {
   fear: 'fear',
   slow: 'slow',
   knockback: 'knockback',
-  burnStacks: 'burn stacks',
-  poisonStacks: 'poison stacks',
-  shockStacks: 'shock stacks',
-  bleedStacks: 'bleed stacks',
-  poisonPerHit: 'poison per hit',
-  bleedPerHit: 'bleed per hit',
+  burnStacks: tr('burn stacks'),
+  poisonStacks: tr('poison stacks'),
+  shockStacks: tr('shock stacks'),
+  bleedStacks: tr('bleed stacks'),
+  poisonPerHit: tr('poison per hit'),
+  bleedPerHit: tr('bleed per hit'),
   healPct: 'healing',
-  lifePct: 'minion life',
-  damagePct: 'minion damage',
-  baseCap: 'most at once',
+  lifePct: tr('minion life'),
+  damagePct: tr('minion damage'),
+  baseCap: tr('most at once'),
   targets: 'targets',
-  targetsPerTick: 'targets each pulse',
+  targetsPerTick: tr('targets each pulse'),
   squeezes: 'squeezes',
   shakes: 'shakes',
   maxTargets: 'targets',
-  amplify: 'damage taken',
-  critBonus: 'crit chance',
+  amplify: tr('damage taken'),
+  critBonus: tr('crit chance'),
   speed: 'speed',
   distance: 'distance',
   dents: 'dents',
   ring: 'ring',
   echo: 'echo',
-  executeBelow: 'execute threshold',
-  threshold: 'execute threshold',
-  shred: 'resist shred',
+  executeBelow: tr('execute threshold'),
+  threshold: tr('execute threshold'),
+  shred: tr('resist shred'),
   regen: 'regeneration',
   ward: 'ward',
   def: 'defense',
-  dr: 'damage reduction',
+  dr: tr('damage reduction'),
   dmg: 'damage',
   weaken: 'weaken',
   absorb: 'absorb',
   interval: 'interval',
   rings: 'rings',
   splash: 'splash',
-  moveSpeed: 'movement speed',
+  moveSpeed: tr('movement speed'),
   bleedShare: 'bleeding',
-  echoDelay: 'echo delay',
-  perDent: 'damage per dent',
-  perCut: 'damage per cut',
+  echoDelay: tr('echo delay'),
+  perDent: tr('damage per dent'),
+  perCut: tr('damage per cut'),
   opens: 'wounds',
-  ringPerDent: 'ring per dent',
-  every: 'time between peals',
-  tick: 'time between pulses',
+  ringPerDent: tr('ring per dent'),
+  every: tr('time between peals'),
+  tick: tr('time between pulses'),
   window: 'window',
   leap: 'leap',
   drag: 'pull',
-  minionScale: 'pack size',
-  blockScale: 'shield weight',
-  burnChance: 'burn chance',
-  shockChance: 'shock chance',
+  minionScale: tr('pack size'),
+  blockScale: tr('shield weight'),
+  burnChance: tr('burn chance'),
+  shockChance: tr('shock chance'),
   spread: 'spread',
   plagued: 'plague',
   spacing: 'spacing',
-  executeThreshold: 'execute threshold',
-  lifeCostPct: 'life cost',
+  executeThreshold: tr('execute threshold'),
+  lifeCostPct: tr('life cost'),
   leechPct: 'leech',
-  sharePct: 'shared damage',
-  block: 'block chance',
+  sharePct: tr('shared damage'),
+  block: tr('block chance'),
 };
 
 export function knobLabel(key: string): string | undefined {
@@ -124,11 +125,11 @@ export function knobLabel(key: string): string | undefined {
 export function bendText(b: SkillBend): string {
   const name = getSkill(b.skill)?.name ?? b.skill;
   const parts: string[] = [];
-  if (b.more) parts.push(`${b.more}% more damage`);
+  if (b.more) parts.push(tr('{0}% more damage', b.more));
   const word = (k: string) => b.names?.[k] ?? KNOB[k] ?? k;
-  for (const [k, v] of Object.entries(b.grow ?? {})) parts.push(v < 0 ? `${-v}% less ${word(k)}` : `${v}% more ${word(k)}`);
+  for (const [k, v] of Object.entries(b.grow ?? {})) parts.push(v < 0 ? tr('{0}% less {1}', -v, word(k)) : tr('{0}% more {1}', v, word(k)));
   for (const [k, v] of Object.entries(b.add ?? {})) parts.push(`${v > 0 ? '+' : ''}${v} ${word(k)}`);
-  if (b.applies) parts.push(`its hits ${b.applies.label} for ${b.applies.duration} seconds`);
+  if (b.applies) parts.push(tr('its hits {0} for {1} seconds', b.applies.label, b.applies.duration));
   return `${name}: ${parts.join(', ')}.`;
 }
 

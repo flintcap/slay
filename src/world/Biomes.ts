@@ -16,6 +16,7 @@
 import type { BiomeDef, BiomeId, LayoutKind, MonsterFamily, Rng } from '../types';
 import type { GradeProfile } from '../core/Renderer';
 import type { LightMood } from './Lighting';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Extended art configuration
@@ -166,8 +167,8 @@ function def(
  */
 const CRYPT = def(
   'crypt',
-  'The Ossuary Tiers',
-  'Grave-cold corridors of stacked stone. Something down here still counts the dead.',
+  tr('The Ossuary Tiers'),
+  tr('Grave-cold corridors of stacked stone. Something down here still counts the dead.'),
   1,
   {
     fog: 0x090b12,
@@ -191,8 +192,8 @@ const CRYPT = def(
  */
 const CAVERNS = def(
   'caverns',
-  'The Root Deeps',
-  'Living rock, wet to the touch. The glow comes from things that grow here.',
+  tr('The Root Deeps'),
+  tr('Living rock, wet to the touch. The glow comes from things that grow here.'),
   1,
   {
     fog: 0x0a1614,
@@ -217,8 +218,8 @@ const CAVERNS = def(
  */
 const FOUNDRY = def(
   'foundry',
-  'The Cindergate Works',
-  'Furnaces that never went out. The floor still runs orange between the plates.',
+  tr('The Cindergate Works'),
+  tr('Furnaces that never went out. The floor still runs orange between the plates.'),
   2,
   {
     fog: 0x1a0b05,
@@ -243,8 +244,8 @@ const FOUNDRY = def(
  */
 const SUNKEN_TEMPLE = def(
   'sunkenTemple',
-  'The Drowned Sanctum',
-  'Drowned halls of green stone and tarnished gold. The water remembers the prayers.',
+  tr('The Drowned Sanctum'),
+  tr('Drowned halls of green stone and tarnished gold. The water remembers the prayers.'),
   3,
   {
     fog: 0x04171d,
@@ -268,8 +269,8 @@ const SUNKEN_TEMPLE = def(
  */
 const HIVE = def(
   'hive',
-  'The Chitin Warrens',
-  "Walls that flex when you touch them. Everything here is somebody's larder.",
+  tr('The Chitin Warrens'),
+  tr("Walls that flex when you touch them. Everything here is somebody's larder."),
   5,
   {
     fog: 0x140819,
@@ -294,8 +295,8 @@ const HIVE = def(
  */
 const FROSTVAULT = def(
   'frostvault',
-  'The Rime Archive',
-  'Galleries sealed in ice, and everything on the shelves kept. Your breath freezes before it leaves your teeth.',
+  tr('The Rime Archive'),
+  tr('Galleries sealed in ice, and everything on the shelves kept. Your breath freezes before it leaves your teeth.'),
   7,
   {
     fog: 0x0f1e2e,
@@ -322,8 +323,8 @@ const FROSTVAULT = def(
  */
 const ASHWASTE = def(
   'ashwaste',
-  'The Cinderfields',
-  'A sky at last, or something wearing one, the colour of a banked fire. Nothing grows in the grey.',
+  tr('The Cinderfields'),
+  tr('A sky at last, or something wearing one, the colour of a banked fire. Nothing grows in the grey.'),
   10,
   {
     fog: 0x2b1a13,
@@ -351,8 +352,8 @@ const ASHWASTE = def(
  */
 const VOIDSPIRE = def(
   'voidspire',
-  'The Hollow Spire',
-  'Stone with nothing under it. The dark here is not an absence. It is looking back.',
+  tr('The Hollow Spire'),
+  tr('Stone with nothing under it. The dark here is not an absence. It is looking back.'),
   14,
   {
     fog: 0x05030d,
@@ -379,8 +380,8 @@ const VOIDSPIRE = def(
 /** DARK FOREST — the first ground outside the walls. Moonlight through a canopy, a path the trees did not agree to. */
 const DARK_FOREST = def(
   'darkForest',
-  'The Blackroot Wood',
-  'Old trees with their roots in older graves. The path is the only thing here that was made for you.',
+  tr('The Blackroot Wood'),
+  tr('Old trees with their roots in older graves. The path is the only thing here that was made for you.'),
   1,
   { fog: 0x0a110c, fogDensity: 0.03, ambient: 0x2c3e34, ambientI: 0.72, key: 0x9fb4cc, keyI: 0.5, accent: 0xff9a4a },
   { floor: 'stone.cave', wall: 'stone.cave', trim: 'crystal.gem' },
@@ -393,8 +394,8 @@ const DARK_FOREST = def(
 /** SWAMP — black water, dead trees, boardwalks somebody keeps mending. */
 const SWAMP = def(
   'swamp',
-  'The Gallows Fen',
-  'Black water to the knee, and the knee is the shallow part. They hanged people out here once, to save on rope.',
+  tr('The Gallows Fen'),
+  tr('Black water to the knee, and the knee is the shallow part. They hanged people out here once, to save on rope.'),
   2,
   { fog: 0x0c140e, fogDensity: 0.036, ambient: 0x34462e, ambientI: 0.72, key: 0xa8c49a, keyI: 0.36, accent: 0xb8e060 },
   { floor: 'stone.marble', wall: 'stone.sunken', trim: 'metal.gold' },
@@ -407,8 +408,8 @@ const SWAMP = def(
 /** DESERT — dunes, wind and the bones of walls. */
 const DESERT = def(
   'desert',
-  'The Bleached Reach',
-  'Sand to the end of sight and walls that used to be a city. The wind has been taking it apart for a thousand years.',
+  tr('The Bleached Reach'),
+  tr('Sand to the end of sight and walls that used to be a city. The wind has been taking it apart for a thousand years.'),
   3,
   { fog: 0x2a2014, fogDensity: 0.02, ambient: 0x6a5a44, ambientI: 0.9, key: 0xffd8a0, keyI: 1.0, accent: 0xff9a3a },
   { floor: 'earth.ash', wall: 'stone.sunken', trim: 'stone.foundry' },
@@ -421,8 +422,8 @@ const DESERT = def(
 /** DESERT TOMB — the city went under the sand, and the dead went with it. */
 const DESERT_TOMB = def(
   'desertTomb',
-  'The Sand-Kings’ Tombs',
-  'Corridors cut for kings, and the kings still in them. The sand has got in everywhere except the coffins.',
+  tr('The Sand-Kings’ Tombs'),
+  tr('Corridors cut for kings, and the kings still in them. The sand has got in everywhere except the coffins.'),
   3,
   { fog: 0x140e08, fogDensity: 0.03, ambient: 0x4a3a28, ambientI: 0.7, key: 0xd8b880, keyI: 0.3, accent: 0xffa040 },
   { floor: 'stone.crypt', wall: 'stone.crypt', trim: 'metal.gold' },
@@ -435,8 +436,8 @@ const DESERT_TOMB = def(
 /** TUNDRA — frozen highlands under a white sky, cliffs and dead camps. */
 const TUNDRA = def(
   'tundra',
-  'The Frostmarch',
-  'High ground under a sky the colour of a blade. The snow keeps everything that falls in it, and a great deal has.',
+  tr('The Frostmarch'),
+  tr('High ground under a sky the colour of a blade. The snow keeps everything that falls in it, and a great deal has.'),
   6,
   { fog: 0x1c2632, fogDensity: 0.026, ambient: 0x6a84a4, ambientI: 0.95, key: 0xdfeaff, keyI: 0.8, accent: 0xffa860 },
   { floor: 'stone.ice', wall: 'crystal.ice', trim: 'metal.steel' },
@@ -449,8 +450,8 @@ const TUNDRA = def(
 /** HELL — black rock, rivers of fire, a sky lit from underneath. */
 const HELL = def(
   'hell',
-  'The Burning Steppe',
-  'The ground is a crust over fire, and in places it gave up pretending. Everything here was made to hurt, and is proud of it.',
+  tr('The Burning Steppe'),
+  tr('The ground is a crust over fire, and in places it gave up pretending. Everything here was made to hurt, and is proud of it.'),
   10,
   { fog: 0x1e0805, fogDensity: 0.03, ambient: 0x5a2010, ambientI: 0.7, key: 0xff8a50, keyI: 0.7, accent: 0xff4a10 },
   { floor: 'stone.obsidian', wall: 'stone.foundry', trim: 'metal.iron' },
@@ -894,11 +895,11 @@ const PLAIN = (name: string, blurb: string, weight = 6): BiomeVariant => ({
 
 const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   crypt: [
-    PLAIN('The Ossuary Tiers', 'Grave-cold corridors of stacked stone.'),
+    PLAIN(tr('The Ossuary Tiers'), tr('Grave-cold corridors of stacked stone.')),
     {
       id: 'flooded',
-      name: 'The Drowned Crypt',
-      blurb: 'The water table rose a century ago and never went back down.',
+      name: tr('The Drowned Crypt'),
+      blurb: tr('The water table rose a century ago and never went back down.'),
       weight: 4,
       patch: {
         grade: { contrast: 1.08, saturation: 0.98, shadowTint: 0x3f7f88, highlightTint: 0xc8f0e8, splitTone: 0.45, vignette: 0.5, vignetteTint: 0x3a6a70 },
@@ -916,8 +917,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'candlelit',
-      name: 'The Vigil',
-      blurb: 'Somebody is still lighting the candles. Nobody has seen them do it.',
+      name: tr('The Vigil'),
+      blurb: tr('Somebody is still lighting the candles. Nobody has seen them do it.'),
       weight: 3,
       minDepth: 2,
       patch: {
@@ -934,11 +935,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   caverns: [
-    PLAIN('The Root Deeps', 'Living rock, wet to the touch.'),
+    PLAIN(tr('The Root Deeps'), tr('Living rock, wet to the touch.')),
     {
       id: 'fungal',
-      name: 'The Bloom',
-      blurb: 'The glow is thicker here, and it moves when you are not looking.',
+      name: tr('The Bloom'),
+      blurb: tr('The glow is thicker here, and it moves when you are not looking.'),
       weight: 4,
       patch: {
         lightColor: 0x8affc0,
@@ -952,8 +953,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'dry',
-      name: 'The Dust Hollows',
-      blurb: 'Something drank this cave dry. The stone remembers being wet.',
+      name: tr('The Dust Hollows'),
+      blurb: tr('Something drank this cave dry. The stone remembers being wet.'),
       weight: 3,
       minDepth: 3,
       patch: {
@@ -970,11 +971,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   foundry: [
-    PLAIN('The Cindergate Works', 'Heat with nowhere to go, and machines that never stopped.'),
+    PLAIN(tr('The Cindergate Works'), tr('Heat with nowhere to go, and machines that never stopped.')),
     {
       id: 'coldforge',
-      name: 'The Cold Forge',
-      blurb: 'The fires went out. Whatever they were feeding did not.',
+      name: tr('The Cold Forge'),
+      blurb: tr('The fires went out. Whatever they were feeding did not.'),
       weight: 4,
       minDepth: 3,
       patch: {
@@ -991,8 +992,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'overflow',
-      name: 'The Overflow',
-      blurb: 'A crucible cracked upstairs. It has been draining down here ever since.',
+      name: tr('The Overflow'),
+      blurb: tr('A crucible cracked upstairs. It has been draining down here ever since.'),
       weight: 4,
       patch: {
         liquid: 'lava',
@@ -1008,11 +1009,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   sunkenTemple: [
-    PLAIN('The Drowned Sanctum', 'Worship that outlasted its worshippers.'),
+    PLAIN(tr('The Drowned Sanctum'), tr('Worship that outlasted its worshippers.')),
     {
       id: 'tidal',
-      name: 'The Tidal Reach',
-      blurb: 'The water goes out and comes back. Nothing here agrees on when.',
+      name: tr('The Tidal Reach'),
+      blurb: tr('The water goes out and comes back. Nothing here agrees on when.'),
       weight: 4,
       patch: {
         liquid: 'water',
@@ -1026,8 +1027,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'gilded',
-      name: 'The Gilded Sanctum',
-      blurb: 'Gold does not tarnish. It has had a long time to prove it.',
+      name: tr('The Gilded Sanctum'),
+      blurb: tr('Gold does not tarnish. It has had a long time to prove it.'),
       weight: 3,
       minDepth: 5,
       patch: {
@@ -1043,11 +1044,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   hive: [
-    PLAIN('The Chitin Warrens', 'Chambers chewed out of the rock, still warm.'),
+    PLAIN(tr('The Chitin Warrens'), tr('Chambers chewed out of the rock, still warm.')),
     {
       id: 'brood',
-      name: 'The Brood Chambers',
-      blurb: 'Every surface is a nursery. Try not to stand still.',
+      name: tr('The Brood Chambers'),
+      blurb: tr('Every surface is a nursery. Try not to stand still.'),
       weight: 4,
       patch: {
         lightColor: 0xffc86a,
@@ -1061,8 +1062,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'abandoned',
-      name: 'The Dead Hive',
-      blurb: 'The colony moved on. Something moved in behind it.',
+      name: tr('The Dead Hive'),
+      blurb: tr('The colony moved on. Something moved in behind it.'),
       weight: 3,
       minDepth: 8,
       patch: {
@@ -1079,11 +1080,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   frostvault: [
-    PLAIN('The Rime Archive', 'Cold enough that the air hurts, and nothing rots.'),
+    PLAIN(tr('The Rime Archive'), tr('Cold enough that the air hurts, and nothing rots.')),
     {
       id: 'blizzard',
-      name: 'The Whiteout',
-      blurb: 'There is weather down here. Nobody can explain it and nobody stays to try.',
+      name: tr('The Whiteout'),
+      blurb: tr('There is weather down here. Nobody can explain it and nobody stays to try.'),
       weight: 4,
       patch: {
         lightColor: 0xdcefff,
@@ -1097,8 +1098,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'thaw',
-      name: 'The Slow Thaw',
-      blurb: 'Something warm is buried down here, and the ice is losing.',
+      name: tr('The Slow Thaw'),
+      blurb: tr('Something warm is buried down here, and the ice is losing.'),
       weight: 3,
       minDepth: 10,
       patch: {
@@ -1114,11 +1115,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   ashwaste: [
-    PLAIN('The Cinderfields', 'Open ground under a sky that is not a sky.'),
+    PLAIN(tr('The Cinderfields'), tr('Open ground under a sky that is not a sky.')),
     {
       id: 'emberfall',
-      name: 'The Emberfall',
-      blurb: 'It is raining, and the rain is still burning when it lands.',
+      name: tr('The Emberfall'),
+      blurb: tr('It is raining, and the rain is still burning when it lands.'),
       weight: 4,
       patch: {
         lightColor: 0xff8a3c,
@@ -1132,8 +1133,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'grey',
-      name: 'The Grey Waste',
-      blurb: 'The fires here went out a very long time ago. It is worse.',
+      name: tr('The Grey Waste'),
+      blurb: tr('The fires here went out a very long time ago. It is worse.'),
       weight: 3,
       minDepth: 14,
       patch: {
@@ -1149,11 +1150,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   voidspire: [
-    PLAIN('The Hollow Spire', 'Stone with nothing under it.'),
+    PLAIN(tr('The Hollow Spire'), tr('Stone with nothing under it.')),
     {
       id: 'unravelled',
-      name: 'The Unravelling',
-      blurb: 'The geometry stopped agreeing with itself somewhere above you.',
+      name: tr('The Unravelling'),
+      blurb: tr('The geometry stopped agreeing with itself somewhere above you.'),
       weight: 4,
       patch: {
         lightColor: 0xc07aff,
@@ -1166,8 +1167,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'starlit',
-      name: 'The Long Dark',
-      blurb: 'There are lights out there. They are not stars and they are not far away.',
+      name: tr('The Long Dark'),
+      blurb: tr('There are lights out there. They are not stars and they are not far away.'),
       weight: 3,
       minDepth: 18,
       patch: {
@@ -1186,11 +1187,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   // The map remake's biomes. Outdoors the sky does most of the work, so
   // these lean on `mood` (the sun, moon and fog) as much as on the lamps.
   darkForest: [
-    PLAIN('The Blackroot Wood', 'Old trees with their roots in older graves.'),
+    PLAIN(tr('The Blackroot Wood'), tr('Old trees with their roots in older graves.')),
     {
       id: 'fogbound',
-      name: 'The Fogbound Wood',
-      blurb: 'The mist came up out of the graves one night and never went back down.',
+      name: tr('The Fogbound Wood'),
+      blurb: tr('The mist came up out of the graves one night and never went back down.'),
       weight: 4,
       patch: {
         grade: { contrast: 1.02, saturation: 0.7, shadowTint: 0x4a5a6a, highlightTint: 0xdce4ec, splitTone: 0.45, vignette: 0.62, vignetteTint: 0x2a3440 },
@@ -1206,8 +1207,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'bonfire',
-      name: 'Bonfire Night',
-      blurb: 'Someone lit the old camps again. The fires are fed, and nobody sits at them.',
+      name: tr('Bonfire Night'),
+      blurb: tr('Someone lit the old camps again. The fires are fed, and nobody sits at them.'),
       weight: 3,
       minDepth: 2,
       patch: {
@@ -1223,11 +1224,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   swamp: [
-    PLAIN('The Gallows Fen', 'Black water to the knee, and the knee is the shallow part.'),
+    PLAIN(tr('The Gallows Fen'), tr('Black water to the knee, and the knee is the shallow part.')),
     {
       id: 'lanterns',
-      name: 'The Drowned Lanterns',
-      blurb: 'Lights burn under the water where the hanged were sunk. They follow you along the bank.',
+      name: tr('The Drowned Lanterns'),
+      blurb: tr('Lights burn under the water where the hanged were sunk. They follow you along the bank.'),
       weight: 4,
       patch: {
         grade: { contrast: 1.1, saturation: 0.88, shadowTint: 0x1e4a34, highlightTint: 0xb8ffc8, splitTone: 0.55, vignette: 0.62, vignetteTint: 0x08140c, bloomStrength: 0.7 },
@@ -1242,8 +1243,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'dryseason',
-      name: 'The Dry Season',
-      blurb: 'The fen sank back into its bed this year. What it was hiding is still lying in the mud.',
+      name: tr('The Dry Season'),
+      blurb: tr('The fen sank back into its bed this year. What it was hiding is still lying in the mud.'),
       weight: 3,
       minDepth: 3,
       patch: {
@@ -1262,11 +1263,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   desert: [
-    PLAIN('The Bleached Reach', 'Sand to the end of sight and walls that used to be a city.'),
+    PLAIN(tr('The Bleached Reach'), tr('Sand to the end of sight and walls that used to be a city.')),
     {
       id: 'sandstorm',
-      name: 'The Sandstorm',
-      blurb: 'The wind came up at noon and has not stopped. The sun is a coin behind it.',
+      name: tr('The Sandstorm'),
+      blurb: tr('The wind came up at noon and has not stopped. The sun is a coin behind it.'),
       weight: 4,
       patch: {
         grade: { contrast: 1.0, saturation: 0.68, shadowTint: 0x6a5a4a, highlightTint: 0xffd8a0, splitTone: 0.45, vignette: 0.62, vignetteTint: 0x6a4a28, haze: 1 },
@@ -1279,8 +1280,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'dusk',
-      name: 'The Red Dusk',
-      blurb: 'The sun sits on the dunes, too tired to set. Everything it touches looks wounded.',
+      name: tr('The Red Dusk'),
+      blurb: tr('The sun sits on the dunes, too tired to set. Everything it touches looks wounded.'),
       weight: 3,
       minDepth: 4,
       patch: {
@@ -1294,11 +1295,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   desertTomb: [
-    PLAIN('The Sand-Kings’ Tombs', 'Corridors cut for kings, and the kings still in them.'),
+    PLAIN(tr('The Sand-Kings’ Tombs'), tr('Corridors cut for kings, and the kings still in them.')),
     {
       id: 'floodvault',
-      name: 'The Flooded Vaults',
-      blurb: 'An underground river found the kings. The water is cold, black and knee deep.',
+      name: tr('The Flooded Vaults'),
+      blurb: tr('An underground river found the kings. The water is cold, black and knee deep.'),
       weight: 4,
       patch: {
         grade: { contrast: 1.08, saturation: 0.9, shadowTint: 0x2a5a62, highlightTint: 0xd8e8d8, splitTone: 0.45, vignette: 0.52, vignetteTint: 0x1a2a2e },
@@ -1314,8 +1315,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'treasury',
-      name: 'The Treasury Wing',
-      blurb: 'The kings took their gold with them. They took it here, and lined the walls with it.',
+      name: tr('The Treasury Wing'),
+      blurb: tr('The kings took their gold with them. They took it here, and lined the walls with it.'),
       weight: 3,
       minDepth: 4,
       patch: {
@@ -1333,11 +1334,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   tundra: [
-    PLAIN('The Frostmarch', 'High ground under a sky the colour of a blade.'),
+    PLAIN(tr('The Frostmarch'), tr('High ground under a sky the colour of a blade.')),
     {
       id: 'squall',
-      name: 'The White Squall',
-      blurb: 'The wind off the high ground drives the snow sideways. You will hear them before you see them.',
+      name: tr('The White Squall'),
+      blurb: tr('The wind off the high ground drives the snow sideways. You will hear them before you see them.'),
       weight: 4,
       patch: {
         grade: { contrast: 0.98, saturation: 0.55, shadowTint: 0x6a7a90, highlightTint: 0xf0f4ff, splitTone: 0.4, vignette: 0.6, vignetteTint: 0x8090a8 },
@@ -1350,8 +1351,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'skyfire',
-      name: 'Skyfire Night',
-      blurb: 'Night on the high ground, and the sky burns green from end to end. It gives no warmth at all.',
+      name: tr('Skyfire Night'),
+      blurb: tr('Night on the high ground, and the sky burns green from end to end. It gives no warmth at all.'),
       weight: 3,
       minDepth: 8,
       patch: {
@@ -1372,11 +1373,11 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
   ],
 
   hell: [
-    PLAIN('The Burning Steppe', 'The ground is a crust over fire, and in places it gave up pretending.'),
+    PLAIN(tr('The Burning Steppe'), tr('The ground is a crust over fire, and in places it gave up pretending.')),
     {
       id: 'ashfall',
-      name: 'The Ashfall',
-      blurb: 'The mountains to the south are emptying their lungs. The ash comes down warm and does not stop.',
+      name: tr('The Ashfall'),
+      blurb: tr('The mountains to the south are emptying their lungs. The ash comes down warm and does not stop.'),
       weight: 4,
       patch: {
         grade: { contrast: 1.06, saturation: 0.6, shadowTint: 0x4a3a38, highlightTint: 0xd8a888, splitTone: 0.45, vignette: 0.6, vignetteTint: 0x2a1c18, haze: 0.3 },
@@ -1390,8 +1391,8 @@ const VARIANTS: Partial<Record<BiomeId, BiomeVariant[]>> = {
     },
     {
       id: 'crust',
-      name: 'The Cooled Crust',
-      blurb: 'The fire drew back under the rock and left it black and glassy. It listens for footsteps.',
+      name: tr('The Cooled Crust'),
+      blurb: tr('The fire drew back under the rock and left it black and glassy. It listens for footsteps.'),
       weight: 3,
       minDepth: 14,
       patch: {

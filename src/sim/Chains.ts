@@ -25,6 +25,7 @@ import { rollItem } from './Loot';
 import { grantXp } from './Character';
 import { addItemToInventory } from './Inventory';
 import { fillStory, holds, persist, setChainReaders, story } from './Story';
+import { tr } from '../core/I18n';
 
 export { CHAINS, chainById };
 
@@ -284,7 +285,7 @@ export function isContractQuest(defId: string): boolean {
 
 /** Where a step sends you, in words. */
 export function stepWhere(step: ChainStep): string {
-  return `${getBiome(step.biome).name}, from tier ${step.minDepth}`;
+  return tr('{0}, from tier {1}', getBiome(step.biome).name, step.minDepth);
 }
 
 export { fillStory };

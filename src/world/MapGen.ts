@@ -13,6 +13,7 @@
 import type { BiomeId, MapInfo, Rng } from '../types';
 import { getBiome, isOutdoorBiome, layoutForBiome } from './Biomes';
 import type { ZonePlan } from './zones/Area';
+import { tr } from '../core/I18n';
 
 /** A slot in a chain: one biome, or a choice of several. */
 type Slot = BiomeId | BiomeId[];
@@ -31,94 +32,94 @@ export interface ThemeDef {
 export const THEMES: ThemeDef[] = [
   {
     id: 'blackroot',
-    names: ['The Hollow Road', 'Rootgrave', 'The Lychgate Way'],
+    names: [tr('The Hollow Road'), tr('Rootgrave'), tr('The Lychgate Way')],
     weight: 3,
     chain: ['darkForest', 'darkForest', 'crypt', 'crypt', 'crypt'],
     optional: [1, 3],
   },
   {
     id: 'deepwood',
-    names: ['The Root Cellar', 'Underwood', 'The Mouldering Path'],
+    names: [tr('The Root Cellar'), tr('Underwood'), tr('The Mouldering Path')],
     weight: 2,
     chain: ['darkForest', ['darkForest', 'swamp'], 'caverns', 'caverns'],
     optional: [1],
   },
   {
     id: 'fen',
-    names: ['Gallows Fen', 'The Drowned Parish', 'Hangwater'],
+    names: [tr('Gallows Fen'), tr('The Drowned Parish'), tr('Hangwater')],
     weight: 3,
     chain: ['swamp', ['swamp', 'darkForest'], 'sunkenTemple', ['sunkenTemple', 'hive']],
     optional: [1],
   },
   {
     id: 'mire',
-    names: ['The Sinking Chapel', 'Bogbell', 'The Last Ferry'],
+    names: [tr('The Sinking Chapel'), tr('Bogbell'), tr('The Last Ferry')],
     weight: 2,
     chain: ['darkForest', 'swamp', ['crypt', 'sunkenTemple'], 'crypt'],
   },
   {
     id: 'reach',
-    names: ['The Bleached Reach', 'Dry Kings', 'The Glass Road'],
+    names: [tr('The Bleached Reach'), tr('Dry Kings'), tr('The Glass Road')],
     weight: 3,
     chain: ['desert', 'desert', 'desertTomb', 'desertTomb', 'desertTomb'],
     optional: [1, 3],
   },
   {
     id: 'dunesea',
-    names: ['The Long Thirst', 'Saltgrave', 'The Buried Market'],
+    names: [tr('The Long Thirst'), tr('Saltgrave'), tr('The Buried Market')],
     weight: 2,
     chain: ['desert', ['desert', 'ashwaste'], 'hive', 'desertTomb'],
     optional: [1],
   },
   {
     id: 'deeps',
-    names: ['The Root Deeps', 'Lantern-rot', 'The Wet Dark'],
+    names: [tr('The Root Deeps'), tr('Lantern-rot'), tr('The Wet Dark')],
     weight: 2,
     chain: ['caverns', ['caverns', 'hive'], 'hive'],
   },
   {
     id: 'ossuary',
-    names: ['The Ossuary Tiers', 'Bonewright', 'The Counting House'],
+    names: [tr('The Ossuary Tiers'), tr('Bonewright'), tr('The Counting House')],
     weight: 2,
     chain: ['crypt', ['crypt', 'caverns'], 'crypt'],
   },
   {
     id: 'frostmarch',
-    names: ['The Frostmarch', 'Standing Orders', 'The White Retreat'],
+    names: [tr('The Frostmarch'), tr('Standing Orders'), tr('The White Retreat')],
     weight: 3,
     chain: ['tundra', 'tundra', 'frostvault', 'tundra', 'frostvault'],
     optional: [1, 3],
   },
   {
     id: 'rime',
-    names: ['The Rime Archive', 'Coldkeep', 'The Kept Winter'],
+    names: [tr('The Rime Archive'), tr('Coldkeep'), tr('The Kept Winter')],
     weight: 2,
     chain: ['tundra', ['frostvault', 'crypt'], 'frostvault'],
   },
   {
     id: 'cinder',
-    names: ['The Cinderfields', 'Ashfall', 'The Banked Fire'],
+    names: [tr('The Cinderfields'), tr('Ashfall'), tr('The Banked Fire')],
     weight: 3,
     chain: ['ashwaste', ['ashwaste', 'hell'], 'foundry', 'foundry'],
     optional: [1],
   },
   {
     id: 'steppe',
-    names: ['The Burning Steppe', 'The Red Furrow', 'Crust and Coal'],
+    names: [tr('The Burning Steppe'), tr('The Red Furrow'), tr('Crust and Coal')],
     weight: 3,
     chain: ['ashwaste', 'hell', 'foundry', 'hell', 'hell'],
     optional: [2, 3],
   },
   {
     id: 'pit',
-    names: ['The Open Pit', 'The Long Fall', 'Nothing Under'],
+    names: [tr('The Open Pit'), tr('The Long Fall'), tr('Nothing Under')],
     weight: 2,
     chain: ['hell', 'hell', ['voidspire', 'foundry'], 'voidspire'],
     optional: [1],
   },
   {
     id: 'spire',
-    names: ['The Hollow Spire', 'The Looking Dark', 'Spireroot'],
+    names: [tr('The Hollow Spire'), tr('The Looking Dark'), tr('Spireroot')],
     weight: 2,
     chain: [['ashwaste', 'tundra'], 'voidspire', 'voidspire'],
   },
@@ -126,20 +127,20 @@ export const THEMES: ThemeDef[] = [
 
 /** Zone names per biome. The first is the biome's own place name. */
 const ZONE_NAMES: Record<BiomeId, string[]> = {
-  crypt: ['The Ossuary Tiers', 'The Charnel Stair', 'The Sexton’s Rows', 'The Low Vaults'],
-  caverns: ['The Root Deeps', 'The Dripping Gallery', 'The Lamp-moss Halls', 'The Undercroft'],
-  foundry: ['The Cindergate Works', 'The Slag Floors', 'The Bellows Hall', 'The Pouring Pits'],
-  sunkenTemple: ['The Drowned Sanctum', 'The Flooded Nave', 'The Tide Choir', 'The Green Cloister'],
-  hive: ['The Chitin Warrens', 'The Brood Cells', 'The Larder Tunnels', 'The Waxen Deep'],
-  frostvault: ['The Rime Archive', 'The Ice Caves', 'The Sealed Stacks', 'The Frozen Ledger'],
-  ashwaste: ['The Cinderfields', 'The Grey Plain', 'The Ash Furrows', 'The Smoke Flats'],
-  voidspire: ['The Hollow Spire', 'The Unfloored Halls', 'The Stair to Nowhere', 'The Watching Drop'],
-  darkForest: ['The Blackroot Wood', 'Hangman’s Copse', 'The Thornwalk', 'The Mourning Trees'],
-  swamp: ['The Gallows Fen', 'The Black Shallows', 'Reedmarrow', 'The Gibbet Causeway'],
-  desert: ['The Bleached Reach', 'The Bone Dunes', 'The Sunken Market', 'The Glass Flats'],
-  desertTomb: ['The Sand-Kings’ Tombs', 'The Gilded Galleries', 'The Servants’ Rest', 'The Long Procession'],
-  tundra: ['The Frostmarch', 'The Picket Line', 'The White Ridges', 'The Drift Fields'],
-  hell: ['The Burning Steppe', 'The Glowing Crust', 'The Chained Gods', 'The Furnace Floor'],
+  crypt: [tr('The Ossuary Tiers'), tr('The Charnel Stair'), tr('The Sexton’s Rows'), tr('The Low Vaults')],
+  caverns: [tr('The Root Deeps'), tr('The Dripping Gallery'), tr('The Lamp-moss Halls'), tr('The Undercroft')],
+  foundry: [tr('The Cindergate Works'), tr('The Slag Floors'), tr('The Bellows Hall'), tr('The Pouring Pits')],
+  sunkenTemple: [tr('The Drowned Sanctum'), tr('The Flooded Nave'), tr('The Tide Choir'), tr('The Green Cloister')],
+  hive: [tr('The Chitin Warrens'), tr('The Brood Cells'), tr('The Larder Tunnels'), tr('The Waxen Deep')],
+  frostvault: [tr('The Rime Archive'), tr('The Ice Caves'), tr('The Sealed Stacks'), tr('The Frozen Ledger')],
+  ashwaste: [tr('The Cinderfields'), tr('The Grey Plain'), tr('The Ash Furrows'), tr('The Smoke Flats')],
+  voidspire: [tr('The Hollow Spire'), tr('The Unfloored Halls'), tr('The Stair to Nowhere'), tr('The Watching Drop')],
+  darkForest: [tr('The Blackroot Wood'), tr('Hangman’s Copse'), tr('The Thornwalk'), tr('The Mourning Trees')],
+  swamp: [tr('The Gallows Fen'), tr('The Black Shallows'), tr('Reedmarrow'), tr('The Gibbet Causeway')],
+  desert: [tr('The Bleached Reach'), tr('The Bone Dunes'), tr('The Sunken Market'), tr('The Glass Flats')],
+  desertTomb: [tr('The Sand-Kings’ Tombs'), tr('The Gilded Galleries'), tr('The Servants’ Rest'), tr('The Long Procession')],
+  tundra: [tr('The Frostmarch'), tr('The Picket Line'), tr('The White Ridges'), tr('The Drift Fields')],
+  hell: [tr('The Burning Steppe'), tr('The Glowing Crust'), tr('The Chained Gods'), tr('The Furnace Floor')],
 };
 
 export interface MapPlan {

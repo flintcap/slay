@@ -10,6 +10,8 @@
  *
  * Which skill draws which motif lives in `SkillLooks.ts`. This file is the
  * vocabulary: plain words on one side, kit primitives on the other.
+ *
+ * i18n-ignore-file: words that name what a skill draws, never shown to a player.
  */
 
 import type { Rng } from '../types';

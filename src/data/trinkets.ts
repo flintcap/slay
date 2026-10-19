@@ -7,6 +7,7 @@
  * added later takes a weight beside these.
  */
 
+import { tr } from '../core/I18n';
 export type TrinketUse =
   /** Right-click in a map: a portal home that waits for the hero to come back. */
   | 'portal'
@@ -34,32 +35,32 @@ export interface TrinketDef {
 export const TRINKETS: readonly TrinketDef[] = [
   {
     id: 'trinket.town',
-    name: 'Trinket of Town',
+    name: tr('Trinket of Town'),
     tier: 'common',
     weight: 80,
     use: 'portal',
     text: [
-      'Right-click in a map: opens a portal to town.',
-      'Step through to go home and keep everything.',
-      'Step back through it in town to return; it closes behind you.',
-      'Right-click the portal in town to close it and end the map.',
-      'Breaks when used.',
+      tr('Right-click in a map: opens a portal to town.'),
+      tr('Step through to go home and keep everything.'),
+      tr('Step back through it in town to return; it closes behind you.'),
+      tr('Right-click the portal in town to close it and end the map.'),
+      tr('Breaks when used.'),
     ],
-    flavor: 'A door small enough to lose in a pocket, and it always opens on the same street.',
+    flavor: tr('A door small enough to lose in a pocket, and it always opens on the same street.'),
     value: 600,
   },
   {
     id: 'trinket.death',
-    name: 'Trinket of Death',
+    name: tr('Trinket of Death'),
     tier: 'rare',
     weight: 20,
     use: 'death',
     text: [
-      'Carry it in your pack. If you die in a map,',
-      'it breaks and you wake in town unharmed,',
-      'keeping everything you found there.',
+      tr('Carry it in your pack. If you die in a map,'),
+      tr('it breaks and you wake in town unharmed,'),
+      tr('keeping everything you found there.'),
     ],
-    flavor: 'Someone paid for this with a death that never came. It will take one more.',
+    flavor: tr('Someone paid for this with a death that never came. It will take one more.'),
     value: 2400,
   },
 ];

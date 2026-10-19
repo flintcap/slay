@@ -10,15 +10,21 @@ import { save } from '../core/Save';
 import { events } from '../core/Events';
 import { REBINDABLE, RESERVED_KEYS, rebind, keyFor, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from '../core/Access';
 import { Button, Slider, Toggle, add, clear, div, span, section } from './Widgets';
+import { tr } from '../core/I18n';
 
 /** "KeyW" -> "W", "Digit1" -> "1", "ArrowUp" -> "Up". */
 export function keyLabel(code: string): string {
   if (code.startsWith('Key')) return code.slice(3);
   if (code.startsWith('Digit')) return code.slice(5);
-  if (code.startsWith('Numpad')) return `Num ${code.slice(6)}`;
-  if (code.startsWith('Arrow')) return code.slice(5);
+  if (code.startsWith('Numpad')) return tr('Num {0}', code.slice(6));
   const named: Record<string, string> = {
-    Space: 'Space',
+    ArrowUp: tr('Up'),
+    ArrowDown: tr('Down'),
+    ArrowLeft: tr('Left'),
+    ArrowRight: tr('Right'),
+    Space: tr('Space'),
+    Shift: tr('Shift'),
+    Tab: tr('Tab'),
     Backquote: '`',
     Minus: '-',
     Equal: '=',
@@ -30,11 +36,11 @@ export function keyLabel(code: string): string {
     Comma: ',',
     Period: '.',
     Slash: '/',
-    ControlLeft: 'Left Ctrl',
-    ControlRight: 'Right Ctrl',
-    CapsLock: 'Caps Lock',
-    Enter: 'Enter',
-    Backspace: 'Backspace',
+    ControlLeft: tr('Left Ctrl'),
+    ControlRight: tr('Right Ctrl'),
+    CapsLock: tr('Caps Lock'),
+    Enter: tr('Enter'),
+    Backspace: tr('Backspace'),
   };
   return named[code] ?? code;
 }
@@ -42,10 +48,10 @@ export function keyLabel(code: string): string {
 /** Text size and colour-blind colours. Reduced motion is a toggle on the Gameplay tab already. */
 export function accessibilitySection(commit: () => void): HTMLDivElement {
   const s = save.settings;
-  const sec = section('Accessibility', 'eye');
+  const sec = section(tr('Accessibility'), 'eye');
   sec.body.appendChild(
     new Slider(
-      'Text size',
+      tr('Text size'),
       s.textScale ?? 1,
       TEXT_SCALE_MIN,
       TEXT_SCALE_MAX,
@@ -55,18 +61,18 @@ export function accessibilitySection(commit: () => void): HTMLDivElement {
         commit();
       },
       (v) => `${Math.round(v * 100)}%`,
-      'Bigger or smaller words in every menu, the HUD and the damage numbers',
+      tr('Bigger or smaller words in every menu, the HUD and the damage numbers'),
     ).root,
   );
   sec.body.appendChild(
     new Toggle(
-      'Colour-blind item colours',
+      tr('Colour-blind item colours'),
       !!s.colorBlindRarity,
       (v) => {
         s.colorBlindRarity = v;
         commit();
       },
-      'Rarity colours anyone can tell apart',
+      tr('Rarity colours anyone can tell apart'),
     ).root,
   );
   return sec.root;
@@ -78,7 +84,7 @@ export function accessibilitySection(commit: () => void): HTMLDivElement {
  * uses swaps the two, so nothing is ever left without a key.
  */
 export function keybindSection(commit: () => void): HTMLDivElement {
-  const sec = section('Key bindings', 'info');
+  const sec = section(tr('Key bindings'), 'info');
   const list = div('keybinds');
   sec.body.appendChild(list);
 
@@ -101,7 +107,7 @@ export function keybindSection(commit: () => void): HTMLDivElement {
       return;
     }
     if (RESERVED_KEYS.has(e.code)) {
-      events.emit('toast', { text: `${keyLabel(e.code)} cannot be rebound.`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} cannot be rebound.', keyLabel(e.code)), kind: 'bad' });
       render();
       return;
     }
@@ -120,13 +126,13 @@ export function keybindSection(commit: () => void): HTMLDivElement {
       const moved = keyFor(a.code, binds) !== a.code;
       const v = span('statline-value', keyLabel(keyFor(a.code, binds)) + (moved ? ' *' : ''));
       const btn = new Button({
-        label: 'Change',
+        label: tr('Change'),
         small: true,
         variant: 'ghost',
         onClick: () => {
           if (listening) stopListening();
           listening = { code: a.code, btn };
-          v.textContent = 'Press a key...';
+          v.textContent = tr('Press a key...');
           document.documentElement.dataset.keyCapture = '1';
           window.addEventListener('keydown', onKey, true);
         },
@@ -136,15 +142,15 @@ export function keybindSection(commit: () => void): HTMLDivElement {
     }
     const fixed = div('statline');
     const fl = div('statline-label');
-    fl.appendChild(span('', 'Move / attack / pause'));
-    add(fixed, fl, div('statline-dots'), span('statline-value', 'Left click / right click / Esc'));
+    fl.appendChild(span('', tr('Move / attack / pause')));
+    add(fixed, fl, div('statline-dots'), span('statline-value', tr('Left click / right click / Esc')));
     list.appendChild(fixed);
   };
   render();
 
   sec.body.appendChild(
     new Button({
-      label: 'Reset keys',
+      label: tr('Reset keys'),
       small: true,
       variant: 'ghost',
       onClick: () => {

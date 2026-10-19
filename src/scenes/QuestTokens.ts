@@ -20,10 +20,11 @@
 import type { MonsterRank, QuestInstance } from '../types';
 import { onCollect, onReach } from '../sim/Quests';
 import { toast } from '../core/Events';
+import { tr } from '../core/I18n';
 
 export type QuestToken = 'relic' | 'key';
 
-const TOKEN_NAME: Record<QuestToken, string> = { relic: 'Relic', key: 'Corpse-key' };
+const TOKEN_NAME: Record<QuestToken, string> = { relic: tr('Relic'), key: 'Corpse-key' };
 
 /** How many of each token a kill of this rank yields. */
 export function tokensFromKill(rank: MonsterRank): Partial<Record<QuestToken, number>> {
@@ -60,7 +61,7 @@ function grant(quest: QuestInstance | null | undefined, tokens: Partial<Record<Q
     const o = wants(quest, token);
     if (!o || n <= 0) continue;
     onCollect(quest, `item:${token}`, n);
-    if (!o.done) toast(`${TOKEN_NAME[token]} recovered (${o.progress}/${o.target})`, 'info');
+    if (!o.done) toast(tr('{0} recovered ({1}/{2})', TOKEN_NAME[token], o.progress, o.target), 'info');
   }
 }
 

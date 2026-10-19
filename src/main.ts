@@ -23,6 +23,7 @@ import '@fontsource-variable/cinzel/wght.css';
 import '@fontsource-variable/jetbrains-mono/wght.css';
 import { loadFonts } from './ui/Fonts';
 import { onScreenRatio } from './core/Screen';
+import { tr, trn } from './core/I18n';
 
 // The session log (core/Log.ts) before anything else can go wrong.
 installLog();
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
   const canvas = document.getElementById('view') as HTMLCanvasElement | null;
   if (!canvas) throw new Error('missing #view canvas');
 
-  boot(0.05, 'Reading the ledger of the fallen…');
+  boot(0.05, tr('Reading the ledger of the fallen…'));
   // Canvas text keeps whatever face it was drawn in, so the bundled fonts
   // are ready before anything draws words (ui/Fonts.ts).
   const fonts = loadFonts();
@@ -103,7 +104,7 @@ async function main(): Promise<void> {
     });
   }
 
-  boot(0.18, 'Kindling the forge…');
+  boot(0.18, tr('Kindling the forge…'));
   await tick();
   const engine = new Engine(canvas);
   await engine.renderer.init();
@@ -126,7 +127,7 @@ async function main(): Promise<void> {
     engine.autoQuality = new AutoQuality(engine.renderer, () => save.settings);
   }
 
-  boot(0.34, 'Weaving materials…');
+  boot(0.34, tr('Weaving materials…'));
   await tick();
   // The first select-screen hero and the nine townsfolk mesh in a worker
   // while the rest of boot runs and the player is on the menus.
@@ -249,11 +250,11 @@ async function main(): Promise<void> {
     },
   });
 
-  boot(0.74, 'Tuning the instruments…');
+  boot(0.74, tr('Tuning the instruments…'));
   await tick();
   audio.init(save.settings);
 
-  boot(0.84, 'Raising the town…');
+  boot(0.84, tr('Raising the town…'));
   await tick();
   mountUI(engine);
   // The story layer: chapters, dialogue, contracts, boss voices, the journal.
@@ -275,7 +276,7 @@ async function main(): Promise<void> {
     engine.register('boot', () => new ShowcaseScene(engine));
   }
 
-  boot(0.95, 'Opening the gate…');
+  boot(0.95, tr('Opening the gate…'));
   await tick();
 
   engine.start();
@@ -288,15 +289,15 @@ async function main(): Promise<void> {
   {
     const r = save.loadReport;
     if (r.source === 'backup') {
-      events.emit('toast', { text: 'Your save was damaged. It was restored from the backup copy.', kind: 'bad' });
+      events.emit('toast', { text: tr('Your save was damaged. It was restored from the backup copy.'), kind: 'bad' });
     } else if (r.primaryDamaged) {
-      events.emit('toast', { text: 'Your save could not be read. A copy was kept; a new account was started.', kind: 'bad' });
+      events.emit('toast', { text: tr('Your save could not be read. A copy was kept; a new account was started.'), kind: 'bad' });
     } else if (r.quarantined > 0) {
-      events.emit('toast', { text: `${r.quarantined} damaged item${r.quarantined === 1 ? ' was' : 's were'} set aside from your save.`, kind: 'bad' });
+      events.emit('toast', { text: trn(r.quarantined, '{0} damaged item was set aside from your save.', '{0} damaged items were set aside from your save.', r.quarantined), kind: 'bad' });
     }
   }
 
-  boot(1, 'Ready');
+  boot(1, tr('Ready'));
   if (bootEl) {
     bootEl.classList.add('done');
     setTimeout(() => bootEl.remove(), 900);
@@ -329,7 +330,7 @@ main().catch((err) => {
   if (bootStatus) {
     const msg = err instanceof Error ? err.message : String(err);
     // No WebGPU is not a crash: say what the player can do about it.
-    bootStatus.textContent = err instanceof Error && err.name === 'NoWebGPUError' ? msg : `Failed to start: ${msg}`;
+    bootStatus.textContent = err instanceof Error && err.name === 'NoWebGPUError' ? msg : tr('Failed to start: {0}', msg);
     bootStatus.style.color = '#ff6b5a';
   }
 });

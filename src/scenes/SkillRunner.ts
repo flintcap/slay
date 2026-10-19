@@ -38,6 +38,7 @@ import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/R
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 import { atRank, boostRank } from '../fx/kit/Boost';
+import { tr } from '../core/I18n';
 
 /**
  * What a summon actually looks like.
@@ -50,12 +51,12 @@ import { atRank, boostRank } from '../fx/kit/Boost';
  * up. Totems keep no body on purpose; a totem is an object, not a creature.
  */
 const MINION_NAME: Record<string, string> = {
-  raiseSkeleton: 'Skeleton',
-  skeletalMage: 'Skeletal Mage',
-  grandOssuary: 'Bone Warden',
-  claySentinel: 'Clay Sentinel',
-  swornBrother: 'Sworn Brother',
-  shadowClone: 'Shadow',
+  raiseSkeleton: tr('Skeleton'),
+  skeletalMage: tr('Skeletal Mage'),
+  grandOssuary: tr('Bone Warden'),
+  claySentinel: tr('Clay Sentinel'),
+  swornBrother: tr('Sworn Brother'),
+  shadowClone: tr('Shadow'),
 };
 
 /** The monster body each summoning skill raises (read by the scene's warm-up too). */
@@ -793,13 +794,13 @@ export class SkillRunner {
     if (!hop && player.isOnCooldown(skillId)) return false;
     // Corpse Explosion needs a body to burst.
     if (def.effect === 'corpse.explode' && !this.corpseNear(target, CORPSE_REACH)) {
-      events.emit('toast', { text: 'No corpse there.', kind: 'bad' });
+      events.emit('toast', { text: tr('No corpse there.'), kind: 'bad' });
       audio.play('ui.error');
       return false;
     }
     // Umbral Ambush is struck from the veil or not at all.
     if (typeof def.params?.requiresStealth === 'number' && def.params.requiresStealth > 0 && !player.status.has('veiled')) {
-      events.emit('toast', { text: `${def.name} needs the veil.`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} needs the veil.', def.name), kind: 'bad' });
       audio.play('ui.error');
       return false;
     }
@@ -810,7 +811,7 @@ export class SkillRunner {
       const style = weaponStyle(player);
       if (style === 'ranged' || style === 'caster') {
         events.emit('toast', {
-          text: `${def.name} needs a melee weapon.`,
+          text: tr('{0} needs a melee weapon.', def.name),
           kind: 'bad',
         });
         audio.play('ui.error');
@@ -846,7 +847,7 @@ export class SkillRunner {
     if (cost > 0 && !player.spendMana(cost)) {
       // Say so. A skill that silently refuses reads as a broken button, which
       // is exactly how being out of mana was being reported as a bug.
-      events.emit('toast', { text: `Not enough mana for ${def.name}.`, kind: 'bad' });
+      events.emit('toast', { text: tr('Not enough mana for {0}.', def.name), kind: 'bad' });
       audio.play('ui.error');
       heroBark('noMana');
       return false;
@@ -1544,7 +1545,7 @@ export class SkillRunner {
 
           const room = isTotem ? count : Math.max(0, cap - this.countSummons(def.id));
           if (room === 0) {
-            events.emit('toast', { text: `${def.name} is at its limit.`, kind: 'info' });
+            events.emit('toast', { text: tr('{0} is at its limit.', def.name), kind: 'info' });
             break;
           }
           let knights = this.turrets.filter((q) => q.skillId === def.id && q.elite && q.life > 0 && q.left > 0).length;
@@ -1971,7 +1972,7 @@ export class SkillRunner {
       rollDamage(player.stats, ctx.rng, {
         scale: mult,
         type: 'physical',
-        ability: 'Attack',
+        ability: tr('Attack'),
         source: 'player',
       });
 
@@ -2375,7 +2376,7 @@ export class SkillRunner {
     const packet = rollDamage(player.stats, ctx.rng, {
       scale,
       type: 'physical',
-      ability: 'Riposte',
+      ability: tr('Riposte'),
       source: 'player',
       forceCrit: crit || undefined,
     });
@@ -2401,7 +2402,7 @@ export class SkillRunner {
   ): void {
     this.setCaster(player, enemies, boss);
     const packet = (): DamagePacket =>
-      rollDamage(player.stats, ctx.rng, { scale, type, ability: 'Rebirth', source: 'player' });
+      rollDamage(player.stats, ctx.rng, { scale, type, ability: tr('Rebirth'), source: 'player' });
     this.areaDamage(at, radius, packet, ctx, enemies, boss);
   }
 
@@ -2732,7 +2733,7 @@ export class SkillRunner {
             this.bladeTimes.push(this.runTime);
             this.strike(
               mark,
-              { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: 'Phantom Blade' },
+              { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: tr('Phantom Blade') },
               ctx, 'proc', t.root.position.x, t.root.position.z,
             );
             this.effects.projectile(
@@ -2807,7 +2808,7 @@ export class SkillRunner {
         if (best) {
           this.strike(
             best,
-            { ...packet, amount: packet.amount * (e.arcDamagePct / 100), ability: 'Arc' },
+            { ...packet, amount: packet.amount * (e.arcDamagePct / 100), ability: tr('Arc') },
             ctx, 'proc', t.root.position.x, t.root.position.z,
           );
           this.effects.beam(
@@ -2825,7 +2826,7 @@ export class SkillRunner {
         for (const other of this.allTargets(enemies, boss)) {
           if (other === t || other.life <= 0 || !other.hasStatus('shocked')) continue;
           if (this.groundDistance(other.root.position, t.root.position) > e.conductRadius) continue;
-          this.strike(other, { ...packet, amount: share, ability: 'Superconductor' }, ctx, 'proc', t.root.position.x, t.root.position.z);
+          this.strike(other, { ...packet, amount: share, ability: tr('Superconductor') }, ctx, 'proc', t.root.position.x, t.root.position.z);
         }
       }
     } finally {
@@ -3150,7 +3151,7 @@ export class SkillRunner {
         life: t.life,
         plateHeight: 1.7,
         nameplate: {
-          name: MINION_NAME[t.skillId] ?? 'Minion',
+          name: MINION_NAME[t.skillId] ?? tr('Minion'),
           rank: 'normal',
           affixes: [],
           life: t.life,
@@ -3264,7 +3265,7 @@ export class SkillRunner {
     const bite = (t.maxLife * e.choirLifePct) / 100 * tick;
     this.addZone(
       t.x, t.z, e.choirRadius, e.choirSec, tick,
-      () => ({ amount: bite, type: 'arcane', crit: false, source: 'player', ability: 'The Bone Choir' }),
+      () => ({ amount: bite, type: 'arcane', crit: false, source: 'player', ability: tr('The Bone Choir') }),
       'arcane', 0xb8c8ff, 'spirit', undefined, 'theBoneChoir', 'arcane',
     );
     this.zones[this.zones.length - 1]!.healShare = e.choirHealShare;
@@ -3616,7 +3617,7 @@ export class SkillRunner {
       const tz = t.root.position.z;
       const reach = (r + t.hitRadius) ** 2;
       if (!this.trail.some((q) => (q.x - tx) ** 2 + (q.z - tz) ** 2 <= reach)) continue;
-      const hp = this.tune(rollDamage(p.stats, ctx.rng, { scale: (e.trailDamagePct / 100) * every, type: 'poison', ability: 'Miasma Trail', source: 'player' }), t);
+      const hp = this.tune(rollDamage(p.stats, ctx.rng, { scale: (e.trailDamagePct / 100) * every, type: 'poison', ability: tr('Miasma Trail'), source: 'player' }), t);
       if (ctx.rng.chance(Math.min(1, e.trailPoisonPct / 100))) {
         hp.applies = [{ id: 'poisoned', duration: 8 + e.dotDurationSec, magnitude: 1 + e.dotDamagePct / 100, stacks: 1, maxStacks: Math.floor(e.dotMaxStacks), tickScale: 1 + e.dotTickPct / 100 }];
       }

@@ -4,6 +4,7 @@
  * that config get the fallbacks.
  */
 
+import { tr } from './I18n';
 declare const __SLAY_RELEASE__: boolean;
 declare const __SLAY_VERSION__: string;
 declare const __SLAY_COMMIT__: string;
@@ -27,5 +28,5 @@ export const PACKED: boolean = typeof __SLAY_PACKED__ === 'boolean' ? __SLAY_PAC
 
 /** "v1.0.0 (710c14f)", plus "test build" on any build that is not a release. */
 export function versionLabel(): string {
-  return `v${VERSION} (${COMMIT})${RELEASE ? '' : ' test build'}`;
+  return `v${VERSION} (${COMMIT})${RELEASE ? '' : ` ${tr('test build')}`}`;
 }

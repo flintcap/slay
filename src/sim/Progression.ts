@@ -42,6 +42,7 @@ const STAT_MILESTONES: Record<number, number> = {
 };
 
 import { activeDifficulty } from '../data/difficulties';
+import { tr } from '../core/I18n';
 
 export function statPointsForLevel(level: number): number {
   // Harder tiers hand out extra attribute points every level.
@@ -79,12 +80,12 @@ export function levelUpRewards(level: number): LevelUpReward {
     statPoints: statPointsForLevel(level),
     skillPoints: skillPointsForLevel(level),
   };
-  if (level === 6) out.note = 'Second-tier skills unlocked.';
-  else if (level === 12) out.note = 'Third-tier skills unlocked.';
-  else if (level === 18) out.note = 'Fourth-tier skills unlocked.';
-  else if (level === 24) out.note = 'Fifth-tier skills unlocked.';
-  else if (level === 30) out.note = 'Capstone skills unlocked.';
-  else if (STAT_MILESTONES[level] || SKILL_MILESTONES[level]) out.note = 'Milestone: bonus points awarded.';
+  if (level === 6) out.note = tr('Second-tier skills unlocked.');
+  else if (level === 12) out.note = tr('Third-tier skills unlocked.');
+  else if (level === 18) out.note = tr('Fourth-tier skills unlocked.');
+  else if (level === 24) out.note = tr('Fifth-tier skills unlocked.');
+  else if (level === 30) out.note = tr('Capstone skills unlocked.');
+  else if (STAT_MILESTONES[level] || SKILL_MILESTONES[level]) out.note = tr('Milestone: bonus points awarded.');
   return out;
 }
 
@@ -110,12 +111,12 @@ export function depthDangerBand(depth: number, playerLevel: number): {
   color: number;
 } {
   const delta = monsterLevelForDepth(depth) - playerLevel;
-  if (delta <= -12) return { delta, label: 'Trivial', color: 0x7f8c8d };
-  if (delta <= -5) return { delta, label: 'Easy', color: 0x33d64a };
-  if (delta <= 4) return { delta, label: 'Fair', color: 0xf5d76e };
-  if (delta <= 10) return { delta, label: 'Dangerous', color: 0xff8c33 };
-  if (delta <= 20) return { delta, label: 'Deadly', color: 0xff5a33 };
-  return { delta, label: 'Suicidal', color: 0xc060ff };
+  if (delta <= -12) return { delta, label: tr('Trivial'), color: 0x7f8c8d };
+  if (delta <= -5) return { delta, label: tr('Easy'), color: 0x33d64a };
+  if (delta <= 4) return { delta, label: tr('Fair'), color: 0xf5d76e };
+  if (delta <= 10) return { delta, label: tr('Dangerous'), color: 0xff8c33 };
+  if (delta <= 20) return { delta, label: tr('Deadly'), color: 0xff5a33 };
+  return { delta, label: tr('Suicidal'), color: 0xc060ff };
 }
 
 // ---------------------------------------------------------------------------
@@ -205,10 +206,10 @@ export function auditProgression(target: RespecTarget): string[] {
   const skillBudget = totalSkillPointsAt(target.level);
   const statBudget = totalStatPointsAt(target.level);
   if (skillsSpent + target.skillPoints > skillBudget) {
-    problems.push(`skill points over budget (${skillsSpent + target.skillPoints} > ${skillBudget})`);
+    problems.push(tr('skill points over budget ({0} > {1})', skillsSpent + target.skillPoints, skillBudget));
   }
   if (attrSpent + target.statPoints > statBudget) {
-    problems.push(`stat points over budget (${attrSpent + target.statPoints} > ${statBudget})`);
+    problems.push(tr('stat points over budget ({0} > {1})', attrSpent + target.statPoints, statBudget));
   }
   return problems;
 }

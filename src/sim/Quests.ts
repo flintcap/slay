@@ -47,6 +47,7 @@ import {
   type QuestFailKind,
 } from '../data/quests';
 import { NAMED_ELITES, pickLine, questLore } from '../data/lore';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Runtime side-table
@@ -168,16 +169,16 @@ export function onQuestFailed(fn: FailListener): () => void {
 }
 
 const FAIL_TEXT: Record<QuestFailKind | 'manual', string> = {
-  escortDeath: `They did not make it. The contract dies with them.`,
-  potionUsed: `The seal is broken. The wager is over.`,
-  timeExpired: `Time. Whatever you were racing has arrived.`,
-  shrineLost: `The light goes out. Very simply, and all at once.`,
-  relicLost: `The reliquary is short. It will not accept a partial set.`,
-  torchLost: `Your light is gone and the dark closes the contract.`,
-  markEscaped: `It breaks off, satisfied, and goes to wait somewhere deeper.`,
-  wardBroken: `The ward fails. Whatever it held no longer needs holding.`,
-  playerDeath: `The contract lapses with its holder.`,
-  manual: `The contract lapses.`,
+  escortDeath: tr('They did not make it. The contract dies with them.'),
+  potionUsed: tr('The seal is broken. The wager is over.'),
+  timeExpired: tr('Time. Whatever you were racing has arrived.'),
+  shrineLost: tr('The light goes out. Very simply, and all at once.'),
+  relicLost: tr('The reliquary is short. It will not accept a partial set.'),
+  torchLost: tr('Your light is gone and the dark closes the contract.'),
+  markEscaped: tr('It breaks off, satisfied, and goes to wait somewhere deeper.'),
+  wardBroken: tr('The ward fails. Whatever it held no longer needs holding.'),
+  playerDeath: tr('The contract lapses with its holder.'),
+  manual: tr('The contract lapses.'),
 };
 
 export function isFailed(quest: QuestInstance): boolean {
@@ -196,7 +197,7 @@ export function failQuest(quest: QuestInstance, kind: QuestFailKind | 'manual', 
   const lore = questLore(quest.defId);
   const text = detail ?? lore.onFail ?? FAIL_TEXT[kind];
   st.failure = { kind, text, at: st.elapsed };
-  toast(`${quest.name} — failed`, 'bad');
+  toast(tr('{0} — failed', quest.name), 'bad');
   events.emit('ui:refresh', {});
   for (const fn of Array.from(failListeners)) {
     try {
@@ -518,7 +519,7 @@ export function onCollect(quest: QuestInstance, itemFilter: string, amount = 1):
   if (touched > 0) {
     st.carried += amount;
     if (st.drainPerRelic > 0) {
-      toast(`The fragments are cold against your ribs. (-${st.drainPerRelic * st.carried}% resistances)`, 'bad');
+      toast(tr('The fragments are cold against your ribs. (-{0}% resistances)', st.drainPerRelic * st.carried), 'bad');
     }
   }
 }
@@ -613,7 +614,7 @@ export function onSurviveInterrupted(quest: QuestInstance, zone: string): void {
     st.timers[i] = 0;
     o.progress = 0;
     emitProgress(quest, i);
-    toast(`${quest.name}: the ground is lost.`, 'bad');
+    toast(tr('{0}: the ground is lost.', quest.name), 'bad');
   }
   if (canFail(quest, 'shrineLost') && target === 'shrine') failQuest(quest, 'shrineLost');
 }
@@ -664,7 +665,7 @@ export function onEliteEscaped(quest: QuestInstance, name?: string): number {
     failQuest(quest, 'markEscaped');
     return st.escapes;
   }
-  toast(`${st.markName || 'It'} slips away. It will come back heavier.`, 'bad');
+  toast(tr('{0} slips away. It will come back heavier.', st.markName || tr('It')), 'bad');
   return st.escapes;
 }
 
@@ -814,8 +815,8 @@ export function objectiveCounter(o: QuestObjective): string {
 /** One-line status for the HUD tracker. */
 export function questSummary(quest: QuestInstance): string {
   const st = questState(quest);
-  if (st.failed) return `${quest.name} — failed`;
-  if (quest.complete) return `${quest.name} — complete`;
+  if (st.failed) return tr('{0} — failed', quest.name);
+  if (quest.complete) return tr('{0} — complete', quest.name);
   const next = quest.objectives.find((o) => !o.done);
   if (!next) return quest.name;
   return `${quest.name}: ${next.desc} (${objectiveCounter(next)})`;

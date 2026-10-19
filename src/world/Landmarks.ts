@@ -12,6 +12,7 @@
  * `DungeonLevel.landmark`.
  */
 import type { BiomeId } from '../types';
+import { tr } from '../core/I18n';
 
 export interface SetPiece {
   id: string;
@@ -36,7 +37,7 @@ export interface SetPiece {
 export const SET_PIECES: SetPiece[] = [
   {
     id: 'gallows',
-    name: 'The Hanging Hill',
+    name: tr('The Hanging Hill'),
     biomes: ['darkForest', 'swamp', 'crypt', 'tundra'],
     heart: 'gibbet',
     ring: { kinds: ['gibbet', 'cage', 'gibbet', 'impaler'], n: 4, r: 3 },
@@ -46,7 +47,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'frozenWatch',
-    name: 'The Frozen Watch',
+    name: tr('The Frozen Watch'),
     biomes: ['tundra', 'frostvault'],
     heart: 'iceMonolith',
     ring: { kinds: ['frozenCorpse', 'frozenCorpse', 'frozenBanner', 'frozenCorpse', 'iceShard'], n: 5, r: 2.8 },
@@ -55,7 +56,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'brokenChapel',
-    name: 'The Broken Chapel',
+    name: tr('The Broken Chapel'),
     biomes: ['crypt', 'sunkenTemple', 'desert', 'desertTomb', 'darkForest', 'ashwaste'],
     heart: 'shrine',
     ring: { kinds: ['ruinWall', 'pillarBroken', 'brokenColumn', 'pillarBroken', 'ruinWall'], n: 5, r: 3.5 },
@@ -65,7 +66,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'tithePit',
-    name: 'The Tithe Mound',
+    name: tr('The Tithe Mound'),
     biomes: ['crypt', 'caverns', 'hell', 'desertTomb'],
     heart: 'ossuary',
     ring: { kinds: ['boneSpire', 'skullPile', 'boneSpire', 'skullPile'], n: 4, r: 3 },
@@ -75,7 +76,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'drownedIdol',
-    name: 'The Drowned Idol',
+    name: tr('The Drowned Idol'),
     biomes: ['swamp', 'sunkenTemple', 'caverns', 'hive'],
     heart: 'idolHead',
     ring: { kinds: ['runeStone', 'runeStone', 'runeStone'], n: 3, r: 3.2 },
@@ -85,7 +86,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'lastCamp',
-    name: 'The Last Camp',
+    name: tr('The Last Camp'),
     biomes: ['darkForest', 'desert', 'tundra', 'ashwaste'],
     heart: 'campfire',
     ring: { kinds: ['tent', 'cart', 'tent'], n: 3, r: 3.4 },
@@ -95,7 +96,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'weepingGate',
-    name: 'The Weeping Gate',
+    name: tr('The Weeping Gate'),
     biomes: ['voidspire', 'hell'],
     heart: 'voidRift',
     ring: { kinds: ['obelisk', 'obelisk', 'obelisk'], n: 3, r: 3.4 },
@@ -105,7 +106,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'coldCrucible',
-    name: 'The Cold Crucible',
+    name: tr('The Cold Crucible'),
     biomes: ['foundry', 'hell'],
     heart: 'smeltingVat',
     ring: { kinds: ['anvil', 'pipeCluster', 'anvil', 'gear'], n: 4, r: 3 },
@@ -115,7 +116,7 @@ export const SET_PIECES: SetPiece[] = [
   },
   {
     id: 'larder',
-    name: 'The Queen’s Larder',
+    name: tr('The Queen’s Larder'),
     biomes: ['hive', 'caverns'],
     heart: 'broodMound',
     ring: { kinds: ['cocoon', 'cocoon', 'chitinSpike', 'cocoon', 'cocoon'], n: 5, r: 3 },

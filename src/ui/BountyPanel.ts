@@ -18,6 +18,8 @@ import {
   refreshBoard,
 } from '../sim/TownServices';
 import { Panel, Button, div, span, clear, add, fmtInt, rarityHex } from './Widgets';
+import { tr } from '../core/I18n';
+import { itemDisplayName } from '../sim/Loot';
 
 export class BountyPanel {
   readonly panel: Panel;
@@ -26,8 +28,8 @@ export class BountyPanel {
   constructor() {
     this.panel = new Panel({
       id: 'bounties',
-      title: 'Bounty Board',
-      subtitle: 'Paid on proof',
+      title: tr('Bounty Board'),
+      subtitle: tr('Paid on proof'),
       icon: 'scroll',
       width: 600,
     });
@@ -60,9 +62,9 @@ export class BountyPanel {
     const body = div('depth-card-body');
     body.appendChild(div('depth-card-title', bountyText(b)));
     const reward = div('depth-card-sub');
-    const rarity = span('', `a ${b.reward.rarity} item`);
+    const rarity = span('', tr('a {0} item', b.reward.rarity));
     rarity.style.color = rarityHex(b.reward.rarity);
-    add(reward, span('depth-gold', `${fmtInt(b.reward.gold)}g`), span('', ' · '), span('depth-good', `${b.reward.renown} Renown`), span('', ' · '), rarity);
+    add(reward, span('depth-gold', `${fmtInt(b.reward.gold)}g`), span('', ' · '), span('depth-good', tr('{0} Renown', b.reward.renown)), span('', ' · '), rarity);
     body.appendChild(reward);
     if (b.state !== 'open') {
       const track = div('depth-track');
@@ -75,7 +77,7 @@ export class BountyPanel {
     card.appendChild(body);
     const after = (ok: boolean, reason?: string) => {
       if (!ok) {
-        toast(reason ?? 'No.', 'bad');
+        toast(reason ?? tr('No.'), 'bad');
         audio.play('ui.error');
         return false;
       }
@@ -85,7 +87,7 @@ export class BountyPanel {
     };
     if (b.state === 'open') {
       const btn = new Button({
-        label: 'Take',
+        label: tr('Take'),
         small: true,
         variant: 'gold',
         onClick: () => {
@@ -98,16 +100,16 @@ export class BountyPanel {
     } else if (b.state === 'active') {
       card.appendChild(
         new Button({
-          label: 'Abandon',
+          label: tr('Abandon'),
           small: true,
           variant: 'ghost',
-          onClick: () => after(abandonBounty(c, b.id), 'That bounty is not yours.'),
+          onClick: () => after(abandonBounty(c, b.id), tr('That bounty is not yours.')),
         }).root,
       );
     } else {
       card.appendChild(
         new Button({
-          label: 'Claim',
+          label: tr('Claim'),
           small: true,
           variant: 'gold',
           onClick: () => {
@@ -117,11 +119,11 @@ export class BountyPanel {
               return;
             }
             const gain = grantRenown(save.account, r.payout.renown);
-            for (const u of gain.unlocked) toast(`Unlocked: ${u.name}. ${u.desc}`, 'epic');
+            for (const u of gain.unlocked) toast(tr('Unlocked: {0}. {1}', u.name, u.desc), 'epic');
             if (gain.unlocked.some((u) => u.id === 'stashTab')) save.grantStashTab();
             audio.play('quest.complete');
             const item = r.payout.item;
-            toast(`Bounty paid: ${fmtInt(r.payout.gold)} gold${item ? `, ${item.name}` : ''}.`, 'epic', item?.rarity);
+            toast(tr('Bounty paid: {0} gold{1}.', fmtInt(r.payout.gold), item ? `, ${itemDisplayName(item)}` : ''), 'epic', item?.rarity);
             after(true);
           },
         }).root,
@@ -139,15 +141,15 @@ export class BountyPanel {
     this.body.appendChild(
       div(
         'depth-note',
-        `Take up to ${MAX_ACTIVE_BOUNTIES}. They count on any descent at least as deep as they ask, and are paid here. They die with you.`,
+        tr('Take up to {0}. They count on any descent at least as deep as they ask, and are paid here. They die with you.', MAX_ACTIVE_BOUNTIES),
       ),
     );
     const yours = div('depth-list');
-    yours.appendChild(span('depth-dim', held.length ? 'Yours' : 'You hold no bounties.'));
+    yours.appendChild(span('depth-dim', held.length ? tr('Yours') : tr('You hold no bounties.')));
     for (const b of held) yours.appendChild(this.card(b));
     this.body.appendChild(yours);
     const board = div('depth-list');
-    board.appendChild(span('depth-dim', 'On the board'));
+    board.appendChild(span('depth-dim', tr('On the board')));
     for (const b of open) board.appendChild(this.card(b));
     this.body.appendChild(board);
   }

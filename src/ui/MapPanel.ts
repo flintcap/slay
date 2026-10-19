@@ -12,6 +12,7 @@ import { runtime, Panel, add, clear, div, span, icon, emptyState } from './Widge
 import { zoneInks, zoneInkAt, newKindInk, wayMarks, T_RUIN } from './ZoneInk';
 import { FONT_DISPLAY } from './Fonts';
 import { onScreenRatio, screenRatio } from '../core/Screen';
+import { tr } from '../core/I18n';
 
 const T_VOID = 0;
 const T_FLOOR = 1;
@@ -37,13 +38,13 @@ const ROOM_TINT: Record<DungeonRoom['kind'], string> = {
 };
 
 const ROOM_LABEL: Partial<Record<DungeonRoom['kind'], string>> = {
-  treasure: 'Treasure',
-  shrine: 'Shrine',
-  boss: 'Boss',
-  vault: 'Vault',
-  quest: 'Quest',
-  entry: 'Entrance',
-  exit: 'Way On',
+  treasure: tr('Treasure'),
+  shrine: tr('Shrine'),
+  boss: tr('Boss'),
+  vault: tr('Vault'),
+  quest: tr('Quest'),
+  entry: tr('Entrance'),
+  exit: tr('Way On'),
 };
 
 export class MapPanel {
@@ -68,8 +69,8 @@ export class MapPanel {
   constructor() {
     this.panel = new Panel({
       id: 'map',
-      title: 'Map',
-      subtitle: 'Only what you have walked past is drawn',
+      title: tr('Map'),
+      subtitle: tr('Only what you have walked past is drawn'),
       icon: 'map',
       fullscreen: true,
     });
@@ -92,18 +93,18 @@ export class MapPanel {
     this.stage.appendChild(this.headerLabel);
 
     const legend = div('map-legend');
-    legend.appendChild(div('map-legend-title', 'Legend'));
+    legend.appendChild(div('map-legend-title', tr('Legend')));
     const rows: Array<[string, string]> = [
-      [FLOOR_FILL, 'Explored floor'],
-      [EDGE_INK, 'Wall'],
-      ['#ffd66b', 'Way on'],
-      ['#ff6a4d', 'Arena gate'],
-      ['#ffc861', 'Waypoint to town'],
-      ['#7fb0ff', 'Where you arrived'],
-      ['#d8a83a', 'Treasure'],
-      ['#b06cff', 'Shrine'],
-      ['#e0503c', 'Boss chamber'],
-      ['#f6ecd2', 'You'],
+      [FLOOR_FILL, tr('Explored floor')],
+      [EDGE_INK, tr('Wall')],
+      ['#ffd66b', tr('Way on')],
+      ['#ff6a4d', tr('Arena gate')],
+      ['#ffc861', tr('Waypoint to town')],
+      ['#7fb0ff', tr('Where you arrived')],
+      ['#d8a83a', tr('Treasure')],
+      ['#b06cff', tr('Shrine')],
+      ['#e0503c', tr('Boss chamber')],
+      ['#f6ecd2', tr('You')],
     ];
     for (const [color, label] of rows) {
       const r = div('legend-item');
@@ -113,7 +114,7 @@ export class MapPanel {
       legend.appendChild(r);
     }
     this.stage.appendChild(legend);
-    this.stage.appendChild(div('map-hint', 'Drag to pan · scroll to zoom · M to close'));
+    this.stage.appendChild(div('map-hint', tr('Drag to pan · scroll to zoom · M to close')));
 
     this.panel.body.style.padding = '0';
     this.panel.body.style.display = 'flex';
@@ -242,12 +243,12 @@ export class MapPanel {
     ctx.clearRect(0, 0, W, H);
 
     const level = runtime.level;
-    this.headerLabel.textContent = level ? `Tier ${runtime.depth} · ${(level.zones ?? []).map((z) => z.name).join(' · ') || level.biome}` : '';
+    this.headerLabel.textContent = level ? tr('Tier {0} · {1}', runtime.depth, (level.zones ?? []).map((z) => z.name).join(' · ') || level.biome) : '';
 
     if (!level) {
       clear(this.headerLabel);
       if (!this.stage.querySelector('.empty-state')) {
-        const es = emptyState('No dungeon to map. The town needs no chart.', 'map');
+        const es = emptyState(tr('No dungeon to map. The town needs no chart.'), 'map');
         es.style.position = 'absolute';
         this.stage.appendChild(es);
       }

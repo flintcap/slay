@@ -45,18 +45,19 @@ import {
   frameOrnament,
   type ItemHoverContext,
 } from './Widgets';
+import { tr, numText } from '../core/I18n';
 
 /** Rarities grand enough to wear filigree on their tooltip frame. */
 const RICH = new Set<ItemRarity>(['rare', 'set', 'unique', 'mythic', 'ancient']);
 
 const RARITY_WORD: Record<string, string> = {
-  normal: 'Common',
-  magic: 'Magic',
-  rare: 'Rare',
-  set: 'Set Item',
-  unique: 'Unique',
-  mythic: 'Mythic',
-  ancient: 'Ancient',
+  normal: tr('Common'),
+  magic: tr('Magic'),
+  rare: tr('Rare'),
+  set: tr('Set Item'),
+  unique: tr('Unique'),
+  mythic: tr('Mythic'),
+  ancient: tr('Ancient'),
 };
 
 
@@ -160,9 +161,9 @@ class TooltipManager {
     } else {
       if (choices.length && !ctx?.noCompare) {
         const hint = div('tt-hint');
-        hint.appendChild(span('', 'Hold '));
+        hint.appendChild(span('', tr('Hold ')));
         hint.appendChild(span('keycap', 'Shift'));
-        hint.appendChild(span('', ' to compare'));
+        hint.appendChild(span('', tr(' to compare')));
         this.main.appendChild(hint);
       }
     }
@@ -206,7 +207,7 @@ class TooltipManager {
     // stay plain so the frame itself says how good the drop is.
     if (RICH.has(item.rarity)) host.appendChild(frameOrnament(false));
 
-    if (isCompare) host.appendChild(div('tt-compare-flag', 'Currently Equipped'));
+    if (isCompare) host.appendChild(div('tt-compare-flag', tr('Currently Equipped')));
 
     // --- header plate -------------------------------------------------------
     const hd = div('tt-hd');
@@ -227,7 +228,7 @@ class TooltipManager {
     hd.appendChild(crest);
 
     const titles = div('tt-titles');
-    const name = attempt(() => itemDisplayName(item), item.name || 'Unknown Item');
+    const name = attempt(() => itemDisplayName(item), item.name || tr('Unknown Item'));
     const nameEl = div('tt-name', name);
     if (item.upgrade > 0) nameEl.appendChild(span('tt-upg', ` +${item.upgrade}`));
     titles.appendChild(nameEl);
@@ -235,8 +236,8 @@ class TooltipManager {
     const baseLine = div('tt-base');
     baseLine.appendChild(span('tt-rarity-word', RARITY_WORD[item.rarity] ?? item.rarity));
     if (base && base.name !== name) baseLine.appendChild(span('tt-base-name', base.name));
-    if (isTwoHanded(item)) baseLine.appendChild(span('tt-tag', 'Two-Handed'));
-    if (item.corrupted) baseLine.appendChild(span('tt-corrupt', 'Corrupted'));
+    if (isTwoHanded(item)) baseLine.appendChild(span('tt-tag', tr('Two-Handed')));
+    if (item.corrupted) baseLine.appendChild(span('tt-corrupt', tr('Corrupted')));
     titles.appendChild(baseLine);
     hd.appendChild(titles);
     host.appendChild(hd);
@@ -249,7 +250,7 @@ class TooltipManager {
       if (!req.ok) {
         const warn = div('tt-warn');
         warn.appendChild(icon('warn', { size: 13 }));
-        warn.appendChild(span('', req.reason ?? 'You cannot equip this.'));
+        warn.appendChild(span('', req.reason ?? tr('You cannot equip this.')));
         host.appendChild(warn);
       }
     }
@@ -261,17 +262,17 @@ class TooltipManager {
       if (base.baseMinDamage !== undefined || stat.minDamage) {
         const lo = Math.round(stat.minDamage ?? base.baseMinDamage ?? 0);
         const hi = Math.round(stat.maxDamage ?? base.baseMaxDamage ?? 0);
-        block.appendChild(this.bigStat('Damage', `${lo}–${hi}`, 'sword'));
+        block.appendChild(this.bigStat(tr('Damage'), `${lo}–${hi}`, 'sword'));
         if (base.baseSpeed) {
-          block.appendChild(this.bigStat('Per second', base.baseSpeed.toFixed(2), 'speed'));
-          block.appendChild(this.bigStat('DPS', fmt(((lo + hi) / 2) * base.baseSpeed), 'fire', 'is-dps'));
+          block.appendChild(this.bigStat(tr('Per second'), numText(base.baseSpeed, 2), 'speed'));
+          block.appendChild(this.bigStat(tr('DPS'), fmt(((lo + hi) / 2) * base.baseSpeed), 'fire', 'is-dps'));
         }
       }
       if (base.baseDefense !== undefined || stat.defense) {
-        block.appendChild(this.bigStat('Defense', fmtInt(stat.defense ?? base.baseDefense ?? 0), 'defense'));
+        block.appendChild(this.bigStat(tr('Defense'), fmtInt(stat.defense ?? base.baseDefense ?? 0), 'defense'));
       }
       if (base.baseBlock) {
-        block.appendChild(this.bigStat('Block', `${Math.round(base.baseBlock * 100)}%`, 'block'));
+        block.appendChild(this.bigStat(tr('Block'), `${Math.round(base.baseBlock * 100)}%`, 'block'));
       }
       if (block.childElementCount) host.appendChild(block);
     }
@@ -321,7 +322,7 @@ class TooltipManager {
         } else {
           const row = div('tt-socket-row is-empty');
           row.appendChild(cell);
-          row.appendChild(span('tt-socket-name', 'Empty socket'));
+          row.appendChild(span('tt-socket-name', tr('Empty socket')));
           strip.appendChild(row);
         }
       }
@@ -350,18 +351,18 @@ class TooltipManager {
     if (base) {
       const reqs: Array<{ label: string; met: boolean }> = [];
       const lvl = Math.max(base.levelReq + item.upgrade, attempt(() => requiredLevel(item), base.levelReq));
-      if (lvl > 1) reqs.push({ label: `Level ${lvl}`, met: level >= lvl });
-      if (base.strReq) reqs.push({ label: `${base.strReq} Str`, met: (stats?.strength ?? 0) >= base.strReq });
-      if (base.dexReq) reqs.push({ label: `${base.dexReq} Dex`, met: (stats?.dexterity ?? 0) >= base.dexReq });
+      if (lvl > 1) reqs.push({ label: tr('Level {0}', lvl), met: level >= lvl });
+      if (base.strReq) reqs.push({ label: tr('{0} Str', base.strReq), met: (stats?.strength ?? 0) >= base.strReq });
+      if (base.dexReq) reqs.push({ label: tr('{0} Dex', base.dexReq), met: (stats?.dexterity ?? 0) >= base.dexReq });
       if (reqs.length) {
         const r = div('tt-reqs');
-        r.appendChild(span('tt-reqs-label', 'Requires'));
+        r.appendChild(span('tt-reqs-label', tr('Requires')));
         for (const q of reqs) r.appendChild(span(`tt-req ${q.met ? 'met' : 'unmet'}`, q.label));
         host.appendChild(r);
       }
       if (base.classes && base.classes.length) {
         const mine = !char || base.classes.includes(char.classId);
-        host.appendChild(div(`tt-class-lock ${mine ? '' : 'unmet'}`.trim(), `${base.classes.map(titleCase).join(' · ')} only`));
+        host.appendChild(div(`tt-class-lock ${mine ? '' : 'unmet'}`.trim(), tr('{0} only', base.classes.map(titleCase).join(' · '))));
       }
     }
 
@@ -374,17 +375,17 @@ class TooltipManager {
     const worth = span(`tt-worth ${ctx?.price ? 'is-price' : ''}`.trim());
     worth.appendChild(icon('coin', { size: 12 }));
     worth.appendChild(span('', fmtInt(ctx?.price ? ctx.price.gold : value)));
-    worth.appendChild(span('tt-worth-label', ctx?.price ? ` ${ctx.price.label}` : ' sells for'));
+    worth.appendChild(span('tt-worth-label', ctx?.price ? ` ${ctx.price.label}` : tr(' sells for')));
     ft.appendChild(worth);
-    ft.appendChild(span('tt-ilvl', `Item level ${item.ilvl}`));
+    ft.appendChild(span('tt-ilvl', tr('Item level {0}', item.ilvl)));
     host.appendChild(ft);
 
     if (!isCompare && ctx?.source) {
       const hints = div('tt-actions');
-      if (ctx.source === 'inventory') hints.appendChild(this.hintChip('RMB', 'Equip'));
-      if (ctx.source === 'equipment') hints.appendChild(this.hintChip('RMB', 'Unequip'));
-      if (ctx.source === 'vendor') hints.appendChild(this.hintChip('Click', 'Buy'));
-      if (ctx.source === 'stash') hints.appendChild(this.hintChip('RMB', 'To pack'));
+      if (ctx.source === 'inventory') hints.appendChild(this.hintChip(tr('RMB'), tr('Equip')));
+      if (ctx.source === 'equipment') hints.appendChild(this.hintChip(tr('RMB'), tr('Unequip')));
+      if (ctx.source === 'vendor') hints.appendChild(this.hintChip(tr('Click'), tr('Buy')));
+      if (ctx.source === 'stash') hints.appendChild(this.hintChip(tr('RMB'), tr('To pack')));
       if (hints.childElementCount) host.appendChild(hints);
     }
   }
@@ -414,27 +415,27 @@ class TooltipManager {
         const lit = Math.max(1, Math.round(k * shown));
         for (let i = 0; i < shown; i++) mark.appendChild(span(i < lit ? 'pip on' : 'pip'));
         mark.appendChild(span('tt-tier-num', `T${mod.tier}/${max}`));
-        mark.title = `Tier ${mod.tier} of ${max} (${mod.kind})`;
+        mark.title = mod.kind === 'prefix' ? tr('Tier {0} of {1} (prefix)', mod.tier, max) : tr('Tier {0} of {1} (suffix)', mod.tier, max);
         row.appendChild(mark);
       }
-      if (mod.honed) row.appendChild(span('tt-modtag', 'honed'));
+      if (mod.honed) row.appendChild(span('tt-modtag', tr('honed')));
     } else if (mod.kind === 'crafted') {
-      row.appendChild(span('tt-modtag', 'crafted'));
+      row.appendChild(span('tt-modtag', tr('crafted')));
     } else if (mod.kind === 'corrupted') {
-      row.appendChild(span('tt-modtag is-corrupt', 'corrupted'));
+      row.appendChild(span('tt-modtag is-corrupt', tr('corrupted')));
     }
     return row;
   }
 
   /** Socketable and runeword text, lifted from the item module's own lines. */
   private extraBlocks(item: Item): HTMLElement[] {
-    const lines = attempt(() => itemTooltipLines(item), [] as Array<{ text: string; color: string; bold?: boolean }>);
+    const lines = attempt(() => itemTooltipLines(item), [] as ReturnType<typeof itemTooltipLines>);
     const out: HTMLElement[] = [];
-    const take = (from: number, until: (t: string) => boolean): HTMLElement => {
+    const take = (from: number, until: (l: (typeof lines)[number]) => boolean): HTMLElement => {
       const box = div('tt-extra');
       for (let i = from; i < lines.length; i++) {
         const l = lines[i]!;
-        if (i > from && until(l.text)) break;
+        if (i > from && until(l)) break;
         if (!l.text) continue;
         const d = div('tt-extra-line', l.text.trim());
         if (l.color) d.style.color = l.color;
@@ -444,10 +445,10 @@ class TooltipManager {
       }
       return box;
     };
-    const gemAt = lines.findIndex((l) => l.text === 'When socketed into:');
-    if (gemAt >= 0) out.push(take(gemAt, (t) => t === '' || t.startsWith('Sockets:')));
-    const wordAt = lines.findIndex((l) => l.text.startsWith('Runeword:'));
-    if (wordAt >= 0) out.push(take(wordAt, (t) => t === '' || !t.startsWith('  ')));
+    const gemAt = lines.findIndex((l) => l.block === 'gem');
+    if (gemAt >= 0) out.push(take(gemAt, (l) => l.text === '' || l.block === 'sockets'));
+    const wordAt = lines.findIndex((l) => l.block === 'runeword');
+    if (wordAt >= 0) out.push(take(wordAt, (l) => l.text === '' || !l.text.startsWith('  ')));
     return out;
   }
 
@@ -484,8 +485,8 @@ class TooltipManager {
     const counted = new Set(wornIds);
     if (item.uniqueId) counted.add(item.uniqueId);
     const block = div('tt-set');
-    const hd = div('tt-set-name', def?.name ?? `${titleCase(setId.replace(/[-_]/g, ' '))} Set`);
-    hd.appendChild(span('tt-set-count', `${wornIds.size}/${def?.pieces.length ?? '?'} worn`));
+    const hd = div('tt-set-name', def?.name ?? tr('{0} Set', titleCase(setId.replace(/[-_]/g, ' '))));
+    hd.appendChild(span('tt-set-count', tr('{0}/{1} worn', wornIds.size, def?.pieces.length ?? '?')));
     block.appendChild(hd);
     if (def) {
       for (const p of def.pieces) {
@@ -501,7 +502,7 @@ class TooltipManager {
         block.appendChild(row);
       }
     } else {
-      block.appendChild(div('tt-set-note', 'Wear more pieces to awaken the set.'));
+      block.appendChild(div('tt-set-note', tr('Wear more pieces to awaken the set.')));
     }
     return block;
   }
@@ -524,9 +525,9 @@ class TooltipManager {
       line.appendChild(val);
       rows.push(line);
     }
-    const against = worn.length > 1 ? 'Versus both hands' : named ? `Versus ${worn[0]!.name}` : 'Versus equipped';
+    const against = worn.length > 1 ? tr('Versus both hands') : named ? tr('Versus {0}', worn[0]!.name) : tr('Versus equipped');
     if (!rows.length) {
-      host.appendChild(div('tt-delta-none', named ? `${against}: no net stat change` : 'No net stat change'));
+      host.appendChild(div('tt-delta-none', named ? tr('{0}: no net stat change', against) : tr('No net stat change')));
       return;
     }
     const wrap = div('tt-deltas');
@@ -534,7 +535,7 @@ class TooltipManager {
     head.appendChild(span('tt-sublabel', against));
     // A one-word verdict for the common case where every line agrees. The
     // same verdict puts the green arrow on item slots (Compare.ts).
-    const verdict = v === 'upgrade' ? 'Upgrade' : v === 'downgrade' ? 'Downgrade' : 'Trade-off';
+    const verdict = v === 'upgrade' ? tr('Upgrade') : v === 'downgrade' ? tr('Downgrade') : tr('Trade-off');
     head.appendChild(span(`tt-verdict is-${verdict.toLowerCase()}`, verdict));
     wrap.appendChild(head);
     for (const r of rows.slice(0, 12)) wrap.appendChild(r);
@@ -551,7 +552,7 @@ class TooltipManager {
     const sum = attempt(() => swapSummary(char, item, worn), null);
     if (!sum) return;
     const wrap = div('tt-deltas tt-swap');
-    wrap.appendChild(div('tt-deltas-hd', '')).appendChild(span('tt-sublabel', 'If you wear it'));
+    wrap.appendChild(div('tt-deltas-hd', '')).appendChild(span('tt-sublabel', tr('If you wear it')));
     const row = (label: string, before: number, after: number, show: (v: number) => string): void => {
       const d = after - before;
       if (Math.abs(d) < 0.5) return;
@@ -566,20 +567,20 @@ class TooltipManager {
     const n = (v: number): string => fmtInt(Math.round(v));
     if (sum.dps) {
       const pct = sum.dps.before > 0 ? ` (${signed(((sum.dps.after - sum.dps.before) / sum.dps.before) * 100, 0)}%)` : '';
-      row(`Damage a second${pct}`, sum.dps.before, sum.dps.after, n);
+      row(tr('Damage a second{0}', pct), sum.dps.before, sum.dps.after, n);
     }
-    row('Life', sum.life.before, sum.life.after, n);
-    row('Toughness', sum.toughness.before, sum.toughness.after, n);
-    for (const r of sum.resists) row(`${r.label} resist`, r.before, r.after, (v) => `${Math.round(v)}%`);
+    row(tr('Life'), sum.life.before, sum.life.after, n);
+    row(tr('Toughness'), sum.toughness.before, sum.toughness.after, n);
+    for (const r of sum.resists) row(tr('{0} resist', r.label), r.before, r.after, (v) => `${Math.round(v)}%`);
     const list = (title: string, cls: string, items: string[]): void => {
       if (!items.length) return;
       wrap.appendChild(div(`tt-swap-group ${cls}`, title));
       for (const t of items.slice(0, 4)) wrap.appendChild(div(`tt-swap-line ${cls}`, t));
     };
-    list('Powers you gain', 'gain', sum.powersGained.map((p) => `${p.name}: ${p.text}`));
-    list('Powers you lose', 'loss', sum.powersLost.map((p) => `${p.name}: ${p.text}`));
-    list('Set bonuses that wake', 'gain', sum.setsGained);
-    list('Set bonuses you lose', 'loss', sum.setsLost);
+    list(tr('Powers you gain'), 'gain', sum.powersGained.map((p) => `${p.name}: ${p.text}`));
+    list(tr('Powers you lose'), 'loss', sum.powersLost.map((p) => `${p.name}: ${p.text}`));
+    list(tr('Set bonuses that wake'), 'gain', sum.setsGained);
+    list(tr('Set bonuses you lose'), 'loss', sum.setsLost);
     if (wrap.childElementCount > 1) host.appendChild(wrap);
   }
 

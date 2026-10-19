@@ -16,25 +16,26 @@
  */
 import type { SkillTreeDef } from '../../types';
 import { build, dim, per, syn, type SynergyLink } from './kit';
+import { tr } from '../../core/I18n';
 
 export const PALADIN_TREES: SkillTreeDef[] = [
   {
     id: 'palMace',
-    name: 'Mace',
+    name: tr('Mace'),
     classId: 'paladin',
-    blurb: 'Maces and scepters. One target, hit until it stops: stagger it, dent it, ring it like a bell.',
+    blurb: tr('Maces and scepters. One target, hit until it stops: stagger it, dent it, ring it like a bell.'),
   },
   {
     id: 'palBlade',
-    name: 'Blade',
+    name: tr('Blade'),
     classId: 'paladin',
-    blurb: 'Swords. Quick, exact cuts on one target: open it, answer it, finish it.',
+    blurb: tr('Swords. Quick, exact cuts on one target: open it, answer it, finish it.'),
   },
   {
     id: 'palAura',
-    name: 'Aura',
+    name: tr('Aura'),
     classId: 'paladin',
-    blurb: 'One aura at a time, a ring of candle smoke at your feet. Vows for you, censures for them.',
+    blurb: tr('One aura at a time, a ring of candle smoke at your feet. Vows for you, censures for them.'),
   },
 ];
 
@@ -46,8 +47,8 @@ const MACE = build('palMace', [
   // --------------------------------------------------------------- tier 1
   {
     id: 'tollingBlow',
-    name: 'Tolling Blow',
-    desc: 'One heavy overhand blow at one enemy for 150% weapon damage (+18% per rank). It is Staggered for 2s: slower to move and to swing.',
+    name: tr('Tolling Blow'),
+    desc: tr('One heavy overhand blow at one enemy for 150% weapon damage (+18% per rank). It is Staggered for 2s: slower to move and to swing.'),
     tier: 1,
     col: 0,
     icon: 'toll-blow',
@@ -59,8 +60,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'hallowedIron',
-    name: 'Hallowed Iron',
-    desc: 'Iron quenched in chapel water. +5% damage and +8 defense per rank.',
+    name: tr('Hallowed Iron'),
+    desc: tr('Iron quenched in chapel water. +5% damage and +8 defense per rank.'),
     tier: 1,
     col: 1,
     icon: 'hallowed-iron',
@@ -68,8 +69,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'shieldCrack',
-    name: 'Shield Crack',
-    desc: 'The shield rim, edge-on, into one jaw. 80% weapon damage (+12% per rank), a short shove, and it is Rung for 1s (+0.03s per rank): stunned. Needs a shield.',
+    name: tr('Shield Crack'),
+    desc: tr('The shield rim, edge-on, into one jaw. 80% weapon damage (+12% per rank), a short shove, and it is Rung for 1s (+0.03s per rank): stunned. Needs a shield.'),
     tier: 1,
     col: 2,
     icon: 'shield-crack',
@@ -84,8 +85,8 @@ const MACE = build('palMace', [
   // --------------------------------------------------------------- tier 2
   {
     id: 'anvilfall',
-    name: 'Anvilfall',
-    desc: 'Both hands on the haft and straight down, like a smith on cold iron. 220% weapon damage (+30% per rank) to one enemy and two Dents in its armour for 6s: each Dent is -12% defense and -4% physical resistance.',
+    name: tr('Anvilfall'),
+    desc: tr('Both hands on the haft and straight down, like a smith on cold iron. 220% weapon damage (+30% per rank) to one enemy and two Dents in its armour for 6s: each Dent is -12% defense and -4% physical resistance.'),
     tier: 2,
     col: 0,
     icon: 'anvilfall',
@@ -99,8 +100,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'forgedFaith',
-    name: 'Forged Faith',
-    desc: 'Prayers hammered into the plate. +14 defense and +1.5% damage reduction per rank.',
+    name: tr('Forged Faith'),
+    desc: tr('Prayers hammered into the plate. +14 defense and +1.5% damage reduction per rank.'),
     tier: 2,
     col: 1,
     icon: 'forged-faith',
@@ -109,8 +110,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'doorbreaker',
-    name: 'Doorbreaker',
-    desc: 'Shield first, at one enemy up to 9 metres off. 140% weapon damage (+20% per rank), a hard shove, and it is Staggered for 2s. Needs a shield.',
+    name: tr('Doorbreaker'),
+    desc: tr('Shield first, at one enemy up to 9 metres off. 140% weapon damage (+20% per rank), a hard shove, and it is Staggered for 2s. Needs a shield.'),
     tier: 2,
     col: 2,
     icon: 'doorbreaker',
@@ -126,8 +127,8 @@ const MACE = build('palMace', [
   // --------------------------------------------------------------- tier 3
   {
     id: 'knell',
-    name: 'Knell',
-    desc: 'A blow that rings twice. 170% weapon damage (+22% per rank), then half a second later the helm rings again for half as much and the enemy is Rung for 0.6s.',
+    name: tr('Knell'),
+    desc: tr('A blow that rings twice. 170% weapon damage (+22% per rank), then half a second later the helm rings again for half as much and the enemy is Rung for 0.6s.'),
     tier: 3,
     col: 0,
     icon: 'knell',
@@ -141,8 +142,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'crushingWeight',
-    name: 'Crushing Weight',
-    desc: 'What is already broken breaks easier. +7% damage per rank against an enemy that is Staggered, Rung or Dented.',
+    name: tr('Crushing Weight'),
+    desc: tr('What is already broken breaks easier. +7% damage per rank against an enemy that is Staggered, Rung or Dented.'),
     tier: 3,
     col: 1,
     icon: 'crushing-weight',
@@ -152,8 +153,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'bellguard',
-    name: 'Bellguard',
-    desc: 'The shield takes the blow and rings with it. +3% block chance per rank (toward 20%), and whatever you block is Staggered for 1.5s.',
+    name: tr('Bellguard'),
+    desc: tr('The shield takes the blow and rings with it. +3% block chance per rank (toward 20%), and whatever you block is Staggered for 1.5s.'),
     tier: 3,
     col: 2,
     icon: 'bellguard',
@@ -165,8 +166,8 @@ const MACE = build('palMace', [
   // --------------------------------------------------------------- tier 4
   {
     id: 'pilgrimsMaul',
-    name: "Pilgrim's Maul",
-    desc: 'A long, slow blow that spends every Dent on the enemy. 300% weapon damage (+42% per rank), and +30% more for each Dent it beats flat.',
+    name: tr("Pilgrim's Maul"),
+    desc: tr('A long, slow blow that spends every Dent on the enemy. 300% weapon damage (+42% per rank), and +30% more for each Dent it beats flat.'),
     tier: 4,
     col: 0,
     icon: 'pilgrim-maul',
@@ -181,8 +182,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'ironPenance',
-    name: 'Iron Penance',
-    desc: 'Every blow is a confession beaten out of it. Your physical hits have a 10% chance (+1% per rank) to Dent the enemy for 6s.',
+    name: tr('Iron Penance'),
+    desc: tr('Every blow is a confession beaten out of it. Your physical hits have a 10% chance (+1% per rank) to Dent the enemy for 6s.'),
     tier: 4,
     col: 1,
     icon: 'iron-penance',
@@ -192,8 +193,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'barTheDoor',
-    name: 'Bar the Door',
-    desc: 'Set the shield and lean in. For 5s (+0.15s per rank): +20% block chance and +10% damage reduction (+0.5% each per rank). Needs a shield.',
+    name: tr('Bar the Door'),
+    desc: tr('Set the shield and lean in. For 5s (+0.15s per rank): +20% block chance and +10% damage reduction (+0.5% each per rank). Needs a shield.'),
     tier: 4,
     col: 2,
     icon: 'bar-door',
@@ -207,8 +208,8 @@ const MACE = build('palMace', [
   // --------------------------------------------------------------- tier 5
   {
     id: 'hurlCenser',
-    name: 'Hurl the Censer',
-    desc: 'Swing the censer out on its chain at one enemy up to 14 metres off. 160% weapon damage (+20% per rank) as fire, and it is Smoked for 4s: -30% attack rating while hot ash burns it.',
+    name: tr('Hurl the Censer'),
+    desc: tr('Swing the censer out on its chain at one enemy up to 14 metres off. 160% weapon damage (+20% per rank) as fire, and it is Smoked for 4s: -30% attack rating while hot ash burns it.'),
     tier: 5,
     col: 0,
     icon: 'hurl-censer',
@@ -223,8 +224,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'weightOfStone',
-    name: 'Weight of Stone',
-    desc: 'Like dropping a church step on it. +2 minimum and +3 maximum damage, and +3% critical damage, per rank.',
+    name: tr('Weight of Stone'),
+    desc: tr('Like dropping a church step on it. +2 minimum and +3 maximum damage, and +3% critical damage, per rank.'),
     tier: 5,
     col: 1,
     icon: 'weight-stone',
@@ -233,8 +234,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'relicBash',
-    name: 'Relic Bash',
-    desc: 'Strike with the reliquary set in the shield boss. 140% weapon damage (+18% per rank); it spends every Dent on the enemy, and each one heals you 3% of your life (+0.15% per rank). Needs a shield.',
+    name: tr('Relic Bash'),
+    desc: tr('Strike with the reliquary set in the shield boss. 140% weapon damage (+18% per rank); it spends every Dent on the enemy, and each one heals you 3% of your life (+0.15% per rank). Needs a shield.'),
     tier: 5,
     col: 2,
     icon: 'relic-bash',
@@ -250,8 +251,8 @@ const MACE = build('palMace', [
   // --------------------------------------------------------------- tier 6
   {
     id: 'theLastBell',
-    name: 'The Last Bell',
-    desc: 'Capstone. Every fourth Mace blow is a Toll: +60% damage (+4% per rank), and the enemy is Rung for 0.8s.',
+    name: tr('The Last Bell'),
+    desc: tr('Capstone. Every fourth Mace blow is a Toll: +60% damage (+4% per rank), and the enemy is Rung for 0.8s.'),
     tier: 6,
     col: 0,
     icon: 'last-bell',
@@ -261,8 +262,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'ironVerdict',
-    name: 'Iron Verdict',
-    desc: 'Judgement, in one blow. 500% weapon damage (+70% per rank) to one enemy. It is Rung for 0.4s, and 0.4s longer for each Dent in its armour, up to 2.5s.',
+    name: tr('Iron Verdict'),
+    desc: tr('Judgement, in one blow. 500% weapon damage (+70% per rank) to one enemy. It is Rung for 0.4s, and 0.4s longer for each Dent in its armour, up to 2.5s.'),
     tier: 6,
     col: 1,
     icon: 'iron-verdict',
@@ -277,8 +278,8 @@ const MACE = build('palMace', [
   },
   {
     id: 'unbroken',
-    name: 'Unbroken',
-    desc: 'The bell cracked; it still rings. +12 life, +1.5 life regeneration and +1% physical resistance per rank (toward 25%).',
+    name: tr('Unbroken'),
+    desc: tr('The bell cracked; it still rings. +12 life, +1.5 life regeneration and +1% physical resistance per rank (toward 25%).'),
     tier: 6,
     col: 2,
     icon: 'unbroken',
@@ -312,8 +313,8 @@ const BLADE = build('palBlade', [
   // --------------------------------------------------------------- tier 1
   {
     id: 'oathCut',
-    name: 'Oath Cut',
-    desc: 'A short, exact thrust at one enemy for 120% weapon damage (+16% per rank). It is Opened: the wound bleeds for 5s, deeper with every cut, up to five. Needs a sword.',
+    name: tr('Oath Cut'),
+    desc: tr('A short, exact thrust at one enemy for 120% weapon damage (+16% per rank). It is Opened: the wound bleeds for 5s, deeper with every cut, up to five. Needs a sword.'),
     tier: 1,
     col: 0,
     icon: 'oath-cut',
@@ -326,8 +327,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'bladeCatechism',
-    name: 'Blade Catechism',
-    desc: 'The forms said over and over until the hand knows them. +2% critical chance per rank (toward 15%) and +12 attack rating per rank.',
+    name: tr('Blade Catechism'),
+    desc: tr('The forms said over and over until the hand knows them. +2% critical chance per rank (toward 15%) and +12 attack rating per rank.'),
     tier: 1,
     col: 1,
     icon: 'blade-catechism',
@@ -335,8 +336,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'turnTheBlade',
-    name: 'Turn the Blade',
-    desc: 'Blade up and turned for 1.2s: +50% block chance. Then the answer, at the nearest enemy in front: 200% weapon damage (+25% per rank), and it is Exposed for 3s. Needs a sword.',
+    name: tr('Turn the Blade'),
+    desc: tr('Blade up and turned for 1.2s: +50% block chance. Then the answer, at the nearest enemy in front: 200% weapon damage (+25% per rank), and it is Exposed for 3s. Needs a sword.'),
     tier: 1,
     col: 2,
     icon: 'turn-blade',
@@ -351,8 +352,8 @@ const BLADE = build('palBlade', [
   // --------------------------------------------------------------- tier 2
   {
     id: 'twinVerse',
-    name: 'Twin Verse',
-    desc: 'Two quick cuts at one enemy, 90% weapon damage each (+12% per rank). Each one Opens it a little deeper. Needs a sword.',
+    name: tr('Twin Verse'),
+    desc: tr('Two quick cuts at one enemy, 90% weapon damage each (+12% per rank). Each one Opens it a little deeper. Needs a sword.'),
     tier: 2,
     col: 0,
     icon: 'twin-verse',
@@ -366,8 +367,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'redPsalm',
-    name: 'Red Psalm',
-    desc: 'Sung low, over the bleeding. +6% damage per rank against an enemy that is bleeding or Opened.',
+    name: tr('Red Psalm'),
+    desc: tr('Sung low, over the bleeding. +6% damage per rank against an enemy that is bleeding or Opened.'),
     tier: 2,
     col: 1,
     icon: 'red-psalm',
@@ -377,8 +378,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'feint',
-    name: 'Feint',
-    desc: 'Show the blade one way, step to its side, and cut. 140% weapon damage (+20% per rank) to one enemy, and it is Exposed for 4s (+0.1s per rank): -20% defense, -8% physical resistance. Needs a sword.',
+    name: tr('Feint'),
+    desc: tr('Show the blade one way, step to its side, and cut. 140% weapon damage (+20% per rank) to one enemy, and it is Exposed for 4s (+0.1s per rank): -20% defense, -8% physical resistance. Needs a sword.'),
     tier: 2,
     col: 2,
     icon: 'feint',
@@ -394,8 +395,8 @@ const BLADE = build('palBlade', [
   // --------------------------------------------------------------- tier 3
   {
     id: 'litany',
-    name: 'Litany',
-    desc: 'Five cuts like five lines of a prayer, 50% weapon damage each (+7% per rank), every one Opening the same wound. Needs a sword.',
+    name: tr('Litany'),
+    desc: tr('Five cuts like five lines of a prayer, 50% weapon damage each (+7% per rank), every one Opening the same wound. Needs a sword.'),
     tier: 3,
     col: 0,
     icon: 'litany',
@@ -409,8 +410,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'measuredStep',
-    name: 'Measured Step',
-    desc: 'Never a wasted foot. +2% attack speed (toward 20%) and +1% movement speed (toward 12%) per rank.',
+    name: tr('Measured Step'),
+    desc: tr('Never a wasted foot. +2% attack speed (toward 20%) and +1% movement speed (toward 12%) per rank.'),
     tier: 3,
     col: 1,
     icon: 'measured-step',
@@ -419,8 +420,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'answerInSteel',
-    name: 'Answer in Steel',
-    desc: 'A blow you block is answered. 12% chance (+1.5% per rank) on a block to strike back for 140% weapon damage.',
+    name: tr('Answer in Steel'),
+    desc: tr('A blow you block is answered. 12% chance (+1.5% per rank) on a block to strike back for 140% weapon damage.'),
     tier: 3,
     col: 2,
     icon: 'answer-steel',
@@ -431,8 +432,8 @@ const BLADE = build('palBlade', [
   // --------------------------------------------------------------- tier 4
   {
     id: 'confessionThrust',
-    name: 'Confession Thrust',
-    desc: 'Lunge up to 5 metres into one enemy for 260% weapon damage (+36% per rank). Every Opened cut on it confesses at once: +40% damage for each, and the wounds close. Needs a sword.',
+    name: tr('Confession Thrust'),
+    desc: tr('Lunge up to 5 metres into one enemy for 260% weapon damage (+36% per rank). Every Opened cut on it confesses at once: +40% damage for each, and the wounds close. Needs a sword.'),
     tier: 4,
     col: 0,
     icon: 'confession',
@@ -447,8 +448,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'whettedFaith',
-    name: 'Whetted Faith',
-    desc: 'Kept sharp on the chapel step. +5% critical damage per rank and +1% life steal per rank (toward 8%).',
+    name: tr('Whetted Faith'),
+    desc: tr('Kept sharp on the chapel step. +5% critical damage per rank and +1% life steal per rank (toward 8%).'),
     tier: 4,
     col: 1,
     icon: 'whetted-faith',
@@ -457,8 +458,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'crosswise',
-    name: 'Crosswise',
-    desc: 'Two cuts that cross on one enemy, 130% weapon damage each (+18% per rank). The second leaves it Exposed for 5s. Needs a sword.',
+    name: tr('Crosswise'),
+    desc: tr('Two cuts that cross on one enemy, 130% weapon damage each (+18% per rank). The second leaves it Exposed for 5s. Needs a sword.'),
     tier: 4,
     col: 2,
     icon: 'crosswise',
@@ -474,8 +475,8 @@ const BLADE = build('palBlade', [
   // --------------------------------------------------------------- tier 5
   {
     id: 'mercyStroke',
-    name: 'Mercy Stroke',
-    desc: 'The kind cut. 220% weapon damage (+30% per rank) to one enemy; one below 15% of its life (+0.5% per rank) takes eight times that. Never a boss. Needs a sword.',
+    name: tr('Mercy Stroke'),
+    desc: tr('The kind cut. 220% weapon damage (+30% per rank) to one enemy; one below 15% of its life (+0.5% per rank) takes eight times that. Never a boss. Needs a sword.'),
     tier: 5,
     col: 0,
     icon: 'mercy-stroke',
@@ -490,8 +491,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'theFifthVerse',
-    name: 'The Fifth Verse',
-    desc: 'The verse no one forgets. Every fifth blow is a critical strike, and it lands 20% harder (+3% per rank).',
+    name: tr('The Fifth Verse'),
+    desc: tr('The verse no one forgets. Every fifth blow is a critical strike, and it lands 20% harder (+3% per rank).'),
     tier: 5,
     col: 1,
     icon: 'fifth-verse',
@@ -501,8 +502,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'sevenfold',
-    name: 'Sevenfold',
-    desc: 'Seven thrusts faster than the eye, 45% weapon damage each (+6.5% per rank). The seventh Exposes it and Opens it twice. Needs a sword.',
+    name: tr('Sevenfold'),
+    desc: tr('Seven thrusts faster than the eye, 45% weapon damage each (+6.5% per rank). The seventh Exposes it and Opens it twice. Needs a sword.'),
     tier: 5,
     col: 2,
     icon: 'sevenfold',
@@ -518,8 +519,8 @@ const BLADE = build('palBlade', [
   // --------------------------------------------------------------- tier 6
   {
     id: 'redRosary',
-    name: 'Red Rosary',
-    desc: 'Capstone. Each critical rite Opens the enemy (one more stack every sixth rank), Opened enemies take 15% more damage from you (+2% per rank), and your bleeds tick 20% faster.',
+    name: tr('Red Rosary'),
+    desc: tr('Capstone. Each critical rite Opens the enemy (one more stack every sixth rank), Opened enemies take 15% more damage from you (+2% per rank), and your bleeds tick 20% faster.'),
     tier: 6,
     col: 0,
     icon: 'red-rosary',
@@ -529,8 +530,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'lastRites',
-    name: 'Last Rites',
-    desc: 'Step round behind one enemy and put the blade through it: 450% weapon damage (+65% per rank). It is Opened three times and Exposed for 6s. Needs a sword.',
+    name: tr('Last Rites'),
+    desc: tr('Step round behind one enemy and put the blade through it: 450% weapon damage (+65% per rank). It is Opened three times and Exposed for 6s. Needs a sword.'),
     tier: 6,
     col: 1,
     icon: 'last-rites',
@@ -545,8 +546,8 @@ const BLADE = build('palBlade', [
   },
   {
     id: 'saintsReach',
-    name: "Saint's Reach",
-    desc: 'The long arm of a patient man. +1% critical chance per rank (toward 10%), +18 attack rating and +2 dexterity per rank.',
+    name: tr("Saint's Reach"),
+    desc: tr('The long arm of a patient man. +1% critical chance per rank (toward 10%), +18 attack rating and +2 dexterity per rank.'),
     tier: 6,
     col: 2,
     icon: 'saints-reach',
@@ -584,8 +585,8 @@ const AURA = build('palAura', [
   // --------------------------------------------------------------- tier 1
   {
     id: 'tallowLight',
-    name: 'Tallow Light',
-    desc: 'Light a vigil of tallow candles at your feet. While it burns: +4 life (+1.5 per rank) and +1.5 mana (+0.3 per rank) back every second. Press again to put it out. One vigil at a time.',
+    name: tr('Tallow Light'),
+    desc: tr('Light a vigil of tallow candles at your feet. While it burns: +4 life (+1.5 per rank) and +1.5 mana (+0.3 per rank) back every second. Press again to put it out. One vigil at a time.'),
     tier: 1,
     col: 0,
     icon: 'tallow-light',
@@ -597,8 +598,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'liturgy',
-    name: 'Liturgy',
-    desc: 'The hours kept, every one. +8 mana and +0.5 mana per second per rank, and +1% cast speed per rank (toward 15%).',
+    name: tr('Liturgy'),
+    desc: tr('The hours kept, every one. +8 mana and +0.5 mana per second per rank, and +1% cast speed per rank (toward 15%).'),
     tier: 1,
     col: 1,
     icon: 'liturgy',
@@ -606,8 +607,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'ironVigil',
-    name: 'Iron Vigil',
-    desc: 'A vigil kept kneeling on iron. While it burns: +30% defense (+5% per rank) and +4% damage reduction (+0.6% per rank). Press again to put it out. One vigil at a time.',
+    name: tr('Iron Vigil'),
+    desc: tr('A vigil kept kneeling on iron. While it burns: +30% defense (+5% per rank) and +4% damage reduction (+0.6% per rank). Press again to put it out. One vigil at a time.'),
     tier: 1,
     col: 2,
     icon: 'iron-vigil',
@@ -620,8 +621,8 @@ const AURA = build('palAura', [
   // --------------------------------------------------------------- tier 2
   {
     id: 'smoulderingRood',
-    name: 'Smouldering Rood',
-    desc: 'A vigil round a charred rood. Everything in the ring takes 28% weapon damage (+4.5% per rank) as fire twice a second. One vigil at a time.',
+    name: tr('Smouldering Rood'),
+    desc: tr('A vigil round a charred rood. Everything in the ring takes 28% weapon damage (+4.5% per rank) as fire twice a second. One vigil at a time.'),
     tier: 2,
     col: 0,
     icon: 'smouldering-rood',
@@ -636,8 +637,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'anoint',
-    name: 'Anoint',
-    desc: 'Oil on the brow and on the weapon. For 20s (+1s per rank): +20% damage (+3% per rank) and +30 attack rating (+6 per rank).',
+    name: tr('Anoint'),
+    desc: tr('Oil on the brow and on the weapon. For 20s (+1s per rank): +20% damage (+3% per rank) and +30 attack rating (+6 per rank).'),
     tier: 2,
     col: 1,
     icon: 'anoint',
@@ -650,8 +651,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'censure',
-    name: 'Censure',
-    desc: 'Name one enemy up to 14 metres off and condemn it. For 8s (+0.4s per rank): -20 attack rating (-2 per rank) and -15% defense (-2% per rank). If it dies censured, the censure finds the nearest enemy.',
+    name: tr('Censure'),
+    desc: tr('Name one enemy up to 14 metres off and condemn it. For 8s (+0.4s per rank): -20 attack rating (-2 per rank) and -15% defense (-2% per rank). If it dies censured, the censure finds the nearest enemy.'),
     tier: 2,
     col: 2,
     icon: 'censure',
@@ -665,8 +666,8 @@ const AURA = build('palAura', [
   // --------------------------------------------------------------- tier 3
   {
     id: 'censerSmoke',
-    name: 'Censer Smoke',
-    desc: 'A vigil wrapped in thick censer smoke. Enemies in the ring Choke: -15 attack rating (-1.5 per rank) and -8% attack speed (-0.8% per rank). One vigil at a time.',
+    name: tr('Censer Smoke'),
+    desc: tr('A vigil wrapped in thick censer smoke. Enemies in the ring Choke: -15 attack rating (-1.5 per rank) and -8% attack speed (-0.8% per rank). One vigil at a time.'),
     tier: 3,
     col: 0,
     icon: 'censer-smoke',
@@ -679,8 +680,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'wideWick',
-    name: 'Wide Wick',
-    desc: 'The candles set further out. Your vigils reach 8% further per rank.',
+    name: tr('Wide Wick'),
+    desc: tr('The candles set further out. Your vigils reach 8% further per rank.'),
     tier: 3,
     col: 1,
     icon: 'wide-wick',
@@ -690,8 +691,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'fervour',
-    name: 'Fervour',
-    desc: 'A vigil kept at a run. While it burns: +8% attack and cast speed (+1.2% per rank) and +6% movement speed (+0.8% per rank). One vigil at a time.',
+    name: tr('Fervour'),
+    desc: tr('A vigil kept at a run. While it burns: +8% attack and cast speed (+1.2% per rank) and +6% movement speed (+0.8% per rank). One vigil at a time.'),
     tier: 3,
     col: 2,
     icon: 'fervour',
@@ -705,8 +706,8 @@ const AURA = build('palAura', [
   // --------------------------------------------------------------- tier 4
   {
     id: 'tollingBell',
-    name: 'Tolling Bell',
-    desc: 'A vigil with a bell in it. Every 3 seconds it tolls: 120% weapon damage (+18% per rank) to everything in the ring, and each one is Rung for 0.3s (+0.02s per rank). One vigil at a time.',
+    name: tr('Tolling Bell'),
+    desc: tr('A vigil with a bell in it. Every 3 seconds it tolls: 120% weapon damage (+18% per rank) to everything in the ring, and each one is Rung for 0.3s (+0.02s per rank). One vigil at a time.'),
     tier: 4,
     col: 0,
     icon: 'tolling-bell',
@@ -721,8 +722,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'penitentGround',
-    name: 'Penitent Ground',
-    desc: 'The floor inside the ring makes them kneel. Enemies in any of your vigils are Penitent: -2% physical and fire resistance per rank.',
+    name: tr('Penitent Ground'),
+    desc: tr('The floor inside the ring makes them kneel. Enemies in any of your vigils are Penitent: -2% physical and fire resistance per rank.'),
     tier: 4,
     col: 1,
     icon: 'penitent-ground',
@@ -732,8 +733,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'martyrsVow',
-    name: "Martyr's Vow",
-    desc: 'Swear to take the blows. For 10s (+0.3s per rank) a ward of 15% of your life (+2% per rank) soaks damage, and you take 5 less from each hit (+0.5 per rank).',
+    name: tr("Martyr's Vow"),
+    desc: tr('Swear to take the blows. For 10s (+0.3s per rank) a ward of 15% of your life (+2% per rank) soaks damage, and you take 5 less from each hit (+0.5 per rank).'),
     tier: 4,
     col: 2,
     icon: 'martyrs-vow',
@@ -747,8 +748,8 @@ const AURA = build('palAura', [
   // --------------------------------------------------------------- tier 5
   {
     id: 'writOfAsh',
-    name: 'Writ of Ash',
-    desc: 'A vigil read from a burning writ. Enemies in the ring lose 8 of every resistance (+1 per rank). One vigil at a time.',
+    name: tr('Writ of Ash'),
+    desc: tr('A vigil read from a burning writ. Enemies in the ring lose 8 of every resistance (+1 per rank). One vigil at a time.'),
     tier: 5,
     col: 0,
     icon: 'writ-of-ash',
@@ -761,8 +762,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'vespers',
-    name: 'Vespers',
-    desc: 'The evening office, said under every vigil. While one burns: +2 life per second and +1% damage reduction per rank.',
+    name: tr('Vespers'),
+    desc: tr('The evening office, said under every vigil. While one burns: +2 life per second and +1% damage reduction per rank.'),
     tier: 5,
     col: 1,
     icon: 'vespers',
@@ -772,8 +773,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'consecratedGround',
-    name: 'Consecrated Ground',
-    desc: 'A vigil that makes the floor holy. Enemies in the ring are Consecrated: -20% movement speed (-1.5% per rank) and -5% attack speed (-0.5% per rank). One vigil at a time.',
+    name: tr('Consecrated Ground'),
+    desc: tr('A vigil that makes the floor holy. Enemies in the ring are Consecrated: -20% movement speed (-1.5% per rank) and -5% attack speed (-0.5% per rank). One vigil at a time.'),
     tier: 5,
     col: 2,
     icon: 'consecrated-ground',
@@ -787,8 +788,8 @@ const AURA = build('palAura', [
   // --------------------------------------------------------------- tier 6
   {
     id: 'twinWick',
-    name: 'Twin Wick',
-    desc: 'Capstone. Two vigils burn at once, and every vigil is 10% stronger (+2% per rank).',
+    name: tr('Twin Wick'),
+    desc: tr('Capstone. Two vigils burn at once, and every vigil is 10% stronger (+2% per rank).'),
     tier: 6,
     col: 0,
     icon: 'twin-wick',
@@ -798,8 +799,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'lastHour',
-    name: 'The Last Hour',
-    desc: 'Call down the great bell on one enemy up to 12 metres off. It falls for 0.7s, then lands for 600% weapon damage (+85% per rank), and the enemy is Rung for 1.5s.',
+    name: tr('The Last Hour'),
+    desc: tr('Call down the great bell on one enemy up to 12 metres off. It falls for 0.7s, then lands for 600% weapon damage (+85% per rank), and the enemy is Rung for 1.5s.'),
     tier: 6,
     col: 1,
     icon: 'last-hour',
@@ -814,8 +815,8 @@ const AURA = build('palAura', [
   },
   {
     id: 'emberSaint',
-    name: 'Ember Saint',
-    desc: 'Burned once and never out. +2% fire resistance per rank (toward 30%), +8 life per rank, and every enemy that dies inside your vigil gives back 1% of your life (+0.3% per rank).',
+    name: tr('Ember Saint'),
+    desc: tr('Burned once and never out. +2% fire resistance per rank (toward 30%), +8 life per rank, and every enemy that dies inside your vigil gives back 1% of your life (+0.3% per rank).'),
     tier: 6,
     col: 2,
     icon: 'ember-saint',

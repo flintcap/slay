@@ -21,6 +21,7 @@ import { hashString, Random } from '../core/RNG';
 import { RUN_MODIFIERS } from '../world/DungeonGen';
 import { offerChoice, offerGate } from '../ui/ChoiceSeam';
 import { modValue } from './RunModifiers';
+import { tr } from '../core/I18n';
 
 /** Modifiers that act during play, so taking one after generation is real. */
 export const PACT_POOL = [
@@ -68,17 +69,17 @@ export function planDescent(c: Character, go: (depth: number, pacts: string[]) =
     }
     const offers = pactOffers(c, depth);
     offerChoice(
-      'A Pact at the Gate',
-      `Take on a danger by choice. Each pact makes this descent's Renown worth ${Math.round(PACT_RENOWN * 100)}% more.`,
+      tr('A Pact at the Gate'),
+      tr('Take on a danger by choice. Each pact makes this descent\'s Renown worth {0}% more.', Math.round(PACT_RENOWN * 100)),
       [
-        { id: 'none', title: 'No pact', gain: 'Descend as you are' },
+        { id: 'none', title: tr('No pact'), gain: tr('Descend as you are') },
         ...offers.map((m) => {
           const [id, tier] = m.split('@');
           const def = RUN_MODIFIERS.find((d) => d.id === id)!;
           return {
             id: m,
             title: `${def.name}${Number(tier) > 1 ? ` ${'I'.repeat(Number(tier))}` : ''}`,
-            gain: `+${Math.round(PACT_RENOWN * 100)}% Renown this descent`,
+            gain: tr('+{0}% Renown this descent', Math.round(PACT_RENOWN * 100)),
             cost: def.desc.replace(/\{v\}/g, String(modValue(id!, Number(tier)))),
           };
         }),

@@ -24,6 +24,7 @@
 import type { AccountSave, Character, LegacyState, Stats } from '../types';
 import { UNIQUES } from '../data/uniques';
 import { SET_PIECES } from '../data/sets';
+import { tr, trn } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // State
@@ -170,13 +171,13 @@ export interface LegacyUnlock {
 }
 
 export const LEGACY_UNLOCKS: LegacyUnlock[] = [
-  { id: 'bounties', rank: 2, name: 'Bounty Board', desc: 'The board by the gate posts bounties with real rewards.' },
-  { id: 'gambler', rank: 3, name: 'The Gambler', desc: 'A dealer in sealed goods sets up shop. Pay gold, take your chances.' },
-  { id: 'enchanter', rank: 5, name: 'The Enchanter', desc: 'Reforge one affix of an item, or imbue a rare with a power.' },
-  { id: 'waypoints', rank: 7, name: 'Waypoints', desc: 'Begin a map from any tier milestone you have reached.' },
-  { id: 'pacts', rank: 9, name: 'Pacts', desc: 'Take on dangers by choice before a descent, for greater rewards.' },
-  { id: 'stashTab', rank: 12, name: 'Vault Extension', desc: 'One more tab in the shared stash.' },
-  { id: 'perkCap', rank: 20, name: 'Mastery', desc: 'Every perk can be raised two ranks higher.' },
+  { id: 'bounties', rank: 2, name: tr('Bounty Board'), desc: tr('The board by the gate posts bounties with real rewards.') },
+  { id: 'gambler', rank: 3, name: tr('The Gambler'), desc: tr('A dealer in sealed goods sets up shop. Pay gold, take your chances.') },
+  { id: 'enchanter', rank: 5, name: tr('The Enchanter'), desc: tr('Reforge one affix of an item, or imbue a rare with a power.') },
+  { id: 'waypoints', rank: 7, name: tr('Waypoints'), desc: tr('Begin a map from any tier milestone you have reached.') },
+  { id: 'pacts', rank: 9, name: tr('Pacts'), desc: tr('Take on dangers by choice before a descent, for greater rewards.') },
+  { id: 'stashTab', rank: 12, name: tr('Vault Extension'), desc: tr('One more tab in the shared stash.') },
+  { id: 'perkCap', rank: 20, name: tr('Mastery'), desc: tr('Every perk can be raised two ranks higher.') },
 ];
 
 export function hasUnlock(account: AccountSave, id: string): boolean {
@@ -204,8 +205,8 @@ export interface PerkDef {
 export const PERKS: PerkDef[] = [
   {
     id: 'hardy',
-    name: 'Hardy Stock',
-    desc: (r) => `+${r * 3}% maximum life`,
+    name: tr('Hardy Stock'),
+    desc: (r) => tr('+{0}% maximum life', r * 3),
     maxRank: 5,
     minRenown: 0,
     stats: (s, r) => {
@@ -214,8 +215,8 @@ export const PERKS: PerkDef[] = [
   },
   {
     id: 'fortune',
-    name: "Fortune's Eye",
-    desc: (r) => `+${r * 8}% magic find`,
+    name: tr("Fortune's Eye"),
+    desc: (r) => tr('+{0}% magic find', r * 8),
     maxRank: 5,
     minRenown: 0,
     stats: (s, r) => {
@@ -224,8 +225,8 @@ export const PERKS: PerkDef[] = [
   },
   {
     id: 'prosperity',
-    name: 'Deep Pockets',
-    desc: (r) => `+${r * 12}% gold find`,
+    name: tr('Deep Pockets'),
+    desc: (r) => tr('+{0}% gold find', r * 12),
     maxRank: 5,
     minRenown: 0,
     stats: (s, r) => {
@@ -234,15 +235,15 @@ export const PERKS: PerkDef[] = [
   },
   {
     id: 'scholar',
-    name: 'Scholar of Ruin',
-    desc: (r) => `+${r * 5}% experience from kills`,
+    name: tr('Scholar of Ruin'),
+    desc: (r) => tr('+{0}% experience from kills', r * 5),
     maxRank: 5,
     minRenown: 1,
   },
   {
     id: 'warded',
-    name: 'Old Wards',
-    desc: (r) => `+${r * 3}% to all resistances`,
+    name: tr('Old Wards'),
+    desc: (r) => tr('+{0}% to all resistances', r * 3),
     maxRank: 5,
     minRenown: 2,
     stats: (s, r) => {
@@ -255,8 +256,8 @@ export const PERKS: PerkDef[] = [
   },
   {
     id: 'swift',
-    name: 'Swift Feet',
-    desc: (r) => `+${r * 3}% movement speed`,
+    name: tr('Swift Feet'),
+    desc: (r) => tr('+{0}% movement speed', r * 3),
     maxRank: 3,
     minRenown: 3,
     stats: (s, r) => {
@@ -265,8 +266,8 @@ export const PERKS: PerkDef[] = [
   },
   {
     id: 'killer',
-    name: 'Killer Instinct',
-    desc: (r) => `+${r * 4}% damage`,
+    name: tr('Killer Instinct'),
+    desc: (r) => tr('+{0}% damage', r * 4),
     maxRank: 5,
     minRenown: 4,
     stats: (s, r) => {
@@ -275,29 +276,29 @@ export const PERKS: PerkDef[] = [
   },
   {
     id: 'inheritance',
-    name: 'Inheritance',
-    desc: (r) => `New characters start with ${r * 150} more gold and ${r} more healing potion${r === 1 ? '' : 's'}`,
+    name: tr('Inheritance'),
+    desc: (r) => trn(r, 'New characters start with {0} more gold and {1} more healing potion', 'New characters start with {0} more gold and {1} more healing potions', r * 150, r),
     maxRank: 3,
     minRenown: 1,
   },
   {
     id: 'prodigy',
-    name: 'Prodigy',
-    desc: (r) => `New characters start with ${r} more skill point${r === 1 ? '' : 's'} and ${r * 3} more stat points`,
+    name: tr('Prodigy'),
+    desc: (r) => trn(r, 'New characters start with {0} more skill point and {1} more stat points', 'New characters start with {0} more skill points and {1} more stat points', r, r * 3),
     maxRank: 2,
     minRenown: 6,
   },
   {
     id: 'salvager',
-    name: 'Salvager',
-    desc: (r) => `+${r * 15}% materials from salvage`,
+    name: tr('Salvager'),
+    desc: (r) => tr('+{0}% materials from salvage', r * 15),
     maxRank: 3,
     minRenown: 4,
   },
   {
     id: 'haggler',
-    name: 'Haggler',
-    desc: (r) => `Vendors charge ${r * 5}% less`,
+    name: tr('Haggler'),
+    desc: (r) => tr('Vendors charge {0}% less', r * 5),
     maxRank: 3,
     minRenown: 3,
   },
@@ -331,11 +332,11 @@ export function pointsAvailable(account: AccountSave): number {
 
 export function canBuyPerk(account: AccountSave, id: string): { ok: boolean; reason?: string } {
   const def = PERK_BY_ID.get(id);
-  if (!def) return { ok: false, reason: 'Unknown perk.' };
+  if (!def) return { ok: false, reason: tr('Unknown perk.') };
   const l = legacyOf(account);
-  if (renownRank(l.renown) < def.minRenown) return { ok: false, reason: `Needs Renown rank ${def.minRenown}.` };
-  if (perkRank(account, id) >= perkCap(account, def)) return { ok: false, reason: 'Already at its highest rank.' };
-  if (pointsAvailable(account) <= 0) return { ok: false, reason: 'No Legacy points to spend.' };
+  if (renownRank(l.renown) < def.minRenown) return { ok: false, reason: tr('Needs Renown rank {0}.', def.minRenown) };
+  if (perkRank(account, id) >= perkCap(account, def)) return { ok: false, reason: tr('Already at its highest rank.') };
+  if (pointsAvailable(account) <= 0) return { ok: false, reason: tr('No Legacy points to spend.') };
   return { ok: true };
 }
 

@@ -7,6 +7,7 @@
  */
 
 import { Panel, Button, div, clear, span, add } from './Widgets';
+import { tr } from '../core/I18n';
 
 export interface ChoiceOption {
   id: string;
@@ -24,7 +25,7 @@ export class ChoicePanel {
   constructor() {
     this.panel = new Panel({
       id: 'choice',
-      title: 'A Choice',
+      title: tr('A Choice'),
       icon: 'sparkle',
       width: 520,
       onClose: () => this.resolve(null),
@@ -64,7 +65,7 @@ export class ChoicePanel {
       if (o.disabled) b.appendChild(div('depth-card-sub', o.disabled));
       card.appendChild(b);
       const btn = new Button({
-        label: 'Accept',
+        label: tr('Accept'),
         small: true,
         variant: o.disabled ? 'ghost' : 'gold',
         onClick: () => {
@@ -79,9 +80,9 @@ export class ChoicePanel {
       this.body.appendChild(card);
     }
     const foot = div('depth-row depth-foot');
-    foot.appendChild(span('depth-dim', 'Choose one, or walk away.'));
+    foot.appendChild(span('depth-dim', tr('Choose one, or walk away.')));
     foot.appendChild(
-      new Button({ label: 'Walk away', small: true, variant: 'ghost', onClick: () => this.panel.close() }).root,
+      new Button({ label: tr('Walk away'), small: true, variant: 'ghost', onClick: () => this.panel.close() }).root,
     );
     this.body.appendChild(foot);
     this.panel.open();

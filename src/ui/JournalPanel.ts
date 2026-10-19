@@ -15,6 +15,7 @@ import { keyFor } from '../core/Access';
 import { keyLabel } from './AccessibilitySettings';
 import { Panel, Tabs, div, span, clear, emptyState, type TabDef } from './Widgets';
 import { NPCS, NPC_IDS, fillStory, nextChapter, revealedChapters, story } from '../sim/Story';
+import { tr } from '../core/I18n';
 
 /** One entry in the left-hand list and the page it opens. */
 export interface JournalEntry {
@@ -67,17 +68,17 @@ export function pageTitle(page: HTMLElement, title: string, meta?: string): void
 
 addJournalSection({
   id: 'descent',
-  label: 'Chapters',
+  label: tr('Chapters'),
   icon: 'descend',
-  empty: 'Nothing written yet. Go down.',
+  empty: tr('Nothing written yet. Go down.'),
   entries() {
     const out: JournalEntry[] = revealedChapters().map((ch) => ({
       id: ch.id,
       label: ch.title,
-      sub: ch.depth === 0 ? 'Stairhead' : `Tier ${ch.depth}`,
-      group: ch.id.startsWith('ledger.') ? 'The Deep Ledger' : 'Chapters',
+      sub: ch.depth === 0 ? tr('Stairhead') : tr('Tier {0}', ch.depth),
+      group: ch.id.startsWith('ledger.') ? tr('The Deep Ledger') : tr('Chapters'),
       render(page) {
-        pageTitle(page, ch.title, ch.depth === 0 ? 'Stairhead, the first night' : `Tier ${ch.depth}`);
+        pageTitle(page, ch.title, ch.depth === 0 ? tr('Stairhead, the first night') : tr('Tier {0}', ch.depth));
         for (const t of ch.text) para(page, t);
       },
     }));
@@ -85,13 +86,13 @@ addJournalSection({
     if (next && out.length) {
       out.push({
         id: 'next',
-        label: 'Further down',
-        sub: `Tier ${next.depth}`,
-        group: 'Chapters',
+        label: tr('Further down'),
+        sub: tr('Tier {0}', next.depth),
+        group: tr('Chapters'),
         locked: true,
         render(page) {
-          pageTitle(page, 'Not yet written', `Tier ${next.depth}`);
-          para(page, `The rest of it is further down. The next page is somewhere around tier ${next.depth}.`, 'jr-quiet');
+          pageTitle(page, tr('Not yet written'), tr('Tier {0}', next.depth));
+          para(page, tr('The rest of it is further down. The next page is somewhere around tier {0}.', next.depth), 'jr-quiet');
         },
       });
     }
@@ -105,10 +106,10 @@ addJournalSection({
 
 addJournalSection({
   id: 'people',
-  label: 'People',
+  label: tr('People'),
   icon: 'quest',
   get empty() {
-    return `You have not spoken to anyone in Stairhead yet. Walk up to someone and press ${keyLabel(keyFor('KeyE', save.settings.keybinds))}.`;
+    return tr('You have not spoken to anyone in Stairhead yet. Walk up to someone and press {0}.', keyLabel(keyFor('KeyE', save.settings.keybinds)));
   },
   entries() {
     const s = story();
@@ -118,7 +119,7 @@ addJournalSection({
         id,
         label: npc.name,
         sub: npc.role,
-        group: npc.station ? 'Keepers' : 'Townsfolk',
+        group: npc.station ? tr('Keepers') : tr('Townsfolk'),
         render(page: HTMLElement) {
           pageTitle(page, npc.name, npc.role);
           para(page, npc.portrait);
@@ -152,8 +153,8 @@ export class JournalPanel {
   constructor() {
     this.panel = new Panel({
       id: 'journal',
-      title: 'Journal',
-      subtitle: 'What the descent has taught you, kept in order',
+      title: tr('Journal'),
+      subtitle: tr('What the descent has taught you, kept in order'),
       icon: 'book',
       width: 860,
       height: 600,
@@ -207,7 +208,7 @@ export class JournalPanel {
     clear(this.list);
     clear(this.page);
     if (!cur || cur.entries.length === 0) {
-      this.page.appendChild(emptyState(cur?.s.empty ?? 'Nothing yet.', 'book'));
+      this.page.appendChild(emptyState(cur?.s.empty ?? tr('Nothing yet.'), 'book'));
       return;
     }
 

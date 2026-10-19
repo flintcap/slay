@@ -24,6 +24,7 @@ import { resistAgainst } from '../sim/Combat';
 import { Panel, div, span, icon, classById, classAccent, duration, fmtInt, keycap } from './Widgets';
 import { MenuNav, type MenuItemOpts } from './MenuNav';
 import { runStats, type HitRecord } from './RunStats';
+import { tr, trn, numText } from '../core/I18n';
 
 /** How far back the recap looks from the killing blow, in seconds. */
 const RECAP_WINDOW = 10;
@@ -50,19 +51,19 @@ interface DeathSummary {
 
 /** One line of epitaph per death, picked from the depth so it is stable. */
 const EPITAPHS = [
-  'The dark keeps what it takes.',
-  'Another name for the wall.',
-  'They went further than most.',
-  'The stair does not care who climbs it.',
-  'Somewhere below, something is eating well.',
-  'Rest. Someone else will carry the torch.',
+  tr('The dark keeps what it takes.'),
+  tr('Another name for the wall.'),
+  tr('They went further than most.'),
+  tr('The stair does not care who climbs it.'),
+  tr('Somewhere below, something is eating well.'),
+  tr('Rest. Someone else will carry the torch.'),
 ];
 
 const RANK_LABEL: Partial<Record<MonsterRank, string>> = {
-  champion: 'Champion',
-  elite: 'Elite',
-  rare: 'Rare',
-  boss: 'Boss',
+  champion: tr('Champion'),
+  elite: tr('Elite'),
+  rare: tr('Rare'),
+  boss: tr('Boss'),
 };
 
 export class DeathPanel {
@@ -175,11 +176,11 @@ export class DeathPanel {
     const known = this.snapshot.depth !== undefined;
     const before = known ? this.bestBefore : save.account.bestDepth - 1;
     return {
-      killedBy: fromScene?.killedBy ?? run.killer ?? lastFallen?.killedBy ?? 'something in the dark',
+      killedBy: fromScene?.killedBy ?? run.killer ?? lastFallen?.killedBy ?? tr('something in the dark'),
       killerRank: run.killerRank,
       depth,
       level: fromScene?.level ?? this.snapshot.level ?? lastFallen?.level ?? 1,
-      name: fromScene?.name ?? this.snapshot.name ?? lastFallen?.name ?? 'The Nameless',
+      name: fromScene?.name ?? this.snapshot.name ?? lastFallen?.name ?? tr('The Nameless'),
       classId: fromScene?.classId ?? this.snapshot.classId ?? lastFallen?.classId ?? null,
       seconds: run.seconds,
       gold: run.gold,
@@ -201,17 +202,17 @@ export class DeathPanel {
     this.inner.replaceChildren();
     this.inner.style.setProperty('--accent', accent);
 
-    this.inner.appendChild(div('dth-title', 'You Died'));
+    this.inner.appendChild(div('dth-title', tr('You Died')));
 
     // Who, and what did it.
     const who = div('dth-who');
     const cls = s.classId ? (classById(s.classId)?.name ?? '') : '';
     who.appendChild(span('dth-name', s.name));
-    who.appendChild(span('dth-sep', cls ? `Level ${s.level} ${cls}` : `Level ${s.level}`));
+    who.appendChild(span('dth-sep', cls ? tr('Level {0} {1}', s.level, cls) : tr('Level {0}', s.level)));
     this.inner.appendChild(who);
 
     const killer = div('dth-killer');
-    killer.appendChild(span('', `Fell on Tier ${s.depth}, slain by `));
+    killer.appendChild(span('', tr('Fell on Tier {0}, slain by ', s.depth)));
     const b = document.createElement('b');
     b.textContent = s.killedBy;
     killer.appendChild(b);
@@ -228,49 +229,49 @@ export class DeathPanel {
       d.append(div('dth-stat-v', value), div('dth-stat-l', label));
       stats.appendChild(d);
     };
-    stat(String(s.depth), s.isRecord ? 'New record' : 'Tier reached', s.isRecord ? 'is-record' : '');
-    stat(fmtInt(s.kills), s.elites > 0 ? `Kills · ${s.elites} elite` : 'Kills');
-    stat(fmtInt(s.gold), 'Gold found');
-    stat(s.seconds > 0 ? duration(s.seconds) : '-', 'Time below');
+    stat(String(s.depth), s.isRecord ? tr('New record') : tr('Tier reached'), s.isRecord ? 'is-record' : '');
+    stat(fmtInt(s.kills), s.elites > 0 ? tr('Kills · {0} elite', s.elites) : tr('Kills'));
+    stat(fmtInt(s.gold), tr('Gold found'));
+    stat(s.seconds > 0 ? duration(s.seconds) : '-', tr('Time below'));
     this.inner.appendChild(stats);
 
     if (s.bestItem && s.bestRarity) {
       const best = div('dth-best');
-      best.append(span('dth-best-l', 'Best find'), span(`dth-best-v r-${s.bestRarity}`, s.bestItem));
+      best.append(span('dth-best-l', tr('Best find')), span(`dth-best-v r-${s.bestRarity}`, s.bestItem));
       this.inner.appendChild(best);
     }
 
     // What survives.
     const kept = div('dth-kept');
-    kept.appendChild(div('dth-kept-h', 'What survives'));
+    kept.appendChild(div('dth-kept-h', tr('What survives')));
     const row = div('dth-kept-row');
     const keep = (iconName: string, text: string): void => {
       const d = div('dth-kept-item');
       d.append(icon(iconName, { size: 14 }), span('', text));
       row.appendChild(d);
     };
-    keep('stash', 'The vault and everything in it');
-    keep('coin', `${fmtInt(save.account.bankGold)} banked gold`);
-    keep('descend', `Best tier ${Math.max(save.account.bestDepth, s.depth)}`);
+    keep('stash', tr('The vault and everything in it'));
+    keep('coin', tr('{0} banked gold', fmtInt(save.account.bankGold)));
+    keep('descend', tr('Best tier {0}', Math.max(save.account.bestDepth, s.depth)));
     kept.appendChild(row);
     this.inner.appendChild(kept);
 
     // The way forward.
     const others = save.roster.length;
-    const primary = others > 0 ? 'Choose Another' : 'Rise Again';
+    const primary = others > 0 ? tr('Choose Another') : tr('Rise Again');
     const items: MenuItemOpts[] = [
       {
         label: primary,
         tone: 'primary',
-        hint: others > 0 ? `${others} living character${others > 1 ? 's' : ''} waiting, or forge a new one` : 'Forge a new character',
+        hint: others > 0 ? trn(others, '{0} living character waiting, or forge a new one', '{0} living characters waiting, or forge a new one', others) : tr('Forge a new character'),
         onSelect: () => this.go('charSelect'),
       },
       {
-        label: 'The Fallen',
-        hint: `${save.account.fallen.length} names on the wall`,
+        label: tr('The Fallen'),
+        hint: tr('{0} names on the wall', save.account.fallen.length),
         onSelect: () => events.emit('ui:open', { panel: 'memorial' }),
       },
-      { label: 'Title Screen', onSelect: () => this.go('title') },
+      { label: tr('Title Screen'), onSelect: () => this.go('title') },
     ];
     this.nav.set(items);
     this.inner.appendChild(this.nav.root);
@@ -298,25 +299,25 @@ export class DeathPanel {
     const hits = all.filter((h) => h.at >= last.at - RECAP_WINDOW).slice(-RECAP_LINES);
     const first = hits[0]!;
 
-    this.recap.appendChild(div('dth-recap-h', 'The last blows'));
+    this.recap.appendChild(div('dth-recap-h', tr('The last blows')));
     const span0 = last.at - first.at;
     const before = Math.min(1, (first.lifeAfter + first.amount) / Math.max(1, first.maxLife));
-    const from = before >= 0.99 ? 'Full life' : `${Math.round(before * 100)}% life`;
+    const from = before >= 0.99 ? tr('Full life') : tr('{0}% life', Math.round(before * 100));
     this.recap.appendChild(
-      div('dth-recap-sum', span0 < 0.1 ? `${from} to none in one blow.` : `${from} to none in ${span0.toFixed(1)} s.`),
+      div('dth-recap-sum', span0 < 0.1 ? tr('{0} to none in one blow.', from) : tr('{0} to none in {1} s.', from, numText(span0, 1))),
     );
 
     const list = div('dth-recap-list');
     for (const h of hits) {
       const row = div(`dth-hit${h === last ? ' is-last' : ''}${h.overTime ? ' is-dot' : ''}`);
       const ago = last.at - h.at;
-      row.appendChild(span('dth-hit-t', h === last ? 'last' : `-${ago.toFixed(1)}s`));
+      row.appendChild(span('dth-hit-t', h === last ? tr('last') : `-${tr('{0}s', numText(ago, 1))}`));
       const who = span('dth-hit-who');
       const name = document.createElement('b');
-      name.textContent = h.who ?? (h.overTime ? 'Lingering harm' : 'Unseen');
+      name.textContent = h.who ?? (h.overTime ? tr('Lingering harm') : tr('Unseen'));
       if (h.rank && RANK_LABEL[h.rank]) name.className = `rank-${h.rank}`;
       who.appendChild(name);
-      if (h.what) who.appendChild(span('dth-hit-what', h.overTime ? `${h.what}, over time` : h.what));
+      if (h.what) who.appendChild(span('dth-hit-what', h.overTime ? tr('{0}, over time', h.what) : h.what));
       row.appendChild(who);
       const amt = span(`dth-hit-n dmg-${h.type}`);
       amt.append(icon(h.type, { size: 11 }), span('', fmtInt(Math.round(h.amount))));
@@ -342,9 +343,9 @@ export class DeathPanel {
       const share = Math.round((top[1] / total) * 100);
       // Armour, not resistance, is what stands against physical blows.
       const res = top[0] === 'physical' ? undefined : this.snapshot.resists?.[top[0]];
-      const tail = res !== undefined ? ` Your ${top[0]} resistance was ${Math.round(res)}%.` : '';
+      const tail = res !== undefined ? tr(' Your {0} resistance was {1}%.', top[0], Math.round(res)) : '';
       const line = div('dth-recap-note');
-      line.textContent = share >= 99 ? `All of it was ${top[0]}.${tail}` : `Mostly ${top[0]}: ${share}% of it.${tail}`;
+      line.textContent = share >= 99 ? tr('All of it was {0}.{1}', top[0], tail) : tr('Mostly {0}: {1}% of it.{2}', top[0], share, tail);
       this.recap.appendChild(line);
     }
   }

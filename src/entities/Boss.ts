@@ -56,6 +56,7 @@ import {
   type CombatContext,
   type Combatant,
 } from './Abilities';
+import { tr } from '../core/I18n';
 
 /** Seconds of fight before the soft enrage, for a boss with `phases` phases. */
 export function softEnrageAfter(phases: number): number {
@@ -449,13 +450,13 @@ export class Boss extends Enemy {
         if (this.guards.length > 0) {
           this.barrierUp = true;
           this.addShield(this.maxLife * 0.35, 999);
-          events.emit('toast', { text: 'A barrier holds. Kill the guardians.', kind: 'bad' });
+          events.emit('toast', { text: tr('A barrier holds. Kill the guardians.'), kind: 'bad' });
         }
         break;
       }
       case 'enrageTimer':
         this.enrageTimer = 0;
-        events.emit('toast', { text: 'It is done holding back. Finish this.', kind: 'bad' });
+        events.emit('toast', { text: tr('It is done holding back. Finish this.'), kind: 'bad' });
         break;
       case 'shatter':
         summon(this, ctx, 'mirror_image', 3, 3.4);
@@ -554,7 +555,7 @@ export class Boss extends Enemy {
         }
         a.step++;
         const tels = safe.map((s) => ctx.decals.safeZone(s.x, s.z, 2.4, 3.0));
-        events.emit('toast', { text: 'Get behind a pillar!', kind: 'bad' });
+        events.emit('toast', { text: tr('Get behind a pillar!'), kind: 'bad' });
         after(3.0, (c) => {
           for (const t of tels) t.cancel();
           const inSafe = safe.some((s) => dist(s.x, s.z, c.playerPos.x, c.playerPos.z) < 2.4);
@@ -687,7 +688,7 @@ export class Boss extends Enemy {
         if (alive === 0) {
           this.barrierUp = false;
           this.shield = 0;
-          events.emit('toast', { text: 'The barrier shatters!', kind: 'good' });
+          events.emit('toast', { text: tr('The barrier shatters!'), kind: 'good' });
           ctx.fx.burst('crit', p.x, 1.4 * this.sizeScale, p.z, { count: 50, color: 0xffe066 });
           events.emit('shake', { amount: 0.7, duration: 0.4 });
           // Punished for taking too long: a free window while it recovers.
@@ -707,7 +708,7 @@ export class Boss extends Enemy {
             speed: Math.min(1.2, 1 + this.enrageStacks * 0.03),
           });
           events.emit('toast', {
-            text: `${this.bossDef.name} hardens (${this.enrageStacks})`,
+            text: tr('{0} hardens ({1})', this.bossDef.name, this.enrageStacks),
             kind: 'bad',
           });
           ctx.fx.burst('crit', p.x, 1.4 * this.sizeScale, p.z, { count: 30, color: 0xff3020 });
@@ -784,7 +785,7 @@ export class Boss extends Enemy {
     this.buff('fleeing', 7, { invulnerable: 1 });
     this.channel = 7;
     this.rootTimer = 7;
-    events.emit('toast', { text: `${this.bossDef.name} flees!`, kind: 'info' });
+    events.emit('toast', { text: tr('{0} flees!', this.bossDef.name), kind: 'info' });
     void ctx;
   }
 
@@ -807,7 +808,7 @@ export class Boss extends Enemy {
     this.rootTimer = 0;
     this.home = { x: f.to.x, z: f.to.z };
     ctx.fx.burst('dust', f.to.x, 0.5, f.to.z, { count: 30, scale: 2 });
-    events.emit('toast', { text: `${this.bossDef.name} turns at bay.`, kind: 'bad' });
+    events.emit('toast', { text: tr('{0} turns at bay.', this.bossDef.name), kind: 'bad' });
   }
 
   /**
@@ -826,7 +827,7 @@ export class Boss extends Enemy {
     this.giveClock(2);
     if (!this.announced.has('riposte')) {
       this.announced.add('riposte');
-      events.emit('toast', { text: `${this.bossDef.name} parries! Wait out the guard.`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} parries! Wait out the guard.', this.bossDef.name), kind: 'bad' });
     }
   }
 
@@ -968,7 +969,7 @@ export class Boss extends Enemy {
     else this.fightTime += dt;
     const limit = softEnrageAfter(this.bossDef.phases.length);
     if (!this.softEnraged && this.fightTime >= limit - 15 && this.fightTime - dt < limit - 15) {
-      events.emit('toast', { text: `${this.bossDef.name} is losing patience...`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} is losing patience...', this.bossDef.name), kind: 'bad' });
     }
     if (!this.softEnraged && this.fightTime >= limit) {
       this.softEnraged = true;
@@ -977,7 +978,7 @@ export class Boss extends Enemy {
       const p = this.root.position;
       ctx.fx.burst('crit', p.x, 1.4 * this.sizeScale, p.z, { count: 60, color: 0xff2d2d });
       events.emit('boss:enraged', { name: this.bossDef.name });
-      events.emit('toast', { text: `${this.bossDef.name} is ENRAGED.`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} is ENRAGED.', this.bossDef.name), kind: 'bad' });
       events.emit('shake', { amount: 0.8, duration: 0.5 });
     }
     if (this.softEnraged && ctx.applyHeroStatus) {
@@ -1097,7 +1098,7 @@ export class Boss extends Enemy {
       working = { ...working, amount: working.amount * 0.15 };
       if (!this.immuneSaid.has(immune)) {
         this.immuneSaid.add(immune);
-        events.emit('toast', { text: `${this.bossDef.name} turns ${immune} aside. Try another element.`, kind: 'bad' });
+        events.emit('toast', { text: tr('{0} turns {1} aside. Try another element.', this.bossDef.name, immune), kind: 'bad' });
       }
     }
 
@@ -1193,7 +1194,7 @@ export class Boss extends Enemy {
     const p = this.root.position;
     events.emit('boss:killed', { name: this.bossDef.name });
     events.emit('boss:damaged', { life: 0, maxLife: this.maxLife });
-    events.emit('toast', { text: `${this.bossDef.name} falls.`, kind: 'epic' });
+    events.emit('toast', { text: tr('{0} falls.', this.bossDef.name), kind: 'epic' });
     events.emit('shake', { amount: 1.6, duration: 1.2 });
     events.emit('music', { track: 'ambient', fade: 3 });
 

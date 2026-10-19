@@ -15,6 +15,7 @@ import { TRINKETS, TRINKET_CHANCE, getTrinket, type TrinketDef, type TrinketUse 
 import { findBase } from '../data/itemBases';
 import { newItem, vendorPrice } from './Loot';
 import { removeItemFromInventory } from './Inventory';
+import { tr } from '../core/I18n';
 
 /** The trinket an item is, if it is one. */
 export function trinketOf(item: Item | null | undefined): TrinketDef | undefined {
@@ -81,5 +82,5 @@ export function unpackChart(packed: string | undefined, tiles: number): Uint8Arr
 
 /** The prompt by the portal in town. */
 export function portalPrompt(p: OpenPortal): string {
-  return `Portal: back to ${p.name || `the tier ${p.depth} map`}`;
+  return tr('Portal: back to {0}', p.name || tr('the tier {0} map', p.depth));
 }

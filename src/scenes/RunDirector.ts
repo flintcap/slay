@@ -15,12 +15,13 @@ import { events, toast } from '../core/Events';
 import { save } from '../core/Save';
 import { RENOWN, claimMilestones, grantRenown, legacyOf, recordCodex, renownRank, type RenownGain } from '../sim/Legacy';
 import { Random, hashString } from '../core/RNG';
-import { rollItem } from '../sim/Loot';
+import { itemDisplayName, rollItem } from '../sim/Loot';
 import { PAYOUT, payoutIlvl } from '../sim/Payout';
 import { addItemToInventory } from '../sim/Inventory';
 import { bountyKindsForKill, bountyProgress, bountyText } from '../sim/TownServices';
 import type { BountyKind } from '../types';
 import { PACT_RENOWN } from './DescentPlanner';
+import { tr } from '../core/I18n';
 
 const CODEX_RARITIES = new Set(['set', 'unique', 'mythic', 'ancient']);
 
@@ -95,10 +96,10 @@ export class RunDirector {
       for (const rarity of m.items) {
         const item = rollItem(payoutIlvl(m.depth, PAYOUT.cache.bonus), rng, { forceRarity: rarity, classId: c?.classId });
         const kept = (c && addItemToInventory(c, item)) || save.stashItem(item);
-        if (kept) names.push(item.name);
+        if (kept) names.push(itemDisplayName(item));
       }
       this.earn(m.renown);
-      toast(`Tier ${m.depth} milestone: ${m.gold} gold${names.length ? `, ${names.join(', ')}` : ''}. A waypoint is set.`, 'epic');
+      toast(tr('Tier {0} milestone: {1} gold{2}. A waypoint is set.', m.depth, m.gold, names.length ? `, ${names.join(', ')}` : ''), 'epic');
     }
   }
 
@@ -107,7 +108,7 @@ export class RunDirector {
     const c = this.account.current;
     if (!c) return;
     for (const b of bountyProgress(c, kind, this.depth)) {
-      toast(`Bounty complete: ${bountyText(b)}. Claim it at the board.`, 'epic');
+      toast(tr('Bounty complete: {0}. Claim it at the board.', bountyText(b)), 'epic');
     }
   }
 
@@ -119,12 +120,12 @@ export class RunDirector {
     if (this.depth > l.stats.deepest) {
       amount += RENOWN.newDepth(this.depth);
       l.stats.deepest = this.depth;
-      toast(`New highest tier: ${this.depth}`, 'epic');
+      toast(tr('New highest tier: {0}', this.depth), 'epic');
     }
     this.earn(amount);
     this.bounty('clear');
     this.payMilestones();
-    this.summary('Descent cleared');
+    this.summary(tr('Descent cleared'));
   }
 
   onDeath(): void {
@@ -132,14 +133,14 @@ export class RunDirector {
     l.stats.deaths++;
     l.stats.deepest = Math.max(l.stats.deepest, this.depth - 1);
     save.touch();
-    this.summary('Your legacy endures');
+    this.summary(tr('Your legacy endures'));
   }
 
   private onPickUp(item: Item): void {
     if (!CODEX_RARITIES.has(item.rarity) || !item.uniqueId) return;
     const worth = recordCodex(this.account, item.uniqueId, item.rarity);
     if (worth <= 0) return;
-    toast(`New in the Codex: ${item.name}`, 'epic', item.rarity);
+    toast(tr('New in the Codex: {0}', itemDisplayName(item)), 'epic', item.rarity);
     this.earn(worth);
   }
 
@@ -154,10 +155,10 @@ export class RunDirector {
     const gain = grantRenown(this.account, amount);
     this.runRenown += gain.amount;
     for (const r of gain.ranks) {
-      toast(`Renown rank ${r}. A Legacy point to spend (G).`, 'epic');
+      toast(tr('Renown rank {0}. A Legacy point to spend (G).', r), 'epic');
     }
     for (const u of gain.unlocked) {
-      toast(`Unlocked: ${u.name}. ${u.desc}`, 'epic');
+      toast(tr('Unlocked: {0}. {1}', u.name, u.desc), 'epic');
       if (u.id === 'stashTab') save.grantStashTab();
     }
     if (gain.ranks.length) events.emit('ui:refresh', {});
@@ -168,7 +169,7 @@ export class RunDirector {
   private summary(head: string): void {
     if (this.runRenown <= 0) return;
     const rank = renownRank(legacyOf(this.account).renown);
-    toast(`${head}. +${Math.round(this.runRenown)} Renown (rank ${rank}).`, 'good');
+    toast(tr('{0}. +{1} Renown (rank {2}).', head, Math.round(this.runRenown), rank), 'good');
   }
 
   dispose(): void {

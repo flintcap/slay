@@ -21,6 +21,7 @@ import { FusePanel } from './FusePanel';
 import { BountyPanel } from './BountyPanel';
 import { setChoiceHandler, setGateHandler } from './ChoiceSeam';
 import { GatePanel } from './GatePanel';
+import { tr, trn } from '../core/I18n';
 
 let choicePanel: ChoicePanel | null = null;
 
@@ -77,9 +78,9 @@ export function mountDepthUI(): void {
     const pts = pointsAvailable(acct);
     if (!save.hasUnlock('tutorial.legacy')) {
       save.unlock('tutorial.legacy');
-      setTimeout(() => toast('Your Renown carries over between lives. Press G for Legacy.', 'epic'), 2600);
+      setTimeout(() => toast(tr('Your Renown carries over between lives. Press G for Legacy.'), 'epic'), 2600);
     } else if (pts > 0) {
-      setTimeout(() => toast(`${pts} Legacy point${pts === 1 ? '' : 's'} to spend. Press G.`, 'good'), 2600);
+      setTimeout(() => toast(trn(pts, '{0} Legacy point to spend. Press G.', '{0} Legacy points to spend. Press G.', pts), 'good'), 2600);
     }
   });
 }

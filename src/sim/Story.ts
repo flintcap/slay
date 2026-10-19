@@ -19,6 +19,7 @@ import { CHAPTERS, chapterById, chaptersUpTo } from '../data/story/premise';
 import { NPCS, NPC_IDS, npcForStation, TALK_SPOTS } from '../data/story/npcs';
 import { Random, streamFor } from '../core/RNG';
 import { BOSSES } from '../data/bosses';
+import { tr } from '../core/I18n';
 
 const STORY_VERSION = 1;
 
@@ -155,7 +156,7 @@ export function fillStory(text: string): string {
   const c = current();
   // Newest first: `killCharacter` puts each death at the front.
   const lastF = acct.fallen[0] ?? null;
-  const lastFallen = lastF?.name ?? 'the last one';
+  const lastFallen = lastF?.name ?? tr('the last one');
   const vars: Record<string, string> = {
     name: c?.name ?? 'delver',
     class: c ? className(c.classId) : 'delver',

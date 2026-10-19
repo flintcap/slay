@@ -30,6 +30,7 @@ import { heroPower } from '../sim/HeroPower';
 import { audio } from '../audio/Audio';
 import { skillSound } from '../audio/SkillSounds';
 import '../data/shifterStatuses';
+import { tr } from '../core/I18n';
 
 export type ShiftTarget = Enemy | Boss;
 
@@ -728,8 +729,8 @@ export const SHIFT_EFFECTS: readonly string[] = Object.keys(HANDLERS).map((n) =>
 export function formRefusal(def: SkillDef, player: Player): string | null {
   const form = player.shape?.form ?? null;
   if (!form || FORM_OF_TREE[def.treeId] === form || def.effect === 'shift.form') return null;
-  const own = getSkill(FORM_SKILL[form])?.name ?? 'your form skill';
-  return `${def.name} cannot be used in ${form} form. Change form, or press ${own} to stand up.`;
+  const own = getSkill(FORM_SKILL[form])?.name ?? tr('your form skill');
+  return tr('{0} cannot be used in {1} form. Change form, or press {2} to stand up.', def.name, form, own);
 }
 
 /** Runs one Shapeshifter skill. Returns false for an effect with no handler. */

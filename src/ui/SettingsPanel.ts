@@ -22,9 +22,10 @@ import { Panel, Button, Slider, Toggle, Segmented, div, span, icon, keycap, moda
 import { uiSfx } from './Sfx';
 import { FieldNav } from './FieldNav';
 import { peril } from '../core/Peril';
-import { BUILT, versionLabel } from '../core/Build';
+import { BUILT, RELEASE, versionLabel } from '../core/Build';
 import { buildReport } from '../core/Report';
 import { logText, saveTextFile } from '../core/Log';
+import { tr, numText, LANG_KEY, LOCALES, PSEUDO, locale } from '../core/I18n';
 
 /** `slay-log-2026-10-19.txt` */
 function logName(): string {
@@ -35,19 +36,19 @@ type QualityId = GameSettings['quality'];
 type TabId = 'video' | 'audio' | 'gameplay' | 'controls' | 'data' | 'about';
 
 const TABS: Array<{ id: TabId; label: string; icon: string }> = [
-  { id: 'video', label: 'Video', icon: 'eye' },
-  { id: 'audio', label: 'Audio', icon: 'sparkle' },
-  { id: 'gameplay', label: 'Gameplay', icon: 'strength' },
-  { id: 'controls', label: 'Controls', icon: 'info' },
-  { id: 'data', label: 'Save Data', icon: 'stash' },
-  { id: 'about', label: 'About', icon: 'scroll' },
+  { id: 'video', label: tr('Video'), icon: 'eye' },
+  { id: 'audio', label: tr('Audio'), icon: 'sparkle' },
+  { id: 'gameplay', label: tr('Gameplay'), icon: 'strength' },
+  { id: 'controls', label: tr('Controls'), icon: 'info' },
+  { id: 'data', label: tr('Save Data'), icon: 'stash' },
+  { id: 'about', label: tr('About'), icon: 'scroll' },
 ];
 
 const QUALITY_NOTES: Record<QualityId, string> = {
-  low: 'Soft sun shadows only, no glow, no torch shadows, a third of the particles, 80% resolution. For older laptops.',
-  medium: 'Torch shadows and glow, lighter shadows, no edge smoothing, 60% of the particles, 90% resolution. Integrated graphics.',
-  high: 'Sharp shadows, glow, edge smoothing and the full particle budget. The intended look.',
-  ultra: 'Ambient occlusion, very sharp shadows reaching further, extra particles and full resolution on high-density screens.',
+  low: tr('Soft sun shadows only, no glow, no torch shadows, a third of the particles, 80% resolution. For older laptops.'),
+  medium: tr('Torch shadows and glow, lighter shadows, no edge smoothing, 60% of the particles, 90% resolution. Integrated graphics.'),
+  high: tr('Sharp shadows, glow, edge smoothing and the full particle budget. The intended look.'),
+  ultra: tr('Ambient occlusion, very sharp shadows reaching further, extra particles and full resolution on high-density screens.'),
 };
 
 /**
@@ -58,50 +59,50 @@ const QUALITY_NOTES: Record<QualityId, string> = {
  */
 const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
   {
-    group: 'Moving and fighting',
+    group: tr('Moving and fighting'),
     rows: [
-      ['Move', ['Left click', 'KeyW', 'KeyA', 'KeyS', 'KeyD']],
-      ['Attack (hold to keep swinging)', ['Right click']],
-      ['Attack in place', ['Shift', 'Left click']],
-      ['Skills on the bar', ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6']],
-      ['Dodge', ['Space']],
-      ['Life potion', ['KeyQ']],
-      ['Mana potion', ['KeyF']],
-      ['Interact, open, talk', ['KeyE']],
-      ['Show hidden items on the floor', ['Shift']],
+      [tr('Move'), [tr('Left click'), 'KeyW', 'KeyA', 'KeyS', 'KeyD']],
+      [tr('Attack (hold to keep swinging)'), [tr('Right click')]],
+      [tr('Attack in place'), ['Shift', tr('Left click')]],
+      [tr('Skills on the bar'), ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6']],
+      [tr('Dodge'), ['Space']],
+      [tr('Life potion'), ['KeyQ']],
+      [tr('Mana potion'), ['KeyF']],
+      [tr('Interact, open, talk'), ['KeyE']],
+      [tr('Show hidden items on the floor'), ['Shift']],
     ],
   },
   {
-    group: 'Panels',
+    group: tr('Panels'),
     rows: [
-      ['Inventory', ['KeyI']],
-      ['Character', ['KeyC']],
-      ['Skill tree', ['KeyT']],
-      ['Vault (in town)', ['KeyB']],
-      ['Map', ['KeyM']],
-      ['See-through map over the game', ['Tab']],
-      ['Quest log', ['KeyL']],
-      ['Journal', ['KeyJ']],
-      ['Loot filter', ['KeyO']],
-      ['Legacy', ['KeyG']],
-      ['Pause, close a panel', ['Esc']],
+      [tr('Inventory'), ['KeyI']],
+      [tr('Character'), ['KeyC']],
+      [tr('Skill tree'), ['KeyT']],
+      [tr('Vault (in town)'), ['KeyB']],
+      [tr('Map'), ['KeyM']],
+      [tr('See-through map over the game'), ['Tab']],
+      [tr('Quest log'), ['KeyL']],
+      [tr('Journal'), ['KeyJ']],
+      [tr('Loot filter'), ['KeyO']],
+      [tr('Legacy'), ['KeyG']],
+      [tr('Pause, close a panel'), [tr('Esc')]],
     ],
   },
   {
-    group: 'Menus',
+    group: tr('Menus'),
     rows: [
-      ['Choose', ['↑', '↓']],
-      ['Change a setting', ['←', '→']],
-      ['Confirm', ['Enter']],
-      ['Back', ['Esc']],
-      ['Settings tabs', ['KeyQ', 'KeyE']],
+      [tr('Choose'), ['↑', '↓']],
+      [tr('Change a setting'), ['←', '→']],
+      [tr('Confirm'), ['Enter']],
+      [tr('Back'), [tr('Esc')]],
+      [tr('Settings tabs'), ['KeyQ', 'KeyE']],
     ],
   },
 ];
 
 /** A key from the card above, as the player currently has it bound. */
 function boundKey(k: string): string {
-  return /^(Key|Digit)|^Space$/.test(k) ? keyLabel(keyFor(k, save.settings.keybinds)) : k;
+  return /^(Key|Digit)|^(Space|Shift|Tab|Enter)$/.test(k) ? keyLabel(keyFor(k, save.settings.keybinds)) : k;
 }
 
 export class SettingsPanel {
@@ -118,8 +119,8 @@ export class SettingsPanel {
     this.engine = engine;
     this.panel = new Panel({
       id: 'settings',
-      title: 'Settings',
-      subtitle: 'Saved as you change them',
+      title: tr('Settings'),
+      subtitle: tr('Saved as you change them'),
       icon: 'gear',
       width: 820,
       scrim: true,
@@ -141,7 +142,7 @@ export class SettingsPanel {
     const reset = document.createElement('button');
     reset.type = 'button';
     reset.className = 'stg-reset';
-    reset.textContent = 'Restore defaults';
+    reset.textContent = tr('Restore defaults');
     reset.addEventListener('click', () => this.restoreDefaults());
     this.rail.appendChild(reset);
 
@@ -218,7 +219,7 @@ export class SettingsPanel {
         if (!this.fps) return;
         const ms = this.engine.frameMs;
         const gpu = this.engine.renderer.gpuMs;
-        this.fps.textContent = `${Math.round(this.engine.fps)} fps  ·  ${ms.toFixed(1)} ms${gpu > 0 ? `  ·  GPU ${gpu.toFixed(1)} ms` : ''}`;
+        this.fps.textContent = tr('{0} fps  ·  {1} ms{2}', Math.round(this.engine.fps), numText(ms, 1), gpu > 0 ? tr('  ·  GPU {0} ms', numText(gpu, 1)) : '');
       }, 500);
     } else if (!s.showFps && this.fps) {
       this.fps.remove();
@@ -229,10 +230,10 @@ export class SettingsPanel {
 
   private restoreDefaults(): void {
     modal({
-      title: 'Restore default settings?',
+      title: tr('Restore default settings?'),
       icon: 'gear',
-      body: '<p>Picture, sound and gameplay options go back to how they started. Your key bindings, characters and vault are not touched.</p>',
-      confirmLabel: 'Restore',
+      body: tr('<p>Picture, sound and gameplay options go back to how they started. Your key bindings, characters and vault are not touched.</p>'),
+      confirmLabel: tr('Restore'),
       onConfirm: () => {
         // Key bindings have their own reset on the Controls page; losing a
         // full rebind to a picture-settings reset is not what anyone wants.
@@ -240,7 +241,7 @@ export class SettingsPanel {
         Object.assign(save.settings, DEFAULT_SETTINGS, { keybinds });
         attempt(() => this.engine.renderer.setQuality(save.settings.quality), undefined);
         this.commit();
-        events.emit('toast', { text: 'Settings restored to defaults.', kind: 'info' });
+        events.emit('toast', { text: tr('Settings restored to defaults.'), kind: 'info' });
         this.render();
       },
     });
@@ -284,16 +285,16 @@ export class SettingsPanel {
 
   private video(): void {
     const s = save.settings;
-    this.heading('Video', 'Changes apply immediately.');
+    this.heading(tr('Video'), tr('Changes apply immediately.'));
     const note = div('stg-note', QUALITY_NOTES[s.quality]);
     this.content.appendChild(
       new Segmented<QualityId>(
-        'Quality',
+        tr('Quality'),
         [
-          { id: 'low', label: 'Low' },
-          { id: 'medium', label: 'Medium' },
-          { id: 'high', label: 'High' },
-          { id: 'ultra', label: 'Ultra' },
+          { id: 'low', label: tr('Low') },
+          { id: 'medium', label: tr('Medium') },
+          { id: 'high', label: tr('High') },
+          { id: 'ultra', label: tr('Ultra') },
         ],
         s.quality,
         (v) => {
@@ -306,113 +307,160 @@ export class SettingsPanel {
     );
     this.content.appendChild(note);
     this.content.appendChild(
-      new Toggle('Auto quality', s.autoQuality !== false, (v) => {
+      new Toggle(tr('Auto quality'), s.autoQuality !== false, (v) => {
         s.autoQuality = v;
         // Off: back to exactly the quality chosen above, at once.
         if (!v) attempt(() => this.engine.renderer.setQuality(s.quality), undefined);
         this.commit();
-      }, 'Steps below the quality above when frames run slow, and back up when there is room').root,
+      }, tr('Steps below the quality above when frames run slow, and back up when there is room')).root,
     );
     this.content.appendChild(
-      new Slider('Render scale', s.renderScale ?? 1, 0.5, 1, 0.05, (v) => {
+      new Slider(tr('Render scale'), s.renderScale ?? 1, 0.5, 1, 0.05, (v) => {
         s.renderScale = v;
         attempt(() => this.engine.renderer.setRenderScale(v), undefined);
         this.commit();
-      }, (v) => `${Math.round(v * 100)}%`, 'Draws fewer pixels and fills in the rest. Lower is faster').root,
+      }, (v) => `${Math.round(v * 100)}%`, tr('Draws fewer pixels and fills in the rest. Lower is faster')).root,
     );
     this.content.appendChild(
-      new Slider('Camera distance', s.cameraDistance, 0.6, 1.8, 0.05, (v) => {
+      new Slider(tr('Camera distance'), s.cameraDistance, 0.6, 1.8, 0.05, (v) => {
         s.cameraDistance = v;
         this.commit();
-      }, (v) => `${v.toFixed(2)}x`, 'How far the camera sits from your hero. Further shows more of the fight').root,
+      }, (v) => `${numText(v, 2)}x`, tr('How far the camera sits from your hero. Further shows more of the fight')).root,
     );
     this.content.appendChild(
-      new Toggle('Show frame rate', !!s.showFps, (v) => {
+      new Toggle(tr('Show frame rate'), !!s.showFps, (v) => {
         s.showFps = v;
         this.commit();
-      }, 'A small readout in the top-right corner').root,
+      }, tr('A small readout in the top-right corner')).root,
     );
   }
 
   private audio(): void {
     const s = save.settings;
-    this.heading('Audio', 'Effects play a sample when you let go of the slider.');
+    this.heading(tr('Audio'), tr('Effects play a sample when you let go of the slider.'));
     const sample = (): void => uiSfx('ui.select');
     const slider = (label: string, value: number, set: (v: number) => void, hint: string, test = false): HTMLElement => {
       const sl = new Slider(label, value, 0, 1, 0.01, (v) => {
         set(v);
         this.commit();
-      }, (v) => (v <= 0 ? 'Muted' : `${Math.round(v * 100)}%`), hint);
+      }, (v) => (v <= 0 ? tr('Muted') : `${Math.round(v * 100)}%`), hint);
       if (test) sl.root.querySelector('input')?.addEventListener('change', sample);
       return sl.root;
     };
-    this.content.appendChild(slider('Master volume', s.masterVolume, (v) => (s.masterVolume = v), 'Everything at once', true));
-    this.content.appendChild(slider('Music', s.musicVolume, (v) => (s.musicVolume = v), 'The score in town and below'));
-    this.content.appendChild(slider('Effects', s.sfxVolume, (v) => (s.sfxVolume = v), 'Hits, spells, footsteps and menu clicks', true));
+    this.content.appendChild(slider(tr('Master volume'), s.masterVolume, (v) => (s.masterVolume = v), tr('Everything at once'), true));
+    this.content.appendChild(slider(tr('Music'), s.musicVolume, (v) => (s.musicVolume = v), tr('The score in town and below')));
+    this.content.appendChild(slider(tr('Effects'), s.sfxVolume, (v) => (s.sfxVolume = v), tr('Hits, spells, footsteps and menu clicks'), true));
   }
 
   private gameplay(): void {
     const s = save.settings;
-    this.heading('Gameplay', 'How the game talks to you.');
+    this.heading(tr('Gameplay'), tr('How the game talks to you.'));
+    this.language();
     this.content.appendChild(
-      new Slider('Screen shake', s.screenShake, 0, 2, 0.05, (v) => {
+      new Slider(tr('Screen shake'), s.screenShake, 0, 2, 0.05, (v) => {
         s.screenShake = v;
         this.commit();
-      }, (v) => (v === 0 ? 'Off' : `${Math.round(v * 100)}%`), 'How hard the screen jolts on big hits. 0 turns it off').root,
+      }, (v) => (v === 0 ? tr('Off') : `${Math.round(v * 100)}%`), tr('How hard the screen jolts on big hits. 0 turns it off')).root,
     );
     this.content.appendChild(
-      new Slider('See-through map strength', s.mapOverlayOpacity ?? 0.7, 0.2, 1, 0.05, (v) => {
+      new Slider(tr('See-through map strength'), s.mapOverlayOpacity ?? 0.7, 0.2, 1, 0.05, (v) => {
         s.mapOverlayOpacity = v;
         this.commit();
-      }, (v) => `${Math.round(v * 100)}%`, 'How solid the map over the game is drawn. Tab shows and hides it').root,
+      }, (v) => `${Math.round(v * 100)}%`, tr('How solid the map over the game is drawn. Tab shows and hides it')).root,
     );
     this.content.appendChild(
-      new Slider('See-through map size', s.mapOverlaySize ?? 1, 0.5, 2, 0.05, (v) => {
+      new Slider(tr('See-through map size'), s.mapOverlaySize ?? 1, 0.5, 2, 0.05, (v) => {
         s.mapOverlaySize = v;
         this.commit();
-      }, (v) => `${v.toFixed(2)}x`, 'How large the map over the game is drawn. Larger shows less of the floor').root,
+      }, (v) => `${numText(v, 2)}x`, tr('How large the map over the game is drawn. Larger shows less of the floor')).root,
     );
     this.content.appendChild(
-      new Toggle('Damage numbers', s.showDamageNumbers, (v) => {
+      new Toggle(tr('Damage numbers'), s.showDamageNumbers, (v) => {
         s.showDamageNumbers = v;
         this.commit();
-      }, 'Floating combat text over enemies').root,
+      }, tr('Floating combat text over enemies')).root,
     );
     this.content.appendChild(
-      new Toggle('Area title cards', s.titleCards !== false, (v) => {
+      new Toggle(tr('Area title cards'), s.titleCards !== false, (v) => {
         s.titleCards = v;
         this.commit();
-      }, 'The name of each place as you arrive').root,
+      }, tr('The name of each place as you arrive')).root,
     );
     this.content.appendChild(
-      new Toggle('Control hints', s.hints !== false, (v) => {
+      new Toggle(tr('Control hints'), s.hints !== false, (v) => {
         s.hints = v;
         this.commit();
-      }, 'Short tips the first time you meet something new').root,
+      }, tr('Short tips the first time you meet something new')).root,
     );
     const replay = new Button({
-      label: 'Show all first-time tips again',
+      label: tr('Show all first-time tips again'),
       variant: 'ghost',
       small: true,
       onClick: () => {
         resetHints();
-        events.emit('toast', { text: 'Hints will show again as you play.', kind: 'info' });
+        events.emit('toast', { text: tr('Hints will show again as you play.'), kind: 'info' });
       },
     });
     replay.root.classList.add('stg-inline');
     this.content.appendChild(replay.root);
     this.content.appendChild(
-      new Toggle('Reduced motion', !!s.reduceMotion, (v) => {
+      new Toggle(tr('Reduced motion'), !!s.reduceMotion, (v) => {
         s.reduceMotion = v;
         this.commit();
-      }, 'Calmer menus: no slow intros or sweeping shines').root,
+      }, tr('Calmer menus: no slow intros or sweeping shines')).root,
     );
     // Text size and colour-blind item colours (quality stream).
     this.content.appendChild(accessibilitySection(() => this.commit()));
   }
 
+  /**
+   * The language, when there is more than one. It is read at boot (src/boot.ts)
+   * from its own storage key, so a change waits for a restart; outside a map
+   * the restart is one click away.
+   */
+  private language(): void {
+    const choices = RELEASE ? [...LOCALES] : [...LOCALES, PSEUDO];
+    if (choices.length < 2) return;
+    let chosen = locale().code;
+    try {
+      chosen = localStorage.getItem(LANG_KEY) || chosen;
+    } catch {
+      /* storage blocked: show the language in use */
+    }
+    const note = div('stg-note');
+    const showNote = (): void => {
+      note.replaceChildren();
+      if (chosen === locale().code) return;
+      const name = choices.find((l) => l.code === chosen)?.name ?? chosen;
+      note.appendChild(span('', tr('{0} after a restart.', name)));
+      if (this.engine.currentSceneId !== 'dungeon') {
+        note.appendChild(
+          new Button({ label: tr('Restart now'), icon: 'play', small: true, onClick: () => { save.flush(); location.reload(); } }).root,
+        );
+      }
+    };
+    this.content.appendChild(
+      new Segmented<string>(
+        tr('Language'),
+        choices.map((l) => ({ id: l.code, label: l.name })),
+        chosen,
+        (v) => {
+          chosen = v;
+          try {
+            localStorage.setItem(LANG_KEY, v);
+          } catch {
+            events.emit('toast', { text: tr('The language could not be saved in this browser.'), kind: 'bad' });
+          }
+          showNote();
+        },
+      ).root,
+    );
+    showNote();
+    this.content.appendChild(note);
+  }
+
   private controls(): void {
-    this.heading('Controls', 'Every binding in the game.');
+    this.heading(tr('Controls'), tr('Every binding in the game.'));
     // Rebindable keys (quality stream). The card below is the full reference.
     this.content.appendChild(keybindSection(() => this.commit()));
     for (const g of CONTROLS) {
@@ -422,13 +470,13 @@ export class SettingsPanel {
         const r = div('stg-key');
         r.appendChild(span('stg-key-action', action));
         const caps = div('stg-key-caps');
-        const chord = action === 'Attack in place';
+        const chord = action === tr('Attack in place');
         keys.forEach((code, i) => {
           const k = boundKey(code);
           const prev = i > 0 ? boundKey(keys[i - 1]!) : '';
           // "Shift + Left click", "Left click or W A S D"; single letters sit side by side.
           if (i > 0 && chord) caps.appendChild(span('stg-key-or', '+'));
-          else if (i > 0 && (prev === 'Left click' || (k.length > 1 && prev.length > 1))) caps.appendChild(span('stg-key-or', 'or'));
+          else if (i > 0 && (prev === tr('Left click') || (k.length > 1 && prev.length > 1))) caps.appendChild(span('stg-key-or', tr('or')));
           caps.appendChild(keycap(k));
         });
         r.appendChild(caps);
@@ -440,23 +488,23 @@ export class SettingsPanel {
 
   /** Version, the bug report and the log, then the credits and licences. */
   private about(): void {
-    this.heading('About', `SLAY ${versionLabel()}${BUILT ? `, built ${BUILT}` : ''}.`);
+    this.heading(tr('About'), tr('SLAY {0}{1}.', versionLabel(), BUILT ? tr(', built {0}', BUILT) : ''));
     this.content.appendChild(
-      div('stg-note', 'If something goes wrong, copy the report and send it with a line on what you were doing. It holds no names and no save.'),
+      div('stg-note', tr('If something goes wrong, copy the report and send it with a line on what you were doing. It holds no names and no save.')),
     );
     const row = div('stg-row');
     row.appendChild(
       new Button({
-        label: 'Copy report',
+        label: tr('Copy report'),
         icon: 'scroll',
         small: true,
         onClick: () => {
           const text = attempt(() => buildReport(this.engine), '');
           navigator.clipboard.writeText(text).then(
-            () => events.emit('toast', { text: 'Report copied to the clipboard.', kind: 'good' }),
+            () => events.emit('toast', { text: tr('Report copied to the clipboard.'), kind: 'good' }),
             () => {
               saveTextFile(logName(), text);
-              events.emit('toast', { text: 'The clipboard said no, so the report was saved as a file.', kind: 'info' });
+              events.emit('toast', { text: tr('The clipboard said no, so the report was saved as a file.'), kind: 'info' });
             },
           );
         },
@@ -464,7 +512,7 @@ export class SettingsPanel {
     );
     row.appendChild(
       new Button({
-        label: 'Save log file',
+        label: tr('Save log file'),
         icon: 'download',
         small: true,
         onClick: () => saveTextFile(logName(), attempt(() => buildReport(this.engine), logText())),
@@ -481,10 +529,10 @@ export class SettingsPanel {
   }
 
   private data(): void {
-    this.heading('Save Data', 'Your account lives in this browser. Export it to keep a copy.');
+    this.heading(tr('Save Data'), tr('Your account lives in this browser. Export it to keep a copy.'));
     const io = div('settings-io');
     const box = document.createElement('textarea');
-    box.placeholder = 'Export writes your save here. Paste a save and press Import to restore it.';
+    box.placeholder = tr('Export writes your save here. Paste a save and press Import to restore it.');
     box.spellcheck = false;
     box.addEventListener('keydown', (e) => e.stopPropagation());
     io.appendChild(box);
@@ -492,43 +540,43 @@ export class SettingsPanel {
     const row = div('stg-row');
     row.appendChild(
       new Button({
-        label: 'Export',
+        label: tr('Export'),
         icon: 'download',
         small: true,
         onClick: () => {
           box.value = attempt(() => save.exportSave(), '');
           box.select();
           attempt(() => navigator.clipboard?.writeText(box.value), undefined);
-          events.emit('toast', { text: 'Save exported and copied to the clipboard.', kind: 'good' });
+          events.emit('toast', { text: tr('Save exported and copied to the clipboard.'), kind: 'good' });
         },
       }).root,
     );
     row.appendChild(
       new Button({
-        label: 'Import',
+        label: tr('Import'),
         icon: 'upload',
         small: true,
         onClick: () => {
           const blob = box.value.trim();
           if (!blob) {
-            events.emit('toast', { text: 'Paste a save first.', kind: 'bad' });
+            events.emit('toast', { text: tr('Paste a save first.'), kind: 'bad' });
             return;
           }
           // Swapping saves is not a way out of a fight (core/Peril.ts).
           if (this.engine.currentSceneId === 'dungeon' && peril.active) {
-            events.emit('toast', { text: 'Not during a fight.', kind: 'bad' });
+            events.emit('toast', { text: tr('Not during a fight.'), kind: 'bad' });
             return;
           }
           modal({
-            title: 'Import save?',
+            title: tr('Import save?'),
             icon: 'warn',
             tone: 'danger',
-            body: '<p>This replaces your current account: vault, gold, memorial and every character. There is no undo.</p>',
-            confirmLabel: 'Overwrite my save',
+            body: tr('<p>This replaces your current account: vault, gold, memorial and every character. There is no undo.</p>'),
+            confirmLabel: tr('Overwrite my save'),
             onConfirm: () => {
               const ok = attempt(() => save.importSave(blob), false);
               events.emit('toast', {
-                text: ok ? 'Save imported. Returning to the title.' : 'That save could not be read.',
+                text: ok ? tr('Save imported. Returning to the title.') : tr('That save could not be read.'),
                 kind: ok ? 'good' : 'bad',
               });
               if (ok) {
@@ -544,29 +592,28 @@ export class SettingsPanel {
     this.content.appendChild(io);
 
     const danger = div('settings-danger');
-    danger.appendChild(div('stg-group', 'Danger zone'));
+    danger.appendChild(div('stg-group', tr('Danger zone')));
     danger.appendChild(
       new Button({
-        label: 'Delete everything',
+        label: tr('Delete everything'),
         variant: 'danger',
         icon: 'trash',
         wide: true,
         onClick: () => {
           modal({
-            title: 'Erase this account?',
+            title: tr('Erase this account?'),
             icon: 'skull',
             tone: 'danger',
             body:
-              '<p>Your vault, your banked gold, the memorial of everyone who has died, and every living character. All of it, permanently.</p>' +
-              '<p><b>This is not the roguelike death. This is the delete button.</b></p>',
-            confirmLabel: 'Erase it all',
+              tr('<p>Your vault, your banked gold, the memorial of everyone who has died, and every living character. All of it, permanently.</p><p><b>This is not the roguelike death. This is the delete button.</b></p>'),
+            confirmLabel: tr('Erase it all'),
             onConfirm: () => {
               modal({
-                title: 'Really?',
+                title: tr('Really?'),
                 icon: 'warn',
                 tone: 'danger',
-                body: '<p>Last chance. Confirm and everything is gone.</p>',
-                confirmLabel: 'Yes, erase',
+                body: tr('<p>Last chance. Confirm and everything is gone.</p>'),
+                confirmLabel: tr('Yes, erase'),
                 onConfirm: () => {
                   save.hardReset();
                   this.panel.close();

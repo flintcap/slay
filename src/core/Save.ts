@@ -7,6 +7,7 @@ import { migrateClassId } from '../data/classes';
 import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
 import { refreshFixedLines } from '../sim/Loot';
 import { beginRun, endRun, forfeitRun, type Forfeit } from '../sim/RunLedger';
+import { tr } from './I18n';
 
 /**
  * The primary save. The key still says v1 because it predates versioning; the
@@ -324,7 +325,7 @@ class Repairer {
       this.note(`${where}: character had no id`);
     }
     if (!isStr(c.name) || !c.name.trim()) {
-      c.name = 'Nameless';
+      c.name = 'Nameless'; // i18n-ignore: saved as the hero's own name, like one typed in
       this.note(`${where}: character had no name`);
     }
     const at = `${where}(${c.name})`;
@@ -531,7 +532,7 @@ export function migrateAccount(raw: unknown): { data: AccountSave; report: LoadR
     for (const f of s.fallen.slice(0, 50)) {
       if (!isObj(f)) continue;
       out.fallen.push({
-        name: isStr(f.name) ? f.name : 'Nameless',
+        name: isStr(f.name) ? f.name : tr('Nameless'),
         classId: migrateClassId(isStr(f.classId) ? f.classId : 'warden'),
         level: finite(f.level) ? f.level : 1,
         depth: finite(f.depth) ? f.depth : 0,
@@ -787,7 +788,7 @@ export class SaveManager {
     this.loadReport = {
       source: 'fresh',
       fromVersion: 0,
-      repairs: ['the save and its backup were both unreadable'],
+      repairs: [tr('the save and its backup were both unreadable')],
       quarantined: 0,
       primaryDamaged: true,
       newerVersion: false,
@@ -992,7 +993,7 @@ export class SaveManager {
     this.writeFailures++;
     if (this.warnedWriteFail) return;
     this.warnedWriteFail = true;
-    events.emit('toast', { text: 'Could not save. Your browser storage may be full.', kind: 'bad' });
+    events.emit('toast', { text: tr('Could not save. Your browser storage may be full.'), kind: 'bad' });
   }
 
   /**
@@ -1007,7 +1008,7 @@ export class SaveManager {
       this.flushTimer = null;
     }
     events.emit('toast', {
-      text: 'SLAY is open in another tab. This tab has stopped saving. Reload it to continue here.',
+      text: tr('SLAY is open in another tab. This tab has stopped saving. Reload it to continue here.'),
       kind: 'bad',
     });
   }

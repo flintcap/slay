@@ -33,6 +33,7 @@ import {
   type DragPayload,
 } from './Widgets';
 import { uiSfx } from './Sfx';
+import { tr } from '../core/I18n';
 
 const TAB_COLS = STASH_COLS;
 const TAB_ROWS = STASH_ROWS;
@@ -54,8 +55,8 @@ export class StashPanel {
   constructor() {
     this.panel = new Panel({
       id: 'stash',
-      title: 'The Vault',
-      subtitle: 'Everything stored here outlives you',
+      title: tr('The Vault'),
+      subtitle: tr('Everything stored here outlives you'),
       icon: 'stash',
       width: 1180,
     });
@@ -67,13 +68,13 @@ export class StashPanel {
     // --- vault side -------------------------------------------------------
     const left = div('trade-col');
     const hd = div('trade-colhd');
-    hd.appendChild(span('trade-coltitle', 'Vault'));
+    hd.appendChild(span('trade-coltitle', tr('Vault')));
 
     const searchBox = div('trade-search');
     searchBox.appendChild(icon('search', { size: 13 }));
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Search by name or type…';
+    input.placeholder = tr('Search by name or type…');
     input.addEventListener('input', () => {
       this.search = input.value.trim().toLowerCase();
       this.applyFilter();
@@ -93,7 +94,7 @@ export class StashPanel {
     // Tabs past the first four are bought (Save.STASH_TAB_PRICES), so the
     // Legacy reward tab is worth something.
     this.addTab = new Button({
-      label: '+ Tab',
+      label: tr('+ Tab'),
       variant: 'ghost',
       small: true,
       onClick: () => this.buyTab(),
@@ -103,7 +104,7 @@ export class StashPanel {
     // Sorts the tab you are looking at, not the whole vault: a ten-tab vault
     // sorted as one blob would shuffle everything you had deliberately filed.
     const sortTab = new Button({
-      label: 'Sort Tab',
+      label: tr('Sort Tab'),
       variant: 'ghost',
       icon: 'sparkle',
       small: true,
@@ -136,14 +137,14 @@ export class StashPanel {
     const note = div('trade-note');
     note.appendChild(icon('info', { size: 13 }));
     note.appendChild(
-      span('', 'The vault is shared by every character on this account and is never lost on death. Your pack is.')
+      span('', tr('The vault is shared by every character on this account and is never lost on death. Your pack is.'))
     );
     left.appendChild(note);
 
     // --- pack side --------------------------------------------------------
     const right = div('trade-col');
     const rhd = div('trade-colhd');
-    rhd.appendChild(span('trade-coltitle', 'Pack'));
+    rhd.appendChild(span('trade-coltitle', tr('Pack')));
     rhd.appendChild(span('goldbank-label', 'right-click to store'));
     right.appendChild(rhd);
 
@@ -164,11 +165,11 @@ export class StashPanel {
     // --- gold -------------------------------------------------------------
     const bank = div('goldbank');
     const r1 = div('goldbank-row');
-    r1.appendChild(span('goldbank-label', 'Vault'));
+    r1.appendChild(span('goldbank-label', tr('Vault')));
     this.vaultGoldEl = span('goldbank-value', '0');
     r1.appendChild(this.vaultGoldEl);
     const r2 = div('goldbank-row');
-    r2.appendChild(span('goldbank-label', 'Purse'));
+    r2.appendChild(span('goldbank-label', tr('Purse')));
     this.purseGoldEl = span('goldbank-value', '0');
     r2.appendChild(this.purseGoldEl);
 
@@ -176,7 +177,7 @@ export class StashPanel {
     for (const amount of [1000, 10000, -1] as number[]) {
       dep.appendChild(
         new Button({
-          label: amount < 0 ? 'All' : fmtInt(amount),
+          label: amount < 0 ? tr('All') : fmtInt(amount),
           variant: 'ghost',
           small: true,
           onClick: () => this.deposit(amount),
@@ -187,14 +188,14 @@ export class StashPanel {
     for (const amount of [1000, 10000, -1] as number[]) {
       wit.appendChild(
         new Button({
-          label: amount < 0 ? 'All' : fmtInt(amount),
+          label: amount < 0 ? tr('All') : fmtInt(amount),
           variant: 'ghost',
           small: true,
           onClick: () => this.withdraw(amount),
         }).root
       );
     }
-    add(bank, r1, r2, div('goldbank-label', 'Deposit'), dep, div('goldbank-label', 'Withdraw'), wit);
+    add(bank, r1, r2, div('goldbank-label', tr('Deposit')), dep, div('goldbank-label', tr('Withdraw')), wit);
     right.appendChild(bank);
 
     add(wrap, left, right);
@@ -230,17 +231,17 @@ export class StashPanel {
     const price = save.stashTabPrice();
     if (price === null) return;
     modal({
-      title: 'Buy a vault tab?',
+      title: tr('Buy a vault tab?'),
       icon: 'stash',
-      body: `<p>One more tab of ${STASH_TAB_SIZE} cells for <b>${fmtInt(price)} gold</b>. Paid from the bank first, then your purse.</p>`,
-      confirmLabel: 'Buy tab',
+      body: tr('<p>One more tab of {0} cells for <b>{1} gold</b>. Paid from the bank first, then your purse.</p>', STASH_TAB_SIZE, fmtInt(price)),
+      confirmLabel: tr('Buy tab'),
       onConfirm: () => {
         const r = save.buyStashTab();
         if (r === 'ok') {
           uiSfx('ui.buy');
-          events.emit('toast', { text: 'Vault expanded.', kind: 'good' });
+          events.emit('toast', { text: tr('Vault expanded.'), kind: 'good' });
         } else {
-          events.emit('toast', { text: r === 'gold' ? 'Not enough gold.' : 'The vault cannot hold more tabs.', kind: 'bad' });
+          events.emit('toast', { text: r === 'gold' ? tr('Not enough gold.') : tr('The vault cannot hold more tabs.'), kind: 'bad' });
         }
         events.emit('ui:refresh', {});
         this.refresh();
@@ -255,12 +256,12 @@ export class StashPanel {
       const from = i * STASH_TAB_SIZE;
       let used = 0;
       for (let k = from; k < from + STASH_TAB_SIZE; k++) if (acct.stash[k]) used++;
-      defs.push({ id: `tab${i}`, label: `Tab ${i + 1}`, count: used });
+      defs.push({ id: `tab${i}`, label: tr('Tab {0}', i + 1), count: used });
     }
     if (this.tabIndex >= acct.stashTabs) this.tabIndex = 0;
     this.tabs.setTabs(defs, `tab${this.tabIndex}`);
     const price = save.stashTabPrice();
-    this.addTab.setLabel(price === null ? 'Vault full' : `+ Tab · ${fmtInt(price)} gold`);
+    this.addTab.setLabel(price === null ? tr('Vault full') : tr('+ Tab · {0} gold', fmtInt(price)));
     this.addTab.setDisabled(price === null);
 
     // A tab switch or a sort replaces every cell; only a real arrival flashes.
@@ -310,7 +311,7 @@ export class StashPanel {
     if (p.kind === 'stash' && p.index !== undefined) {
       // Same kind of stack: pour it in. Onto one item: trade places.
       if (!moveBetween(acct.stash, p.index, acct.stash, target)) {
-        events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+        events.emit('toast', { text: tr('It will not fit there.'), kind: 'bad' });
         return false;
       }
       save.touch();
@@ -323,7 +324,7 @@ export class StashPanel {
 
     if (p.kind === 'inventory' && p.index !== undefined) {
       if (!placeOrFit(c.inventory, p.index, acct.stash, target)) {
-        events.emit('toast', { text: 'No room in this tab for that.', kind: 'bad' });
+        events.emit('toast', { text: tr('No room in this tab for that.'), kind: 'bad' });
         return false;
       }
       save.touch();
@@ -332,7 +333,7 @@ export class StashPanel {
     }
 
     if (p.kind === 'equipment') {
-      events.emit('toast', { text: 'Unequip it first.', kind: 'bad' });
+      events.emit('toast', { text: tr('Unequip it first.'), kind: 'bad' });
       return false;
     }
     return false;
@@ -346,7 +347,7 @@ export class StashPanel {
 
     if (p.kind === 'stash' && p.index !== undefined) {
       if (!placeOrFit(acct.stash, p.index, c.inventory, index)) {
-        events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+        events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
         return false;
       }
       save.touch();
@@ -355,7 +356,7 @@ export class StashPanel {
     }
     if (p.kind === 'inventory' && p.index !== undefined) {
       if (!moveBetween(c.inventory, p.index, c.inventory, index)) {
-        events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+        events.emit('toast', { text: tr('It will not fit there.'), kind: 'bad' });
         return false;
       }
       save.touch();
@@ -383,7 +384,7 @@ export class StashPanel {
         ok = c.inventory[index]?.uid === item.uid && splitStack(c.inventory, index, n);
       }
       if (!ok) {
-        events.emit('toast', { text: 'No empty slot to split into.', kind: 'bad' });
+        events.emit('toast', { text: tr('No empty slot to split into.'), kind: 'bad' });
         return;
       }
       save.touch();
@@ -402,7 +403,7 @@ export class StashPanel {
     let free = findFit(save.account.stash, item, tabArea(this.tabIndex));
     if (free < 0) free = findFit(save.account.stash, item);
     if (free < 0) {
-      events.emit('toast', { text: 'No room in the vault for that.', kind: 'bad' });
+      events.emit('toast', { text: tr('No room in the vault for that.'), kind: 'bad' });
       return;
     }
     save.account.stash[free] = item;
@@ -418,7 +419,7 @@ export class StashPanel {
     normalizeInventory(c);
     const free = invFirstFree(c, item);
     if (free < 0) {
-      events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+      events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
       return;
     }
     c.inventory[free] = item;
@@ -435,7 +436,7 @@ export class StashPanel {
     if (!c) return;
     const n = amount < 0 ? c.gold : Math.min(amount, c.gold);
     if (n <= 0) {
-      events.emit('toast', { text: 'Nothing to deposit.', kind: 'info' });
+      events.emit('toast', { text: tr('Nothing to deposit.'), kind: 'info' });
       return;
     }
     c.gold -= n;
@@ -449,7 +450,7 @@ export class StashPanel {
     if (!c) return;
     const n = amount < 0 ? save.account.bankGold : Math.min(amount, save.account.bankGold);
     if (n <= 0) {
-      events.emit('toast', { text: 'The vault is empty.', kind: 'info' });
+      events.emit('toast', { text: tr('The vault is empty.'), kind: 'info' });
       return;
     }
     save.account.bankGold -= n;

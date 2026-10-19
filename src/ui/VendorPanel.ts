@@ -35,6 +35,7 @@ import {
   type DragPayload,
 } from './Widgets';
 import { uiSfx } from './Sfx';
+import { tr } from '../core/I18n';
 
 /** Rarities that demand a confirmation before being sold. */
 const PRECIOUS: ItemRarity[] = ['set', 'unique', 'mythic', 'ancient'];
@@ -132,8 +133,8 @@ export class VendorPanel {
 
   constructor(opts: VendorOpts = {
     id: 'vendor',
-    title: 'Merchant',
-    subtitle: 'Everything has a price, and hers are bad',
+    title: tr('Merchant'),
+    subtitle: tr('Everything has a price, and hers are bad'),
     icon: 'coin',
   }) {
     this.opts = opts;
@@ -156,8 +157,8 @@ export class VendorPanel {
     // at exactly what you were paid, until you go back down.
     this.tabs = new Tabs(
       [
-        { id: 'stock', label: 'For Sale' },
-        { id: 'buyback', label: 'Buy Back' },
+        { id: 'stock', label: tr('For Sale') },
+        { id: 'buyback', label: tr('Buy Back') },
       ],
       'stock',
       (id) => {
@@ -193,17 +194,17 @@ export class VendorPanel {
     left.appendChild(this.stockGrid.root);
 
     this.pager = div('shop-pager');
-    const prev = new Button({ label: '‹ Prev', variant: 'ghost', small: true, onClick: () => this.turn(-1) });
-    const next = new Button({ label: 'Next ›', variant: 'ghost', small: true, onClick: () => this.turn(1) });
-    this.pageLabel = span('shop-page', 'Page 1 / 1');
+    const prev = new Button({ label: tr('‹ Prev'), variant: 'ghost', small: true, onClick: () => this.turn(-1) });
+    const next = new Button({ label: tr('Next ›'), variant: 'ghost', small: true, onClick: () => this.turn(1) });
+    this.pageLabel = span('shop-page', tr('Page 1 / 1'));
     add(this.pager, prev.root, this.pageLabel, next.root);
     left.appendChild(this.pager);
 
-    const buyHint = div('inv-hint', 'Click an item to buy it.');
+    const buyHint = div('inv-hint', tr('Click an item to buy it.'));
     left.appendChild(buyHint);
 
     this.restockBtn = new Button({
-      label: 'Ask for new stock',
+      label: tr('Ask for new stock'),
       variant: 'ghost',
       icon: 'sparkle',
       small: true,
@@ -222,7 +223,7 @@ export class VendorPanel {
     // --- pack -------------------------------------------------------------
     const right = div('trade-col');
     const rhd = div('trade-colhd');
-    rhd.appendChild(span('trade-coltitle', 'Your Pack'));
+    rhd.appendChild(span('trade-coltitle', tr('Your Pack')));
     const gold = div('inv-gold');
     gold.appendChild(icon('coin', { size: 14 }));
     this.goldEl = span('inv-gold-v', '0');
@@ -242,11 +243,11 @@ export class VendorPanel {
       onRightClick: (item) => this.trySell(item),
     });
     right.appendChild(this.packGrid.root);
-    right.appendChild(div('inv-hint', 'Click an item in your pack to sell it.'));
+    right.appendChild(div('inv-hint', tr('Click an item in your pack to sell it.')));
 
     const note = div('trade-note warn');
     note.appendChild(icon('warn', { size: 13 }));
-    note.appendChild(span('', 'Sold items are gone for good. Set and better always ask twice.'));
+    note.appendChild(span('', tr('Sold items are gone for good. Set and better always ask twice.')));
     right.appendChild(note);
 
     add(wrap, left, right);
@@ -291,7 +292,7 @@ export class VendorPanel {
     if (!c) return;
     const cost = this.restockCost();
     if (c.gold < cost) {
-      events.emit('toast', { text: `You need ${fmtInt(cost - c.gold)} more gold.`, kind: 'bad' });
+      events.emit('toast', { text: tr('You need {0} more gold.', fmtInt(cost - c.gold)), kind: 'bad' });
       this.restockBtn.flash('bad');
       return;
     }
@@ -301,7 +302,7 @@ export class VendorPanel {
     this.generateStock();
     this.refresh();
     this.restockBtn.flash('good');
-    events.emit('toast', { text: `The merchant unpacks another crate. ${fmtInt(cost)} gold.`, kind: 'info' });
+    events.emit('toast', { text: tr('The merchant unpacks another crate. {0} gold.', fmtInt(cost)), kind: 'info' });
   }
 
   private generateStock(): void {
@@ -327,7 +328,7 @@ export class VendorPanel {
         setStackCount(item, 10);
         this.stock[i] = item;
       });
-      this.restockEl.textContent = `${this.stock.filter(Boolean).length} kinds`;
+      this.restockEl.textContent = tr('{0} kinds', this.stock.filter(Boolean).length);
       return;
     }
 
@@ -350,7 +351,7 @@ export class VendorPanel {
         this.stock[i] = item;
       }
     }
-    this.restockEl.textContent = `${this.stock.filter(Boolean).length} wares`;
+    this.restockEl.textContent = tr('{0} wares', this.stock.filter(Boolean).length);
   }
 
   private readonly boundRefresh = (): void => this.refresh();
@@ -362,12 +363,12 @@ export class VendorPanel {
     const pages = shelfPages(wares);
     this.page = Math.max(0, Math.min(this.page, pages.length - 1));
     this.stockGrid.setItems(pages[this.page]!, 0, true);
-    this.pageLabel.textContent = `Page ${this.page + 1} / ${pages.length}`;
+    this.pageLabel.textContent = tr('Page {0} / {1}', this.page + 1, pages.length);
     this.pager.style.visibility = pages.length > 1 ? '' : 'hidden';
     this.tabs.setTabs(
       [
-        { id: 'stock', label: 'For Sale' },
-        { id: 'buyback', label: shelf.length > 0 ? `Buy Back (${shelf.length})` : 'Buy Back' },
+        { id: 'stock', label: tr('For Sale') },
+        { id: 'buyback', label: shelf.length > 0 ? tr('Buy Back ({0})', shelf.length) : tr('Buy Back') },
       ],
       this.tab,
     );
@@ -377,7 +378,7 @@ export class VendorPanel {
       countTo(this.goldEl, c.gold, fmtInt, 340);
     }
     const cost = this.restockCost();
-    this.restockBtn.setLabel(`Ask for new stock — ${fmtInt(cost)}g`);
+    this.restockBtn.setLabel(tr('Ask for new stock — {0}g', fmtInt(cost)));
     this.restockBtn.setDisabled((c?.gold ?? 0) < cost || this.tab === 'buyback');
     this.restockBtn.root.style.display = this.tab === 'buyback' ? 'none' : '';
     this.decorate(c?.gold ?? 0);
@@ -435,13 +436,13 @@ export class VendorPanel {
     if (!c || !item) return;
     const price = attempt(() => vendorPrice(item, true), item.value ?? 0);
     if (c.gold < price) {
-      events.emit('toast', { text: `You need ${fmtInt(price - c.gold)} more gold.`, kind: 'bad' });
+      events.emit('toast', { text: tr('You need {0} more gold.', fmtInt(price - c.gold)), kind: 'bad' });
       return;
     }
     normalizeInventory(c);
     const free = invFirstFree(c, item);
     if (free < 0) {
-      events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+      events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
       return;
     }
     c.gold -= price;
@@ -451,7 +452,7 @@ export class VendorPanel {
     save.touch();
     uiSfx('ui.buy');
     events.emit('toast', {
-      text: `Bought ${attempt(() => itemDisplayName(item), item.name)}`,
+      text: tr('Bought {0}', attempt(() => itemDisplayName(item), item.name)),
       kind: 'good',
       rarity: item.rarity,
     });
@@ -463,7 +464,7 @@ export class VendorPanel {
     if (!c || !p.item || p.index === undefined) return false;
     normalizeInventory(c);
     if (!moveBetween(c.inventory, p.index, c.inventory, index)) {
-      events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+      events.emit('toast', { text: tr('It will not fit there.'), kind: 'bad' });
       return false;
     }
     save.touch();
@@ -497,20 +498,20 @@ export class VendorPanel {
     title.textContent = name;
     body.appendChild(title);
     body.appendChild(
-      div('', `This is a ${item.rarity} item. Selling it destroys it permanently — there is no buyback.`)
+      div('', tr('This is a {0} item. Selling it destroys it permanently — there is no buyback.', item.rarity))
     );
     const worth = div('');
     worth.style.marginTop = '10px';
-    worth.innerHTML = `You will receive <b>${fmtInt(price)}</b> gold.`;
+    worth.innerHTML = tr('You will receive <b>{0}</b> gold.', fmtInt(price));
     body.appendChild(worth);
 
     modal({
-      title: 'Sell this?',
+      title: tr('Sell this?'),
       icon: 'warn',
       tone: 'danger',
       body,
-      confirmLabel: `Sell for ${fmtInt(price)}`,
-      cancelLabel: 'Keep it',
+      confirmLabel: tr('Sell for {0}', fmtInt(price)),
+      cancelLabel: tr('Keep it'),
       onConfirm: () => this.sell(item, price),
     });
   }
@@ -527,11 +528,11 @@ export class VendorPanel {
     const price = buyBackPrice(item.uid);
     if (price === null) return;
     if (c.gold < price) {
-      events.emit('toast', { text: `You need ${fmtInt(price - c.gold)} more gold.`, kind: 'bad' });
+      events.emit('toast', { text: tr('You need {0} more gold.', fmtInt(price - c.gold)), kind: 'bad' });
       return;
     }
     if (invFirstFree(c, item) < 0) {
-      events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+      events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
       return;
     }
     const back = takeBack(item.uid);
@@ -541,7 +542,7 @@ export class VendorPanel {
     save.setCharacter(c);
     uiSfx('ui.buy');
     events.emit('toast', {
-      text: `${attempt(() => itemDisplayName(back), 'Item')} bought back.`,
+      text: tr('{0} bought back.', attempt(() => itemDisplayName(back), tr('Item'))),
       kind: 'good',
     });
     this.refresh();
@@ -556,7 +557,7 @@ export class VendorPanel {
     c.gold += price;
     save.touch();
     uiSfx('ui.sell');
-    events.emit('toast', { text: `Sold for ${fmtInt(price)} gold.`, kind: 'good' });
+    events.emit('toast', { text: tr('Sold for {0} gold.', fmtInt(price)), kind: 'good' });
     events.emit('ui:refresh', {});
   }
 }

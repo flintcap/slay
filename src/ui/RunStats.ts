@@ -20,6 +20,8 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { getAbility } from '../entities/Abilities';
 import { statusDef } from '../sim/StatusRules';
+import { tr } from '../core/I18n';
+import { itemDisplayName } from '../sim/Loot';
 
 /** One blow the hero took, for the death recap. */
 export interface HitRecord {
@@ -181,7 +183,7 @@ class RunStats {
       const best = this.s.bestRarity;
       if (!best || RARITY_ORDER.indexOf(r) > RARITY_ORDER.indexOf(best)) {
         this.s.bestRarity = r;
-        this.s.bestItem = p.item.name;
+        this.s.bestItem = itemDisplayName(p.item);
       }
     });
     events.on('player:damaged', (p) => {
@@ -214,7 +216,7 @@ class RunStats {
         ? (getAbility(p.ability)?.name ?? plain(p.ability))
         : null;
     const name = who?.name ?? null;
-    const key = name ?? (what || 'Unknown');
+    const key = name ?? (what || tr('Unknown'));
     const total = (this.hurtTotal.get(key) ?? 0) + p.amount;
     this.hurtTotal.set(key, total);
     if (!this.s.hurtMost || total > this.s.hurtMost.amount) this.s.hurtMost = { name: key, amount: total };
@@ -275,7 +277,7 @@ class RunStats {
    * imports the dungeon.
    */
   private resolve(source: string): { name: string; rank: MonsterRank | null } | null {
-    if (!source || source === 'monster' || source === 'the dark') return null;
+    if (!source || source === 'monster' || source === tr('the dark')) return null;
     const scene = this.engine?.currentScene as unknown as { enemies?: EnemyLike[]; boss?: EnemyLike | null } | null;
     if (!scene) return null;
     const pool: EnemyLike[] = [...(scene.enemies ?? [])];

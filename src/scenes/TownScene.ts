@@ -32,6 +32,7 @@ import { buildPortal, type WayLook } from '../art/props/Ways';
 import { holdRipple, releaseRipple, type RippleHandle } from '../core/Ripples';
 import { portalPrompt, trinketOf } from '../sim/Trinkets';
 import { modal } from '../ui/Widgets';
+import { tr } from '../core/I18n';
 
 /** The town hero's seed: the worker dresses the same hero the town builds. */
 const TOWN_HERO_SEED = 12345;
@@ -190,12 +191,12 @@ export class TownScene extends GameScene {
     };
 
     this.interactables = [
-      { id: 'vendor', label: 'Merchant — Buy & Sell', panel: 'vendor', pos: at('vendor'), radius: 2.4 },
-      { id: 'blacksmith', label: 'Blacksmith — Upgrade & Craft', panel: 'blacksmith', pos: at('blacksmith'), radius: 2.4 },
-      { id: 'alchemist', label: 'Apothecary — Potions & Oils', panel: 'alchemist', pos: at('alchemist'), radius: 2.4 },
-      { id: 'stash', label: 'Vault — Shared Stash', panel: 'stash', pos: at('stash'), radius: 2.4 },
-      { id: 'memorial', label: 'Memorial — The Fallen', panel: 'memorial', pos: at('memorial'), radius: 2.2 },
-      { id: 'portal', label: 'The Descent — Enter the Dungeon', panel: 'descend', pos: this.town.portalSpot.clone(), radius: 2.8 },
+      { id: 'vendor', label: tr('Merchant — Buy & Sell'), panel: 'vendor', pos: at('vendor'), radius: 2.4 },
+      { id: 'blacksmith', label: tr('Blacksmith — Upgrade & Craft'), panel: 'blacksmith', pos: at('blacksmith'), radius: 2.4 },
+      { id: 'alchemist', label: tr('Apothecary — Potions & Oils'), panel: 'alchemist', pos: at('alchemist'), radius: 2.4 },
+      { id: 'stash', label: tr('Vault — Shared Stash'), panel: 'stash', pos: at('stash'), radius: 2.4 },
+      { id: 'memorial', label: tr('Memorial — The Fallen'), panel: 'memorial', pos: at('memorial'), radius: 2.2 },
+      { id: 'portal', label: tr('The Descent — Enter the Dungeon'), panel: 'descend', pos: this.town.portalSpot.clone(), radius: 2.8 },
     ];
     // The people who keep no station: the watch captain, the Listener, Gilder
     // and the surveyor. Talking is handled by the story layer.
@@ -226,14 +227,14 @@ export class TownScene extends GameScene {
         const item = save.account.current?.inventory.find((it) => it?.uid === uid);
         const def = trinketOf(item);
         if (!def) return;
-        toast(def.use === 'portal' ? 'It opens only in a map.' : 'Keep it in your pack. It breaks on its own when you would die in a map.', 'info');
+        toast(def.use === 'portal' ? tr('It opens only in a map.') : tr('Keep it in your pack. It breaks on its own when you would die in a map.'), 'info');
       }),
       events.on('loot:discard', ({ item }) => {
         const c = save.account.current;
         if (!c) return;
         addItemToInventory(c, item);
         save.touch();
-        events.emit('toast', { text: 'Not here — sell it or stash it instead.', kind: 'info' });
+        events.emit('toast', { text: tr('Not here — sell it or stash it instead.'), kind: 'info' });
         events.emit('ui:refresh', {});
       }),
     );
@@ -255,10 +256,10 @@ export class TownScene extends GameScene {
 
     if (!save.hasUnlock('tutorial.town')) {
       save.unlock('tutorial.town');
-      toast('Walk to the glowing portal to open a map.', 'info');
-      if (character.skillPoints > 0) setTimeout(() => toast('Press T to spend your skill point first.', 'good'), 3400);
+      toast(tr('Walk to the glowing portal to open a map.'), 'info');
+      if (character.skillPoints > 0) setTimeout(() => toast(tr('Press T to spend your skill point first.'), 'good'), 3400);
     } else {
-      toast(`Welcome back, ${character.name}.`, 'info');
+      toast(tr('Welcome back, {0}.', character.name), 'info');
     }
     // The pack's icons. Town is safe ground, so they are drawn in the idle
     // time after the curtain lifts rather than holding the curtain down; by
@@ -276,7 +277,7 @@ export class TownScene extends GameScene {
     if (!character) return;
     // One map at a time: the open portal's map is this hero's until it closes.
     if (character.portal) {
-      toast('Your portal to town is still open. Go back through it, or right-click it to close it first.', 'bad');
+      toast(tr('Your portal to town is still open. Go back through it, or right-click it to close it first.'), 'bad');
       audio.play('ui.error');
       return;
     }
@@ -321,16 +322,16 @@ export class TownScene extends GameScene {
     const p = save.account.current?.portal;
     if (!p) return;
     modal({
-      title: 'Close the portal?',
+      title: tr('Close the portal?'),
       icon: 'exit',
       tone: 'danger',
-      body: `${p.name || `The tier ${p.depth} map`} ends. You keep everything you brought back, and you can open a new map.`,
-      confirmLabel: 'Close it',
+      body: tr('{0} ends. You keep everything you brought back, and you can open a new map.', p.name || tr('The tier {0} map', p.depth)),
+      confirmLabel: tr('Close it'),
       onConfirm: () => {
         save.closePortal();
         this.dropHomeDoor();
         audio.play('ui.close');
-        toast('The portal closes.', 'info');
+        toast(tr('The portal closes.'), 'info');
       },
     });
   }

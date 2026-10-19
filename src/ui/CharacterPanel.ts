@@ -39,16 +39,17 @@ import {
 } from './Widgets';
 import { uiSfx } from './Sfx';
 import { estimateAttack, estimateSkill, type AttackEstimate } from './AttackEstimate';
+import { tr, trn } from '../core/I18n';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
 
 const ATTRS: AttrKey[] = ['strength', 'dexterity', 'vitality', 'energy'];
 
 const ATTR_BLURB: Record<AttrKey, string> = {
-  strength: 'Raises physical damage and lets you wear heavier armour and weapons. Most melee bases gate on it.',
-  dexterity: 'Raises attack rating, block chance and critical strike. Bows, daggers and light armour scale with it.',
-  vitality: 'The only attribute that keeps you alive. Each point adds life directly.',
-  energy: 'Grows the mana pool and mana regeneration — the fuel for every skill you press.',
+  strength: tr('Raises physical damage and lets you wear heavier armour and weapons. Most melee bases gate on it.'),
+  dexterity: tr('Raises attack rating, block chance and critical strike. Bows, daggers and light armour scale with it.'),
+  vitality: tr('The only attribute that keeps you alive. Each point adds life directly.'),
+  energy: tr('Grows the mana pool and mana regeneration — the fuel for every skill you press.'),
 };
 
 /** A usual boss stands this much harder to hit than a usual monster of its level (its rank's armour, square-rooted). */
@@ -58,35 +59,35 @@ const BOSS_GUARD = Math.sqrt(2.4);
 function hitHint(ar: number): string {
   const guard = usualAttackRating(save.account.current?.level ?? 1);
   const pct = (g: number): string => `${Math.round(hitChance(ar, g) * 100)}%`;
-  return `<p class="tt-explain-how">Hit chance against a usual monster of your level: <b>${pct(guard)}</b>. Against a usual boss: <b>${pct(guard * BOSS_GUARD)}</b>.</p>`;
+  return tr('<p class="tt-explain-how">Hit chance against a usual monster of your level: <b>{0}</b>. Against a usual boss: <b>{1}</b>.</p>', pct(guard), pct(guard * BOSS_GUARD));
 }
 
 const STAT_HOW: Partial<Record<StatKey, string>> = {
-  life: 'Class base + per-level gain + (Vitality x life-per-point) + flat life from gear and passives.',
-  mana: 'Class base + per-level gain + (Energy x mana-per-point) + flat mana from gear and passives.',
-  lifeRegen: 'Life restored every second, out of and in combat.',
-  manaRegen: 'Mana restored every second. Sustain builds live and die on this number.',
-  attackRating: 'Blows from your weapon (swings, slams, arrows) can miss. The more attack rating you have against a monster\'s guard, the fewer misses; five times its guard never misses. Armoured monsters, elites and bosses guard more. Spells, minions and area blasts always hit. Grows with Dexterity and level.',
-  minDamage: 'Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.',
-  maxDamage: 'Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.',
-  attackSpeed: 'Percentage change to swing time. Additive across gear, then applied to the weapon base speed.',
-  castSpeed: 'Percentage change to cast time for spell skills.',
-  critChance: 'Chance for a hit to roll critical damage instead of normal damage.',
-  critDamage: 'Bonus damage on a critical hit, on top of the base 150%.',
-  lifeSteal: 'Fraction of physical damage dealt returned as life.',
-  manaSteal: 'Fraction of physical damage dealt returned as mana.',
-  defense: 'Reduces the chance an attack lands at all. Compared against attacker level and attack rating.',
-  blockChance: 'Chance a shield stops an incoming attack outright. Requires a shield equipped.',
-  damageReduction: 'Percent taken off every incoming hit, after resistances and defense. Most it can reach: 50%.',
-  enhancedDamage: 'Multiplies weapon damage. Additive within the pool, so two +40% rolls give +80%.',
-  enhancedDefense: 'Multiplies armour values from gear.',
-  elementalDamagePct: 'Multiplies all non-physical damage you deal.',
-  areaDamagePct: 'Multiplies damage dealt by area-of-effect skills.',
-  moveSpeed: 'Percentage change to run speed. The most under-rated defensive stat in the game.',
-  magicFind: 'Improves the odds a drop rolls a higher rarity. Has diminishing returns on the highest tiers.',
-  goldFind: 'Increases gold dropped by slain monsters.',
-  cooldownReduction: 'Shortens skill cooldowns multiplicatively.',
-  skillLevels: 'Adds ranks to every skill you have already invested in.',
+  life: tr('Class base + per-level gain + (Vitality x life-per-point) + flat life from gear and passives.'),
+  mana: tr('Class base + per-level gain + (Energy x mana-per-point) + flat mana from gear and passives.'),
+  lifeRegen: tr('Life restored every second, out of and in combat.'),
+  manaRegen: tr('Mana restored every second. Sustain builds live and die on this number.'),
+  attackRating: tr('Blows from your weapon (swings, slams, arrows) can miss. The more attack rating you have against a monster\'s guard, the fewer misses; five times its guard never misses. Armoured monsters, elites and bosses guard more. Spells, minions and area blasts always hit. Grows with Dexterity and level.'),
+  minDamage: tr('Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.'),
+  maxDamage: tr('Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.'),
+  attackSpeed: tr('Percentage change to swing time. Additive across gear, then applied to the weapon base speed.'),
+  castSpeed: tr('Percentage change to cast time for spell skills.'),
+  critChance: tr('Chance for a hit to roll critical damage instead of normal damage.'),
+  critDamage: tr('Bonus damage on a critical hit, on top of the base 150%.'),
+  lifeSteal: tr('Fraction of physical damage dealt returned as life.'),
+  manaSteal: tr('Fraction of physical damage dealt returned as mana.'),
+  defense: tr('Reduces the chance an attack lands at all. Compared against attacker level and attack rating.'),
+  blockChance: tr('Chance a shield stops an incoming attack outright. Requires a shield equipped.'),
+  damageReduction: tr('Percent taken off every incoming hit, after resistances and defense. Most it can reach: 50%.'),
+  enhancedDamage: tr('Multiplies weapon damage. Additive within the pool, so two +40% rolls give +80%.'),
+  enhancedDefense: tr('Multiplies armour values from gear.'),
+  elementalDamagePct: tr('Multiplies all non-physical damage you deal.'),
+  areaDamagePct: tr('Multiplies damage dealt by area-of-effect skills.'),
+  moveSpeed: tr('Percentage change to run speed. The most under-rated defensive stat in the game.'),
+  magicFind: tr('Improves the odds a drop rolls a higher rarity. Has diminishing returns on the highest tiers.'),
+  goldFind: tr('Increases gold dropped by slain monsters.'),
+  cooldownReduction: tr('Shortens skill cooldowns multiplicatively.'),
+  skillLevels: tr('Adds ranks to every skill you have already invested in.'),
 };
 
 const OFFENSE: StatKey[] = [
@@ -122,12 +123,12 @@ const UTILITY: StatKey[] = [
 ];
 
 const RESIST_LABEL: Record<DamageType, string> = {
-  physical: 'Physical',
-  fire: 'Fire',
-  cold: 'Cold',
-  lightning: 'Lightning',
-  poison: 'Poison',
-  arcane: 'Arcane',
+  physical: tr('Physical'),
+  fire: tr('Fire'),
+  cold: tr('Cold'),
+  lightning: tr('Lightning'),
+  poison: tr('Poison'),
+  arcane: tr('Arcane'),
 };
 
 export class CharacterPanel {
@@ -144,8 +145,8 @@ export class CharacterPanel {
   constructor() {
     this.panel = new Panel({
       id: 'character',
-      title: 'Character',
-      subtitle: 'Attributes and derived power',
+      title: tr('Character'),
+      subtitle: tr('Attributes and derived power'),
       icon: 'strength',
       width: 940,
     });
@@ -202,10 +203,10 @@ export class CharacterPanel {
 
     this.renderIdentity(c, st);
     this.renderAttrs(c, st);
-    this.renderGroup(this.colOffense, 'Offense', 'sword', OFFENSE, st);
+    this.renderGroup(this.colOffense, tr('Offense'), 'sword', OFFENSE, st);
     this.renderAttack(c, st);
-    this.renderGroup(this.colDefense, 'Defense', 'shield', DEFENSE, st);
-    this.renderGroup(this.colUtility, 'Utility', 'sparkle', UTILITY, st);
+    this.renderGroup(this.colDefense, tr('Defense'), 'shield', DEFENSE, st);
+    this.renderGroup(this.colUtility, tr('Utility'), 'sparkle', UTILITY, st);
     this.renderResists(st);
     this.renderBuild(c, st);
   }
@@ -231,7 +232,7 @@ export class CharacterPanel {
     const xpRow = div('char-xp');
     const lvl = div('char-level');
     lvl.appendChild(span('char-level-n', String(c.level)));
-    lvl.appendChild(span('char-level-w', 'LEVEL'));
+    lvl.appendChild(span('char-level-w', tr('LEVEL')));
     const track = div('char-xp-track');
     const fill = div('char-xp-fill');
     fill.style.width = `${Math.max(0, Math.min(100, (c.xp / Math.max(1, need)) * 100))}%`;
@@ -241,10 +242,10 @@ export class CharacterPanel {
     this.identity.appendChild(xpRow);
 
     const facts = div('char-facts');
-    facts.appendChild(this.fact('Deepest', `Tier ${c.depthRecord}`, 'descend'));
-    facts.appendChild(this.fact('Survived', duration(c.playtime), 'hourglass'));
-    facts.appendChild(this.fact('Gold', fmtInt(c.gold), 'coin'));
-    facts.appendChild(this.fact('Life', fmt(st.life), 'life'));
+    facts.appendChild(this.fact(tr('Deepest'), tr('Tier {0}', c.depthRecord), 'descend'));
+    facts.appendChild(this.fact(tr('Survived'), duration(c.playtime), 'hourglass'));
+    facts.appendChild(this.fact(tr('Gold'), fmtInt(c.gold), 'coin'));
+    facts.appendChild(this.fact(tr('Life'), fmt(st.life), 'life'));
     this.identity.appendChild(facts);
   }
 
@@ -266,10 +267,10 @@ export class CharacterPanel {
     this.pointsBanner.classList.toggle('is-live', hasPoints);
     this.pointsBanner.appendChild(icon(hasPoints ? 'sparkle' : 'info', { size: 14 }));
     this.pointsBanner.appendChild(
-      span('', hasPoints ? `${c.statPoints} attribute point${c.statPoints === 1 ? '' : 's'} unspent` : 'No unspent attribute points')
+      span('', hasPoints ? trn(c.statPoints, '{0} attribute point unspent', '{0} attribute points unspent', c.statPoints) : tr('No unspent attribute points'))
     );
     if (c.skillPoints > 0) {
-      const b = span('char-points-skill', `${c.skillPoints} skill point${c.skillPoints === 1 ? '' : 's'}`);
+      const b = span('char-points-skill', trn(c.skillPoints, '{0} skill point', '{0} skill points', c.skillPoints));
       b.addEventListener('click', () => events.emit('ui:open', { panel: 'skills' }));
       this.pointsBanner.appendChild(b);
     }
@@ -286,14 +287,14 @@ export class CharacterPanel {
       const value = div('attr-value');
       const v = span('attr-total', String(Math.round(total)));
       value.appendChild(v);
-      if (base > 0) value.appendChild(span('attr-alloc', `(${base} spent)`));
+      if (base > 0) value.appendChild(span('attr-alloc', tr('({0} spent)', base)));
 
       const btn = document.createElement('button');
       btn.className = 'attr-plus';
       btn.type = 'button';
       btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.4v13.2M5.4 12h13.2"/></svg>';
       btn.disabled = c.statPoints <= 0;
-      btn.title = c.statPoints > 0 ? `Spend a point on ${STAT_LABEL[key]}` : 'No points to spend';
+      btn.title = c.statPoints > 0 ? tr('Spend a point on {0}', STAT_LABEL[key]) : tr('No points to spend');
       btn.addEventListener('click', () => {
         const ok = attempt(() => allocateStat(c, key), false);
         if (ok) {
@@ -307,13 +308,13 @@ export class CharacterPanel {
       });
 
       const derived = div('attr-derived');
-      if (key === 'vitality' && def) derived.textContent = `+${def.lifePerVit} life per point`;
-      else if (key === 'energy' && def) derived.textContent = `+${def.manaPerEnr} mana per point`;
-      else if (key === 'strength') derived.textContent = 'scales physical damage';
-      else derived.textContent = 'scales attack rating & block';
+      if (key === 'vitality' && def) derived.textContent = tr('+{0} life per point', def.lifePerVit);
+      else if (key === 'energy' && def) derived.textContent = tr('+{0} mana per point', def.manaPerEnr);
+      else if (key === 'strength') derived.textContent = tr('scales physical damage');
+      else derived.textContent = tr('scales attack rating & block');
 
       add(rowEl, head, value, btn, derived);
-      tip(rowEl, STAT_LABEL[key], `<p>${ATTR_BLURB[key]}</p><p class="tt-explain-how">Total ${Math.round(total)} — ${base} allocated by you, the rest from your class, level and gear.</p>`);
+      tip(rowEl, STAT_LABEL[key], tr('<p>{0}</p><p class="tt-explain-how">Total {1} — {2} allocated by you, the rest from your class, level and gear.</p>', ATTR_BLURB[key], Math.round(total), base));
       this.attrBox.appendChild(rowEl);
     }
   }
@@ -330,16 +331,16 @@ export class CharacterPanel {
       const isPct = /Pct$|Speed$|Chance$|Damage$|Reduction$|Find$|Steal$/.test(key) && key !== 'minDamage' && key !== 'maxDamage' && key !== 'fireDamage' && key !== 'coldDamage' && key !== 'lightningDamage' && key !== 'poisonDamage' && key !== 'arcaneDamage';
       const text = isPct ? `${fmt(v)}%` : fmt(v);
       // Below the right-click attack, the weapon's own roll is named as the weapon's.
-      const label = key === 'minDamage' ? 'Weapon Min Damage' : key === 'maxDamage' ? 'Weapon Max Damage' : STAT_LABEL[key];
+      const label = key === 'minDamage' ? tr('Weapon Min Damage') : key === 'maxDamage' ? tr('Weapon Max Damage') : STAT_LABEL[key];
       const line = statLine(label, text, {
         icon: STAT_ICON[key],
-        hint: (STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : `<p>Current value: <b>${text}</b></p>`) + (key === 'attackRating' ? hitHint(v) : ''),
+        hint: (STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : tr('<p>Current value: <b>{0}</b></p>', text)) + (key === 'attackRating' ? hitHint(v) : ''),
         title: label,
       });
       s.body.appendChild(line);
       shown++;
     }
-    if (!shown) s.body.appendChild(div('char-empty', 'Nothing here yet.'));
+    if (!shown) s.body.appendChild(div('char-empty', tr('Nothing here yet.')));
     host.appendChild(s.root);
   }
 
@@ -350,9 +351,9 @@ export class CharacterPanel {
   private renderAttack(c: Character, st: Stats): void {
     const body = this.colOffense.querySelector('.section-body');
     if (!body) return;
-    let label = 'Attack';
+    let label = tr('Attack');
     let value = '—';
-    let hint = '<p>Put a skill on the right mouse button to see what it hits for.</p>';
+    let hint = tr('<p>Put a skill on the right mouse button to see what it hits for.</p>');
     const est = attempt(() => estimateAttack(c, st), null);
     if (est?.def) {
       const { def, rank, scale, type } = est;
@@ -360,13 +361,11 @@ export class CharacterPanel {
       value = `${fmtInt(Math.round(est.min))}–${fmtInt(Math.round(est.max))}`;
       const crit = Math.max(100, st.critDamage);
       hint =
-        `<p>Your right-click skill, rank ${rank}. Each hit lands for <b>${value}</b> ${RESIST_LABEL[type].toLowerCase()} damage before the target's defences.</p>` +
-        `<p class="tt-explain-how">Weapon damage × ${fmt(Math.round(scale * 100))}% skill power, with Enhanced Damage and your elemental adds. A critical hit lands for ${fmt(crit)}% of it. About <b>${fmtInt(Math.round(est.dps))}</b> damage a second to one target, crits counted.</p>`;
+        tr('<p>Your right-click skill, rank {0}. Each hit lands for <b>{1}</b> {2} damage before the target\'s defences.</p><p class="tt-explain-how">Weapon damage × {3}% skill power, with Enhanced Damage and your elemental adds. A critical hit lands for {4}% of it. About <b>{5}</b> damage a second to one target, crits counted.</p>', rank, value, RESIST_LABEL[type].toLowerCase(), fmt(Math.round(scale * 100)), fmt(crit), fmtInt(Math.round(est.dps)));
     } else if (est) {
       value = `${fmtInt(Math.round(est.min))}–${fmtInt(Math.round(est.max))}`;
       hint =
-        `<p>Your weapon attack. Each hit lands for <b>${value}</b> physical damage before the target's defences.</p>` +
-        `<p class="tt-explain-how">About <b>${fmtInt(Math.round(est.dps))}</b> damage a second to one target, crits counted. Drag a skill onto the right mouse button to use it instead.</p>`;
+        tr('<p>Your weapon attack. Each hit lands for <b>{0}</b> physical damage before the target\'s defences.</p><p class="tt-explain-how">About <b>{1}</b> damage a second to one target, crits counted. Drag a skill onto the right mouse button to use it instead.</p>', value, fmtInt(Math.round(est.dps)));
     }
     const line = statLine(label, value, { icon: 'sword', hint, title: label });
     line.classList.add('statline-attack');
@@ -381,7 +380,7 @@ export class CharacterPanel {
    */
   private renderBuild(c: Character, st: Stats): void {
     clear(this.buildBox);
-    const s = section('Your build', 'sparkle', 'char-build-section');
+    const s = section(tr('Your build'), 'sparkle', 'char-build-section');
 
     // --- damage per skill ---------------------------------------------------
     const ids = [...new Set([c.primaryAttack, ...c.hotbar].filter((x): x is string => !!x))];
@@ -394,22 +393,21 @@ export class CharacterPanel {
     if (weapon && !weapon.def) rows.unshift(weapon);
     const dmg = div('build-skills');
     if (!rows.length) {
-      dmg.appendChild(div('char-empty', 'Put a damage skill on your bar to see what it does.'));
+      dmg.appendChild(div('char-empty', tr('Put a damage skill on your bar to see what it does.')));
     } else {
       const head = div('build-row build-head');
-      add(head, span('', 'Skill'), span('', 'Each hit'), span('', 'A second'));
+      add(head, span('', tr('Skill')), span('', tr('Each hit')), span('', tr('A second')));
       dmg.appendChild(head);
       for (const e of rows.sort((a, b) => b.dps - a.dps)) {
         const r = div('build-row');
         const name = span('build-name');
         name.appendChild(icon(e.type, { size: 12, cls: `dmg-${e.type}` }));
-        name.appendChild(span('', e.def ? `${e.def.name} ${e.rank}` : 'Weapon attack'));
+        name.appendChild(span('', e.def ? `${e.def.name} ${e.rank}` : tr('Weapon attack')));
         add(r, name, span('build-num', `${fmtInt(Math.round(e.min))}–${fmtInt(Math.round(e.max))}`), span('build-num build-dps', fmtInt(Math.round(e.dps))));
         tip(
           r,
-          e.def ? e.def.name : 'Weapon attack',
-          `<p>About <b>${fmtInt(Math.round(e.dps))}</b> ${RESIST_LABEL[e.type].toLowerCase()} damage a second to one target, one use every ${fmt(Math.round(e.period * 100) / 100)} s, crits counted.</p>` +
-            `<p class="tt-explain-how">Before the target's armour and resistances. Areas, chains and damage over time hit more than one target or keep hurting after, so they do more than this in a crowd.</p>`,
+          e.def ? e.def.name : tr('Weapon attack'),
+          tr('<p>About <b>{0}</b> {1} damage a second to one target, one use every {2} s, crits counted.</p><p class="tt-explain-how">Before the target\'s armour and resistances. Areas, chains and damage over time hit more than one target or keep hurting after, so they do more than this in a crowd.</p>', fmtInt(Math.round(e.dps)), RESIST_LABEL[e.type].toLowerCase(), fmt(Math.round(e.period * 100) / 100)),
         );
         dmg.appendChild(r);
       }
@@ -430,9 +428,8 @@ export class CharacterPanel {
       cell.classList.toggle('is-thin', b.n < 8);
       tip(
         cell,
-        `${RESIST_LABEL[b.type]} blows to fall`,
-        `<p>About <b>${fmtInt(Math.round(b.n))}</b> ordinary ${RESIST_LABEL[b.type].toLowerCase()} blows of Tier ${tier} take you from full life to nothing.</p>` +
-          `<p class="tt-explain-how">Your life with armour, block, resistance and damage reduction counted. Elites and bosses hit harder.</p>`,
+        tr('{0} blows to fall', RESIST_LABEL[b.type]),
+        tr('<p>About <b>{0}</b> ordinary {1} blows of Tier {2} take you from full life to nothing.</p><p class="tt-explain-how">Your life with armour, block, resistance and damage reduction counted. Elites and bosses hit harder.</p>', fmtInt(Math.round(b.n)), RESIST_LABEL[b.type].toLowerCase(), tier),
       );
       guard.appendChild(cell);
     }
@@ -440,25 +437,25 @@ export class CharacterPanel {
     // --- summary --------------------------------------------------------------
     const lines: string[] = [];
     const best = rows[0];
-    if (best) lines.push(`Most damage: ${best.def ? best.def.name : 'your weapon'}, ${RESIST_LABEL[best.type].toLowerCase()}.`);
+    if (best) lines.push(tr('Most damage: {0}, {1}.', best.def ? best.def.name : tr('your weapon'), RESIST_LABEL[best.type].toLowerCase()));
     const thin = [...blows].sort((a, b) => a.n - b.n)[0];
     const thick = [...blows].sort((a, b) => b.n - a.n)[0];
-    if (thin && thick && thick.n > thin.n * 1.5) lines.push(`Weakest against ${RESIST_LABEL[thin.type].toLowerCase()}, strongest against ${RESIST_LABEL[thick.type].toLowerCase()}.`);
+    if (thin && thick && thick.n > thin.n * 1.5) lines.push(tr('Weakest against {0}, strongest against {1}.', RESIST_LABEL[thin.type].toLowerCase(), RESIST_LABEL[thick.type].toLowerCase()));
     const back: string[] = [];
-    if (st.lifeSteal > 0) back.push(`${fmt(Math.round(st.lifeSteal * 10) / 10)}% of damage dealt`);
-    if (st.lifeRegen > 0) back.push(`${fmt(Math.round(st.lifeRegen * 10) / 10)} a second`);
-    lines.push(back.length ? `Life back: ${back.join(' and ')}.` : 'No life back from gear: you lean on potions.');
-    if (st.critChance >= 25) lines.push(`Crits often: ${Math.round(Math.min(95, st.critChance))}% for ${Math.round(Math.max(100, st.critDamage))}%.`);
+    if (st.lifeSteal > 0) back.push(tr('{0}% of damage dealt', fmt(Math.round(st.lifeSteal * 10) / 10)));
+    if (st.lifeRegen > 0) back.push(tr('{0} a second', fmt(Math.round(st.lifeRegen * 10) / 10)));
+    lines.push(back.length ? tr('Life back: {0}.', back.join(' and ')) : tr('No life back from gear: you lean on potions.'));
+    if (st.critChance >= 25) lines.push(tr('Crits often: {0}% for {1}%.', Math.round(Math.min(95, st.critChance)), Math.round(Math.max(100, st.critDamage))));
     const summary = div('build-summary');
     for (const l of lines) summary.appendChild(div('build-line', l));
 
-    add(s.body, dmg, div('build-sub', `Blows to fall at Tier ${tier}`), guard, summary);
+    add(s.body, dmg, div('build-sub', tr('Blows to fall at Tier {0}', tier)), guard, summary);
     this.buildBox.appendChild(s.root);
   }
 
   private renderResists(st: Stats): void {
     clear(this.resistBox);
-    const s = section('Resistances', 'resist', 'char-resist-section');
+    const s = section(tr('Resistances'), 'resist', 'char-resist-section');
     const grid = div('resist-grid');
     for (const dt of DAMAGE_TYPES) {
       const key = RESIST_OF[dt];
@@ -482,9 +479,8 @@ export class CharacterPanel {
       add(cell, head, track);
       tip(
         cell,
-        `${RESIST_LABEL[dt]} Resistance`,
-        `<p>Reduces incoming ${RESIST_LABEL[dt].toLowerCase()} damage by <b>${Math.round(eff)}%</b>.</p>` +
-          `<p class="tt-explain-how">Each point counts in full up to ${RESIST_SOFT_CAP}%. Past that, each point counts for less, and the cut never reaches ${RESIST_HARD_CAP}%. Curses and carried quest relics lower it, so going past ${RESIST_SOFT_CAP}% is not wasted.</p>`
+        tr('{0} Resistance', RESIST_LABEL[dt]),
+        tr('<p>Reduces incoming {0} damage by <b>{1}%</b>.</p><p class="tt-explain-how">Each point counts in full up to {2}%. Past that, each point counts for less, and the cut never reaches {3}%. Curses and carried quest relics lower it, so going past {4}% is not wasted.</p>', RESIST_LABEL[dt].toLowerCase(), Math.round(eff), RESIST_SOFT_CAP, RESIST_HARD_CAP, RESIST_SOFT_CAP)
       );
       grid.appendChild(cell);
     }

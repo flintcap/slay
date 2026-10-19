@@ -19,6 +19,7 @@
  */
 import type { GameSettings, ItemRarity } from '../types';
 import { RARITY_COLOR } from '../types';
+import { tr } from './I18n';
 
 // ---------------------------------------------------------------------------
 // Rarity colours
@@ -50,29 +51,29 @@ export const COLORBLIND_RARITY_COLOR: Readonly<Record<ItemRarity, number>> = {
 
 /** Every action the player can move to another key, by its default code. */
 export const REBINDABLE: ReadonlyArray<{ code: string; label: string }> = [
-  { code: 'KeyW', label: 'Move up' },
-  { code: 'KeyS', label: 'Move down' },
-  { code: 'KeyA', label: 'Move left' },
-  { code: 'KeyD', label: 'Move right' },
-  { code: 'Digit1', label: 'Skill 1' },
-  { code: 'Digit2', label: 'Skill 2' },
-  { code: 'Digit3', label: 'Skill 3' },
-  { code: 'Digit4', label: 'Skill 4' },
-  { code: 'Digit5', label: 'Skill 5' },
-  { code: 'Digit6', label: 'Skill 6' },
-  { code: 'KeyQ', label: 'Life potion' },
-  { code: 'KeyF', label: 'Mana potion' },
-  { code: 'Space', label: 'Dodge' },
-  { code: 'KeyE', label: 'Interact' },
-  { code: 'KeyI', label: 'Inventory' },
-  { code: 'KeyC', label: 'Character' },
-  { code: 'KeyT', label: 'Skill tree' },
-  { code: 'KeyB', label: 'Vault' },
-  { code: 'KeyM', label: 'Map' },
-  { code: 'KeyL', label: 'Quest log' },
-  { code: 'KeyJ', label: 'Journal' },
-  { code: 'KeyO', label: 'Loot filter' },
-  { code: 'KeyG', label: 'Legacy' },
+  { code: 'KeyW', label: tr('Move up') },
+  { code: 'KeyS', label: tr('Move down') },
+  { code: 'KeyA', label: tr('Move left') },
+  { code: 'KeyD', label: tr('Move right') },
+  { code: 'Digit1', label: tr('Skill 1') },
+  { code: 'Digit2', label: tr('Skill 2') },
+  { code: 'Digit3', label: tr('Skill 3') },
+  { code: 'Digit4', label: tr('Skill 4') },
+  { code: 'Digit5', label: tr('Skill 5') },
+  { code: 'Digit6', label: tr('Skill 6') },
+  { code: 'KeyQ', label: tr('Life potion') },
+  { code: 'KeyF', label: tr('Mana potion') },
+  { code: 'Space', label: tr('Dodge') },
+  { code: 'KeyE', label: tr('Interact') },
+  { code: 'KeyI', label: tr('Inventory') },
+  { code: 'KeyC', label: tr('Character') },
+  { code: 'KeyT', label: tr('Skill tree') },
+  { code: 'KeyB', label: tr('Vault') },
+  { code: 'KeyM', label: tr('Map') },
+  { code: 'KeyL', label: tr('Quest log') },
+  { code: 'KeyJ', label: tr('Journal') },
+  { code: 'KeyO', label: tr('Loot filter') },
+  { code: 'KeyG', label: tr('Legacy') },
 ];
 
 /** Keys that can never be taken: they are how you get out of things. */

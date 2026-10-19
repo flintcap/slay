@@ -13,6 +13,7 @@ import type { GateOffer } from './ChoiceSeam';
 import { monsterLevelForDepth, itemLevelForDepth } from '../sim/Difficulty';
 import { levelsForDepth } from '../world/DungeonGen';
 import { depthDangerBand, killXp } from '../sim/Progression';
+import { tr } from '../core/I18n';
 
 export class GatePanel {
   readonly panel: Panel;
@@ -28,8 +29,8 @@ export class GatePanel {
   constructor() {
     this.panel = new Panel({
       id: 'gate',
-      title: 'The Descent',
-      subtitle: 'Choose how deep to go',
+      title: tr('The Descent'),
+      subtitle: tr('Choose how deep to go'),
       icon: 'descend',
       width: 460,
       onClose: () => this.resolve(null),
@@ -70,8 +71,8 @@ export class GatePanel {
     const offer = this.offer!;
 
     const picker = div('gate-picker');
-    const down = new IconButton('chevronLeft', 'Lower tier', () => this.step(-1), 18);
-    const up = new IconButton('chevronRight', 'Higher tier', () => this.step(1), 18);
+    const down = new IconButton('chevronLeft', tr('Lower tier'), () => this.step(-1), 18);
+    const up = new IconButton('chevronRight', tr('Higher tier'), () => this.step(1), 18);
     down.root.classList.add('gate-step');
     up.root.classList.add('gate-step');
     this.view = div('gate-tier');
@@ -82,7 +83,7 @@ export class GatePanel {
     this.slider = null;
     if (this.tiers.length > 4) {
       this.slider = new Slider(
-        'Tier',
+        tr('Tier'),
         this.index,
         0,
         this.tiers.length - 1,
@@ -101,12 +102,12 @@ export class GatePanel {
     this.body.appendChild(div('depth-note gate-note'));
 
     const foot = div('depth-row depth-foot');
-    foot.appendChild(span('depth-dim', offer.record > 0 ? `Best clear: Tier ${offer.record}` : 'No tier cleared yet'));
+    foot.appendChild(span('depth-dim', offer.record > 0 ? tr('Best clear: Tier {0}', offer.record) : tr('No tier cleared yet')));
     const btns = div('depth-row');
     add(
       btns,
-      new Button({ label: 'Stay', small: true, variant: 'ghost', onClick: () => this.panel.close() }).root,
-      new Button({ label: 'Descend', icon: 'descend', variant: 'gold', onClick: () => this.go() }).root,
+      new Button({ label: tr('Stay'), small: true, variant: 'ghost', onClick: () => this.panel.close() }).root,
+      new Button({ label: tr('Descend'), icon: 'descend', variant: 'gold', onClick: () => this.go() }).root,
     );
     foot.appendChild(btns);
     this.body.appendChild(foot);
@@ -130,8 +131,8 @@ export class GatePanel {
     const waypoint = depth > offer.top;
 
     clear(this.view);
-    const tag = waypoint ? 'Waypoint' : top ? 'Next tier' : 'Replay';
-    add(this.view, span(`gate-tag${top ? ' is-top' : waypoint ? ' is-way' : ''}`, tag), div('depth-big gate-num', `Tier ${depth}`));
+    const tag = waypoint ? tr('Waypoint') : top ? tr('Next tier') : tr('Replay');
+    add(this.view, span(`gate-tag${top ? ' is-top' : waypoint ? ' is-way' : ''}`, tag), div('depth-big gate-num', tr('Tier {0}', depth)));
     this.body.querySelectorAll<HTMLButtonElement>('.gate-step').forEach((b, i) => {
       b.disabled = i === 0 ? this.index === 0 : this.index === this.tiers.length - 1;
     });
@@ -139,23 +140,23 @@ export class GatePanel {
     const info = this.body.querySelector('.gate-info')!;
     clear(info);
     const band = depthDangerBand(depth, offer.level);
-    const danger = statLine('Danger', band.label, { icon: 'skull' });
+    const danger = statLine(tr('Danger'), band.label, { icon: 'skull' });
     (danger.querySelector('.statline-value') as HTMLElement).style.color = hex(band.color);
     add(
       info,
-      statLine('Monster level', String(monsterLevelForDepth(depth)), { icon: 'attack' }),
+      statLine(tr('Monster level'), String(monsterLevelForDepth(depth)), { icon: 'attack' }),
       danger,
-      statLine('Item level', String(itemLevelForDepth(depth)), { icon: 'gem' }),
-      statLine('Zones, boss in the last', `${levelsForDepth(depth)} or more`, { icon: 'map' }),
-      statLine('XP per kill', String(killXp(depth, 'normal')), { icon: 'star' }),
+      statLine(tr('Item level'), String(itemLevelForDepth(depth)), { icon: 'gem' }),
+      statLine(tr('Zones, boss in the last'), tr('{0} or more', levelsForDepth(depth)), { icon: 'map' }),
+      statLine(tr('XP per kill'), String(killXp(depth, 'normal')), { icon: 'star' }),
     );
 
     const note = this.body.querySelector('.gate-note')!;
     note.textContent = waypoint
-      ? 'A milestone your legacy has claimed. Start a life deep, if you can hold it.'
+      ? tr('A milestone your legacy has claimed. Start a life deep, if you can hold it.')
       : top
-        ? `The deepest tier open to you. Clear it to open Tier ${depth + 1}.`
-        : `A tier you have already cleared. Good for gear and levels. Your progress is kept.`;
+        ? tr('The deepest tier open to you. Clear it to open Tier {0}.', depth + 1)
+        : tr('A tier you have already cleared. Good for gear and levels. Your progress is kept.');
   }
 
   private go(): void {

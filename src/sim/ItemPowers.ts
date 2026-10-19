@@ -45,6 +45,7 @@ import type {
 import type { PassiveEffects } from './Passives';
 import { getUnique } from '../data/uniques';
 import { getSet } from '../data/sets';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // The runtime record
@@ -305,8 +306,8 @@ const DEFS: PowerDef[] = [
   // =========================================================================
   {
     id: 'cheatDeath',
-    name: 'Declined',
-    desc: (m) => `Once every ${Math.round(90 / m)} seconds, a killing blow is declined: you are healed to half life and untouchable for 2 seconds.`,
+    name: tr('Declined'),
+    desc: (m) => tr('Once every {0} seconds, a killing blow is declined: you are healed to half life and untouchable for 2 seconds.', Math.round(90 / m)),
     passive: (e, m) => {
       const cd = Math.round(90 / m);
       e.cheatDeathCooldown = e.cheatDeathCooldown > 0 ? Math.min(e.cheatDeathCooldown, cd) : cd;
@@ -317,50 +318,50 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'overkillSplash',
-    name: 'Overflow',
-    desc: (m) => `Overkill damage carries on at ${pct(50 * m)} to up to 3 enemies within 6 metres.`,
+    name: tr('Overflow'),
+    desc: (m) => tr('Overkill damage carries on at {0} to up to 3 enemies within 6 metres.', pct(50 * m)),
     passive: (e, m) => {
       e.overkillCarryPct += 50 * m;
       e.overkillChains = Math.max(e.overkillChains, 3);
       e.overkillRadius = Math.max(e.overkillRadius, 6);
     },
-    affix: { on: ['weapon'], min: 0.3, max: 0.6, ilvl: 30, weight: 40, word: 'of Overflow' },
+    affix: { on: ['weapon'], min: 0.3, max: 0.6, ilvl: 30, weight: 40, word: tr('of Overflow') },
   },
   {
     id: 'corpseBurst',
-    name: 'Corpse Burst',
-    desc: (m) => `Enemies you kill explode for ${pct(60 * m)} of your weapon damage in a 3.5 metre blast.`,
+    name: tr('Corpse Burst'),
+    desc: (m) => tr('Enemies you kill explode for {0} of your weapon damage in a 3.5 metre blast.', pct(60 * m)),
     passive: (e, m) => {
       e.killExplodePct += 60 * m;
       e.killExplodeRadius = Math.max(e.killExplodeRadius, 3.5);
     },
-    affix: { on: ['weapon', 'armor'], min: 0.35, max: 0.7, ilvl: 18, weight: 60, word: 'of Bursting' },
+    affix: { on: ['weapon', 'armor'], min: 0.35, max: 0.7, ilvl: 18, weight: 60, word: tr('of Bursting') },
   },
   {
     id: 'momentum',
-    name: 'Momentum',
-    desc: (m) => `Each hit you land grants ${r1(4 * m)}% attack speed, stacking 8 times. Stacks fade when you stop hitting.`,
+    name: tr('Momentum'),
+    desc: (m) => tr('Each hit you land grants {0}% attack speed, stacking 8 times. Stacks fade when you stop hitting.', r1(4 * m)),
     passive: (e, m) => {
       e.hitStackAttackSpeed += 4 * m;
       e.hitStackMax = Math.max(e.hitStackMax, 8);
     },
-    affix: { on: ['melee', 'armor'], min: 0.5, max: 1, ilvl: 16, weight: 55, word: 'of Momentum' },
+    affix: { on: ['melee', 'armor'], min: 0.5, max: 1, ilvl: 16, weight: 55, word: tr('of Momentum') },
   },
   {
     id: 'chainLightning',
-    name: 'Forking',
-    desc: (m) => `${pct(Math.min(100, 35 * m))} chance on hit to arc to another enemy within 7 metres for half damage.`,
+    name: tr('Forking'),
+    desc: (m) => tr('{0} chance on hit to arc to another enemy within 7 metres for half damage.', pct(Math.min(100, 35 * m))),
     passive: (e, m) => {
       e.arcChance = Math.min(100, e.arcChance + 35 * m);
       e.arcRadius = Math.max(e.arcRadius, 7);
       e.arcDamagePct = Math.max(e.arcDamagePct, 50);
     },
-    affix: { on: ['weapon', 'jewelry'], min: 0.3, max: 0.6, ilvl: 12, weight: 70, word: 'of Arcing' },
+    affix: { on: ['weapon', 'jewelry'], min: 0.3, max: 0.6, ilvl: 12, weight: 70, word: tr('of Arcing') },
   },
   {
     id: 'fireSpread',
-    name: 'Wildfire',
-    desc: () => 'Every 2 seconds your burns leap to an enemy within 5 metres.',
+    name: tr('Wildfire'),
+    desc: () => tr('Every 2 seconds your burns leap to an enemy within 5 metres.'),
     passive: (e) => {
       if (e.dotSpreadInterval === 0) e.dotSpreadInterval = 2;
       e.dotSpreadRadius = Math.max(e.dotSpreadRadius, 5);
@@ -369,24 +370,24 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'poisonPierce',
-    name: 'Venom Through',
-    desc: (m) => `Your poison ignores ${pct(Math.min(100, 80 * m))} of enemy poison resistance.`,
+    name: tr('Venom Through'),
+    desc: (m) => tr('Your poison ignores {0} of enemy poison resistance.', pct(Math.min(100, 80 * m))),
     passive: (e, m) => {
       e.resistPiercePct = Math.max(e.resistPiercePct, Math.min(100, 80 * m));
     },
   },
   {
     id: 'poisonStacks',
-    name: 'Bottomless Venom',
-    desc: (m) => `Afflictions you apply stack ${Math.round(8 * m)} times higher.`,
+    name: tr('Bottomless Venom'),
+    desc: (m) => tr('Afflictions you apply stack {0} times higher.', Math.round(8 * m)),
     passive: (e, m) => {
       e.dotMaxStacks += Math.round(8 * m);
     },
   },
   {
     id: 'slowAura',
-    name: 'Mire',
-    desc: (m) => `Enemies within 6 metres are slowed by ${pct(25 * m)} and weakened.`,
+    name: tr('Mire'),
+    desc: (m) => tr('Enemies within 6 metres are slowed by {0} and weakened.', pct(25 * m)),
     passive: (e, m) => {
       e.auraDebuffRadius = Math.max(e.auraDebuffRadius, 6);
       e.auraSlowPct += 25 * m;
@@ -394,16 +395,16 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'bloodMagic',
-    name: 'Blood Magic',
-    desc: () => 'When mana runs out, skills are paid for with life instead.',
+    name: tr('Blood Magic'),
+    desc: () => tr('When mana runs out, skills are paid for with life instead.'),
     passive: (e) => {
       e.lifePerMana = Math.max(e.lifePerMana, 1.5);
     },
   },
   {
     id: 'summonGlass',
-    name: 'Glass Servants',
-    desc: () => 'Your summons deal 60% more damage but last half as long.',
+    name: tr('Glass Servants'),
+    desc: () => tr('Your summons deal 60% more damage but last half as long.'),
     passive: (e) => {
       e.minionDamagePct += 60;
       e.minionDurationPct -= 50;
@@ -411,8 +412,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'hymnAura',
-    name: 'Shared Hymn',
-    desc: (m) => `Your summons have ${pct(50 * m)} more life and leech ${r1(3 * m)}% of the damage they deal.`,
+    name: tr('Shared Hymn'),
+    desc: (m) => tr('Your summons have {0} more life and leech {1}% of the damage they deal.', pct(50 * m), r1(3 * m)),
     passive: (e, m) => {
       e.minionLifePct += 50 * m;
       e.minionLeechPct += 3 * m;
@@ -420,78 +421,78 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'convertLightning',
-    name: 'Stormbound',
-    desc: () => 'Your physical, fire and cold damage is dealt as lightning.',
+    name: tr('Stormbound'),
+    desc: () => tr('Your physical, fire and cold damage is dealt as lightning.'),
     passive: (e) => {
       e.convertToLightningPct = Math.max(e.convertToLightningPct, 100);
     },
   },
   {
     id: 'culling',
-    name: 'Culling',
-    desc: (m) => `${pct(30 * m)} more damage to enemies below 20% life.`,
+    name: tr('Culling'),
+    desc: (m) => tr('{0} more damage to enemies below 20% life.', pct(30 * m)),
     passive: (e, m) => {
       e.executeThreshold = Math.max(e.executeThreshold, 20);
       e.executeDamagePct += 30 * m;
     },
-    affix: { on: ['weapon'], min: 0.5, max: 1.2, ilvl: 10, weight: 80, word: 'of Culling' },
+    affix: { on: ['weapon'], min: 0.5, max: 1.2, ilvl: 10, weight: 80, word: tr('of Culling') },
   },
   {
     id: 'killLife',
-    name: 'Feast',
-    desc: (m) => `Each kill restores ${r1(2 * m)}% of your maximum life.`,
+    name: tr('Feast'),
+    desc: (m) => tr('Each kill restores {0}% of your maximum life.', r1(2 * m)),
     passive: (e, m) => {
       e.killLifePct += 2 * m;
     },
-    affix: { on: ['weapon', 'armor', 'jewelry'], min: 0.5, max: 1.5, ilvl: 6, weight: 100, word: 'of the Feast' },
+    affix: { on: ['weapon', 'armor', 'jewelry'], min: 0.5, max: 1.5, ilvl: 6, weight: 100, word: tr('of the Feast') },
   },
   {
     id: 'killMana',
-    name: 'Soul Sip',
-    desc: (m) => `Each kill restores ${r1(3 * m)}% of your maximum mana.`,
+    name: tr('Soul Sip'),
+    desc: (m) => tr('Each kill restores {0}% of your maximum mana.', r1(3 * m)),
     passive: (e, m) => {
       e.killManaPct += 3 * m;
     },
-    affix: { on: ['caster', 'armor', 'jewelry'], min: 0.5, max: 1.5, ilvl: 6, weight: 90, word: 'of Sipping' },
+    affix: { on: ['caster', 'armor', 'jewelry'], min: 0.5, max: 1.5, ilvl: 6, weight: 90, word: tr('of Sipping') },
   },
   {
     id: 'critBleed',
-    name: 'Serrated',
-    desc: (m) => `Critical strikes inflict ${Math.max(1, Math.round(2 * m))} stacks of Bleeding.`,
+    name: tr('Serrated'),
+    desc: (m) => tr('Critical strikes inflict {0} stacks of Bleeding.', Math.max(1, Math.round(2 * m))),
     passive: (e, m) => {
       e.critBleedStacks = Math.max(e.critBleedStacks, Math.max(1, Math.round(2 * m)));
     },
-    affix: { on: ['melee', 'ranged'], min: 0.5, max: 1.5, ilvl: 14, weight: 60, word: 'of Serration' },
+    affix: { on: ['melee', 'ranged'], min: 0.5, max: 1.5, ilvl: 14, weight: 60, word: tr('of Serration') },
   },
   {
     id: 'critVulnerable',
-    name: 'Exposing',
-    desc: (m) => `Critical strikes leave the target Vulnerable for ${r1(4 * m)} seconds.`,
+    name: tr('Exposing'),
+    desc: (m) => tr('Critical strikes leave the target Vulnerable for {0} seconds.', r1(4 * m)),
     passive: (e, m) => {
       e.critVulnerableSec = Math.max(e.critVulnerableSec, 4 * m);
     },
-    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.4, ilvl: 20, weight: 50, word: 'of Exposure' },
+    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.4, ilvl: 20, weight: 50, word: tr('of Exposure') },
   },
   {
     id: 'thorns',
-    name: 'Thorns',
-    desc: (m) => `Melee attackers take ${pct(20 * m)} of the damage they deal you.`,
+    name: tr('Thorns'),
+    desc: (m) => tr('Melee attackers take {0} of the damage they deal you.', pct(20 * m)),
     passive: (e, m) => {
       e.thornsMeleePct += 20 * m;
     },
-    affix: { on: ['armor', 'shield'], min: 0.5, max: 1.5, ilvl: 4, weight: 90, word: 'of Thorns' },
+    affix: { on: ['armor', 'shield'], min: 0.5, max: 1.5, ilvl: 4, weight: 90, word: tr('of Thorns') },
   },
   {
     id: 'blockReflect',
-    name: 'Answering Blow',
-    desc: (m) => `Blocking returns ${pct(40 * m)} of the blow to the attacker and restores ${r1(4 * m)}% of your mana.`,
+    name: tr('Answering Blow'),
+    desc: (m) => tr('Blocking returns {0} of the blow to the attacker and restores {1}% of your mana.', pct(40 * m), r1(4 * m)),
     passive: (e, m) => {
       e.thornsBlockPct += 40 * m;
     },
     runtime: (p, m) => {
       p.manaOnBlockPct += 4 * m;
     },
-    affix: { on: ['shield'], min: 0.5, max: 1.2, ilvl: 10, weight: 70, word: 'of Answering' },
+    affix: { on: ['shield'], min: 0.5, max: 1.2, ilvl: 10, weight: 70, word: tr('of Answering') },
   },
 
   // =========================================================================
@@ -499,24 +500,24 @@ const DEFS: PowerDef[] = [
   // =========================================================================
   {
     id: 'convertFire',
-    name: 'Kindled',
-    desc: () => 'All physical damage you deal is dealt as fire.',
+    name: tr('Kindled'),
+    desc: () => tr('All physical damage you deal is dealt as fire.'),
     runtime: (p) => {
       p.convertFirePct = 100;
     },
   },
   {
     id: 'convertColdArcane',
-    name: 'Rimeweave',
-    desc: () => 'Physical damage you deal becomes cold or arcane, split evenly.',
+    name: tr('Rimeweave'),
+    desc: () => tr('Physical damage you deal becomes cold or arcane, split evenly.'),
     runtime: (p) => {
       p.convertColdArcanePct = 100;
     },
   },
   {
     id: 'convertFirePierce',
-    name: 'Pyre Pact',
-    desc: (m) => `All physical damage you deal becomes fire, and your fire damage is ${pct(25 * m)} greater.`,
+    name: tr('Pyre Pact'),
+    desc: (m) => tr('All physical damage you deal becomes fire, and your fire damage is {0} greater.', pct(25 * m)),
     runtime: (p, m) => {
       p.convertFirePct = 100;
       p.fireMorePct += 25 * m;
@@ -524,8 +525,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'undeadSlayer',
-    name: 'Undead Bane',
-    desc: (m) => `${pct(100 * m)} more damage to undead, 15% less to everything else.`,
+    name: tr('Undead Bane'),
+    desc: (m) => tr('{0} more damage to undead, 15% less to everything else.', pct(100 * m)),
     runtime: (p, m) => {
       p.vsUndeadPct += 100 * m;
       p.vsLivingPenaltyPct = Math.max(p.vsLivingPenaltyPct, 15);
@@ -533,35 +534,35 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'slayer.undead',
-    name: 'Graveward',
-    desc: (m) => `${pct(30 * m)} more damage to undead.`,
+    name: tr('Graveward'),
+    desc: (m) => tr('{0} more damage to undead.', pct(30 * m)),
     runtime: (p, m) => {
       p.vsUndeadPct += 30 * m;
     },
-    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.3, ilvl: 3, weight: 70, word: 'of the Graveward' },
+    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.3, ilvl: 3, weight: 70, word: tr('of the Graveward') },
   },
   {
     id: 'slayer.demon',
-    name: 'Hellbane',
-    desc: (m) => `${pct(30 * m)} more damage to demons.`,
+    name: tr('Hellbane'),
+    desc: (m) => tr('{0} more damage to demons.', pct(30 * m)),
     runtime: (p, m) => {
       p.vsDemonPct += 30 * m;
     },
-    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.3, ilvl: 3, weight: 70, word: 'of Hellbane' },
+    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.3, ilvl: 3, weight: 70, word: tr('of Hellbane') },
   },
   {
     id: 'slayer.beast',
-    name: 'Huntsman',
-    desc: (m) => `${pct(30 * m)} more damage to beasts.`,
+    name: tr('Huntsman'),
+    desc: (m) => tr('{0} more damage to beasts.', pct(30 * m)),
     runtime: (p, m) => {
       p.vsBeastPct += 30 * m;
     },
-    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.3, ilvl: 3, weight: 70, word: 'of the Huntsman' },
+    affix: { on: ['weapon', 'jewelry'], min: 0.6, max: 1.3, ilvl: 3, weight: 70, word: tr('of the Huntsman') },
   },
   {
     id: 'demonFear',
-    name: 'Dread of Hell',
-    desc: (m) => `${pct(40 * m)} more damage to demons, and your hits make demons flee.`,
+    name: tr('Dread of Hell'),
+    desc: (m) => tr('{0} more damage to demons, and your hits make demons flee.', pct(40 * m)),
     runtime: (p, m) => {
       p.vsDemonPct += 40 * m;
       p.fearDemonChance = Math.max(p.fearDemonChance, 35);
@@ -569,52 +570,52 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'lightningFloor',
-    name: 'Full Charge',
-    desc: (m) => `Your lightning damage is ${pct(25 * m)} greater.`,
+    name: tr('Full Charge'),
+    desc: (m) => tr('Your lightning damage is {0} greater.', pct(25 * m)),
     runtime: (p, m) => {
       p.lightningMorePct += 25 * m;
     },
-    affix: { on: ['caster', 'jewelry'], min: 0.4, max: 0.9, ilvl: 15, weight: 50, word: 'of Full Charge' },
+    affix: { on: ['caster', 'jewelry'], min: 0.4, max: 0.9, ilvl: 15, weight: 50, word: tr('of Full Charge') },
   },
   {
     id: 'coldPierce',
-    name: 'Deep Frost',
-    desc: (m) => `Your cold damage is ${pct(35 * m)} greater.`,
+    name: tr('Deep Frost'),
+    desc: (m) => tr('Your cold damage is {0} greater.', pct(35 * m)),
     runtime: (p, m) => {
       p.coldMorePct += 35 * m;
     },
-    affix: { on: ['caster', 'jewelry'], min: 0.4, max: 0.8, ilvl: 15, weight: 50, word: 'of Deep Frost' },
+    affix: { on: ['caster', 'jewelry'], min: 0.4, max: 0.8, ilvl: 15, weight: 50, word: tr('of Deep Frost') },
   },
   {
     id: 'emberHeart',
-    name: 'Ember Heart',
-    desc: (m) => `Your fire damage is ${pct(25 * m)} greater.`,
+    name: tr('Ember Heart'),
+    desc: (m) => tr('Your fire damage is {0} greater.', pct(25 * m)),
     runtime: (p, m) => {
       p.fireMorePct += 25 * m;
     },
-    affix: { on: ['caster', 'jewelry'], min: 0.4, max: 0.9, ilvl: 15, weight: 50, word: 'of the Ember Heart' },
+    affix: { on: ['caster', 'jewelry'], min: 0.4, max: 0.9, ilvl: 15, weight: 50, word: tr('of the Ember Heart') },
   },
   {
     id: 'elePierce',
-    name: 'Elemental Edge',
-    desc: (m) => `Your fire, cold, lightning and arcane damage is ${pct(20 * m)} greater.`,
+    name: tr('Elemental Edge'),
+    desc: (m) => tr('Your fire, cold, lightning and arcane damage is {0} greater.', pct(20 * m)),
     runtime: (p, m) => {
       p.elementalMorePct += 20 * m;
     },
   },
   {
     id: 'unblockableCrit',
-    name: 'Through the Guard',
-    desc: (m) => `Critical strikes slip past armour and deal ${pct(30 * m)} more damage.`,
+    name: tr('Through the Guard'),
+    desc: (m) => tr('Critical strikes slip past armour and deal {0} more damage.', pct(30 * m)),
     runtime: (p, m) => {
       p.critMorePct += 30 * m;
     },
-    affix: { on: ['weapon'], min: 0.4, max: 0.8, ilvl: 22, weight: 45, word: 'of the Gap' },
+    affix: { on: ['weapon'], min: 0.4, max: 0.8, ilvl: 22, weight: 45, word: tr('of the Gap') },
   },
   {
     id: 'noCritLeech',
-    name: 'Clean Kill',
-    desc: () => 'Critical strikes deal 40% more damage, but cannot leech life.',
+    name: tr('Clean Kill'),
+    desc: () => tr('Critical strikes deal 40% more damage, but cannot leech life.'),
     runtime: (p) => {
       p.critMorePct += 40;
       p.noCritLeech = 1;
@@ -622,8 +623,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'critStagger',
-    name: 'Stagger',
-    desc: (m) => `Critical strikes stagger for ${r1(0.6 * m)}s. Staggered enemies take ${pct(30 * m)} more damage.`,
+    name: tr('Stagger'),
+    desc: (m) => tr('Critical strikes stagger for {0}s. Staggered enemies take {1} more damage.', r1(0.6 * m), pct(30 * m)),
     runtime: (p, m) => {
       p.critStaggerSec = Math.max(p.critStaggerSec, 0.6 * m);
       p.vsStaggeredPct += 30 * m;
@@ -631,61 +632,61 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'knockback',
-    name: 'Heavy Shot',
-    desc: () => 'Every hit knocks its target back.',
+    name: tr('Heavy Shot'),
+    desc: () => tr('Every hit knocks its target back.'),
     runtime: (p, m) => {
       p.knockback = Math.max(p.knockback, 3 * m);
     },
-    affix: { on: ['ranged', 'melee'], min: 0.7, max: 1.2, ilvl: 8, weight: 40, word: 'of Force' },
+    affix: { on: ['ranged', 'melee'], min: 0.7, max: 1.2, ilvl: 8, weight: 40, word: tr('of Force') },
   },
   {
     id: 'lifeTap',
-    name: 'Life Tap',
-    desc: (m) => `${pct(12 * m)} chance on hit to drain the target: deal 50% more and heal for it.`,
+    name: tr('Life Tap'),
+    desc: (m) => tr('{0} chance on hit to drain the target: deal 50% more and heal for it.', pct(12 * m)),
     runtime: (p, m) => {
       p.lifeTapChance += 12 * m;
       p.lifeTapPct = Math.max(p.lifeTapPct, 50);
     },
-    affix: { on: ['weapon', 'jewelry'], min: 0.4, max: 1, ilvl: 16, weight: 55, word: 'of the Leech' },
+    affix: { on: ['weapon', 'jewelry'], min: 0.4, max: 1, ilvl: 16, weight: 55, word: tr('of the Leech') },
   },
   {
     id: 'chillOnHit',
-    name: 'Rime',
-    desc: (m) => `${pct(Math.min(100, 100 * m))} chance on hit to Chill the target.`,
+    name: tr('Rime'),
+    desc: (m) => tr('{0} chance on hit to Chill the target.', pct(Math.min(100, 100 * m))),
     runtime: (p, m) => {
       p.chillChance = Math.min(100, p.chillChance + 100 * m);
     },
-    affix: { on: ['weapon'], min: 0.15, max: 0.35, ilvl: 6, weight: 70, word: 'of Rime' },
+    affix: { on: ['weapon'], min: 0.15, max: 0.35, ilvl: 6, weight: 70, word: tr('of Rime') },
   },
   {
     id: 'decrepify',
-    name: 'Decrepify',
-    desc: (m) => `${pct(Math.min(100, 100 * m))} chance on hit to Weaken the target, cutting its damage by a third.`,
+    name: tr('Decrepify'),
+    desc: (m) => tr('{0} chance on hit to Weaken the target, cutting its damage by a third.', pct(Math.min(100, 100 * m))),
     runtime: (p, m) => {
       p.weakenChance = Math.min(100, p.weakenChance + 100 * m);
     },
-    affix: { on: ['weapon', 'shield'], min: 0.15, max: 0.35, ilvl: 12, weight: 55, word: 'of Withering' },
+    affix: { on: ['weapon', 'shield'], min: 0.15, max: 0.35, ilvl: 12, weight: 55, word: tr('of Withering') },
   },
   {
     id: 'groundFire',
-    name: 'Kindling Step',
-    desc: () => 'Your hits ignite everything within 2.5 metres of the target.',
+    name: tr('Kindling Step'),
+    desc: () => tr('Your hits ignite everything within 2.5 metres of the target.'),
     runtime: (p, m) => {
       p.igniteRadius = Math.max(p.igniteRadius, 2.5 * m);
     },
   },
   {
     id: 'moltenTrail',
-    name: 'Molten Slag',
-    desc: () => 'Your hits splash molten slag, igniting everything within 3.5 metres of the target.',
+    name: tr('Molten Slag'),
+    desc: () => tr('Your hits splash molten slag, igniting everything within 3.5 metres of the target.'),
     runtime: (p, m) => {
       p.igniteRadius = Math.max(p.igniteRadius, 3.5 * m);
     },
   },
   {
     id: 'worldCleave',
-    name: 'World Cleave',
-    desc: (m) => `Melee hits cleave ${pct(60 * m)} of their damage into everything within 3.5 metres and stagger it.`,
+    name: tr('World Cleave'),
+    desc: (m) => tr('Melee hits cleave {0} of their damage into everything within 3.5 metres and stagger it.', pct(60 * m)),
     runtime: (p, m) => {
       p.cleavePct += 60 * m;
       p.cleaveRadius = Math.max(p.cleaveRadius, 3.5);
@@ -693,77 +694,77 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'cleave',
-    name: 'Cleaving',
-    desc: (m) => `Melee hits cleave ${pct(30 * m)} of their damage into everything within 2.5 metres.`,
+    name: tr('Cleaving'),
+    desc: (m) => tr('Melee hits cleave {0} of their damage into everything within 2.5 metres.', pct(30 * m)),
     runtime: (p, m) => {
       p.cleavePct += 30 * m;
       p.cleaveRadius = Math.max(p.cleaveRadius, 2.5);
     },
-    affix: { on: ['melee'], min: 0.5, max: 1.1, ilvl: 8, weight: 70, word: 'of Cleaving' },
+    affix: { on: ['melee'], min: 0.5, max: 1.1, ilvl: 8, weight: 70, word: tr('of Cleaving') },
   },
   {
     id: 'pierce',
-    name: 'Piercing',
-    desc: (m) => `Ranged hits carry on into another enemy within 6 metres for ${pct(70 * m)} damage.`,
+    name: tr('Piercing'),
+    desc: (m) => tr('Ranged hits carry on into another enemy within 6 metres for {0} damage.', pct(70 * m)),
     runtime: (p, m) => {
       p.pierceChainPct += 70 * m;
     },
-    affix: { on: ['ranged'], min: 0.5, max: 1, ilvl: 10, weight: 60, word: 'of Piercing' },
+    affix: { on: ['ranged'], min: 0.5, max: 1, ilvl: 10, weight: 60, word: tr('of Piercing') },
   },
   {
     id: 'returning',
-    name: 'Returning',
-    desc: (m) => `Ranged hits strike the target a second time on the way back, for ${pct(50 * m)} damage.`,
+    name: tr('Returning'),
+    desc: (m) => tr('Ranged hits strike the target a second time on the way back, for {0} damage.', pct(50 * m)),
     runtime: (p, m) => {
       p.returnHitPct += 50 * m;
     },
   },
   {
     id: 'echo',
-    name: 'Echo',
-    desc: (m) => `Every skill hit lands a second time a beat later, at ${pct(50 * m)} strength.`,
+    name: tr('Echo'),
+    desc: (m) => tr('Every skill hit lands a second time a beat later, at {0} strength.', pct(50 * m)),
     runtime: (p, m) => {
       p.echoHitPct += 50 * m;
     },
-    affix: { on: ['caster'], min: 0.2, max: 0.4, ilvl: 24, weight: 40, word: 'of Echoes' },
+    affix: { on: ['caster'], min: 0.2, max: 0.4, ilvl: 24, weight: 40, word: tr('of Echoes') },
   },
   {
     id: 'manaldHeal',
-    name: 'Grounding',
-    desc: (m) => `Every lightning hit restores ${r1(1 * m)}% of your maximum mana.`,
+    name: tr('Grounding'),
+    desc: (m) => tr('Every lightning hit restores {0}% of your maximum mana.', r1(1 * m)),
     runtime: (p, m) => {
       p.manaOnLightningPct += 1 * m;
     },
   },
   {
     id: 'fireFree',
-    name: 'Self-Stoking',
-    desc: (m) => `While below half mana, every fire hit restores ${r1(2 * m)}% of your maximum mana.`,
+    name: tr('Self-Stoking'),
+    desc: (m) => tr('While below half mana, every fire hit restores {0}% of your maximum mana.', r1(2 * m)),
     runtime: (p, m) => {
       p.manaOnFireLowPct += 2 * m;
     },
   },
   {
     id: 'wishCurse',
-    name: 'Covetous',
-    desc: (m) => `${pct(20 * m)} chance on hit to curse the target: when it dies it drops an extra item.`,
+    name: tr('Covetous'),
+    desc: (m) => tr('{0} chance on hit to curse the target: when it dies it drops an extra item.', pct(20 * m)),
     runtime: (p, m) => {
       p.wishCurseChance += 20 * m;
     },
-    affix: { on: ['jewelry'], min: 0.3, max: 0.6, ilvl: 20, weight: 35, word: 'of Wanting' },
+    affix: { on: ['jewelry'], min: 0.3, max: 0.6, ilvl: 20, weight: 35, word: tr('of Wanting') },
   },
   {
     id: 'manaShield',
-    name: 'Mana Shield',
-    desc: (m) => `${pct(Math.min(100, 50 * m))} of damage taken is paid from your mana instead, while you have it.`,
+    name: tr('Mana Shield'),
+    desc: (m) => tr('{0} of damage taken is paid from your mana instead, while you have it.', pct(Math.min(100, 50 * m))),
     runtime: (p, m) => {
       p.manaShieldPct = Math.min(100, Math.max(p.manaShieldPct, 50 * m));
     },
   },
   {
     id: 'mythicManaShield',
-    name: 'Mind Over Flesh',
-    desc: () => 'All damage taken is paid from your mana while you have any. Poison cannot touch you.',
+    name: tr('Mind Over Flesh'),
+    desc: () => tr('All damage taken is paid from your mana while you have any. Poison cannot touch you.'),
     runtime: (p) => {
       p.manaShieldPct = 100;
       p.poisonTakenLessPct = Math.max(p.poisonTakenLessPct, 100);
@@ -771,17 +772,17 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'rangedDR',
-    name: 'Turning Aside',
-    desc: (m) => `You take ${pct(30 * m)} less damage from projectiles and spells.`,
+    name: tr('Turning Aside'),
+    desc: (m) => tr('You take {0} less damage from projectiles and spells.', pct(30 * m)),
     runtime: (p, m) => {
       p.rangedTakenLessPct = Math.min(75, p.rangedTakenLessPct + 30 * m);
     },
-    affix: { on: ['shield', 'armor'], min: 0.3, max: 0.6, ilvl: 14, weight: 50, word: 'of Turning' },
+    affix: { on: ['shield', 'armor'], min: 0.3, max: 0.6, ilvl: 14, weight: 50, word: tr('of Turning') },
   },
   {
     id: 'poisonImmuneFeedback',
-    name: 'Venom Blood',
-    desc: () => 'Poison deals you 60% less damage, and what it does deal restores mana.',
+    name: tr('Venom Blood'),
+    desc: () => tr('Poison deals you 60% less damage, and what it does deal restores mana.'),
     runtime: (p) => {
       p.poisonTakenLessPct = Math.max(p.poisonTakenLessPct, 60);
       p.poisonFeedsPct = Math.max(p.poisonFeedsPct, 100);
@@ -789,32 +790,32 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'poisonOvercap',
-    name: 'Venomproof',
-    desc: () => 'Poison deals you 35% less damage, beyond any resistance.',
+    name: tr('Venomproof'),
+    desc: () => tr('Poison deals you 35% less damage, beyond any resistance.'),
     runtime: (p) => {
       p.poisonTakenLessPct = Math.max(p.poisonTakenLessPct, 35);
     },
   },
   {
     id: 'freezeImmune',
-    name: 'Unfreezing',
-    desc: () => 'You cannot be chilled or frozen.',
+    name: tr('Unfreezing'),
+    desc: () => tr('You cannot be chilled or frozen.'),
     runtime: (p) => {
       p.freezeImmune = 1;
     },
   },
   {
     id: 'unstoppable',
-    name: 'Unstoppable',
-    desc: () => 'You cannot be stunned, knocked down or knocked back.',
+    name: tr('Unstoppable'),
+    desc: () => tr('You cannot be stunned, knocked down or knocked back.'),
     runtime: (p) => {
       p.unstoppable = 1;
     },
   },
   {
     id: 'panicBlink',
-    name: 'Panic Blink',
-    desc: () => 'When a hit leaves you below 30% life, you blink away. Once every 15 seconds.',
+    name: tr('Panic Blink'),
+    desc: () => tr('When a hit leaves you below 30% life, you blink away. Once every 15 seconds.'),
     runtime: (p) => {
       p.panicBlinkPct = Math.max(p.panicBlinkPct, 30);
       p.panicBlinkCooldown = p.panicBlinkCooldown > 0 ? Math.min(p.panicBlinkCooldown, 15) : 15;
@@ -822,35 +823,35 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'overhealShield',
-    name: 'Overflowing Ward',
-    desc: (m) => `While at full life you build a ward worth ${pct(25 * m)} of your life that absorbs damage.`,
+    name: tr('Overflowing Ward'),
+    desc: (m) => tr('While at full life you build a ward worth {0} of your life that absorbs damage.', pct(25 * m)),
     runtime: (p, m) => {
       p.wardPct += 25 * m;
     },
-    affix: { on: ['armor'], min: 0.3, max: 0.6, ilvl: 24, weight: 40, word: 'of Warding' },
+    affix: { on: ['armor'], min: 0.3, max: 0.6, ilvl: 24, weight: 40, word: tr('of Warding') },
   },
   {
     id: 'goldToLife',
-    name: 'Gilded Blood',
-    desc: (m) => `Picking up gold restores ${r1(4 * m)}% of your maximum life.`,
+    name: tr('Gilded Blood'),
+    desc: (m) => tr('Picking up gold restores {0}% of your maximum life.', r1(4 * m)),
     runtime: (p, m) => {
       p.goldToLifePct += 4 * m;
     },
-    affix: { on: ['jewelry'], min: 0.5, max: 1, ilvl: 5, weight: 50, word: 'of Gilded Blood' },
+    affix: { on: ['jewelry'], min: 0.5, max: 1, ilvl: 5, weight: 50, word: tr('of Gilded Blood') },
   },
   {
     id: 'emberPrints',
-    name: 'Warm Prints',
+    name: tr('Warm Prints'),
     desc: (m) =>
-      `Your footsteps burn on the stone for 3 seconds. Anything standing in one takes ${pct(30 * m)} weapon damage as fire every half second and catches light.`,
+      tr('Your footsteps burn on the stone for 3 seconds. Anything standing in one takes {0} weapon damage as fire every half second and catches light.', pct(30 * m)),
     runtime: (p, m) => {
       p.emberPrintPct += 30 * m;
     },
   },
   {
     id: 'poisonNova',
-    name: 'Rot Cyclone',
-    desc: (m) => `A cyclone of rot poisons everything within 5 metres each second for ${pct(30 * m)} weapon damage.`,
+    name: tr('Rot Cyclone'),
+    desc: (m) => tr('A cyclone of rot poisons everything within 5 metres each second for {0} weapon damage.', pct(30 * m)),
     runtime: (p, m) => {
       p.rotAuraRadius = Math.max(p.rotAuraRadius, 5);
       p.rotAuraPct += 30 * m;
@@ -858,8 +859,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'ironGolems',
-    name: 'Iron Sentries',
-    desc: (m) => `Two iron sentries fight beside you, each striking the nearest enemy every 2.5 seconds for ${pct(80 * m)} weapon damage.`,
+    name: tr('Iron Sentries'),
+    desc: (m) => tr('Two iron sentries fight beside you, each striking the nearest enemy every 2.5 seconds for {0} weapon damage.', pct(80 * m)),
     runtime: (p, m) => {
       p.sentryPct += 80 * m;
       p.sentryInterval = 2.5;
@@ -867,27 +868,27 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'shatter',
-    name: 'Shatter',
-    desc: () => 'Chilled or frozen enemies shatter when they die, freezing everything within 4 metres.',
+    name: tr('Shatter'),
+    desc: () => tr('Chilled or frozen enemies shatter when they die, freezing everything within 4 metres.'),
     runtime: (p, m) => {
       p.shatterRadius = Math.max(p.shatterRadius, 4 * m);
     },
   },
   {
     id: 'pyreKills',
-    name: 'Pyre',
-    desc: (m) => `Kills leave burning ground that deals ${pct(50 * m)} weapon damage as fire.`,
+    name: tr('Pyre'),
+    desc: (m) => tr('Kills leave burning ground that deals {0} weapon damage as fire.', pct(50 * m)),
     runtime: (p, m) => {
       p.pyreKillPct += 50 * m;
     },
-    affix: { on: ['weapon', 'armor'], min: 0.4, max: 0.8, ilvl: 18, weight: 45, word: 'of the Pyre' },
+    affix: { on: ['weapon', 'armor'], min: 0.4, max: 0.8, ilvl: 18, weight: 45, word: tr('of the Pyre') },
   },
 
   // Set signatures: each one the reason a full set is worth wearing.
   {
     id: 'tollgate',
-    name: 'The Toll',
-    desc: (m) => `Each block stores a toll, up to 5. Your next melee skill hit spends them all in a shockwave: ${pct(45 * m)} weapon damage per toll to everything within 4 metres, and a stagger.`,
+    name: tr('The Toll'),
+    desc: (m) => tr('Each block stores a toll, up to 5. Your next melee skill hit spends them all in a shockwave: {0} weapon damage per toll to everything within 4 metres, and a stagger.', pct(45 * m)),
     runtime: (p, m) => {
       p.tollPct += 45 * m;
       p.tollMax = 5;
@@ -895,40 +896,40 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'orrery',
-    name: 'The Ninth Hour',
-    desc: (m) => `Each skill you cast sets a planet turning round you. At nine, all nine fly at your foes, each for ${pct(80 * m)} weapon damage as arcane.`,
+    name: tr('The Ninth Hour'),
+    desc: (m) => tr('Each skill you cast sets a planet turning round you. At nine, all nine fly at your foes, each for {0} weapon damage as arcane.', pct(80 * m)),
     runtime: (p, m) => {
       p.orreryPct += 80 * m;
     },
   },
   {
     id: 'lampblack',
-    name: 'Soot',
-    desc: (m) => `A kill hides you in soot for ${r1(2 * m)} seconds: you take half damage, and your next hit is a critical strike.`,
+    name: tr('Soot'),
+    desc: (m) => tr('A kill hides you in soot for {0} seconds: you take half damage, and your next hit is a critical strike.', r1(2 * m)),
     runtime: (p, m) => {
       p.unseenSec = Math.max(p.unseenSec, 2 * m);
     },
   },
   {
     id: 'heronwatch',
-    name: 'Heron\'s Patience',
-    desc: (m) => `Stand still for a second and your ranged hits carry on into three more enemies within 8 metres, for ${pct(70 * m)} damage each.`,
+    name: tr('Heron\'s Patience'),
+    desc: (m) => tr('Stand still for a second and your ranged hits carry on into three more enemies within 8 metres, for {0} damage each.', pct(70 * m)),
     runtime: (p, m) => {
       p.stillPiercePct += 70 * m;
     },
   },
   {
     id: 'pallbearer',
-    name: 'Graves Dug',
-    desc: (m) => `Every kill digs a grave. A moment later it bursts for ${pct(70 * m)} weapon damage as arcane within 3 metres, and you heal 2% of your life for each foe it strikes.`,
+    name: tr('Graves Dug'),
+    desc: (m) => tr('Every kill digs a grave. A moment later it bursts for {0} weapon damage as arcane within 3 metres, and you heal 2% of your life for each foe it strikes.', pct(70 * m)),
     runtime: (p, m) => {
       p.gravePct += 70 * m;
     },
   },
   {
     id: 'lanternRing',
-    name: 'The Lit Ring',
-    desc: (m) => `A ring of lamplight 5 metres wide burns round you. Enemies in it take ${pct(35 * m)} weapon damage as fire each second and are slowed.`,
+    name: tr('The Lit Ring'),
+    desc: (m) => tr('A ring of lamplight 5 metres wide burns round you. Enemies in it take {0} weapon damage as fire each second and are slowed.', pct(35 * m)),
     runtime: (p, m) => {
       p.ringPct += 35 * m;
       p.ringRadius = Math.max(p.ringRadius, 5);
@@ -936,48 +937,48 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'waxDouble',
-    name: 'Wax Double',
-    desc: (m) => `Changing form leaves a wax double where you stood. Enemies near it are held for 2 seconds, and after 3 it melts in a burst of ${pct(120 * m)} weapon damage as fire.`,
+    name: tr('Wax Double'),
+    desc: (m) => tr('Changing form leaves a wax double where you stood. Enemies near it are held for 2 seconds, and after 3 it melts in a burst of {0} weapon damage as fire.', pct(120 * m)),
     runtime: (p, m) => {
       p.waxPct += 120 * m;
     },
   },
   {
     id: 'sureFooted',
-    name: 'Sure-Footed',
-    desc: () => 'Nothing slows you: not mud, not water, not frost, not a snare.',
+    name: tr('Sure-Footed'),
+    desc: () => tr('Nothing slows you: not mud, not water, not frost, not a snare.'),
     runtime: (p) => {
       p.sureFooted = 1;
     },
   },
   {
     id: 'ninefold',
-    name: 'Ninefold Hymn',
-    desc: (m) => `Each skill you cast rings a note. On the ninth you heal ${pct(20 * m)} of your life and mana.`,
+    name: tr('Ninefold Hymn'),
+    desc: (m) => tr('Each skill you cast rings a note. On the ninth you heal {0} of your life and mana.', pct(20 * m)),
     runtime: (p, m) => {
       p.ninefoldPct += 20 * m;
     },
   },
   {
     id: 'kilnborn',
-    name: 'Fired',
-    desc: (m) => `Fire that hurts you fills the kiln. When it has taken a fifth of your life, it bursts round you for ${pct(150 * m)} weapon damage as fire.`,
+    name: tr('Fired'),
+    desc: (m) => tr('Fire that hurts you fills the kiln. When it has taken a fifth of your life, it bursts round you for {0} weapon damage as fire.', pct(150 * m)),
     runtime: (p, m) => {
       p.kilnPct += 150 * m;
     },
   },
   {
     id: 'glasswing',
-    name: 'Glass Shards',
-    desc: (m) => `A hit you dodge bursts into glass: ${pct(60 * m)} weapon damage to everything within 3 metres, and they bleed.`,
+    name: tr('Glass Shards'),
+    desc: (m) => tr('A hit you dodge bursts into glass: {0} weapon damage to everything within 3 metres, and they bleed.', pct(60 * m)),
     runtime: (p, m) => {
       p.shardPct += 60 * m;
     },
   },
   {
     id: 'drownedBell',
-    name: 'The Drowned Bell',
-    desc: (m) => `Every 10th hit rings a bell: ${pct(50 * m)} weapon damage to everything within 4 metres, which are knocked back and stunned for a moment.`,
+    name: tr('The Drowned Bell'),
+    desc: (m) => tr('Every 10th hit rings a bell: {0} weapon damage to everything within 4 metres, which are knocked back and stunned for a moment.', pct(50 * m)),
     runtime: (p, m) => {
       p.bellEvery = 10;
       p.bellPct += 50 * m;
@@ -985,8 +986,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'pretender',
-    name: 'The Borrowed Crown',
-    desc: (m) => `Killing a champion, elite or rare foe crowns you for 10 seconds: ${pct(35 * m)} more damage and 20% less damage taken.`,
+    name: tr('The Borrowed Crown'),
+    desc: (m) => tr('Killing a champion, elite or rare foe crowns you for 10 seconds: {0} more damage and 20% less damage taken.', pct(35 * m)),
     runtime: (p, m) => {
       p.crownSec = 10;
       p.crownPct += 35 * m;
@@ -994,16 +995,16 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'cartographer',
-    name: 'Marked on the Map',
-    desc: (m) => `Champions, elites and rares you kill have a ${pct(Math.min(100, 35 * m))} chance to drop one more item.`,
+    name: tr('Marked on the Map'),
+    desc: (m) => tr('Champions, elites and rares you kill have a {0} chance to drop one more item.', pct(Math.min(100, 35 * m))),
     runtime: (p, m) => {
       p.eliteDropChance = Math.min(100, p.eliteDropChance + 35 * m);
     },
   },
   {
     id: 'hollowmere',
-    name: 'The Last Lamp',
-    desc: (m) => `Your light is a weapon. Enemies within 6 metres take ${pct(40 * m)} weapon damage as fire each second, catch light and are slowed.`,
+    name: tr('The Last Lamp'),
+    desc: (m) => tr('Your light is a weapon. Enemies within 6 metres take {0} weapon damage as fire each second, catch light and are slowed.', pct(40 * m)),
     runtime: (p, m) => {
       p.ringPct += 40 * m;
       p.ringRadius = Math.max(p.ringRadius, 6);
@@ -1015,66 +1016,66 @@ const DEFS: PowerDef[] = [
   // =========================================================================
   {
     id: 'eleFromEnergy',
-    name: 'Channelled Mind',
-    desc: (m) => `Gain ${r1(0.6 * m)}% elemental damage per point of Energy.`,
+    name: tr('Channelled Mind'),
+    desc: (m) => tr('Gain {0}% elemental damage per point of Energy.', r1(0.6 * m)),
     stats: (s, _c, m) => {
       s.elementalDamagePct += s.energy * 0.6 * m;
     },
   },
   {
     id: 'manaScale',
-    name: 'Deep Well',
-    desc: (m) => `Gain 1% elemental damage per ${Math.round(25 / m)} maximum mana.`,
+    name: tr('Deep Well'),
+    desc: (m) => tr('Gain 1% elemental damage per {0} maximum mana.', Math.round(25 / m)),
     stats: (s, _c, m) => {
       s.elementalDamagePct += (s.mana / 25) * m;
     },
   },
   {
     id: 'lifePerLevel',
-    name: 'Growing Vigour',
-    desc: (m) => `Gain ${Math.round(4 * m)} maximum life per character level.`,
+    name: tr('Growing Vigour'),
+    desc: (m) => tr('Gain {0} maximum life per character level.', Math.round(4 * m)),
     stats: (s, c, m) => {
       s.life += c.level * 4 * m;
     },
-    affix: { on: ['armor', 'jewelry'], min: 0.3, max: 0.6, ilvl: 12, weight: 45, word: 'of Growing' },
+    affix: { on: ['armor', 'jewelry'], min: 0.3, max: 0.6, ilvl: 12, weight: 45, word: tr('of Growing') },
   },
   {
     id: 'critPerLevel',
-    name: 'Practised Eye',
-    desc: (m) => `Gain ${r1(0.12 * m)}% critical strike chance per character level.`,
+    name: tr('Practised Eye'),
+    desc: (m) => tr('Gain {0}% critical strike chance per character level.', r1(0.12 * m)),
     stats: (s, c, m) => {
       s.critChance += c.level * 0.12 * m;
     },
   },
   {
     id: 'combatRegen',
-    name: 'Battle Mending',
-    desc: (m) => `Regenerate ${r1(0.8 * m)}% of your maximum life every second, in or out of combat.`,
+    name: tr('Battle Mending'),
+    desc: (m) => tr('Regenerate {0}% of your maximum life every second, in or out of combat.', r1(0.8 * m)),
     stats: (s, _c, m) => {
       s.lifeRegen += s.life * 0.008 * m;
     },
-    affix: { on: ['armor'], min: 0.3, max: 0.6, ilvl: 20, weight: 40, word: 'of Mending' },
+    affix: { on: ['armor'], min: 0.3, max: 0.6, ilvl: 20, weight: 40, word: tr('of Mending') },
   },
   {
     id: 'runManaRegen',
-    name: 'Wind Drinker',
-    desc: (m) => `Gain ${r1(4 * m)} mana regeneration, plus ${r1(0.4 * m)} more per 1% movement speed.`,
+    name: tr('Wind Drinker'),
+    desc: (m) => tr('Gain {0} mana regeneration, plus {1} more per 1% movement speed.', r1(4 * m), r1(0.4 * m)),
     stats: (s, _c, m) => {
       s.manaRegen += (4 + Math.max(0, s.moveSpeed) * 0.4) * m;
     },
   },
   {
     id: 'voidCooldown',
-    name: 'Void Clock',
-    desc: (m) => `Your cooldowns recover ${pct(15 * m)} faster.`,
+    name: tr('Void Clock'),
+    desc: (m) => tr('Your cooldowns recover {0} faster.', pct(15 * m)),
     stats: (s, _c, m) => {
       s.cooldownReduction += 15 * m;
     },
   },
   {
     id: 'fanaticism',
-    name: 'Fanaticism',
-    desc: (m) => `+${pct(20 * m)} attack speed, +${pct(15 * m)} cast speed and +${pct(10 * m)} movement speed.`,
+    name: tr('Fanaticism'),
+    desc: (m) => tr('+{0} attack speed, +{1} cast speed and +{2} movement speed.', pct(20 * m), pct(15 * m), pct(10 * m)),
     stats: (s, _c, m) => {
       s.attackSpeed += 20 * m;
       s.castSpeed += 15 * m;
@@ -1083,8 +1084,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'werebear',
-    name: 'Bearform',
-    desc: () => 'Your maximum life is 50% higher and your defense 30% higher, but you cast 20% slower.',
+    name: tr('Bearform'),
+    desc: () => tr('Your maximum life is 50% higher and your defense 30% higher, but you cast 20% slower.'),
     stats: (s) => {
       s.life *= 1.5;
       s.defense *= 1.3;
@@ -1093,8 +1094,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'hollowPact',
-    name: 'Hollow Pact',
-    desc: () => 'Your maximum life is 40% lower. Everything else is greater: +100% damage, +25% attack and cast speed, +20% all resistances.',
+    name: tr('Hollow Pact'),
+    desc: () => tr('Your maximum life is 40% lower. Everything else is greater: +100% damage, +25% attack and cast speed, +20% all resistances.'),
     stats: (s) => {
       s.life *= 0.6;
       s.enhancedDamage += 100;
@@ -1114,8 +1115,8 @@ const DEFS: PowerDef[] = [
   // =========================================================================
   {
     id: 'glassJaw',
-    name: 'Glass Jaw',
-    desc: (m) => `+${pct(60 * m)} damage. Your defense is halved and you lose 15% damage reduction.`,
+    name: tr('Glass Jaw'),
+    desc: (m) => tr('+{0} damage. Your defense is halved and you lose 15% damage reduction.', pct(60 * m)),
     stats: (s, _c, m) => {
       s.enhancedDamage += 60 * m;
       s.defense *= 0.5;
@@ -1124,8 +1125,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'heavyTread',
-    name: 'Heavy Tread',
-    desc: (m) => `${pct(25 * m)} more life and ${pct(40 * m)} more defense, but you move 15% slower.`,
+    name: tr('Heavy Tread'),
+    desc: (m) => tr('{0} more life and {1} more defense, but you move 15% slower.', pct(25 * m), pct(40 * m)),
     stats: (s, _c, m) => {
       s.life *= 1 + 0.25 * m;
       s.defense *= 1 + 0.4 * m;
@@ -1134,8 +1135,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'featherweight',
-    name: 'Featherweight',
-    desc: (m) => `+${pct(18 * m)} movement speed and +${pct(12 * m)} attack speed. Your defense is 40% lower and your life 10% lower.`,
+    name: tr('Featherweight'),
+    desc: (m) => tr('+{0} movement speed and +{1} attack speed. Your defense is 40% lower and your life 10% lower.', pct(18 * m), pct(12 * m)),
     stats: (s, _c, m) => {
       s.moveSpeed += 18 * m;
       s.attackSpeed += 12 * m;
@@ -1145,8 +1146,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'emberBargain',
-    name: 'Ember Bargain',
-    desc: (m) => `Your fire damage is ${pct(40 * m)} greater. Your cold resistance falls by 30.`,
+    name: tr('Ember Bargain'),
+    desc: (m) => tr('Your fire damage is {0} greater. Your cold resistance falls by 30.', pct(40 * m)),
     runtime: (p, m) => {
       p.fireMorePct += 40 * m;
     },
@@ -1156,8 +1157,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'frostBargain',
-    name: 'Frost Bargain',
-    desc: (m) => `Your cold damage is ${pct(40 * m)} greater. Your fire resistance falls by 30.`,
+    name: tr('Frost Bargain'),
+    desc: (m) => tr('Your cold damage is {0} greater. Your fire resistance falls by 30.', pct(40 * m)),
     runtime: (p, m) => {
       p.coldMorePct += 40 * m;
     },
@@ -1167,8 +1168,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'stormBargain',
-    name: 'Storm Bargain',
-    desc: (m) => `Your lightning damage is ${pct(40 * m)} greater. Your poison resistance falls by 30.`,
+    name: tr('Storm Bargain'),
+    desc: (m) => tr('Your lightning damage is {0} greater. Your poison resistance falls by 30.', pct(40 * m)),
     runtime: (p, m) => {
       p.lightningMorePct += 40 * m;
     },
@@ -1178,8 +1179,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'rotBargain',
-    name: 'Rot Bargain',
-    desc: (m) => `Your poison damage is ${pct(40 * m)} greater. You do not regenerate life.`,
+    name: tr('Rot Bargain'),
+    desc: (m) => tr('Your poison damage is {0} greater. You do not regenerate life.', pct(40 * m)),
     runtime: (p, m) => {
       p.poisonMorePct += 40 * m;
     },
@@ -1189,8 +1190,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'miserPact',
-    name: "Miser's Pact",
-    desc: (m) => `+${pct(100 * m)} gold found and +${pct(40 * m)} magic find. Your damage is 25% lower.`,
+    name: tr("Miser's Pact"),
+    desc: (m) => tr('+{0} gold found and +{1} magic find. Your damage is 25% lower.', pct(100 * m), pct(40 * m)),
     stats: (s, _c, m) => {
       s.goldFind += 100 * m;
       s.magicFind += 40 * m;
@@ -1199,8 +1200,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'slowBlood',
-    name: 'Slow Blood',
-    desc: (m) => `Regenerate ${r1(1.2 * m)}% of your maximum life each second. You attack and cast 12% slower.`,
+    name: tr('Slow Blood'),
+    desc: (m) => tr('Regenerate {0}% of your maximum life each second. You attack and cast 12% slower.', r1(1.2 * m)),
     stats: (s, _c, m) => {
       s.lifeRegen += s.life * 0.012 * m;
       s.attackSpeed -= 12;
@@ -1209,8 +1210,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'leechHunger',
-    name: 'Leech Hunger',
-    desc: (m) => `+${r1(5 * m)}% life stolen from every hit. You do not regenerate life.`,
+    name: tr('Leech Hunger'),
+    desc: (m) => tr('+{0}% life stolen from every hit. You do not regenerate life.', r1(5 * m)),
     stats: (s, _c, m) => {
       s.lifeSteal += 5 * m;
       s.lifeRegen = Math.min(s.lifeRegen, 0);
@@ -1218,8 +1219,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'quietMind',
-    name: 'Quiet Mind',
-    desc: (m) => `Your mana regenerates ${pct(100 * m)} faster. Your maximum mana is 25% lower.`,
+    name: tr('Quiet Mind'),
+    desc: (m) => tr('Your mana regenerates {0} faster. Your maximum mana is 25% lower.', pct(100 * m)),
     stats: (s, _c, m) => {
       s.manaRegen *= 1 + m;
       s.mana *= 0.75;
@@ -1227,8 +1228,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'stoneSkin',
-    name: 'Stone Skin',
-    desc: (m) => `+${r1(12 * m)}% damage reduction. You attack and cast 15% slower and move 8% slower.`,
+    name: tr('Stone Skin'),
+    desc: (m) => tr('+{0}% damage reduction. You attack and cast 15% slower and move 8% slower.', r1(12 * m)),
     stats: (s, _c, m) => {
       s.damageReduction += 12 * m;
       s.attackSpeed -= 15;
@@ -1238,8 +1239,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'wildSwing',
-    name: 'Wild Swing',
-    desc: (m) => `+${r1(10 * m)}% critical strike chance and +${pct(40 * m)} critical damage. Your attack rating is 35% lower.`,
+    name: tr('Wild Swing'),
+    desc: (m) => tr('+{0}% critical strike chance and +{1} critical damage. Your attack rating is 35% lower.', r1(10 * m), pct(40 * m)),
     stats: (s, _c, m) => {
       s.critChance += 10 * m;
       s.critDamage += 40 * m;
@@ -1248,8 +1249,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'narrowEdge',
-    name: 'Narrow Edge',
-    desc: (m) => `+${pct(50 * m)} damage. Your area damage is 40% lower.`,
+    name: tr('Narrow Edge'),
+    desc: (m) => tr('+{0} damage. Your area damage is 40% lower.', pct(50 * m)),
     stats: (s, _c, m) => {
       s.enhancedDamage += 50 * m;
       s.areaDamagePct -= 40;
@@ -1257,8 +1258,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'broadStroke',
-    name: 'Broad Stroke',
-    desc: (m) => `+${pct(45 * m)} area damage. Your other damage is 20% lower.`,
+    name: tr('Broad Stroke'),
+    desc: (m) => tr('+{0} area damage. Your other damage is 20% lower.', pct(45 * m)),
     stats: (s, _c, m) => {
       s.areaDamagePct += 45 * m;
       s.enhancedDamage -= 20;
@@ -1266,8 +1267,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'spellward',
-    name: 'Spellward',
-    desc: (m) => `+${pct(25 * m)} to every elemental resistance. Your physical resistance falls by 15 and your defense by 30%.`,
+    name: tr('Spellward'),
+    desc: (m) => tr('+{0} to every elemental resistance. Your physical resistance falls by 15 and your defense by 30%.', pct(25 * m)),
     stats: (s, _c, m) => {
       s.fireResist += 25 * m;
       s.coldResist += 25 * m;
@@ -1280,8 +1281,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'ironHide',
-    name: 'Iron Hide',
-    desc: (m) => `+${pct(15 * m)} physical resistance and ${pct(50 * m)} more defense. Every elemental resistance falls by 15.`,
+    name: tr('Iron Hide'),
+    desc: (m) => tr('+{0} physical resistance and {1} more defense. Every elemental resistance falls by 15.', pct(15 * m), pct(50 * m)),
     stats: (s, _c, m) => {
       s.physicalResist += 15 * m;
       s.defense *= 1 + 0.5 * m;
@@ -1294,8 +1295,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'deepWell',
-    name: 'Deep Well',
-    desc: (m) => `${pct(50 * m)} more maximum mana. Your maximum life is 15% lower.`,
+    name: tr('Deep Well'),
+    desc: (m) => tr('{0} more maximum mana. Your maximum life is 15% lower.', pct(50 * m)),
     stats: (s, _c, m) => {
       s.mana *= 1 + 0.5 * m;
       s.life *= 0.85;
@@ -1303,8 +1304,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'borrowedCraft',
-    name: 'Borrowed Craft',
-    desc: (m) => `+${Math.max(1, Math.round(m))} to all skills. Your maximum life is 20% lower.`,
+    name: tr('Borrowed Craft'),
+    desc: (m) => tr('+{0} to all skills. Your maximum life is 20% lower.', Math.max(1, Math.round(m))),
     stats: (s, _c, m) => {
       s.skillLevels += Math.max(1, Math.round(m));
       s.life *= 0.8;
@@ -1312,8 +1313,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'shortFuse',
-    name: 'Short Fuse',
-    desc: (m) => `Your cooldowns are ${pct(18 * m)} shorter. Your mana regenerates half as fast.`,
+    name: tr('Short Fuse'),
+    desc: (m) => tr('Your cooldowns are {0} shorter. Your mana regenerates half as fast.', pct(18 * m)),
     stats: (s, _c, m) => {
       s.cooldownReduction += 18 * m;
       s.manaRegen *= 0.5;
@@ -1321,8 +1322,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'warmBlood',
-    name: 'Warm Blood',
-    desc: (m) => `You cannot be chilled or frozen, and gain +${pct(30 * m)} cold resistance. Your fire resistance falls by 25.`,
+    name: tr('Warm Blood'),
+    desc: (m) => tr('You cannot be chilled or frozen, and gain +{0} cold resistance. Your fire resistance falls by 25.', pct(30 * m)),
     runtime: (p) => {
       p.freezeImmune = 1;
     },
@@ -1333,8 +1334,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'anchor',
-    name: 'Anchor',
-    desc: (m) => `You cannot be stunned, knocked down or knocked back, and gain +${r1(6 * m)}% damage reduction. You move 20% slower.`,
+    name: tr('Anchor'),
+    desc: (m) => tr('You cannot be stunned, knocked down or knocked back, and gain +{0}% damage reduction. You move 20% slower.', r1(6 * m)),
     runtime: (p) => {
       p.unstoppable = 1;
     },
@@ -1345,8 +1346,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'thinAir',
-    name: 'Thin Air',
-    desc: (m) => `You take ${pct(30 * m)} less damage from projectiles and spells. Your maximum life is 15% lower.`,
+    name: tr('Thin Air'),
+    desc: (m) => tr('You take {0} less damage from projectiles and spells. Your maximum life is 15% lower.', pct(30 * m)),
     runtime: (p, m) => {
       p.rangedTakenLessPct += 30 * m;
     },
@@ -1356,8 +1357,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'inkskin',
-    name: 'Inkskin',
-    desc: (m) => `${pct(Math.min(100, 30 * m))} of damage taken is paid from your mana instead. Your mana regenerates 40% slower.`,
+    name: tr('Inkskin'),
+    desc: (m) => tr('{0} of damage taken is paid from your mana instead. Your mana regenerates 40% slower.', pct(Math.min(100, 30 * m))),
     runtime: (p, m) => {
       p.manaShieldPct = Math.min(100, p.manaShieldPct + 30 * m);
     },
@@ -1367,8 +1368,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'coldHands',
-    name: 'Cold Hands',
-    desc: (m) => `+${pct(20 * m)} cast speed. You attack 20% slower.`,
+    name: tr('Cold Hands'),
+    desc: (m) => tr('+{0} cast speed. You attack 20% slower.', pct(20 * m)),
     stats: (s, _c, m) => {
       s.castSpeed += 20 * m;
       s.attackSpeed -= 20;
@@ -1376,8 +1377,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'brightBurn',
-    name: 'Bright Burn',
-    desc: (m) => `+${pct(25 * m)} elemental damage and +${pct(15 * m)} cast speed. Your mana regenerates half as fast.`,
+    name: tr('Bright Burn'),
+    desc: (m) => tr('+{0} elemental damage and +{1} cast speed. Your mana regenerates half as fast.', pct(25 * m), pct(15 * m)),
     stats: (s, _c, m) => {
       s.elementalDamagePct += 25 * m;
       s.castSpeed += 15 * m;
@@ -1386,8 +1387,8 @@ const DEFS: PowerDef[] = [
   },
   {
     id: 'hardHead',
-    name: 'Hard Head',
-    desc: (m) => `${pct(20 * m)} more life. You cast 25% slower.`,
+    name: tr('Hard Head'),
+    desc: (m) => tr('{0} more life. You cast 25% slower.', pct(20 * m)),
     stats: (s, _c, m) => {
       s.life *= 1 + 0.2 * m;
       s.castSpeed -= 25;

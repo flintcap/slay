@@ -44,7 +44,10 @@ import {
   tip,
 } from './Widgets';
 import { uiSfx } from './Sfx';
+import { tr } from '../core/I18n';
+import { itemDisplayName } from '../sim/Loot';
 
+// i18n-ignore-start: made-up syllables for hero names, the same in every language.
 const NAME_PARTS_A = [
   'Vor', 'Kael', 'Mor', 'Sil', 'Bran', 'Tyr', 'Dral', 'Ash', 'Eir', 'Gor',
   'Nyx', 'Rav', 'Sel', 'Thal', 'Ur', 'Vex', 'Wren', 'Zar', 'Cai', 'Fen',
@@ -53,6 +56,7 @@ const NAME_PARTS_B = [
   'wyn', 'drek', 'ath', 'ora', 'ric', 'ael', 'mir', 'oth', 'ska', 'ven',
   'ish', 'gar', 'une', 'eth', 'lan', 'dus', 'ira', 'orn', 'wick', 'ash',
 ];
+// i18n-ignore-end
 
 function rollName(rng: Random): string {
   return rng.pick(NAME_PARTS_A) + rng.pick(NAME_PARTS_B);
@@ -60,23 +64,23 @@ function rollName(rng: Random): string {
 
 /** Rough playstyle copy per class, keyed off the class id. */
 const PLAYSTYLE: Record<CharClassId, string> = {
-  warden: 'Stand in the middle of it. Bleed them out, soak the hits, and never give ground.',
-  mage: 'Burn a pack, chain lightning through the next, freeze the one that gets close. Huge damage, paper-thin if an elite reaches you.',
-  shadowblade: 'Strike from outside their awareness. Crits, poison stacks, and a dodge on a short leash.',
-  revenant: 'Bring a crowd. Your dead do the work while you drain the living to stay standing.',
-  ranger: 'Open at the far wall and keep it there. Traps behind you, arrows ahead, and a step back for every step they take.',
-  shapeshifter: 'Change shape mid-fight. The cat kills one fast, the wolf bites and howls with the pack, the bear holds the door.',
-  paladin: 'Pick one enemy and break it. A mace to stagger and dent, a sword to open and answer, and one aura burning at your feet.',
+  warden: tr('Stand in the middle of it. Bleed them out, soak the hits, and never give ground.'),
+  mage: tr('Burn a pack, chain lightning through the next, freeze the one that gets close. Huge damage, paper-thin if an elite reaches you.'),
+  shadowblade: tr('Strike from outside their awareness. Crits, poison stacks, and a dodge on a short leash.'),
+  revenant: tr('Bring a crowd. Your dead do the work while you drain the living to stay standing.'),
+  ranger: tr('Open at the far wall and keep it there. Traps behind you, arrows ahead, and a step back for every step they take.'),
+  shapeshifter: tr('Change shape mid-fight. The cat kills one fast, the wolf bites and howls with the pack, the bear holds the door.'),
+  paladin: tr('Pick one enemy and break it. A mace to stagger and dent, a sword to open and answer, and one aura burning at your feet.'),
 };
 
 const ROLE: Record<CharClassId, string> = {
-  warden: 'Bulwark · Bleed',
-  mage: 'Fire · Lightning · Cold',
-  shadowblade: 'Crit · Poison',
-  revenant: 'Summons · Drain',
-  ranger: 'Bow · Traps',
-  shapeshifter: 'Forms · Melee',
-  paladin: 'Mace · Blade · Aura',
+  warden: tr('Bulwark · Bleed'),
+  mage: tr('Fire · Lightning · Cold'),
+  shadowblade: tr('Crit · Poison'),
+  revenant: tr('Summons · Drain'),
+  ranger: tr('Bow · Traps'),
+  shapeshifter: tr('Forms · Melee'),
+  paladin: tr('Mace · Blade · Aura'),
 };
 
 /** How much there is to juggle, 1 to 3. Shown as pips so a first-timer can pick. */
@@ -149,26 +153,26 @@ export class CharSelectPanel {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'csx-back';
-    back.append(icon('chevronLeft', { size: 14 }), span('', 'Title'), keycap('Esc'));
+    back.append(icon('chevronLeft', { size: 14 }), span('', tr('Title')), keycap(tr('Esc')));
     back.addEventListener('click', () => {
       uiSfx('ui.click');
       void this.engine.goTo('title');
     });
 
     const heading = div('csx-heading');
-    heading.appendChild(div('csx-title', 'Choose Your Ruin'));
+    heading.appendChild(div('csx-title', tr('Choose Your Ruin')));
     this.sub = div('csx-sub');
     heading.appendChild(this.sub);
 
     this.tabs = div('csx-tabs');
-    this.tabRoster = this.tabButton('Your Characters', () => this.setMode('roster'));
-    this.tabNew = this.tabButton('New Character', () => this.setMode('new'));
+    this.tabRoster = this.tabButton(tr('Your Characters'), () => this.setMode('roster'));
+    this.tabNew = this.tabButton(tr('New Character'), () => this.setMode('new'));
     this.tabs.append(this.tabRoster, this.tabNew);
 
     const fallen = document.createElement('button');
     fallen.type = 'button';
     fallen.className = 'csx-back csx-fallen';
-    fallen.append(icon('skull', { size: 13 }), span('', 'The Fallen'));
+    fallen.append(icon('skull', { size: 13 }), span('', tr('The Fallen')));
     fallen.addEventListener('click', () => events.emit('ui:open', { panel: 'memorial' }));
 
     top.append(back, heading, fallen);
@@ -180,26 +184,26 @@ export class CharSelectPanel {
     this.detail = div('csx-detail');
     root.append(this.list, this.detail);
 
-    root.appendChild(div('csx-drag', 'Drag to turn'));
+    root.appendChild(div('csx-drag', tr('Drag to turn')));
 
     // --- bottom: creation ---------------------------------------------------
     this.bottom = div('csx-bottom');
 
     this.createBar = div('csx-create');
     const difBox = div('csx-field');
-    difBox.appendChild(div('csx-label', 'Difficulty'));
+    difBox.appendChild(div('csx-label', tr('Difficulty')));
     this.difRow = this.difficultyRow(this.difCards, (id) => this.setDifficulty(id));
     difBox.appendChild(this.difRow);
 
     const nameBox = div('csx-field csx-namefield');
-    nameBox.appendChild(div('csx-label', 'Name'));
+    nameBox.appendChild(div('csx-label', tr('Name')));
     const nameRow = div('csx-name');
     this.nameInput = document.createElement('input');
     this.nameInput.type = 'text';
     this.nameInput.maxLength = 20;
     this.nameInput.spellcheck = false;
     this.nameInput.autocomplete = 'off';
-    this.nameInput.setAttribute('aria-label', 'Character name');
+    this.nameInput.setAttribute('aria-label', tr('Character name'));
     this.nameInput.value = rollName(this.rng);
     this.nameInput.addEventListener('input', () => this.validate());
     this.nameInput.addEventListener('keydown', (e) => {
@@ -210,7 +214,7 @@ export class CharSelectPanel {
     const dice = document.createElement('button');
     dice.type = 'button';
     dice.className = 'csx-dice';
-    dice.title = 'Roll a new name';
+    dice.title = tr('Roll a new name');
     dice.innerHTML =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/></svg>';
     dice.addEventListener('click', () => {
@@ -229,8 +233,8 @@ export class CharSelectPanel {
     this.beginBtn = document.createElement('button');
     this.beginBtn.type = 'button';
     this.beginBtn.className = 'csx-go';
-    this.beginLabel = span('csx-go-label', 'Begin');
-    this.beginBtn.append(this.beginLabel, span('csx-go-sub', 'Descend into the town'));
+    this.beginLabel = span('csx-go-label', tr('Begin'));
+    this.beginBtn.append(this.beginLabel, span('csx-go-sub', tr('Descend into the town')));
     this.beginBtn.addEventListener('click', () => this.begin());
 
     this.createBar.append(difBox, nameBox, this.beginBtn);
@@ -244,11 +248,11 @@ export class CharSelectPanel {
     this.playBtn = document.createElement('button');
     this.playBtn.type = 'button';
     this.playBtn.className = 'csx-go';
-    this.playBtn.append(span('csx-go-label', 'Play'), span('csx-go-sub', 'Return to town'));
+    this.playBtn.append(span('csx-go-label', tr('Play')), span('csx-go-sub', tr('Return to town')));
     this.playBtn.addEventListener('click', () => this.play());
     // A character's difficulty can change between runs, never inside one.
     const rosterDif = div('csx-field csx-rosterdif');
-    rosterDif.appendChild(div('csx-label', 'Difficulty'));
+    rosterDif.appendChild(div('csx-label', tr('Difficulty')));
     rosterDif.appendChild(this.difficultyRow(this.rosterDifCards, (id) => this.setCharacterDifficulty(id)));
     this.rosterBar.append(rosterDif, this.retireBtn, this.playBtn);
 
@@ -396,10 +400,10 @@ export class CharSelectPanel {
     this.tabRoster.dataset.count = String(roster.length);
     this.sub.textContent =
       this.mode === 'roster'
-        ? 'Take up an old torch. Every one of them shares the same vault.'
+        ? tr('Take up an old torch. Every one of them shares the same vault.')
         : roster.length
-          ? 'Forge another. The vault and the memorial are shared.'
-          : 'One life. One build. The vault is all that follows you down.';
+          ? tr('Forge another. The vault and the memorial are shared.')
+          : tr('One life. One build. The vault is all that follows you down.');
     this.createBar.style.display = this.mode === 'new' ? '' : 'none';
     this.rosterBar.style.display = this.mode === 'roster' ? '' : 'none';
     this.renderList();
@@ -411,10 +415,10 @@ export class CharSelectPanel {
   private renderList(): void {
     this.list.replaceChildren();
     if (this.mode === 'new') {
-      this.list.appendChild(div('csx-label', 'Class'));
+      this.list.appendChild(div('csx-label', tr('Class')));
       classList().forEach((def, i) => this.list.appendChild(this.classRow(def, i)));
     } else {
-      this.list.appendChild(div('csx-label', 'The living'));
+      this.list.appendChild(div('csx-label', tr('The living')));
       save.roster.forEach((c, i) => this.list.appendChild(this.charRow(c, i)));
     }
   }
@@ -449,7 +453,7 @@ export class CharSelectPanel {
     crest.innerHTML = classCrestSvg(c.classId, accent, 38);
     const text = div('csx-row-text');
     const cls = classById(c.classId)?.name ?? c.classId;
-    text.append(div('csx-row-name', c.name), div('csx-row-meta', `Level ${c.level} ${cls}`));
+    text.append(div('csx-row-name', c.name), div('csx-row-meta', tr('Level {0} {1}', c.level, cls)));
     const lvl = div('csx-row-lvl', String(c.level));
     row.append(crest, text, lvl);
     row.addEventListener('click', () => this.selectChar(c.id));
@@ -490,10 +494,10 @@ export class CharSelectPanel {
     const attrs = div('csx-attrs');
     const max = 40;
     const rows: Array<[string, number]> = [
-      ['Strength', def.base.strength],
-      ['Dexterity', def.base.dexterity],
-      ['Vitality', def.base.vitality],
-      ['Energy', def.base.energy],
+      [tr('Strength'), def.base.strength],
+      [tr('Dexterity'), def.base.dexterity],
+      [tr('Vitality'), def.base.vitality],
+      [tr('Energy'), def.base.energy],
     ];
     for (const [label, value] of rows) {
       const r = div('csx-attr');
@@ -511,9 +515,9 @@ export class CharSelectPanel {
     if (st) {
       const vit = div('csx-vitals');
       vit.append(
-        vital('life', Math.round(st.life), 'Life'),
-        vital('mana', Math.round(st.mana), 'Mana'),
-        vital('def', Math.round(st.defense), 'Defense'),
+        vital('life', Math.round(st.life), tr('Life')),
+        vital('mana', Math.round(st.mana), tr('Mana')),
+        vital('def', Math.round(st.defense), tr('Defense')),
       );
       d.appendChild(vit);
     }
@@ -522,7 +526,7 @@ export class CharSelectPanel {
     const starter = startingSkillFor(def.id);
     const sk = starter ? skillById(starter) : null;
     if (sk) {
-      d.appendChild(div('csx-label', 'Opening skill'));
+      d.appendChild(div('csx-label', tr('Opening skill')));
       const card = div('csx-skill');
       const img = document.createElement('img');
       img.className = 'csx-skill-ico';
@@ -531,14 +535,14 @@ export class CharSelectPanel {
       img.src = attempt(() => skillIconUri(sk.id, sk.effect, sk.damageType, sk.targeting === 'passive', sk.icon), '');
       const body = div('csx-skill-body');
       const head = div('csx-skill-head');
-      head.append(span('csx-skill-name', sk.name), span('csx-skill-key', 'Right click'));
+      head.append(span('csx-skill-name', sk.name), span('csx-skill-key', tr('Right click')));
       body.append(head, div('csx-skill-desc', sk.desc));
       card.append(img, body);
       d.appendChild(card);
     }
     const early = (STARTING_SKILL_HINTS[def.id] ?? []).filter((id) => id !== starter).slice(0, 4);
     if (early.length) {
-      d.appendChild(div('csx-label', 'Grows into'));
+      d.appendChild(div('csx-label', tr('Grows into')));
       const row = div('csx-early');
       for (const id of early) {
         const s = skillById(id);
@@ -580,9 +584,9 @@ export class CharSelectPanel {
     const cls = classById(c.classId);
     const dif = DIFFICULTIES.find((x) => x.id === c.difficulty);
 
-    d.appendChild(div('csx-kicker', `${cls?.name ?? c.classId} · ${dif?.name ?? 'Normal'}`));
+    d.appendChild(div('csx-kicker', `${cls?.name ?? c.classId} · ${dif?.name ?? tr('Normal')}`));
     d.appendChild(div('csx-name-big', c.name));
-    d.appendChild(div('csx-epithet', `Level ${c.level} ${cls?.title ?? ''}`.trim()));
+    d.appendChild(div('csx-epithet', tr('Level {0} {1}', c.level, cls?.title ?? '').trim()));
 
     const facts = div('csx-facts');
     const fact = (v: string, l: string): void => {
@@ -590,20 +594,20 @@ export class CharSelectPanel {
       f.append(div('csx-fact-v', v), div('csx-fact-l', l));
       facts.appendChild(f);
     };
-    fact(c.depthRecord > 0 ? String(c.depthRecord) : '-', 'Deepest');
-    fact(duration(c.playtime), 'Played');
-    fact(fmtInt(c.gold), 'Gold');
+    fact(c.depthRecord > 0 ? String(c.depthRecord) : '-', tr('Deepest'));
+    fact(duration(c.playtime), tr('Played'));
+    fact(fmtInt(c.gold), tr('Gold'));
     const unspent = c.statPoints + c.skillPoints;
-    fact(String(unspent), 'Unspent points');
+    fact(String(unspent), tr('Unspent points'));
     d.appendChild(facts);
 
     const st = attempt(() => computeStats(c), null);
     if (st) {
       const vit = div('csx-vitals');
       vit.append(
-        vital('life', Math.round(st.life), 'Life'),
-        vital('mana', Math.round(st.mana), 'Mana'),
-        vital('def', Math.round(st.defense), 'Defense'),
+        vital('life', Math.round(st.life), tr('Life')),
+        vital('mana', Math.round(st.mana), tr('Mana')),
+        vital('def', Math.round(st.defense), tr('Defense')),
       );
       d.appendChild(vit);
     }
@@ -611,10 +615,10 @@ export class CharSelectPanel {
     // What they are wearing, by rarity, so a strong character looks strong.
     const worn = Object.values(c.equipment).filter((x): x is NonNullable<typeof x> => !!x);
     if (worn.length) {
-      d.appendChild(div('csx-label', 'Equipped'));
+      d.appendChild(div('csx-label', tr('Equipped')));
       const list = div('csx-gear');
       for (const item of worn.slice(0, 10)) {
-        const g = span(`csx-gear-item r-${item.rarity}`, item.name);
+        const g = span(`csx-gear-item r-${item.rarity}`, itemDisplayName(item));
         list.appendChild(g);
       }
       d.appendChild(list);
@@ -635,7 +639,7 @@ export class CharSelectPanel {
   private syncBegin(res?: NameCheck): void {
     const check = res ?? checkName(this.nameInput.value, save.roster, save.account.fallen);
     const def = classById(this.selectedClass);
-    this.beginLabel.textContent = def ? `Begin as ${def.name}` : 'Begin';
+    this.beginLabel.textContent = def ? tr('Begin as {0}', def.name) : tr('Begin');
     this.beginBtn.disabled = !check.ok;
   }
 
@@ -648,7 +652,7 @@ export class CharSelectPanel {
     }
     this.retireBtn.replaceChildren(
       icon('trash', { size: 13 }),
-      span('', this.retireArmed ? `Retire ${c?.name ?? ''} forever?` : 'Retire'),
+      span('', this.retireArmed ? tr('Retire {0} forever?', c?.name ?? '') : tr('Retire')),
     );
     this.retireBtn.classList.toggle('is-armed', this.retireArmed);
   }
@@ -669,12 +673,12 @@ export class CharSelectPanel {
       null,
     );
     if (!created) {
-      events.emit('toast', { text: 'Could not forge that character.', kind: 'bad' });
+      events.emit('toast', { text: tr('Could not forge that character.'), kind: 'bad' });
       return;
     }
     save.setCharacter(created);
     uiSfx('ui.select');
-    events.emit('toast', { text: `${created.name} takes up the torch.`, kind: 'epic' });
+    events.emit('toast', { text: tr('{0} takes up the torch.', created.name), kind: 'epic' });
     this.nameInput.value = '';
     this.panel.close();
     void this.engine.goTo('town');
@@ -775,7 +779,7 @@ export class CharSelectPanel {
 
 function complexityPips(n: number): HTMLElement {
   const d = div('csx-row-cx');
-  d.title = ['', 'Straightforward', 'Some juggling', 'Demanding'][n] ?? '';
+  d.title = ['', tr('Straightforward'), tr('Some juggling'), tr('Demanding')][n] ?? '';
   for (let i = 1; i <= 3; i++) d.appendChild(span(i <= n ? 'on' : ''));
   return d;
 }

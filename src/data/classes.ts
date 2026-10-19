@@ -41,12 +41,10 @@ export const BASE_MANA = 15;
 export const CLASSES: CharClassDef[] = [
   {
     id: 'warden',
-    name: 'Knight',
-    title: 'Oathkeeper of the Broken Gate',
+    name: tr('Knight'),
+    title: tr('Oathkeeper of the Broken Gate'),
     blurb:
-      'The last order sworn to hold the stair. Knights fight with a shield planted and a blade already wet — ' +
-      'every wound they take is a debt the dark repays with interest. They do not dodge. They do not retreat. ' +
-      'They open arteries and wait.',
+      tr('The last order sworn to hold the stair. Knights fight with a shield planted and a blade already wet — every wound they take is a debt the dark repays with interest. They do not dodge. They do not retreat. They open arteries and wait.'),
     base: { strength: 30, dexterity: 20, vitality: 25, energy: 10 },
     perLevel: { life: 2.4, mana: 0.8, attackRating: 5 },
     lifePerVit: 4,
@@ -57,12 +55,10 @@ export const CLASSES: CharClassDef[] = [
   },
   {
     id: 'mage',
-    name: 'Mage',
-    title: 'Keeper of the Three Weathers',
+    name: tr('Mage'),
+    title: tr('Keeper of the Three Weathers'),
     blurb:
-      'They learned the fire in the Works, the storm on the Spire, and the cold at the bottom of the cistern. ' +
-      'A mage chooses which of the three to be: burn a room and let it cook, chain one bolt through the whole ' +
-      'pack, or lock them in ice and break them where they stand. Robes optional. Eyebrows are a luxury.',
+      tr('They learned the fire in the Works, the storm on the Spire, and the cold at the bottom of the cistern. A mage chooses which of the three to be: burn a room and let it cook, chain one bolt through the whole pack, or lock them in ice and break them where they stand. Robes optional. Eyebrows are a luxury.'),
     base: { strength: 15, dexterity: 20, vitality: 20, energy: 33 },
     perLevel: { life: 2.4, mana: 2.1, attackRating: 3 },
     lifePerVit: 3.4,
@@ -73,12 +69,10 @@ export const CLASSES: CharClassDef[] = [
   },
   {
     id: 'shadowblade',
-    name: 'Rogue',
-    title: 'The Quiet Between Heartbeats',
+    name: tr('Rogue'),
+    title: tr('The Quiet Between Heartbeats'),
     blurb:
-      'A guild that officially never existed and unofficially took the contract on the god of this place. ' +
-      'Rogues trade armour for arithmetic: a single opening, a coated edge, and the target is already ' +
-      'dead — it simply has not been told yet.',
+      tr('A guild that officially never existed and unofficially took the contract on the god of this place. Rogues trade armour for arithmetic: a single opening, a coated edge, and the target is already dead — it simply has not been told yet.'),
     base: { strength: 20, dexterity: 32, vitality: 20, energy: 15 },
     perLevel: { life: 2.4, mana: 1.3, attackRating: 8 },
     lifePerVit: 3.5,
@@ -89,12 +83,10 @@ export const CLASSES: CharClassDef[] = [
   },
   {
     id: 'revenant',
-    name: 'Revenant',
-    title: 'He Who Was Buried Twice',
+    name: tr('Revenant'),
+    title: tr('He Who Was Buried Twice'),
     blurb:
-      'Died at the third gate. Came back wrong, and brought company. The revenant treats corpses as currency: ' +
-      'raise them, bind them, spend them. What the dungeon takes from him he takes from everything else, one ' +
-      'stolen heartbeat at a time.',
+      tr('Died at the third gate. Came back wrong, and brought company. The revenant treats corpses as currency: raise them, bind them, spend them. What the dungeon takes from him he takes from everything else, one stolen heartbeat at a time.'),
     base: { strength: 18, dexterity: 18, vitality: 24, energy: 30 },
     perLevel: { life: 2.4, mana: 2, attackRating: 3 },
     lifePerVit: 3,
@@ -105,12 +97,10 @@ export const CLASSES: CharClassDef[] = [
   },
   {
     id: 'ranger',
-    name: 'Ranger',
-    title: 'Keeper of the Long Shot',
+    name: tr('Ranger'),
+    title: tr('Keeper of the Long Shot'),
     blurb:
-      'They learned the dungeon by mapping the distances in it. A ranger opens at the far wall and spends the ' +
-      'whole fight keeping it there — traps behind, arrows ahead, and a step back for every step you take. ' +
-      'Let one close the gap and the answer is a blade in the ribs, but that is not the plan.',
+      tr('They learned the dungeon by mapping the distances in it. A ranger opens at the far wall and spends the whole fight keeping it there — traps behind, arrows ahead, and a step back for every step you take. Let one close the gap and the answer is a blade in the ribs, but that is not the plan.'),
     base: { strength: 18, dexterity: 35, vitality: 20, energy: 12 },
     perLevel: { life: 1.9, mana: 1.1, attackRating: 9 },
     lifePerVit: 3,
@@ -165,12 +155,12 @@ export const STARTING_SKILL_HINTS: Record<CharClassId, string[]> = {
 
 /** Flavour lines used by the character select screen when hovering a class. */
 export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
-  warden: ['Blocks into bleeds.', 'Wants the hit.', 'Slow, immovable, inevitable.'],
-  mage: ['Burn it, chain it, or freeze it.', 'Three weathers, one hand.', 'Glass, but the room is on fire.'],
-  shadowblade: ['One window is enough.', 'Poison does the waiting.', 'Crit or leave.'],
-  revenant: ['The army is the weapon.', 'Corpses are ammunition.', 'Steal what you cannot survive.'],
-  ranger: ['Distance is the build.', 'Never let them arrive.', 'The floor is the trap.'],
-  shapeshifter: ['Three skins, one hunger.', 'Cat for the kill, wolf for the hunt, bear for the wall.', 'The man is only the first shape.'],
+  warden: [tr('Blocks into bleeds.'), tr('Wants the hit.'), tr('Slow, immovable, inevitable.')],
+  mage: [tr('Burn it, chain it, or freeze it.'), tr('Three weathers, one hand.'), tr('Glass, but the room is on fire.')],
+  shadowblade: [tr('One window is enough.'), tr('Poison does the waiting.'), tr('Crit or leave.')],
+  revenant: [tr('The army is the weapon.'), tr('Corpses are ammunition.'), tr('Steal what you cannot survive.')],
+  ranger: [tr('Distance is the build.'), tr('Never let them arrive.'), tr('The floor is the trap.')],
+  shapeshifter: [tr('Three skins, one hunger.'), tr('Cat for the kill, wolf for the hunt, bear for the wall.'), tr('The man is only the first shape.')],
   paladin: PALADIN_TAGLINES,
 };
 
@@ -180,6 +170,7 @@ export const CLASS_TAGLINES: Record<CharClassId, string[]> = {
 // ---------------------------------------------------------------------------
 
 import type { ItemCategory } from '../types';
+import { tr } from '../core/I18n';
 
 export interface ClassEquipRules {
   /** Categories this class can never equip. */
@@ -204,32 +195,32 @@ export const CLASS_EQUIP: Record<CharClassId, ClassEquipRules> = {
     denied: ['shield', 'staff', 'wand', 'orb', 'scepter', 'mace'],
     dualWield: false,
     offHandExtra: ['quiver'],
-    note: 'Rangers need both hands on the bow. A quiver is the only off hand.',
+    note: tr('Rangers need both hands on the bow. A quiver is the only off hand.'),
   },
   warden: {
     denied: ['bow', 'crossbow', 'wand', 'staff', 'orb'],
     dualWield: false,
     offHandExtra: [],
-    note: 'Knights fight with a blade and a planted shield.',
+    note: tr('Knights fight with a blade and a planted shield.'),
   },
   mage: {
     denied: ['bow', 'crossbow', 'mace'],
     dualWield: false,
     offHandExtra: ['orb', 'shield'],
-    note: 'Mages channel through a focus or hold a shield.',
+    note: tr('Mages channel through a focus or hold a shield.'),
   },
   shadowblade: {
     // No shields, ever. Two blades instead.
     denied: ['shield', 'staff', 'mace', 'crossbow'],
     dualWield: true,
     offHandExtra: ['sword', 'axe', 'dagger', 'quiver'],
-    note: 'Rogues carry a second blade where a shield would go.',
+    note: tr('Rogues carry a second blade where a shield would go.'),
   },
   revenant: {
     denied: ['bow', 'crossbow', 'spear'],
     dualWield: false,
     offHandExtra: ['orb', 'shield'],
-    note: 'Revenants bind their dead through a focus or a warding shield.',
+    note: tr('Revenants bind their dead through a focus or a warding shield.'),
   },
   shapeshifter: SHAPESHIFTER_EQUIP,
   paladin: PALADIN_EQUIP,

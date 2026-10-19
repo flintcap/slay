@@ -13,6 +13,7 @@ import alegreyaLicence from '../../node_modules/@fontsource-variable/alegreya/LI
 import cinzelLicence from '../../node_modules/@fontsource-variable/cinzel/LICENSE?raw';
 import monoLicence from '../../node_modules/@fontsource-variable/jetbrains-mono/LICENSE?raw';
 import { div, span } from './Widgets';
+import { tr } from '../core/I18n';
 
 interface AssetGroup {
   author: string;
@@ -75,26 +76,28 @@ function licence(title: string, body: string): HTMLDetailsElement {
 
 /** Fills `into` with the credits and the licence texts. */
 export function renderCredits(into: HTMLElement): void {
+  // i18n-ignore-start: names of typefaces and the people who made them.
   const fonts = [
     ['Inter', 'Rasmus Andersson', interLicence],
     ['Alegreya', 'Juan Pablo del Peral, Huerta Tipográfica', alegreyaLicence],
     ['Cinzel', 'Natanael Gama', cinzelLicence],
     ['JetBrains Mono', 'JetBrains', monoLicence],
   ] as const;
+  // i18n-ignore-end
 
   const made = div('cr-block');
   made.append(
-    div('stg-group', 'Made with'),
-    div('cr-line', 'The models, animation, effects and every map are built in code for this game.'),
-    div('cr-line', 'three.js, the 3D engine, by the three.js authors. MIT licence.'),
+    div('stg-group', tr('Made with')),
+    div('cr-line', tr('The models, animation, effects and every map are built in code for this game.')),
+    div('cr-line', tr('three.js, the 3D engine, by the three.js authors. MIT licence.')),
   );
   into.appendChild(made);
 
   const type = div('cr-block');
-  type.appendChild(div('stg-group', 'Typefaces'));
+  type.appendChild(div('stg-group', tr('Typefaces')));
   for (const [name, by] of fonts) {
     const r = div('cr-row');
-    r.append(span('cr-name', name), span('cr-by', `${by}. SIL Open Font Licence 1.1.`));
+    r.append(span('cr-name', name), span('cr-by', tr('{0}. SIL Open Font Licence 1.1.', by)));
     type.appendChild(r);
   }
   into.appendChild(type);
@@ -102,33 +105,29 @@ export function renderCredits(into: HTMLElement): void {
   const { groups, total } = assetGroups();
   const art = div('cr-block');
   art.append(
-    div('stg-group', 'Textures, sounds and music'),
-    div('cr-line', `${total} files, every one CC0: given to the public domain by the people below. Thank you.`),
+    div('stg-group', tr('Textures, sounds and music')),
+    div('cr-line', tr('{0} files, every one CC0: given to the public domain by the people below. Thank you.', total)),
   );
   for (const g of groups) {
     const r = div('cr-row');
-    r.append(span('cr-name', g.author), span('cr-by', `${[...g.kinds].join(', ')} from ${g.site} (${g.count})`));
+    r.append(span('cr-name', g.author), span('cr-by', tr('{0} from {1} ({2})', [...g.kinds].join(', '), g.site, g.count)));
     art.appendChild(r);
   }
   into.appendChild(art);
 
   const lic = div('cr-block');
-  lic.appendChild(div('stg-group', 'Licences'));
-  lic.appendChild(licence('three.js: MIT licence', threeLicence.trim()));
+  lic.appendChild(div('stg-group', tr('Licences')));
+  lic.appendChild(licence(tr('three.js: MIT licence'), threeLicence.trim()));
   lic.appendChild(
     licence(
-      'Typefaces: SIL Open Font Licence 1.1',
+      tr('Typefaces: SIL Open Font Licence 1.1'),
       `${fonts.map(([name, , text]) => `${name}: ${fontCopyright(text)}`).join('\n')}\n\n${oflText(interLicence)}`,
     ),
   );
   lic.appendChild(
     licence(
-      'Textures, sounds and music: CC0 1.0',
-      'CC0 1.0 Universal (public domain dedication).\n' +
-        'The people who made these files gave up all their rights in them, worldwide.\n' +
-        'You can copy, change and share them, even for money, without asking.\n' +
-        'https://creativecommons.org/publicdomain/zero/1.0/\n\n' +
-        'Every file, with its source page and author, is listed in ASSETS.md.',
+      tr('Textures, sounds and music: CC0 1.0'),
+      tr('CC0 1.0 Universal (public domain dedication).\nThe people who made these files gave up all their rights in them, worldwide.\nYou can copy, change and share them, even for money, without asking.\nhttps://creativecommons.org/publicdomain/zero/1.0/\n\nEvery file, with its source page and author, is listed in ASSETS.md.'),
     ),
   );
   into.appendChild(lic);

@@ -14,6 +14,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { BIOMES } from '../world/DungeonGen';
 import { bossPortraitUri } from '../art/BossPortraits';
+import { tr } from '../core/I18n';
 
 interface Queued {
   build: () => HTMLElement;
@@ -124,8 +125,8 @@ export function showDepthCard(
 ): void {
   const def = BIOMES.find((b) => b.id === biome);
   const tint = def ? hex(def.accentColor) : 'var(--gold)';
-  const name = place || def?.name || `Tier ${depth}`;
-  const kicker = mapName ? `${mapName}  ·  Tier ${depth}` : of > 1 ? `Tier ${depth}  ·  Area ${level} of ${of}` : `Tier ${depth}`;
+  const name = place || def?.name || tr('Tier {0}', depth);
+  const kicker = mapName ? tr('{0}  ·  Tier {1}', mapName, depth) : of > 1 ? tr('Tier {0}  ·  Area {1} of {2}', depth, level, of) : tr('Tier {0}', depth);
   enqueue({ build: () => depthCard(kicker, name, blurb, tint), hold: 3600, life: 4800 });
 }
 
@@ -133,7 +134,7 @@ export function showDepthCard(
 export function showZoneCard(name: string, biome: string, order: number, of: number, depth: number): void {
   const def = BIOMES.find((b) => b.id === biome);
   const tint = def ? hex(def.accentColor) : 'var(--gold)';
-  const kicker = `Tier ${depth}  ·  Zone ${order + 1} of ${of}`;
+  const kicker = tr('Tier {0}  ·  Zone {1} of {2}', depth, order + 1, of);
   enqueue({ build: () => depthCard(kicker, name, undefined, tint), hold: 2400, life: 3600 });
 }
 
@@ -251,11 +252,11 @@ function onDepth(p: { depth: number; level: number; of: number; place?: string; 
   if (save.settings.titleCards === false) return;
   if (p.depth <= 0) {
     // Town: a quieter card than a floor's.
-    const kicker = clearedDepth > 0 ? `Tier ${clearedDepth} cleared` : 'Sanctuary';
-    const blurb = clearedDepth > 0 ? 'The tier is banked. The next portal opens deeper.' : undefined;
+    const kicker = clearedDepth > 0 ? tr('Tier {0} cleared', clearedDepth) : tr('Sanctuary');
+    const blurb = clearedDepth > 0 ? tr('The tier is banked. The next portal opens deeper.') : undefined;
     clearedDepth = 0;
     enqueue({
-      build: () => depthCard(kicker, 'The Town', blurb, '#d8b45a'),
+      build: () => depthCard(kicker, tr('The Town'), blurb, '#d8b45a'),
       hold: 2600,
       life: 4200,
     });

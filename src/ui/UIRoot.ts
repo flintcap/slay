@@ -53,6 +53,7 @@ import {
   emptyState,
   modal,
 } from './Widgets';
+import { tr } from '../core/I18n';
 
 interface PanelHandle {
   open(): void;
@@ -131,8 +132,8 @@ function closeOthers(keep: string): void {
  * survives it, so a hero in the depths cannot bank gear a moment before dying.
  */
 const TOWN_ONLY: Record<string, string> = {
-  stash: 'The vault is in town.',
-  blacksmith: 'The forge is in town.',
+  stash: tr('The vault is in town.'),
+  blacksmith: tr('The forge is in town.'),
 };
 
 export function openPanel(id: string): void {
@@ -211,8 +212,8 @@ class MemorialPanel {
   constructor() {
     this.panel = new Panel({
       id: 'memorial',
-      title: 'The Fallen',
-      subtitle: 'Every name here reached further than the last',
+      title: tr('The Fallen'),
+      subtitle: tr('Every name here reached further than the last'),
       icon: 'skull',
       width: 560,
       scrim: true,
@@ -237,7 +238,7 @@ class MemorialPanel {
     clear(this.list);
     const fallen = save.account.fallen;
     if (!fallen.length) {
-      this.list.appendChild(emptyState('No one has died yet. Give it time.', 'skull'));
+      this.list.appendChild(emptyState(tr('No one has died yet. Give it time.'), 'skull'));
       return;
     }
     // A short reckoning above the names: how many, how deep, and what keeps
@@ -254,9 +255,9 @@ class MemorialPanel {
       add(c, div('mem-sum-v', v), div('mem-sum-l', l));
       sum.appendChild(c);
     };
-    cell(String(fallen.length), 'Fallen');
-    cell(`T${deepest}`, 'Deepest grave');
-    cell(most > 1 ? nemesis : '-', most > 1 ? `Nemesis · ${most} kills` : 'Nemesis');
+    cell(String(fallen.length), tr('Fallen'));
+    cell(`T${deepest}`, tr('Deepest grave'));
+    cell(most > 1 ? nemesis : '-', most > 1 ? tr('Nemesis · {0} kills', most) : tr('Nemesis'));
     this.list.appendChild(sum);
     for (const f of fallen) {
       const row = div('fallen-row');
@@ -266,7 +267,7 @@ class MemorialPanel {
       const body = div('');
       body.appendChild(span('fallen-name', f.name));
       body.appendChild(
-        span('fallen-detail', `Level ${f.level} ${classById(f.classId)?.name ?? f.classId}, slain by ${f.killedBy} · ${timeAgo(f.at)}`)
+        span('fallen-detail', tr('Level {0} {1}, slain by {2} · {3}', f.level, classById(f.classId)?.name ?? f.classId, f.killedBy, timeAgo(f.at)))
       );
       const depth = span('fallen-depth', `T${f.depth}`);
       add(row, mark, body, depth);
@@ -310,8 +311,8 @@ export function mountUI(engine: Engine): void {
   // Same shop, different shelf. See `VendorOpts`.
   const alchemist = new VendorPanel({
     id: 'alchemist',
-    title: 'Apothecary',
-    subtitle: 'Flasks, tonics and oils. Buy more than you think you need',
+    title: tr('Apothecary'),
+    subtitle: tr('Flasks, tonics and oils. Buy more than you think you need'),
     icon: 'potion',
     only: 'potion',
   });
@@ -393,12 +394,12 @@ export function mountUI(engine: Engine): void {
   // it held, and a reload from the browser does the same job.
   events.on('gpu:lost', () => {
     modal({
-      title: 'Graphics device lost',
+      title: tr('Graphics device lost'),
       icon: 'warn',
       tone: 'danger',
-      body: '<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p><p>Reload to keep playing. You start again in town with your gear, gold and levels. Leaving a fight this way does not count as fleeing.</p>',
-      confirmLabel: 'Reload',
-      cancelLabel: 'Not now',
+      body: tr('<p>Your graphics card stopped answering (a driver reset, sleep, or too many tabs). The game is frozen and your hero is saved.</p><p>Reload to keep playing. You start again in town with your gear, gold and levels. Leaving a fight this way does not count as fleeing.</p>'),
+      confirmLabel: tr('Reload'),
+      cancelLabel: tr('Not now'),
       onConfirm: () => location.reload(),
     });
   });

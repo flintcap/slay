@@ -18,6 +18,7 @@ import {
   emptyState,
   runtime,
 } from './Widgets';
+import { tr } from '../core/I18n';
 
 interface TrackedObjective {
   desc: string;
@@ -34,8 +35,8 @@ export class QuestLogPanel {
   constructor() {
     this.panel = new Panel({
       id: 'questLog',
-      title: 'Contract',
-      subtitle: 'What you agreed to do down here',
+      title: tr('Contract'),
+      subtitle: tr('What you agreed to do down here'),
       icon: 'quest',
       width: 560,
     });
@@ -108,8 +109,8 @@ export class QuestLogPanel {
   private ensure(): void {
     if (this.quest) return;
     this.quest = {
-      name: runtime.depth > 0 ? `Tier ${runtime.depth} contract` : 'Contract',
-      flavor: 'The guild pays by the corpse and asks no questions about method.',
+      name: runtime.depth > 0 ? tr('Tier {0} contract', runtime.depth) : tr('Contract'),
+      flavor: tr('The guild pays by the corpse and asks no questions about method.'),
       objectives: [],
       complete: false,
     };
@@ -119,7 +120,7 @@ export class QuestLogPanel {
     clear(this.body);
     const q = this.quest;
     if (!q || (!q.objectives.length && !q.complete)) {
-      this.body.appendChild(emptyState('No active contract. Step through a town portal and one will find you.', 'quest'));
+      this.body.appendChild(emptyState(tr('No active contract. Step through a town portal and one will find you.'), 'quest'));
       return;
     }
 
@@ -153,15 +154,15 @@ export class QuestLogPanel {
       d.appendChild(span('', label));
       return d;
     };
-    reward.appendChild(item('coin', 'Gold on completion'));
-    reward.appendChild(item('sparkle', 'Bonus experience'));
-    reward.appendChild(item('bag', 'Extra drops from the boss'));
+    reward.appendChild(item('coin', tr('Gold on completion')));
+    reward.appendChild(item('sparkle', tr('Bonus experience')));
+    reward.appendChild(item('bag', tr('Extra drops from the boss')));
     this.body.appendChild(reward);
 
     if (q.complete) {
       const done = div('trade-note');
       done.appendChild(icon('check', { size: 13 }));
-      done.appendChild(span('', 'Contract fulfilled. Paid when you clear the map.'));
+      done.appendChild(span('', tr('Contract fulfilled. Paid when you clear the map.')));
       this.body.appendChild(done);
     }
   }

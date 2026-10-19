@@ -45,6 +45,7 @@ import {
   summon,
   type CombatContext,
 } from './Abilities';
+import { tr } from '../core/I18n';
 
 export type MiniBossKind =
   | 'warlord'
@@ -65,13 +66,13 @@ interface KindDef {
 }
 
 export const MINIBOSS_KINDS: readonly KindDef[] = [
-  { id: 'warlord', noun: 'Warlord', title: 'Sounds the horn as it weakens', roles: ['melee', 'brute', 'support', 'swarm'] },
-  { id: 'executioner', noun: 'Executioner', title: 'Marks you, then leaps', roles: ['brute', 'melee'] },
-  { id: 'stalker', noun: 'Stalker', title: 'Strikes from your shadow', roles: ['ambusher', 'melee'] },
-  { id: 'pyrelord', noun: 'Pyrelord', title: 'Cages its prey in flame', roles: ['caster', 'support'] },
-  { id: 'broodmother', noun: 'Broodmother', title: 'Shielded while its brood lives', roles: ['swarm', 'support', 'caster'] },
-  { id: 'deadeye', noun: 'Deadeye', title: 'Fires down the lines it shows you', roles: ['ranged'] },
-  { id: 'rampager', noun: 'Rampager', title: 'Charges blind; walls stop it cold', roles: ['brute', 'melee'] },
+  { id: 'warlord', noun: tr('Warlord'), title: tr('Sounds the horn as it weakens'), roles: ['melee', 'brute', 'support', 'swarm'] },
+  { id: 'executioner', noun: tr('Executioner'), title: tr('Marks you, then leaps'), roles: ['brute', 'melee'] },
+  { id: 'stalker', noun: tr('Stalker'), title: tr('Strikes from your shadow'), roles: ['ambusher', 'melee'] },
+  { id: 'pyrelord', noun: tr('Pyrelord'), title: tr('Cages its prey in flame'), roles: ['caster', 'support'] },
+  { id: 'broodmother', noun: tr('Broodmother'), title: tr('Shielded while its brood lives'), roles: ['swarm', 'support', 'caster'] },
+  { id: 'deadeye', noun: tr('Deadeye'), title: tr('Fires down the lines it shows you'), roles: ['ranged'] },
+  { id: 'rampager', noun: tr('Rampager'), title: tr('Charges blind; walls stop it cold'), roles: ['brute', 'melee'] },
 ];
 
 const KIND_BY_ID = new Map(MINIBOSS_KINDS.map((k) => [k.id, k]));
@@ -234,7 +235,7 @@ export class MiniBossController implements MiniBossHook {
       this.lastStand = true;
       self.buff('miniboss_last_stand', 9999, { speed: 1.15, attackSpeed: 1.3, damage: 1.15 });
       ctx.fx.burst('crit', p.x, 1.2 * self.sizeScale, p.z, { count: 36, color: 0xff3020 });
-      events.emit('toast', { text: `${self.name} makes its last stand!`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} makes its last stand!', self.name), kind: 'bad' });
       events.emit('shake', { amount: 0.35, duration: 0.3 });
     }
 
@@ -318,7 +319,7 @@ export class MiniBossController implements MiniBossHook {
     const p = self.root.position;
     self.rootTimer = 0.9;
     ctx.decals.cue('ring', p.x, p.z, 12, 0, 0.9, 0xffc040);
-    events.emit('toast', { text: `${self.name} sounds the horn!`, kind: 'bad' });
+    events.emit('toast', { text: tr('{0} sounds the horn!', self.name), kind: 'bad' });
     this.run([
       [
         0.9,
@@ -351,7 +352,7 @@ export class MiniBossController implements MiniBossHook {
       c.decals.telegraph('circle', h.x, h.z, R, 0, seconds, 0xff2040);
     };
     self.rootTimer = 1.0;
-    events.emit('toast', { text: `${self.name} marks you!`, kind: 'bad' });
+    events.emit('toast', { text: tr('{0} marks you!', self.name), kind: 'bad' });
     mark(ctx, 0.25);
     this.run([
       [0.25, (c) => mark(c, 0.25)],
@@ -432,7 +433,7 @@ export class MiniBossController implements MiniBossHook {
     self.rootTimer = 1.0;
     const fill = 4;
     ctx.decals.telegraph('circle', h.x, h.z, fill, 0, 2.4, 0xff5020);
-    events.emit('toast', { text: `${self.name} cages you in flame!`, kind: 'bad' });
+    events.emit('toast', { text: tr('{0} cages you in flame!', self.name), kind: 'bad' });
     this.run([
       [2.4, (c) => {
         circleHit(self, c, h.x, h.z, fill, 2.6, 'fire', 'pyre_cage', { knockback: 2 });
@@ -550,7 +551,7 @@ export class MiniBossController implements MiniBossHook {
             self.buff('rampager_dazed', 2.2, { defense: 0.5, taken: 1.35 });
             cc.fx.burst('dust', self.root.position.x, 1, self.root.position.z, { count: 30, scale: 2 });
             events.emit('shake', { amount: 0.45, duration: 0.3 });
-            events.emit('toast', { text: `${self.name} slams into the wall!`, kind: 'good' });
+            events.emit('toast', { text: tr('{0} slams into the wall!', self.name), kind: 'good' });
           },
         });
       }],

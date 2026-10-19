@@ -33,6 +33,7 @@ import { journal } from './JournalPanel';
 import { installStoryBosses } from './StoryBosses';
 import { installStoryPlaces } from './StoryPlaces';
 import { DEV_TOOLS } from '../core/DevTools';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // DOM
@@ -134,12 +135,12 @@ function nextCard(): void {
   }
   if (card.source) el.appendChild(div('story-card-source', `— ${card.source}`));
   const ft = div('story-card-ft');
-  const kept = `Kept in your journal (${keyLabel(keyFor('KeyJ', save.settings.keybinds))})`;
-  ft.appendChild(span('', queue.length ? `${kept} · ${queue.length} more` : kept));
+  const kept = tr('Kept in your journal ({0})', keyLabel(keyFor('KeyJ', save.settings.keybinds)));
+  ft.appendChild(span('', queue.length ? tr('{0} · {1} more', kept, queue.length) : kept));
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'btn btn-ghost btn-sm';
-  close.textContent = 'Close';
+  close.textContent = tr('Close');
   close.addEventListener('click', (e) => {
     e.stopPropagation();
     dismiss();
@@ -171,7 +172,7 @@ function dismiss(): void {
 
 function chapterCard(ch: Chapter): Card {
   return {
-    kicker: ch.depth === 0 ? 'The descent' : ch.id.startsWith('ledger.') ? 'The Deep Ledger' : `The descent · Tier ${ch.depth}`,
+    kicker: ch.depth === 0 ? tr('The descent') : ch.id.startsWith('ledger.') ? tr('The Deep Ledger') : tr('The descent · Tier {0}', ch.depth),
     title: ch.title,
     text: ch.text,
     kind: 'chapter',

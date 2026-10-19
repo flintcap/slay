@@ -22,6 +22,7 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { onScreenRatio, screenRatio } from '../core/Screen';
 import { FONT_TITLE, FONT_UI } from './Fonts';
+import { tr, numText, groupSeparator } from '../core/I18n';
 
 type Kind = 'hit' | 'crit' | 'hurt' | 'heal' | 'mana' | 'word' | 'level';
 
@@ -163,13 +164,13 @@ const _v = new THREE.Vector3();
 /** "1,234", "12.3K", "1.24M": the number has to fit over a monster's head. */
 export function compactNumber(n: number): string {
   const v = Math.max(1, Math.round(n));
-  if (v >= 1e6) return `${(v / 1e6).toFixed(v >= 1e7 ? 1 : 2)}M`;
-  if (v >= 1e4) return `${(v / 1e3).toFixed(v >= 1e5 ? 0 : 1)}K`;
+  if (v >= 1e6) return `${numText(v / 1e6, v >= 1e7 ? 1 : 2)}M`;
+  if (v >= 1e4) return `${numText(v / 1e3, v >= 1e5 ? 0 : 1)}K`;
   // By hand: toLocaleString looks up the locale's rules on every call, and
   // this runs for every hit.
   if (v < 1000) return String(v);
   const t = v % 1000;
-  return `${Math.floor(v / 1000)},${t < 10 ? '00' : t < 100 ? '0' : ''}${t}`;
+  return `${Math.floor(v / 1000)}${groupSeparator()}${t < 10 ? '00' : t < 100 ? '0' : ''}${t}`;
 }
 
 export class CombatTextLayer {
@@ -223,7 +224,7 @@ export class CombatTextLayer {
         }
       }),
       events.on('enemy:missed', (e) => {
-        if (show()) this.word('MISS', e.x, e.y + 0.35, e.z, '#b8b2a6');
+        if (show()) this.word(tr('MISS'), e.x, e.y + 0.35, e.z, '#b8b2a6');
       }),
       events.on('player:damaged', (e) => {
         if (!show() || e.amount <= 0) return;
@@ -236,15 +237,15 @@ export class CombatTextLayer {
       events.on('player:evaded', () => {
         if (!show()) return;
         // Higher than the heal and hurt numbers so the three never collide.
-        this.word('DODGE', this.hero.x, 2.9, this.hero.z, '#bfe4ff');
+        this.word(tr('DODGE'), this.hero.x, 2.9, this.hero.z, '#bfe4ff');
       }),
       events.on('sfx', (e) => {
-        if (show() && (e.id === 'block' || e.id === 'parry')) this.word(e.id === 'parry' ? 'PARRY' : 'BLOCK', this.hero.x, 2.9, this.hero.z, '#f0d79a');
+        if (show() && (e.id === 'block' || e.id === 'parry')) this.word(e.id === 'parry' ? tr('PARRY') : tr('BLOCK'), this.hero.x, 2.9, this.hero.z, '#f0d79a');
       }),
       events.on('player:levelUp', (e) => {
         this.spawn({
           kind: 'level',
-          text: `LEVEL ${e.level}`,
+          text: tr('LEVEL {0}', e.level),
           amount: 0,
           x: this.hero.x,
           y: 2.6,

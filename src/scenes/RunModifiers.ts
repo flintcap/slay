@@ -41,6 +41,7 @@ import { MONSTERS, rollAffixes } from '../data/monsters';
 import { registerStatus } from '../data/statuses';
 import { RUN_MODIFIERS, modifierId, modifierTier } from '../world/DungeonGen';
 import { showRunModifiers } from '../ui/RunModStrip';
+import { tr } from '../core/I18n';
 
 export interface ModifierHost {
   scene: THREE.Scene;
@@ -77,7 +78,7 @@ export const MOD_TUNING = {
 for (let t = 1; t <= 5; t++) {
   registerStatus({
     id: `run.fragile.${t}`,
-    name: 'Brittle Bones',
+    name: tr('Brittle Bones'),
     polarity: -1,
     maxStacks: 1,
     mods: {
@@ -91,20 +92,20 @@ for (let t = 1; t <= 5; t++) {
     },
     color: 0xd8c8a8,
     icon: 'skull',
-    desc: `+${MOD_TUNING.fragile * t}% damage, but -${MOD_TUNING.fragile * t}% to every resistance.`,
+    desc: tr('+{0}% damage, but -{1}% to every resistance.', MOD_TUNING.fragile * t, MOD_TUNING.fragile * t),
     tags: ['curse'],
     stacking: 'refresh',
     baseDuration: 99999,
   });
   registerStatus({
     id: `run.greed.${t}`,
-    name: 'Hoard',
+    name: tr('Hoard'),
     polarity: 1,
     maxStacks: 1,
     mods: { magicFind: MOD_TUNING.greedFind * t, goldFind: MOD_TUNING.greedFind * t * 1.6 },
     color: 0xffc63a,
     icon: 'coin',
-    desc: `Treasure runs rich: +${MOD_TUNING.greedFind * t}% magic find and +${Math.round(MOD_TUNING.greedFind * t * 1.6)}% gold find.`,
+    desc: tr('Treasure runs rich: +{0}% magic find and +{1}% gold find.', MOD_TUNING.greedFind * t, Math.round(MOD_TUNING.greedFind * t * 1.6)),
     tags: ['buff'],
     stacking: 'refresh',
     baseDuration: 99999,
@@ -113,13 +114,13 @@ for (let t = 1; t <= 5; t++) {
 for (let n = 1; n <= 30; n++) {
   registerStatus({
     id: `run.spoils.${n}`,
-    name: 'Spoils of Danger',
+    name: tr('Spoils of Danger'),
     polarity: 1,
     maxStacks: 1,
     mods: { magicFind: MOD_TUNING.rewardFind * n, goldFind: MOD_TUNING.rewardFind * n },
     color: 0xf5d76e,
     icon: 'star',
-    desc: `This descent's dangers pay: +${MOD_TUNING.rewardFind * n}% magic and gold find.`,
+    desc: tr('This descent\'s dangers pay: +{0}% magic and gold find.', MOD_TUNING.rewardFind * n),
     tags: ['buff'],
     stacking: 'refresh',
     baseDuration: 99999,
@@ -204,7 +205,7 @@ export class RunModifiers {
     if (index === 0) {
       const list = this.describe();
       showRunModifiers(list);
-      if (list.length) toast(`This descent: ${list.map((m) => m.name).join(', ')}.`, 'info');
+      if (list.length) toast(tr('This descent: {0}.', list.map((m) => m.name).join(', ')), 'info');
     }
   }
 
@@ -380,7 +381,7 @@ export class RunModifiers {
       if (this.ambushIn <= 0) {
         this.ambushIn = 38 - 6 * ambush;
         this.spawnAround(pos, 3 + ambush, 'normal', 7, 10, 'ambush');
-        toast('They were waiting in the dark.', 'bad');
+        toast(tr('They were waiting in the dark.'), 'bad');
       }
     }
     const rift = this.tier('mod.void');
@@ -389,7 +390,7 @@ export class RunModifiers {
       if (this.riftIn <= 0) {
         this.riftIn = 50 - 8 * rift;
         this.spawnAround(pos, 2 + rift, 'champion', 6, 9, 'rift');
-        toast('Reality tears open.', 'bad');
+        toast(tr('Reality tears open.'), 'bad');
       }
     }
     if (this.stalkerIn >= 0) {
@@ -458,7 +459,7 @@ export class RunModifiers {
     e.life = e.maxLife;
     e.stats.life = e.maxLife;
     if (e.ai) e.ai.fixateOnPlayer = true;
-    toast('Something has followed you down.', 'epic');
+    toast(tr('Something has followed you down.'), 'epic');
   }
 
   dispose(): void {

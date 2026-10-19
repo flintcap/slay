@@ -13,6 +13,7 @@
  */
 
 import type { MonsterAffixDef } from '../types';
+import { tr } from '../core/I18n';
 
 const ALL: MonsterAffixDef[] = [];
 
@@ -25,8 +26,8 @@ function affix(a: MonsterAffixDef): MonsterAffixDef {
 
 affix({
   id: 'extra_fast',
-  name: 'Extra Fast',
-  desc: 'Moves and strikes far quicker than it should.',
+  name: tr('Extra Fast'),
+  desc: tr('Moves and strikes far quicker than it should.'),
   minDepth: 1,
   weight: 12,
   mods: { speed: 1.45, attackSpeed: 1.4 },
@@ -37,8 +38,8 @@ affix({
 
 affix({
   id: 'extra_tough',
-  name: 'Fortified',
-  desc: 'A thick hide that shrugs off the first dozen blows.',
+  name: tr('Fortified'),
+  desc: tr('A thick hide that shrugs off the first dozen blows.'),
   minDepth: 1,
   weight: 12,
   mods: { life: 1.9, defense: 1.5 },
@@ -48,8 +49,8 @@ affix({
 
 affix({
   id: 'berserker',
-  name: 'Berserker',
-  desc: 'Hits harder the closer it is to death.',
+  name: tr('Berserker'),
+  desc: tr('Hits harder the closer it is to death.'),
   minDepth: 3,
   weight: 10,
   mods: { damage: 1.25 },
@@ -60,8 +61,8 @@ affix({
 
 affix({
   id: 'juggernaut',
-  name: 'Juggernaut',
-  desc: 'Cannot be slowed, stunned, frozen or knocked back.',
+  name: tr('Juggernaut'),
+  desc: tr('Cannot be slowed, stunned, frozen or knocked back.'),
   minDepth: 6,
   weight: 8,
   mods: { life: 1.6, speed: 0.92 },
@@ -72,8 +73,8 @@ affix({
 
 affix({
   id: 'stoneskin',
-  name: 'Stoneskin',
-  desc: 'Physical blows glance off; magic still bites.',
+  name: tr('Stoneskin'),
+  desc: tr('Physical blows glance off; magic still bites.'),
   minDepth: 5,
   weight: 8,
   mods: { defense: 2.2, speed: 0.9 },
@@ -84,8 +85,8 @@ affix({
 
 affix({
   id: 'missile_dampening',
-  name: 'Missile Dampening',
-  desc: 'Projectiles slow to a crawl before they reach it.',
+  name: tr('Missile Dampening'),
+  desc: tr('Projectiles slow to a crawl before they reach it.'),
   minDepth: 8,
   weight: 6,
   mods: { defense: 1.2 },
@@ -99,8 +100,8 @@ affix({
 
 affix({
   id: 'fire_enchanted',
-  name: 'Fire Enchanted',
-  desc: 'Wreathed in flame; leaves burning ground and detonates on death.',
+  name: tr('Fire Enchanted'),
+  desc: tr('Wreathed in flame; leaves burning ground and detonates on death.'),
   minDepth: 2,
   weight: 11,
   mods: { damage: 1.15 },
@@ -112,8 +113,8 @@ affix({
 
 affix({
   id: 'cold_enchanted',
-  name: 'Cold Enchanted',
-  desc: 'Chills everything nearby and shatters into shards when killed.',
+  name: tr('Cold Enchanted'),
+  desc: tr('Chills everything nearby and shatters into shards when killed.'),
   minDepth: 2,
   weight: 11,
   mods: { damage: 1.1, life: 1.15 },
@@ -125,8 +126,8 @@ affix({
 
 affix({
   id: 'lightning_enchanted',
-  name: 'Lightning Enchanted',
-  desc: 'Discharges arcs of lightning when struck.',
+  name: tr('Lightning Enchanted'),
+  desc: tr('Discharges arcs of lightning when struck.'),
   minDepth: 3,
   weight: 11,
   mods: { damage: 1.15, speed: 1.1 },
@@ -138,8 +139,8 @@ affix({
 
 affix({
   id: 'poison_aura',
-  name: 'Pestilent',
-  desc: 'Trails a cloud of spores that lingers where it walks.',
+  name: tr('Pestilent'),
+  desc: tr('Trails a cloud of spores that lingers where it walks.'),
   minDepth: 3,
   weight: 10,
   mods: { life: 1.2 },
@@ -151,8 +152,8 @@ affix({
 
 affix({
   id: 'arcane_enchanted',
-  name: 'Arcane Enchanted',
-  desc: 'Sweeping beams of raw arcane rotate around it.',
+  name: tr('Arcane Enchanted'),
+  desc: tr('Sweeping beams of raw arcane rotate around it.'),
   minDepth: 9,
   weight: 8,
   mods: { damage: 1.2 },
@@ -166,8 +167,8 @@ affix({
 
 affix({
   id: 'teleporter',
-  name: 'Teleporter',
-  desc: 'Blinks across the room the moment you gain distance.',
+  name: tr('Teleporter'),
+  desc: tr('Blinks across the room the moment you gain distance.'),
   minDepth: 4,
   weight: 9,
   mods: { speed: 1.05 },
@@ -179,8 +180,8 @@ affix({
 
 affix({
   id: 'phasing',
-  name: 'Phasing',
-  desc: 'Flickers out of reality; a fifth of your hits pass straight through.',
+  name: tr('Phasing'),
+  desc: tr('Flickers out of reality; a fifth of your hits pass straight through.'),
   minDepth: 10,
   weight: 6,
   mods: { life: 0.9 },
@@ -192,8 +193,8 @@ affix({
 
 affix({
   id: 'waller',
-  name: 'Waller',
-  desc: 'Raises walls of stone to cut off your escape.',
+  name: tr('Waller'),
+  desc: tr('Raises walls of stone to cut off your escape.'),
   minDepth: 7,
   weight: 8,
   behavior: 'waller',
@@ -204,8 +205,8 @@ affix({
 
 affix({
   id: 'jailer',
-  name: 'Jailer',
-  desc: 'Pins you in place with a cage of force.',
+  name: tr('Jailer'),
+  desc: tr('Pins you in place with a cage of force.'),
   minDepth: 8,
   weight: 8,
   behavior: 'jailer',
@@ -216,8 +217,8 @@ affix({
 
 affix({
   id: 'vortex',
-  name: 'Vortex',
-  desc: 'Yanks you into melee range without warning.',
+  name: tr('Vortex'),
+  desc: tr('Yanks you into melee range without warning.'),
   minDepth: 9,
   weight: 8,
   behavior: 'vortex',
@@ -228,8 +229,8 @@ affix({
 
 affix({
   id: 'knockback',
-  name: 'Knockback',
-  desc: 'Every blow sends you flying.',
+  name: tr('Knockback'),
+  desc: tr('Every blow sends you flying.'),
   minDepth: 3,
   weight: 9,
   mods: { damage: 1.1 },
@@ -241,8 +242,8 @@ affix({
 
 affix({
   id: 'entangling',
-  name: 'Entangling',
-  desc: 'Its strikes leave you dragging your feet.',
+  name: tr('Entangling'),
+  desc: tr('Its strikes leave you dragging your feet.'),
   minDepth: 4,
   weight: 9,
   behavior: 'entangling',
@@ -252,8 +253,8 @@ affix({
 
 affix({
   id: 'gravity',
-  name: 'Gravity Bound',
-  desc: 'Drags you a step closer with every pulse.',
+  name: tr('Gravity Bound'),
+  desc: tr('Drags you a step closer with every pulse.'),
   minDepth: 12,
   weight: 6,
   behavior: 'gravity',
@@ -264,8 +265,8 @@ affix({
 
 affix({
   id: 'wormhole',
-  name: 'Wormhole',
-  desc: 'Swaps places with you when cornered.',
+  name: tr('Wormhole'),
+  desc: tr('Swaps places with you when cornered.'),
   minDepth: 14,
   weight: 5,
   behavior: 'wormhole',
@@ -277,8 +278,8 @@ affix({
 
 affix({
   id: 'molten_trail',
-  name: 'Molten',
-  desc: 'Every step it takes catches fire behind it.',
+  name: tr('Molten'),
+  desc: tr('Every step it takes catches fire behind it.'),
   minDepth: 5,
   weight: 9,
   mods: { damage: 1.1 },
@@ -290,8 +291,8 @@ affix({
 
 affix({
   id: 'frozen_ground',
-  name: 'Frozen Ground',
-  desc: 'The floor beneath it turns to treacherous rime.',
+  name: tr('Frozen Ground'),
+  desc: tr('The floor beneath it turns to treacherous rime.'),
   minDepth: 6,
   weight: 8,
   behavior: 'frozen_ground',
@@ -302,8 +303,8 @@ affix({
 
 affix({
   id: 'frozen_pulse',
-  name: 'Frozen Pulse',
-  desc: 'Fires slow, spiralling shards of ice on a beat.',
+  name: tr('Frozen Pulse'),
+  desc: tr('Fires slow, spiralling shards of ice on a beat.'),
   minDepth: 7,
   weight: 8,
   behavior: 'frozen_pulse',
@@ -313,8 +314,8 @@ affix({
 
 affix({
   id: 'electrified',
-  name: 'Electrified',
-  desc: 'Sheds crawling bolts of lightning as it moves.',
+  name: tr('Electrified'),
+  desc: tr('Sheds crawling bolts of lightning as it moves.'),
   minDepth: 6,
   weight: 8,
   behavior: 'electrified',
@@ -324,8 +325,8 @@ affix({
 
 affix({
   id: 'mortar',
-  name: 'Mortar',
-  desc: 'Lobs arcing shells at anything beyond melee reach.',
+  name: tr('Mortar'),
+  desc: tr('Lobs arcing shells at anything beyond melee reach.'),
   minDepth: 8,
   weight: 8,
   behavior: 'mortar',
@@ -335,8 +336,8 @@ affix({
 
 affix({
   id: 'arcane_sentry',
-  name: 'Arcane Sentry',
-  desc: 'Plants immobile turrets that keep firing after it dies.',
+  name: tr('Arcane Sentry'),
+  desc: tr('Plants immobile turrets that keep firing after it dies.'),
   minDepth: 10,
   weight: 7,
   behavior: 'arcane_sentry',
@@ -346,8 +347,8 @@ affix({
 
 affix({
   id: 'orbiter',
-  name: 'Orbiting Wards',
-  desc: 'Rings of burning wards circle it at melee range.',
+  name: tr('Orbiting Wards'),
+  desc: tr('Rings of burning wards circle it at melee range.'),
   minDepth: 9,
   weight: 7,
   behavior: 'orbiter',
@@ -359,8 +360,8 @@ affix({
 
 affix({
   id: 'shielded',
-  name: 'Shielded',
-  desc: 'Periodically becomes immune — break off and wait it out.',
+  name: tr('Shielded'),
+  desc: tr('Periodically becomes immune — break off and wait it out.'),
   minDepth: 6,
   weight: 9,
   behavior: 'shielded',
@@ -371,8 +372,8 @@ affix({
 
 affix({
   id: 'thorns',
-  name: 'Thorns',
-  desc: 'Returns a slice of every melee blow to its owner.',
+  name: tr('Thorns'),
+  desc: tr('Returns a slice of every melee blow to its owner.'),
   minDepth: 3,
   weight: 9,
   mods: { defense: 1.2 },
@@ -384,8 +385,8 @@ affix({
 
 affix({
   id: 'reflect_damage',
-  name: 'Reflects Damage',
-  desc: 'Sends a share of all damage — including spells — back at you.',
+  name: tr('Reflects Damage'),
+  desc: tr('Sends a share of all damage — including spells — back at you.'),
   minDepth: 11,
   weight: 6,
   mods: { defense: 1.15 },
@@ -397,8 +398,8 @@ affix({
 
 affix({
   id: 'life_leech',
-  name: 'Life Leeching',
-  desc: 'Drinks a third of the damage it deals.',
+  name: tr('Life Leeching'),
+  desc: tr('Drinks a third of the damage it deals.'),
   minDepth: 5,
   weight: 9,
   mods: { damage: 1.1 },
@@ -410,8 +411,8 @@ affix({
 
 affix({
   id: 'vampiric',
-  name: 'Vampiric',
-  desc: 'Steadily drains life from you while you stand near it.',
+  name: tr('Vampiric'),
+  desc: tr('Steadily drains life from you while you stand near it.'),
   minDepth: 12,
   weight: 6,
   behavior: 'vampiric',
@@ -422,8 +423,8 @@ affix({
 
 affix({
   id: 'regenerating',
-  name: 'Fast Healing',
-  desc: 'Knits itself back together between exchanges.',
+  name: tr('Fast Healing'),
+  desc: tr('Knits itself back together between exchanges.'),
   minDepth: 4,
   weight: 8,
   mods: { life: 1.2 },
@@ -434,8 +435,8 @@ affix({
 
 affix({
   id: 'health_link',
-  name: 'Health Link',
-  desc: 'Shares damage with every linked pack member — kill the links first.',
+  name: tr('Health Link'),
+  desc: tr('Shares damage with every linked pack member — kill the links first.'),
   minDepth: 8,
   weight: 7,
   mods: { life: 1.15 },
@@ -446,8 +447,8 @@ affix({
 
 affix({
   id: 'soul_bound',
-  name: 'Soul Bound',
-  desc: 'Rises once at half strength before it truly dies.',
+  name: tr('Soul Bound'),
+  desc: tr('Rises once at half strength before it truly dies.'),
   minDepth: 13,
   weight: 5,
   behavior: 'soul_bound',
@@ -458,8 +459,8 @@ affix({
 
 affix({
   id: 'blood_thirsty',
-  name: 'Blood Thirsty',
-  desc: 'Grows visibly stronger every time it lands a hit.',
+  name: tr('Blood Thirsty'),
+  desc: tr('Grows visibly stronger every time it lands a hit.'),
   minDepth: 7,
   weight: 8,
   behavior: 'blood_thirsty',
@@ -471,8 +472,8 @@ affix({
 
 affix({
   id: 'summoner',
-  name: 'Summoner',
-  desc: 'Keeps calling in fresh bodies until you cut it down.',
+  name: tr('Summoner'),
+  desc: tr('Keeps calling in fresh bodies until you cut it down.'),
   minDepth: 7,
   weight: 8,
   behavior: 'summoner',
@@ -482,8 +483,8 @@ affix({
 
 affix({
   id: 'empowered',
-  name: 'Empowering',
-  desc: 'Every ally near it hits noticeably harder.',
+  name: tr('Empowering'),
+  desc: tr('Every ally near it hits noticeably harder.'),
   minDepth: 6,
   weight: 7,
   behavior: 'empowered',
@@ -494,8 +495,8 @@ affix({
 
 affix({
   id: 'hasted_pack',
-  name: 'Frenzied Pack',
-  desc: 'Drives its pack into a sprinting frenzy.',
+  name: tr('Frenzied Pack'),
+  desc: tr('Drives its pack into a sprinting frenzy.'),
   minDepth: 6,
   weight: 7,
   behavior: 'hasted_pack',
@@ -506,8 +507,8 @@ affix({
 
 affix({
   id: 'avenger',
-  name: 'Avenger',
-  desc: 'Enrages permanently each time one of its pack falls.',
+  name: tr('Avenger'),
+  desc: tr('Enrages permanently each time one of its pack falls.'),
   minDepth: 9,
   weight: 7,
   behavior: 'avenger',
@@ -517,8 +518,8 @@ affix({
 
 affix({
   id: 'illusionist',
-  name: 'Illusionist',
-  desc: 'Splits into decoys the instant you commit to a swing.',
+  name: tr('Illusionist'),
+  desc: tr('Splits into decoys the instant you commit to a swing.'),
   minDepth: 10,
   weight: 6,
   behavior: 'illusionist',
@@ -528,8 +529,8 @@ affix({
 
 affix({
   id: 'nightmarish',
-  name: 'Nightmarish',
-  desc: 'Its blows send you fleeing in terror.',
+  name: tr('Nightmarish'),
+  desc: tr('Its blows send you fleeing in terror.'),
   minDepth: 9,
   weight: 6,
   behavior: 'nightmarish',
@@ -539,8 +540,8 @@ affix({
 
 affix({
   id: 'plagued',
-  name: 'Plagued',
-  desc: 'Leaves festering pools behind and bursts when it dies.',
+  name: tr('Plagued'),
+  desc: tr('Leaves festering pools behind and bursts when it dies.'),
   minDepth: 5,
   weight: 9,
   behavior: 'plagued',
@@ -550,8 +551,8 @@ affix({
 
 affix({
   id: 'mana_burn',
-  name: 'Mana Burn',
-  desc: 'Drains your reserves with every strike.',
+  name: tr('Mana Burn'),
+  desc: tr('Drains your reserves with every strike.'),
   minDepth: 8,
   weight: 7,
   behavior: 'mana_burn',
@@ -561,8 +562,8 @@ affix({
 
 affix({
   id: 'unstable',
-  name: 'Unstable',
-  desc: 'Detonates violently the moment it drops.',
+  name: tr('Unstable'),
+  desc: tr('Detonates violently the moment it drops.'),
   minDepth: 4,
   weight: 9,
   behavior: 'unstable',
@@ -573,8 +574,8 @@ affix({
 
 affix({
   id: 'chilling_death',
-  name: 'Rimebound',
-  desc: 'Explodes into a freezing nova on death.',
+  name: tr('Rimebound'),
+  desc: tr('Explodes into a freezing nova on death.'),
   minDepth: 7,
   weight: 8,
   behavior: 'chilling_death',
@@ -585,8 +586,8 @@ affix({
 
 affix({
   id: 'storm_death',
-  name: 'Storm Charged',
-  desc: 'Its death throws lightning across the room.',
+  name: tr('Storm Charged'),
+  desc: tr('Its death throws lightning across the room.'),
   minDepth: 10,
   weight: 7,
   behavior: 'storm_death',
@@ -605,8 +606,8 @@ affix({
 
 affix({
   id: 'desecrator',
-  name: 'Desecrator',
-  desc: 'Fouls the ground where you stand. Keep moving.',
+  name: tr('Desecrator'),
+  desc: tr('Fouls the ground where you stand. Keep moving.'),
   minDepth: 4,
   weight: 9,
   behavior: 'desecrator',
@@ -616,8 +617,8 @@ affix({
 
 affix({
   id: 'fire_chains',
-  name: 'Fire Chains',
-  desc: 'Chained in flame to its packmates. Do not step between them.',
+  name: tr('Fire Chains'),
+  desc: tr('Chained in flame to its packmates. Do not step between them.'),
   minDepth: 8,
   weight: 7,
   behavior: 'fire_chains',
@@ -627,8 +628,8 @@ affix({
 
 affix({
   id: 'bulwark',
-  name: 'Bulwark',
-  desc: 'Its ward turns aside blows aimed at the pack. Kill it first.',
+  name: tr('Bulwark'),
+  desc: tr('Its ward turns aside blows aimed at the pack. Kill it first.'),
   minDepth: 6,
   weight: 7,
   behavior: 'bulwark',
@@ -638,8 +639,8 @@ affix({
 
 affix({
   id: 'splitter',
-  name: 'Splitting',
-  desc: 'Bursts into two of itself when it dies.',
+  name: tr('Splitting'),
+  desc: tr('Bursts into two of itself when it dies.'),
   minDepth: 5,
   weight: 7,
   behavior: 'splitter',
@@ -650,8 +651,8 @@ affix({
 
 affix({
   id: 'hexing',
-  name: 'Hexing',
-  desc: 'Every blow lays a curse that strips your resistances.',
+  name: tr('Hexing'),
+  desc: tr('Every blow lays a curse that strips your resistances.'),
   minDepth: 7,
   weight: 7,
   behavior: 'hexing',
@@ -661,8 +662,8 @@ affix({
 
 affix({
   id: 'adaptive',
-  name: 'Adaptive',
-  desc: 'Hardens against whatever element keeps hitting it. Mix your attacks.',
+  name: tr('Adaptive'),
+  desc: tr('Hardens against whatever element keeps hitting it. Mix your attacks.'),
   minDepth: 9,
   weight: 6,
   behavior: 'adaptive',
@@ -672,8 +673,8 @@ affix({
 
 affix({
   id: 'lancer',
-  name: 'Lancer',
-  desc: 'Lines up and charges straight through you.',
+  name: tr('Lancer'),
+  desc: tr('Lines up and charges straight through you.'),
   minDepth: 6,
   weight: 7,
   behavior: 'lancer',
@@ -688,8 +689,8 @@ affix({
 
 affix({
   id: 'echoing',
-  name: 'Echoing',
-  desc: 'Every blow it lands comes again a beat later, where you stood.',
+  name: tr('Echoing'),
+  desc: tr('Every blow it lands comes again a beat later, where you stood.'),
   minDepth: 20,
   weight: 9,
   mods: { damage: 1.1 },
@@ -700,8 +701,8 @@ affix({
 
 affix({
   id: 'lampblack',
-  name: 'Lampblack',
-  desc: 'Wrapped in soot. Inside its cloud your light gutters and your mana stops refilling.',
+  name: tr('Lampblack'),
+  desc: tr('Wrapped in soot. Inside its cloud your light gutters and your mana stops refilling.'),
   minDepth: 25,
   weight: 8,
   mods: { life: 1.2 },
@@ -713,8 +714,8 @@ affix({
 
 affix({
   id: 'restless',
-  name: 'Restless',
-  desc: 'When it falls, its ghost climbs out a beat later and hunts you, fast and cold.',
+  name: tr('Restless'),
+  desc: tr('When it falls, its ghost climbs out a beat later and hunts you, fast and cold.'),
   minDepth: 30,
   weight: 8,
   behavior: 'restless',
@@ -725,8 +726,8 @@ affix({
 
 affix({
   id: 'knelling',
-  name: 'Knelling',
-  desc: 'Rings a bell. The wave rolls out over the marked ring: hug it, or stand clear.',
+  name: tr('Knelling'),
+  desc: tr('Rings a bell. The wave rolls out over the marked ring: hug it, or stand clear.'),
   minDepth: 35,
   weight: 8,
   behavior: 'knelling',
@@ -736,8 +737,8 @@ affix({
 
 affix({
   id: 'splintering',
-  name: 'Splintering',
-  desc: 'Glass under the skin. Heavy blows knock shards loose that rain down around you.',
+  name: tr('Splintering'),
+  desc: tr('Glass under the skin. Heavy blows knock shards loose that rain down around you.'),
   minDepth: 40,
   weight: 8,
   mods: { defense: 1.3 },
@@ -749,8 +750,8 @@ affix({
 
 affix({
   id: 'stitching',
-  name: 'Stitching',
-  desc: 'Sews its wounded packmates shut with a glowing thread. Stand on the thread to cut it.',
+  name: tr('Stitching'),
+  desc: tr('Sews its wounded packmates shut with a glowing thread. Stand on the thread to cut it.'),
   minDepth: 45,
   weight: 7,
   behavior: 'stitching',
@@ -760,8 +761,8 @@ affix({
 
 affix({
   id: 'grappling',
-  name: 'Grappling',
-  desc: 'Throws a hook along the marked line and drags you in. Step off the line.',
+  name: tr('Grappling'),
+  desc: tr('Throws a hook along the marked line and drags you in. Step off the line.'),
   minDepth: 50,
   weight: 8,
   behavior: 'grappling',
@@ -772,8 +773,8 @@ affix({
 
 affix({
   id: 'refracting',
-  name: 'Refracting',
-  desc: 'Splits its light into three beams along the marked lines. Stand between them.',
+  name: tr('Refracting'),
+  desc: tr('Splits its light into three beams along the marked lines. Stand between them.'),
   minDepth: 55,
   weight: 8,
   behavior: 'refracting',
@@ -784,8 +785,8 @@ affix({
 
 affix({
   id: 'funereal',
-  name: 'Funereal',
-  desc: 'Lights its dead. When a packmate falls nearby, the body is marked and bursts a beat later.',
+  name: tr('Funereal'),
+  desc: tr('Lights its dead. When a packmate falls nearby, the body is marked and bursts a beat later.'),
   minDepth: 60,
   weight: 8,
   behavior: 'funereal',
@@ -795,8 +796,8 @@ affix({
 
 affix({
   id: 'hemming',
-  name: 'Hemming',
-  desc: 'Drives a ring of nails up around you. Get out before it closes, or pay to cross it.',
+  name: tr('Hemming'),
+  desc: tr('Drives a ring of nails up around you. Get out before it closes, or pay to cross it.'),
   minDepth: 65,
   weight: 7,
   behavior: 'hemming',
@@ -807,8 +808,8 @@ affix({
 
 affix({
   id: 'emberfall',
-  name: 'Emberfall',
-  desc: 'Calls down a scatter of embers on and around you. Each lands where it is marked.',
+  name: tr('Emberfall'),
+  desc: tr('Calls down a scatter of embers on and around you. Each lands where it is marked.'),
   minDepth: 70,
   weight: 8,
   behavior: 'emberfall',
@@ -819,8 +820,8 @@ affix({
 
 affix({
   id: 'eclipsing',
-  name: 'Eclipsing',
-  desc: 'Swallows the light around it. Anyone still inside the mark when it closes is struck blind.',
+  name: tr('Eclipsing'),
+  desc: tr('Swallows the light around it. Anyone still inside the mark when it closes is struck blind.'),
   minDepth: 75,
   weight: 7,
   mods: { life: 1.25 },

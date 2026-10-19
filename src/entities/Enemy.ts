@@ -73,6 +73,7 @@ import { getStatus } from '../data/statuses';
 import { HoldFade, dotRate, durationOf, isHold, modScale, reapply, stackCap, statusDef } from '../sim/StatusRules';
 import { powerHooks } from '../sim/ItemPowers';
 import { resolveCombo, type ComboHit } from './Combos';
+import { tr } from '../core/I18n';
 
 /** Fastest a monster may move while backing away from the hero (base hero speed is 5.4). */
 const RETREAT_SPEED_CAP = 3.4;
@@ -1602,7 +1603,7 @@ export class Enemy implements Combatant {
         count: 30,
         color: soul.color,
       });
-      events.emit('toast', { text: `${this.name} rises again!`, kind: 'bad' });
+      events.emit('toast', { text: tr('{0} rises again!', this.name), kind: 'bad' });
       return;
     }
 

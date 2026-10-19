@@ -28,144 +28,145 @@
 
 import type { Chapter } from './types';
 import { streamFor } from '../../core/RNG';
+import { tr } from '../../core/I18n';
 
 export const CHAPTERS: Chapter[] = [
   {
     id: 'ch.stairhead',
     depth: 0,
-    title: 'Stairhead',
+    title: tr('Stairhead'),
     text: [
-      `There was a city here once. It went down a tier at a time, the way a cellar floods, and what is left above ground is a palisade, a fire, and a gate in the old stone with light coming up through it.`,
-      `The light is not torchlight. Something below is still using the place.`,
-      `Stairhead exists to keep one delver on the stair. When nobody is down there, things come up. When somebody is, they go down to meet them. Nobody in camp will tell you which of those is the point.`,
+      tr('There was a city here once. It went down a tier at a time, the way a cellar floods, and what is left above ground is a palisade, a fire, and a gate in the old stone with light coming up through it.'),
+      tr('The light is not torchlight. Something below is still using the place.'),
+      tr('Stairhead exists to keep one delver on the stair. When nobody is down there, things come up. When somebody is, they go down to meet them. Nobody in camp will tell you which of those is the point.'),
     ],
   },
   {
     id: 'ch.first',
     depth: 1,
-    title: 'Four Hundred Steps',
+    title: tr('Four Hundred Steps'),
     text: [
-      `The stair goes down further than the hill it sits under. You stop counting at four hundred, because the count stops agreeing with itself.`,
-      `At the bottom is the old city's graveyard, still tidy. Someone sweeps it.`,
+      tr('The stair goes down further than the hill it sits under. You stop counting at four hundred, because the count stops agreeing with itself.'),
+      tr('At the bottom is the old city\'s graveyard, still tidy. Someone sweeps it.'),
     ],
   },
   {
     id: 'ch.tenant',
     depth: 3,
-    title: 'It Is Not a Ruin',
+    title: tr('It Is Not a Ruin'),
     text: [
-      `The warning at the stairhead is old and unsigned: IT IS NOT A RUIN. SOMEONE IS STILL USING IT.`,
-      `Down here you see what it meant. Fresh oil in the lamps. Doors rehung. Bones reshelved in better order than you left them. The deep has a tenant, and the tenant keeps house.`,
+      tr('The warning at the stairhead is old and unsigned: IT IS NOT A RUIN. SOMEONE IS STILL USING IT.'),
+      tr('Down here you see what it meant. Fresh oil in the lamps. Doors rehung. Bones reshelved in better order than you left them. The deep has a tenant, and the tenant keeps house.'),
     ],
   },
   {
     id: 'ch.house',
     depth: 5,
-    title: 'The House',
+    title: tr('The House'),
     text: [
-      `A plaque in the ossuary, in the survey tongue: WE MADE IT A HOUSE SO IT WOULD STAY IN THE HOUSE.`,
-      `The city of Caul did not bury its dead here out of grief. It was paying rent. Every body laid on a shelf was one more reason for the Tenant to stay below.`,
-      `Caul paid for nine hundred years. Then it stopped paying, and went down to settle the account in person.`,
+      tr('A plaque in the ossuary, in the survey tongue: WE MADE IT A HOUSE SO IT WOULD STAY IN THE HOUSE.'),
+      tr('The city of Caul did not bury its dead here out of grief. It was paying rent. Every body laid on a shelf was one more reason for the Tenant to stay below.'),
+      tr('Caul paid for nine hundred years. Then it stopped paying, and went down to settle the account in person.'),
     ],
   },
   {
     id: 'ch.war',
     depth: 8,
-    title: 'A War Nobody Ended',
+    title: tr('A War Nobody Ended'),
     text: [
-      `The Cindergate Works were built to arm Caul against what lived under it. Their order books name no enemy. They give a depth.`,
-      `The war was lost so long ago that the losing is geology now. The Works never heard. They are still filling the order, and the order has been revised, in a hand that is not a clerk's, to something larger.`,
+      tr('The Cindergate Works were built to arm Caul against what lived under it. Their order books name no enemy. They give a depth.'),
+      tr('The war was lost so long ago that the losing is geology now. The Works never heard. They are still filling the order, and the order has been revised, in a hand that is not a clerk\'s, to something larger.'),
     ],
   },
   {
     id: 'ch.eleventh',
     depth: 11,
-    title: 'The Eleventh',
+    title: tr('The Eleventh'),
     text: [
-      `The Third Expedition reached this tier and turned back. You find their camp: cold ash, a bedroll, a wall where they cut their names before they left.`,
-      `There are more names than there were men. The extra ones are newer. One of them is yours, in letters you would have cut yourself, and the edges are still sharp.`,
+      tr('The Third Expedition reached this tier and turned back. You find their camp: cold ash, a bedroll, a wall where they cut their names before they left.'),
+      tr('There are more names than there were men. The extra ones are newer. One of them is yours, in letters you would have cut yourself, and the edges are still sharp.'),
     ],
   },
   {
     id: 'ch.nail',
     depth: 15,
-    title: 'The Nail',
+    title: tr('The Nail'),
     text: [
-      `The Hollow Spire did not grow. It was driven, point first, from somewhere the sky does not reach, and it went through every layer the cities built until it struck the Tenant and pinned it.`,
-      `That is all the Spire is for. It is a nail. It has been working loose for a thousand years, and the stair at Stairhead opened the year it moved.`,
+      tr('The Hollow Spire did not grow. It was driven, point first, from somewhere the sky does not reach, and it went through every layer the cities built until it struck the Tenant and pinned it.'),
+      tr('That is all the Spire is for. It is a nail. It has been working loose for a thousand years, and the stair at Stairhead opened the year it moved.'),
     ],
   },
   {
     id: 'ch.archive',
     depth: 20,
-    title: 'Everything Thrown at It',
+    title: tr('Everything Thrown at It'),
     text: [
-      `The Rime Archive kept a list. Caul fed it. The Works armed against it. The Sanctum prayed to it. The hive ate what it left. The Archive froze it. A country burned itself to starve it. Something from outside nailed it down.`,
-      `Under the list, in a later hand: It kept all of it. It is made of what we tried.`,
+      tr('The Rime Archive kept a list. Caul fed it. The Works armed against it. The Sanctum prayed to it. The hive ate what it left. The Archive froze it. A country burned itself to starve it. Something from outside nailed it down.'),
+      tr('Under the list, in a later hand: It kept all of it. It is made of what we tried.'),
     ],
   },
   {
     id: 'ch.bottom',
     depth: 25,
-    title: 'The Bottom',
+    title: tr('The Bottom'),
     text: [
-      `The thing that holds this tier calls itself the bottom, and for a long time nothing came down to argue.`,
-      `The stair goes on past it. Of course it does. The bottom is not a floor. It is wherever the Tenant has been pushed to, and it is moving.`,
+      tr('The thing that holds this tier calls itself the bottom, and for a long time nothing came down to argue.'),
+      tr('The stair goes on past it. Of course it does. The bottom is not a floor. It is wherever the Tenant has been pushed to, and it is moving.'),
     ],
   },
   {
     id: 'ch.rises',
     depth: 30,
-    title: 'It Rises to Meet You',
+    title: tr('It Rises to Meet You'),
     text: [
-      `The Listener was right about the one thing she never said aloud. The deep does not sit still while you walk it. It rises to meet whoever is lowest, the way water finds the deepest cut.`,
-      `While you are down here it is busy with you. Stairhead sleeps because you do not.`,
+      tr('The Listener was right about the one thing she never said aloud. The deep does not sit still while you walk it. It rises to meet whoever is lowest, the way water finds the deepest cut.'),
+      tr('While you are down here it is busy with you. Stairhead sleeps because you do not.'),
     ],
   },
   {
     id: 'ch.name',
     depth: 40,
-    title: 'A Name, Not a Number',
+    title: tr('A Name, Not a Number'),
     text: [
-      `Something has been counting since the Spire went in. The Archive guessed it was counting the dead. The tallies on these walls say otherwise. It counts delvers.`,
-      `It is not waiting for a number. It is learning a name, a little from each of you, and it has most of yours.`,
+      tr('Something has been counting since the Spire went in. The Archive guessed it was counting the dead. The tallies on these walls say otherwise. It counts delvers.'),
+      tr('It is not waiting for a number. It is learning a name, a little from each of you, and it has most of yours.'),
     ],
   },
   {
     id: 'ch.room',
     depth: 50,
-    title: 'Below Every Map',
+    title: tr('Below Every Map'),
     text: [
-      `No survey mark reaches this far. No city built here. The layers are out of order now: crypt opens onto spire, spire onto ash, as if the Tenant had taken its own history down off the shelf and put it back in a hurry.`,
-      `It is not hiding. It is making room.`,
+      tr('No survey mark reaches this far. No city built here. The layers are out of order now: crypt opens onto spire, spire onto ash, as if the Tenant had taken its own history down off the shelf and put it back in a hurry.'),
+      tr('It is not hiding. It is making room.'),
     ],
   },
   {
     id: 'ch.rent',
     depth: 65,
-    title: 'Rent',
+    title: tr('Rent'),
     text: [
-      `Caul paid in bodies. Stairhead pays in delvers. The Tenant never asked for either. It takes what is offered, because that is what a tenant does with rent.`,
-      `What it wants is not your death. It wants company at the bottom, and it is patient about the terms.`,
+      tr('Caul paid in bodies. Stairhead pays in delvers. The Tenant never asked for either. It takes what is offered, because that is what a tenant does with rent.'),
+      tr('What it wants is not your death. It wants company at the bottom, and it is patient about the terms.'),
     ],
   },
   {
     id: 'ch.deepest',
     depth: 80,
-    title: 'The Deepest One',
+    title: tr('The Deepest One'),
     text: [
-      `Every delver before you stopped somewhere. Their stopping places are the tiers, each one the furthest somebody held it.`,
-      `You are past all of them. Below you is only the Tenant, and above you is everyone who ever went down. For the first time it is not rising. It is waiting to see what you do.`,
+      tr('Every delver before you stopped somewhere. Their stopping places are the tiers, each one the furthest somebody held it.'),
+      tr('You are past all of them. Below you is only the Tenant, and above you is everyone who ever went down. For the first time it is not rising. It is waiting to see what you do.'),
     ],
   },
   {
     id: 'ch.lid',
     depth: 100,
-    title: 'The Lid',
+    title: tr('The Lid'),
     text: [
-      `There is no bottom. There is only the deepest one, and that is you.`,
-      `Whatever is below you stays below because you are here. Not by strength. By standing in the way. The bell has not rung tonight, and two hundred people are asleep on top of you.`,
-      `Keep going. It is the only direction that holds.`,
+      tr('There is no bottom. There is only the deepest one, and that is you.'),
+      tr('Whatever is below you stays below because you are here. Not by strength. By standing in the way. The bell has not rung tonight, and two hundred people are asleep on top of you.'),
+      tr('Keep going. It is the only direction that holds.'),
     ],
   },
 ];
@@ -185,34 +186,34 @@ export const LEDGER_EVERY = 20;
 const LEDGER_FROM = CHAPTERS[CHAPTERS.length - 1]!.depth + LEDGER_EVERY;
 
 const LEDGER_OPEN: string[] = [
-  `Nothing on this tier was built. It was made room for.`,
-  `The walls here are not stone. They have agreed to behave like stone while you are passing.`,
-  `There are footprints in the dust going down. They are yours, and they are old.`,
-  `The dark at this depth has weight. It settles on the shoulders like a hand that means well.`,
-  `Somewhere on this tier a bell rings once, very far up, and you realise it is the camp's.`,
-  `The stair is narrower here, worn in the middle by feet that were not human and were not in a hurry.`,
-  `A survey mark, in a hand you do not know, gives this tier a number one lower than yours.`,
-  `The air tastes of every biome above it at once: dust, iron, salt, frost, ash.`,
+  tr('Nothing on this tier was built. It was made room for.'),
+  tr('The walls here are not stone. They have agreed to behave like stone while you are passing.'),
+  tr('There are footprints in the dust going down. They are yours, and they are old.'),
+  tr('The dark at this depth has weight. It settles on the shoulders like a hand that means well.'),
+  tr('Somewhere on this tier a bell rings once, very far up, and you realise it is the camp\'s.'),
+  tr('The stair is narrower here, worn in the middle by feet that were not human and were not in a hurry.'),
+  tr('A survey mark, in a hand you do not know, gives this tier a number one lower than yours.'),
+  tr('The air tastes of every biome above it at once: dust, iron, salt, frost, ash.'),
 ];
 
 const LEDGER_TURN: string[] = [
-  `The Tenant has moved down to make room for you. It is not retreating. It is being a good host.`,
-  `Below you something very large shifts its weight, and the whole tier settles a finger's width.`,
-  `It has started leaving the lamps lit for you.`,
-  `The pressure from below eases as you arrive, the way a held door eases when someone takes the other side.`,
-  `It knows your step now. It does not hurry to meet it.`,
-  `There is a chair here, carved from the rock, facing up the stair. It is warm.`,
-  `What you are holding down has stopped testing you. It is waiting to see how long you last.`,
+  tr('The Tenant has moved down to make room for you. It is not retreating. It is being a good host.'),
+  tr('Below you something very large shifts its weight, and the whole tier settles a finger\'s width.'),
+  tr('It has started leaving the lamps lit for you.'),
+  tr('The pressure from below eases as you arrive, the way a held door eases when someone takes the other side.'),
+  tr('It knows your step now. It does not hurry to meet it.'),
+  tr('There is a chair here, carved from the rock, facing up the stair. It is warm.'),
+  tr('What you are holding down has stopped testing you. It is waiting to see how long you last.'),
 ];
 
 const LEDGER_CLOSE: string[] = [
-  `Above, the bell does not ring.`,
-  `Marrow will want a longer chisel.`,
-  `Two hundred people sleep on top of you and do not know your name. That is the arrangement.`,
-  `Go on. Down is the only direction that holds.`,
-  `The Listener, a very long way up, turns her ear from the floor for the first time in years and sleeps.`,
-  `Corvane will enter it in the book under assets.`,
-  `The lid holds.`,
+  tr('Above, the bell does not ring.'),
+  tr('Marrow will want a longer chisel.'),
+  tr('Two hundred people sleep on top of you and do not know your name. That is the arrangement.'),
+  tr('Go on. Down is the only direction that holds.'),
+  tr('The Listener, a very long way up, turns her ear from the floor for the first time in years and sleeps.'),
+  tr('Corvane will enter it in the book under assets.'),
+  tr('The lid holds.'),
 ];
 
 /** True when a tier carries a Deep Ledger entry. */
@@ -236,7 +237,7 @@ export function deepLedger(depth: number): Chapter {
   return {
     id: `ledger.${depth}`,
     depth,
-    title: `The Deep Ledger, Tier ${depth}`,
+    title: tr('The Deep Ledger, Tier {0}', depth),
     text: [rng.pick(LEDGER_OPEN), rng.pick(LEDGER_TURN), rng.pick(LEDGER_CLOSE)],
   };
 }

@@ -28,6 +28,7 @@ import { rollDamage, expectedMitigated } from '../sim/Combat';
 import { powerEffects, powerHooks, emptyPowerEffects, weaponKind, type PowerEffects } from '../sim/ItemPowers';
 import { getBase } from '../sim/Loot';
 import type { MonsterRank } from '../types';
+import { tr } from '../core/I18n';
 
 /** Everything the runtime needs from the scene that owns it. */
 export interface PowerHost {
@@ -47,8 +48,8 @@ export interface PowerHost {
 
 /** Hits the runtime throws itself. They never trigger further procs. */
 const PROC_ABILITIES = new Set([
-  'Cleave', 'Pierce', 'Return', 'Echo', 'Sentry', 'Rot Cyclone', 'Pyre', 'Shatter', 'Warm Prints',
-  'Toll', 'Planet', 'Grave', 'Lit Ring', 'Wax Double', 'Kiln', 'Glass Shards', 'Bell',
+  tr('Cleave'), tr('Pierce'), tr('Return'), tr('Echo'), tr('Sentry'), tr('Rot Cyclone'), tr('Pyre'), tr('Shatter'), tr('Warm Prints'),
+  tr('Toll'), tr('Planet'), tr('Grave'), tr('Lit Ring'), tr('Wax Double'), tr('Kiln'), tr('Glass Shards'), tr('Bell'),
 ]);
 
 /** Metres walked between two burning footprints. */
@@ -272,7 +273,7 @@ export class PowerRuntime {
       for (const e of this.allTargets()) {
         if (e === target || e.life <= 0) continue;
         if (e.root.position.distanceTo(at) > p.cleaveRadius + e.hitRadius) continue;
-        e.takeDamage({ amount: share, type: packet.type, crit: false, source: 'player', ability: 'Cleave' }, ctx);
+        e.takeDamage({ amount: share, type: packet.type, crit: false, source: 'player', ability: tr('Cleave') }, ctx);
         if (stagger && e.life > 0) e.applyStatuses([{ id: 'stunned', duration: 0.35, magnitude: 1, stacks: 1 }], ctx);
       }
     }
@@ -283,22 +284,22 @@ export class PowerRuntime {
           this.host.effects.projectile(target.root.position.clone().setY(1.1), next.root.position.clone().setY(1.1), {
             element: packet.type, speed: 30,
           });
-          next.takeDamage({ ...packet, amount: (packet.amount * p.pierceChainPct) / 100, ability: 'Pierce' }, ctx);
+          next.takeDamage({ ...packet, amount: (packet.amount * p.pierceChainPct) / 100, ability: tr('Pierce') }, ctx);
         }
       }
       if (p.returnHitPct > 0) {
-        this.queue.push({ t: 0.28, target, packet: { ...packet, amount: (packet.amount * p.returnHitPct) / 100, ability: 'Return', crit: false } });
+        this.queue.push({ t: 0.28, target, packet: { ...packet, amount: (packet.amount * p.returnHitPct) / 100, ability: tr('Return'), crit: false } });
       }
     }
-    if (p.echoHitPct > 0 && packet.ability && packet.ability !== 'Attack') {
-      this.queue.push({ t: 0.35, target, packet: { ...packet, amount: (packet.amount * p.echoHitPct) / 100, ability: 'Echo', crit: false } });
+    if (p.echoHitPct > 0 && packet.ability && packet.ability !== tr('Attack')) {
+      this.queue.push({ t: 0.35, target, packet: { ...packet, amount: (packet.amount * p.echoHitPct) / 100, ability: tr('Echo'), crit: false } });
     }
 
     // --- set signatures --------------------------------------------------------
-    const skillHit = !!packet.ability && packet.ability !== 'Attack';
+    const skillHit = !!packet.ability && packet.ability !== tr('Attack');
     if (p.tollPct > 0 && this.toll > 0 && skillHit && (style === 'melee' || style === 'unarmed')) {
       const at = target.root.position.clone();
-      this.area(at, 4, (p.tollPct * this.toll) / 100, 'physical', 'Toll', ctx, [{ id: 'stunned', duration: 0.5, magnitude: 1, stacks: 1 }]);
+      this.area(at, 4, (p.tollPct * this.toll) / 100, 'physical', tr('Toll'), ctx, [{ id: 'stunned', duration: 0.5, magnitude: 1, stacks: 1 }]);
       this.host.effects.nova(at.x, at.z, 4, { element: 'physical', color: 0xd8b060 });
       this.toll = 0;
     }
@@ -308,7 +309,7 @@ export class PowerRuntime {
       for (const e of this.allTargets()) {
         if (n >= 3 || e === target || e.root.position.distanceTo(at) > 8) continue;
         this.host.effects.projectile(at.clone().setY(1.1), e.root.position.clone().setY(1.1), { element: packet.type, speed: 34 });
-        e.takeDamage({ ...packet, amount: (packet.amount * p.stillPiercePct) / 100, ability: 'Pierce', crit: false }, ctx);
+        e.takeDamage({ ...packet, amount: (packet.amount * p.stillPiercePct) / 100, ability: tr('Pierce'), crit: false }, ctx);
         n++;
       }
     }
@@ -317,7 +318,7 @@ export class PowerRuntime {
       const at = player.position.clone();
       for (const e of this.allTargets()) {
         if (e.root.position.distanceTo(at) > 4 + e.hitRadius) continue;
-        const bell = rollDamage(st, ctx.rng, { scale: p.bellPct / 100, type: 'physical', ability: 'Bell', source: 'player' });
+        const bell = rollDamage(st, ctx.rng, { scale: p.bellPct / 100, type: 'physical', ability: tr('Bell'), source: 'player' });
         bell.knockback = 3;
         bell.applies = [{ id: 'stunned', duration: 0.4, magnitude: 1, stacks: 1 }];
         e.takeDamage(bell, ctx);
@@ -402,7 +403,7 @@ export class PowerRuntime {
       if (this.kiln >= player.stats.life * 0.2) {
         this.kiln = 0;
         const ctx = this.host.context();
-        this.area(player.position, 5, p.kilnPct / 100, 'fire', 'Kiln', ctx, [{ id: 'burning', duration: 3, magnitude: 1, stacks: 1 }]);
+        this.area(player.position, 5, p.kilnPct / 100, 'fire', tr('Kiln'), ctx, [{ id: 'burning', duration: 3, magnitude: 1, stacks: 1 }]);
         this.host.effects.explosion(player.position.x, 0.6, player.position.z, { radius: 5, element: 'fire' });
       }
     }
@@ -433,7 +434,7 @@ export class PowerRuntime {
       player.stop();
       this.host.effects.teleportIn(x, 0.8, z, 0x8a5cff);
       this.panicCd = this.fx.panicBlinkCooldown || 15;
-      toast('Panic Blink', 'info');
+      toast(tr('Panic Blink'), 'info');
       return;
     }
   }
@@ -468,7 +469,7 @@ export class PowerRuntime {
     if (p.gravePct > 0 && this.graves.length < 12) this.graves.push({ x: at.x, z: at.z, t: 1.2 });
     const elite = (enemy.rank ?? 'normal') !== 'normal';
     if (elite && p.crownSec > 0) {
-      if (this.crown <= 0) toast('The Borrowed Crown', 'info');
+      if (this.crown <= 0) toast(tr('The Borrowed Crown'), 'info');
       this.crown = p.crownSec;
     }
     if (elite && p.eliteDropChance > 0 && ctx.rng.chance(p.eliteDropChance / 100)) {
@@ -476,7 +477,7 @@ export class PowerRuntime {
       ctx.fx.burst('pickup', at.x, 1.0, at.z, { count: 18, color: 0xe0c080 });
     }
     if (p.pyreKillPct > 0) {
-      this.area(at, 3, p.pyreKillPct / 100, 'fire', 'Pyre', ctx, [{ id: 'burning', duration: 4, magnitude: 1, stacks: 1 }]);
+      this.area(at, 3, p.pyreKillPct / 100, 'fire', tr('Pyre'), ctx, [{ id: 'burning', duration: 4, magnitude: 1, stacks: 1 }]);
       this.host.decals.add('scorch', at.x, at.z, 2.2);
       this.host.effects.explosion(at.x, 0.4, at.z, { radius: 2.2, element: 'fire' });
     }
@@ -510,7 +511,7 @@ export class PowerRuntime {
           const a = (i / 9) * Math.PI * 2;
           const from = player.position.clone().add(new THREE.Vector3(Math.cos(a) * 1.2, 1.8, Math.sin(a) * 1.2));
           this.host.effects.projectile(from, e.root.position.clone().setY(1.0), { element: 'arcane', color: 0x8ab0ff, speed: 24 });
-          e.takeDamage(rollDamage(player.stats, ctx.rng, { scale: p.orreryPct / 100, type: 'arcane', ability: 'Planet', source: 'player' }), ctx);
+          e.takeDamage(rollDamage(player.stats, ctx.rng, { scale: p.orreryPct / 100, type: 'arcane', ability: tr('Planet'), source: 'player' }), ctx);
         }
       }
     }
@@ -528,7 +529,7 @@ export class PowerRuntime {
     const player = this.host.player();
     if (p.shardPct <= 0 || !player.alive) return;
     const ctx = this.host.context();
-    this.area(player.position, 3, p.shardPct / 100, 'physical', 'Glass Shards', ctx, [{ id: 'bleeding', duration: 3, magnitude: 1, stacks: 1 }]);
+    this.area(player.position, 3, p.shardPct / 100, 'physical', tr('Glass Shards'), ctx, [{ id: 'bleeding', duration: 3, magnitude: 1, stacks: 1 }]);
     this.host.fx.burst('frost', player.position.x, 1.0, player.position.z, { count: 16, color: 0xd8f0ff });
   }
 
@@ -578,7 +579,7 @@ export class PowerRuntime {
         if ((g.t -= dt) > 0) continue;
         this.graves.splice(i, 1);
         const at = new THREE.Vector3(g.x, 0, g.z);
-        const n = this.area(at, 3, p.gravePct / 100, 'arcane', 'Grave', ctx);
+        const n = this.area(at, 3, p.gravePct / 100, 'arcane', tr('Grave'), ctx);
         if (n > 0) player.heal(player.stats.life * 0.02 * n);
         this.host.effects.nova(g.x, g.z, 3, { element: 'arcane', color: 0xb0a0ff });
       }
@@ -589,7 +590,7 @@ export class PowerRuntime {
       if (this.ringTimer <= 0) {
         this.ringTimer = 1;
         const ctx = this.host.context();
-        const hit = this.area(player.position, p.ringRadius, p.ringPct / 100, 'fire', 'Lit Ring', ctx, [
+        const hit = this.area(player.position, p.ringRadius, p.ringPct / 100, 'fire', tr('Lit Ring'), ctx, [
           { id: 'slowed', duration: 1.2, magnitude: 1, stacks: 1 },
           { id: 'burning', duration: 2, magnitude: 1, stacks: 1 },
         ]);
@@ -616,7 +617,7 @@ export class PowerRuntime {
         if ((w.t -= dt) > 0) continue;
         this.waxes.splice(i, 1);
         const at = new THREE.Vector3(w.x, 0, w.z);
-        this.area(at, 4, p.waxPct / 100, 'fire', 'Wax Double', ctx, [{ id: 'burning', duration: 3, magnitude: 1, stacks: 1 }]);
+        this.area(at, 4, p.waxPct / 100, 'fire', tr('Wax Double'), ctx, [{ id: 'burning', duration: 3, magnitude: 1, stacks: 1 }]);
         this.host.effects.explosion(w.x, 0.8, w.z, { radius: 4, element: 'fire' });
       }
     }
@@ -658,7 +659,7 @@ export class PowerRuntime {
       if (this.rotTimer <= 0) {
         this.rotTimer = 1;
         const ctx = this.host.context();
-        const hit = this.area(player.position, p.rotAuraRadius, p.rotAuraPct / 100, 'poison', 'Rot Cyclone', ctx, [
+        const hit = this.area(player.position, p.rotAuraRadius, p.rotAuraPct / 100, 'poison', tr('Rot Cyclone'), ctx, [
           { id: 'poisoned', duration: 3, magnitude: 1, stacks: 1 },
         ]);
         if (hit > 0) this.host.fx.burst('poison', player.position.x, 0.8, player.position.z, { count: 16, scale: 1.4 });
@@ -688,7 +689,7 @@ export class PowerRuntime {
           const from = player.position.clone().add(new THREE.Vector3(side * 1.1, 1.6, 0));
           this.host.effects.projectile(from, best.root.position.clone().setY(1.0), { element: 'physical', color: 0xb8c0c8, speed: 26 });
           best.takeDamage(
-            rollDamage(player.stats, ctx.rng, { scale: p.sentryPct / 100, type: 'physical', ability: 'Sentry', source: 'player' }),
+            rollDamage(player.stats, ctx.rng, { scale: p.sentryPct / 100, type: 'physical', ability: tr('Sentry'), source: 'player' }),
             ctx,
           );
         }
@@ -737,7 +738,7 @@ export class PowerRuntime {
       const reach = (PRINT_REACH + e.hitRadius) ** 2;
       if (!this.prints.some((q) => (q.x - ex) ** 2 + (q.z - ez) ** 2 <= reach)) continue;
       const packet = rollDamage(player.stats, ctx.rng, {
-        scale: this.fx.emberPrintPct / 100, type: 'fire', ability: 'Warm Prints', source: 'player',
+        scale: this.fx.emberPrintPct / 100, type: 'fire', ability: tr('Warm Prints'), source: 'player',
       });
       packet.applies = [{ id: 'burning', duration: 2, magnitude: 1, stacks: 1 }];
       e.takeDamage(packet, ctx);

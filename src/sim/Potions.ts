@@ -13,6 +13,7 @@ import { POTION_EFFECTS, type PotionEffect } from '../data/itemBases';
 import { heroPower } from './HeroPower';
 import { countInInventory, consumeFromInventory } from './Inventory';
 import { events } from '../core/Events';
+import { tr } from '../core/I18n';
 
 export type PotionKind = 'life' | 'mana' | 'rejuv' | 'other';
 
@@ -101,9 +102,9 @@ export function drinkPotion(
   maxMana: number,
 ): PotionResult {
   const effect = POTION_EFFECTS[baseId];
-  if (!effect) return { ...EMPTY, reason: 'That is not a potion.' };
+  if (!effect) return { ...EMPTY, reason: tr('That is not a potion.') };
   if (!consumeFromInventory(character, baseId, 1)) {
-    return { ...EMPTY, reason: 'You have none left.' };
+    return { ...EMPTY, reason: tr('You have none left.') };
   }
 
   const life = potionLife(effect, character.level, maxLife);
@@ -133,7 +134,7 @@ export function quickDrink(
 ): PotionResult {
   const id = pickPotion(character, kind, Math.max(0, max - current));
   if (!id) {
-    return { ...EMPTY, reason: kind === 'life' ? 'No healing potions.' : 'No mana potions.' };
+    return { ...EMPTY, reason: kind === 'life' ? tr('No healing potions.') : tr('No mana potions.') };
   }
   return drinkPotion(character, id, maxLife, maxMana);
 }

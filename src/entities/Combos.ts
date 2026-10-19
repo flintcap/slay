@@ -15,6 +15,7 @@
  */
 import { SKILLS, TREE_BY_ID } from '../data/skills';
 import type { CharClassId, DamagePacket, SkillDef, StatusApplication } from '../types';
+import { tr } from '../core/I18n';
 
 /** Seconds a hit stays open for a different skill to combo off it. */
 export const COMBO_WINDOW = 4;
@@ -41,45 +42,45 @@ export interface ComboDef {
 
 export const COMBOS: Record<CharClassId, ComboDef> = {
   warden: {
-    name: 'Break',
-    desc: 'Staggers the target for 0.8s. A boss is not staggered: it gains poise instead.',
+    name: tr('Break'),
+    desc: tr('Staggers the target for 0.8s. A boss is not staggered: it gains poise instead.'),
     color: 0xffc070,
     stagger: 0.8,
   },
   mage: {
-    name: 'Overload',
-    desc: '40% of the hit arcs to the nearest other enemy, and the target is Chilled for 3s.',
+    name: tr('Overload'),
+    desc: tr('40% of the hit arcs to the nearest other enemy, and the target is Chilled for 3s.'),
     color: 0x9a8aff,
     arc: 0.4,
     applies: [{ id: 'chilled', duration: 3, magnitude: 1, stacks: 1 }],
   },
   shadowblade: {
-    name: 'Exploit',
-    desc: 'The hit is always a critical strike.',
+    name: tr('Exploit'),
+    desc: tr('The hit is always a critical strike.'),
     color: 0xb0ff60,
     crit: true,
   },
   revenant: {
-    name: 'Reap',
-    desc: 'Weakens the target: -35% damage dealt for 6s.',
+    name: tr('Reap'),
+    desc: tr('Weakens the target: -35% damage dealt for 6s.'),
     color: 0xc080ff,
     applies: [{ id: 'weakened', duration: 6, magnitude: 1 }],
   },
   ranger: {
-    name: 'Expose',
-    desc: 'Makes the target Vulnerable for 6s.',
+    name: tr('Expose'),
+    desc: tr('Makes the target Vulnerable for 6s.'),
     color: 0xffe070,
     applies: [{ id: 'vulnerable', duration: 6, magnitude: 1 }],
   },
   shapeshifter: {
-    name: 'Gore',
-    desc: 'Tears the wound open: 2 stacks of Bleeding for 5s.',
+    name: tr('Gore'),
+    desc: tr('Tears the wound open: 2 stacks of Bleeding for 5s.'),
     color: 0xc0302a,
     applies: [{ id: 'bleeding', duration: 5, magnitude: 1, stacks: 2 }],
   },
   paladin: {
-    name: 'Verdict',
-    desc: 'Beats two dents into the target\'s armour for 6s.',
+    name: tr('Verdict'),
+    desc: tr('Beats two dents into the target\'s armour for 6s.'),
     color: 0xe8cf96,
     applies: [{ id: 'dented', duration: 6, magnitude: 1, stacks: 2 }],
   },

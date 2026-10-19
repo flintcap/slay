@@ -32,6 +32,7 @@ import { maxSockets } from '../data/itemBases';
 import { getSocketable, gemUpgradeRecipe, GEMS } from '../data/gems';
 import { formatMaterials, materialName, salvagePool } from '../data/materials';
 import { legacySalvageMultiplier } from './Legacy';
+import { tr } from '../core/I18n';
 
 export type CraftResult = { ok: boolean; reason?: string };
 
@@ -74,10 +75,10 @@ export interface UpgradeTier {
 }
 
 export const UPGRADE_TIERS: UpgradeTier[] = [
-  { name: 'Reinforced', max: 3, material: 'shard.iron', color: '#c8c8c8' },
-  { name: 'Tempered', max: 6, material: 'shard.steel', catalyst: 'essence.lesser', color: '#6f8cff' },
-  { name: 'Masterwork', max: 9, material: 'shard.mithral', catalyst: 'essence.greater', color: '#f5d76e' },
-  { name: 'Mythforged', max: 12, material: 'shard.adamant', catalyst: 'essence.pure', color: '#c060ff' },
+  { name: tr('Reinforced'), max: 3, material: 'shard.iron', color: '#c8c8c8' },
+  { name: tr('Tempered'), max: 6, material: 'shard.steel', catalyst: 'essence.lesser', color: '#6f8cff' },
+  { name: tr('Masterwork'), max: 9, material: 'shard.mithral', catalyst: 'essence.greater', color: '#f5d76e' },
+  { name: tr('Mythforged'), max: 12, material: 'shard.adamant', catalyst: 'essence.pure', color: '#c060ff' },
 ];
 
 function tierFor(upgradeLevel: number): UpgradeTier {
@@ -137,9 +138,9 @@ export function upgradeCost(item: Item): CraftCost {
 export function canUpgrade(item: Item): CraftResult {
   const base = getBase(item.baseId);
   if (base.slot === 'none' || base.slot === 'consumable') {
-    return { ok: false, reason: 'This cannot be upgraded.' };
+    return { ok: false, reason: tr('This cannot be upgraded.') };
   }
-  if (item.upgrade >= MAX_UPGRADE) return { ok: false, reason: 'Already fully upgraded.' };
+  if (item.upgrade >= MAX_UPGRADE) return { ok: false, reason: tr('Already fully upgraded.') };
   return { ok: true };
 }
 
@@ -147,11 +148,11 @@ export function canUpgrade(item: Item): CraftResult {
 export function spendCost(cost: CraftCost): CraftResult {
   const character = save.account.current;
   const gold = character ? character.gold : save.account.bankGold;
-  if (gold < cost.gold) return { ok: false, reason: `Not enough gold (need ${cost.gold}).` };
+  if (gold < cost.gold) return { ok: false, reason: tr('Not enough gold (need {0}).', cost.gold) };
   for (const id of Object.keys(cost.materials)) {
     const need = cost.materials[id] ?? 0;
     if (save.materialCount(id) < need) {
-      return { ok: false, reason: `Need ${need} ${materialName(id)}.` };
+      return { ok: false, reason: tr('Need {0} {1}.', need, materialName(id)) };
     }
   }
   if (character) character.gold -= cost.gold;
@@ -245,14 +246,14 @@ export function rerollCost(item: Item, locks = 0): CraftCost {
  */
 export function rerollAffixes(item: Item, rng: Rng, locked: number[] = []): CraftResult {
   if (item.rarity !== 'magic' && item.rarity !== 'rare') {
-    return { ok: false, reason: 'Only magic and rare items can be reforged.' };
+    return { ok: false, reason: tr('Only magic and rare items can be reforged.') };
   }
   const keepAt = [...new Set(locked)];
-  if (keepAt.length > maxLocks(item)) return { ok: false, reason: `At most ${maxLocks(item)} line(s) can be bound.` };
+  if (keepAt.length > maxLocks(item)) return { ok: false, reason: tr('At most {0} line(s) can be bound.', maxLocks(item)) };
   const keep: ItemMod[] = [];
   for (const i of keepAt) {
     const m = item.mods[i];
-    if (!m || (m.kind !== 'prefix' && m.kind !== 'suffix')) return { ok: false, reason: 'Only a prefix or suffix can be bound.' };
+    if (!m || (m.kind !== 'prefix' && m.kind !== 'suffix')) return { ok: false, reason: tr('Only a prefix or suffix can be bound.') };
     keep.push(m);
   }
   const paid = spendCost(rerollCost(item, keep.length));
@@ -290,11 +291,11 @@ export function honeTarget(item: Item, index: number): AffixTier | null {
 
 /** Whether this line can be honed. One line per item, magic and rare only. */
 export function canHone(item: Item, index: number): CraftResult {
-  if (item.rarity !== 'magic' && item.rarity !== 'rare') return { ok: false, reason: 'Only magic and rare items can be honed.' };
-  if (item.mods.some((m) => m.honed)) return { ok: false, reason: 'One line on this item is already honed.' };
+  if (item.rarity !== 'magic' && item.rarity !== 'rare') return { ok: false, reason: tr('Only magic and rare items can be honed.') };
+  if (item.mods.some((m) => m.honed)) return { ok: false, reason: tr('One line on this item is already honed.') };
   const mod = item.mods[index];
-  if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix')) return { ok: false, reason: 'Only a prefix or suffix can be honed.' };
-  if (!honeTarget(item, index)) return { ok: false, reason: 'That line is as fine as this item can hold.' };
+  if (!mod || (mod.kind !== 'prefix' && mod.kind !== 'suffix')) return { ok: false, reason: tr('Only a prefix or suffix can be honed.') };
+  if (!honeTarget(item, index)) return { ok: false, reason: tr('That line is as fine as this item can hold.') };
   return { ok: true };
 }
 
@@ -353,12 +354,12 @@ export function socketCost(item: Item): CraftCost {
 export function addSocket(item: Item, rng: Rng): CraftResult {
   const base = getBase(item.baseId);
   const cap = maxSockets(base);
-  if (cap <= 0) return { ok: false, reason: 'This item cannot hold sockets.' };
-  if (item.sockets.length >= cap) return { ok: false, reason: `Cannot hold more than ${cap} sockets.` };
+  if (cap <= 0) return { ok: false, reason: tr('This item cannot hold sockets.') };
+  if (item.sockets.length >= cap) return { ok: false, reason: tr('Cannot hold more than {0} sockets.', cap) };
   // Item level gates socket count the same way it does on drops.
   const ilvlCap = Math.max(1, Math.min(cap, Math.floor(item.ilvl / 14) + 1));
   if (item.sockets.length >= ilvlCap) {
-    return { ok: false, reason: `Item level ${item.ilvl} supports only ${ilvlCap} socket(s).` };
+    return { ok: false, reason: tr('Item level {0} supports only {1} socket(s).', item.ilvl, ilvlCap) };
   }
   const paid = spendCost(socketCost(item));
   if (!paid.ok) return paid;
@@ -373,18 +374,18 @@ export function addSocket(item: Item, rng: Rng): CraftResult {
 
 /** Puts a gem or rune into a specific socket index. */
 export function insertGem(item: Item, gemId: string, socket: number): CraftResult {
-  if (socket < 0 || socket >= item.sockets.length) return { ok: false, reason: 'No such socket.' };
+  if (socket < 0 || socket >= item.sockets.length) return { ok: false, reason: tr('No such socket.') };
   const slot = item.sockets[socket];
-  if (!slot) return { ok: false, reason: 'No such socket.' };
-  if (slot.gemId) return { ok: false, reason: 'That socket is already filled.' };
+  if (!slot) return { ok: false, reason: tr('No such socket.') };
+  if (slot.gemId) return { ok: false, reason: tr('That socket is already filled.') };
   const def = getSocketable(gemId);
-  if (!def) return { ok: false, reason: 'That is not a gem or rune.' };
+  if (!def) return { ok: false, reason: tr('That is not a gem or rune.') };
   const base = getBase(item.baseId);
   if (def.levelReq > base.levelReq + 25) {
     // Say what would work, not just that this does not.
     return {
       ok: false,
-      reason: `${def.name} needs a base of level ${def.levelReq - 25} or higher — ${base.name} is level ${base.levelReq}.`,
+      reason: tr('{0} needs a base of level {1} or higher — {2} is level {3}.', def.name, def.levelReq - 25, base.name, base.levelReq),
     };
   }
   slot.gemId = gemId;
@@ -403,9 +404,9 @@ export function removeGemCost(): CraftCost {
  * decision rather than a free preview.
  */
 export function removeGem(item: Item, socket: number, preserve: boolean): { ok: boolean; reason?: string; gemId?: string } {
-  if (socket < 0 || socket >= item.sockets.length) return { ok: false, reason: 'No such socket.' };
+  if (socket < 0 || socket >= item.sockets.length) return { ok: false, reason: tr('No such socket.') };
   const slot = item.sockets[socket];
-  if (!slot || !slot.gemId) return { ok: false, reason: 'That socket is empty.' };
+  if (!slot || !slot.gemId) return { ok: false, reason: tr('That socket is empty.') };
   const gemId = slot.gemId;
   if (preserve) {
     const paid = spendCost(removeGemCost());
@@ -502,12 +503,12 @@ export function transmuteCost(gemId: string): CraftCost | null {
  */
 export function transmuteGems(gemId: string): { ok: boolean; reason?: string; resultId?: string } {
   const recipe = gemUpgradeRecipe(gemId);
-  if (!recipe) return { ok: false, reason: 'That gem is already at its highest quality.' };
+  if (!recipe) return { ok: false, reason: tr('That gem is already at its highest quality.') };
   const cost = transmuteCost(gemId);
-  if (!cost) return { ok: false, reason: 'That gem cannot be transmuted.' };
+  if (!cost) return { ok: false, reason: tr('That gem cannot be transmuted.') };
   const character = save.account.current;
   const gold = character ? character.gold : save.account.bankGold;
-  if (gold < cost.gold) return { ok: false, reason: `Not enough gold (need ${cost.gold}).` };
+  if (gold < cost.gold) return { ok: false, reason: tr('Not enough gold (need {0}).', cost.gold) };
   if (character) character.gold -= cost.gold;
   else save.account.bankGold -= cost.gold;
   save.touch();
@@ -523,72 +524,67 @@ export function craftingRecipes(): CraftRecipe[] {
   const recipes: CraftRecipe[] = [
     {
       id: 'craft.upgrade',
-      name: 'Reforge',
+      name: tr('Reforge'),
       desc:
-        'Raises an item one upgrade level, up to +12. Each level adds 10% of the item’s base damage or defence and 4% ' +
-        'to every rolled property. Crossing into a new tier sometimes improves a property outright.',
+        tr('Raises an item one upgrade level, up to +12. Each level adds 10% of the item’s base damage or defence and 4% to every rolled property. Crossing into a new tier sometimes improves a property outright.'),
       category: 'upgrade',
-      requires: 'Any equippable item below +12',
-      output: 'The same item, one upgrade level higher',
+      requires: tr('Any equippable item below +12'),
+      output: tr('The same item, one upgrade level higher'),
       cost: { gold: 140, materials: { 'shard.iron': 4 } },
       unlockDepth: 1,
     },
     {
       id: 'craft.reroll',
-      name: 'Reforge Properties',
+      name: tr('Reforge Properties'),
       desc:
-        'Unmakes every rolled property on a magic or rare item and rolls them again from scratch — including how many ' +
-        'it gets. The base, item level and sockets are preserved.',
+        tr('Unmakes every rolled property on a magic or rare item and rolls them again from scratch — including how many it gets. The base, item level and sockets are preserved.'),
       category: 'affix',
-      requires: 'A magic or rare item',
-      output: 'The same item with entirely new properties',
+      requires: tr('A magic or rare item'),
+      output: tr('The same item with entirely new properties'),
       cost: { gold: 400, materials: { 'catalyst.order': 1, 'essence.lesser': 2 } },
       unlockDepth: 8,
     },
     {
       id: 'craft.socket',
-      name: 'Punch Socket',
+      name: tr('Punch Socket'),
       desc:
-        'Adds one empty socket. Limited by the base type and by item level — a two-handed weapon can eventually hold ' +
-        'six, a ring can hold none. Cost nearly doubles per socket.',
+        tr('Adds one empty socket. Limited by the base type and by item level — a two-handed weapon can eventually hold six, a ring can hold none. Cost nearly doubles per socket.'),
       category: 'socket',
-      requires: 'An item below its socket cap',
-      output: 'The same item with one more socket',
+      requires: tr('An item below its socket cap'),
+      output: tr('The same item with one more socket'),
       cost: { gold: 220, materials: { 'shard.steel': 3 } },
       unlockDepth: 5,
     },
     {
       id: 'craft.insert',
-      name: 'Set Gem',
+      name: tr('Set Gem'),
       desc:
-        'Seats a gem or rune in an empty socket. The bonus depends on what it goes into: a ruby is fire damage in a ' +
-        'weapon, life in armour and fire resistance in jewellery.',
+        tr('Seats a gem or rune in an empty socket. The bonus depends on what it goes into: a ruby is fire damage in a weapon, life in armour and fire resistance in jewellery.'),
       category: 'gem',
-      requires: 'An item with an empty socket, and a gem or rune',
-      output: 'A socketed item',
+      requires: tr('An item with an empty socket, and a gem or rune'),
+      output: tr('A socketed item'),
       cost: { gold: 0, materials: {} },
       unlockDepth: 1,
     },
     {
       id: 'craft.extract',
-      name: 'Extract Gem',
+      name: tr('Extract Gem'),
       desc:
-        'Removes a gem or rune. Free if you are content to destroy it; a Sigil of Order buys it back out intact.',
+        tr('Removes a gem or rune. Free if you are content to destroy it; a Sigil of Order buys it back out intact.'),
       category: 'gem',
-      requires: 'An item with a filled socket',
-      output: 'The gem, returned to your inventory',
+      requires: tr('An item with a filled socket'),
+      output: tr('The gem, returned to your inventory'),
       cost: removeGemCost(),
       unlockDepth: 12,
     },
     {
       id: 'craft.salvage',
-      name: 'Break Down',
+      name: tr('Break Down'),
       desc:
-        'Destroys an item for crafting materials, scaled by its rarity, level and upgrade. The only reliable source of ' +
-        'high-tier essences outside of boss kills.',
+        tr('Destroys an item for crafting materials, scaled by its rarity, level and upgrade. The only reliable source of high-tier essences outside of boss kills.'),
       category: 'salvage',
-      requires: 'Any item',
-      output: 'Materials',
+      requires: tr('Any item'),
+      output: tr('Materials'),
       cost: { gold: 0, materials: {} },
       unlockDepth: 1,
     },
@@ -601,11 +597,11 @@ export function craftingRecipes(): CraftRecipe[] {
     if (!recipe) continue;
     recipes.push({
       id: `craft.transmute.${gem.family}`,
-      name: `Fuse ${gem.name.replace('Chipped ', '')}`,
-      desc: 'Three gems of one quality fuse into one of the next quality up. Works at every rung of the ladder.',
+      name: tr('Fuse {0}', gem.familyName),
+      desc: tr('Three gems of one quality fuse into one of the next quality up. Works at every rung of the ladder.'),
       category: 'transmute',
-      requires: `3 gems of the same family and quality`,
-      output: 'One gem of the next quality',
+      requires: tr('3 gems of the same family and quality'),
+      output: tr('One gem of the next quality'),
       cost: { gold: Math.round(gem.value * 0.4), materials: { [gem.id]: 3 } },
       unlockDepth: 3,
     });
@@ -619,7 +615,7 @@ export function formatCost(cost: CraftCost): string {
   const mats = formatMaterials(cost.materials);
   if (cost.gold > 0 && mats) return `${cost.gold}g, ${mats}`;
   if (cost.gold > 0) return `${cost.gold}g`;
-  return mats || 'Free';
+  return mats || tr('Free');
 }
 
 /** True when the account can currently pay a cost. */

@@ -56,6 +56,7 @@ import { moveBetween, sortInventory, splitStack, stackCount, setStackCount } fro
 import { findFit, firstFreeCell, fitsAt, freeCells, itemSize, INV_COLS, INV_ROWS } from '../sim/Grid';
 import { uiSfx } from './Sfx';
 import { estimateAttack } from './AttackEstimate';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -139,14 +140,14 @@ export function placeOrFit(from: Array<Item | null>, fromIndex: number, to: Arra
  * agree afterwards regardless of how much bookkeeping it already did.
  */
 export function doEquip(c: Character, item: Item, slot?: EquipSlot): { ok: boolean; reason?: string } {
-  const res = attempt(() => equipItem(c, item, slot), { ok: false, reason: 'Cannot equip' } as ReturnType<typeof equipItem>);
-  if (!res.ok) return { ok: false, reason: res.reason ?? 'Cannot equip that' };
+  const res = attempt(() => equipItem(c, item, slot), { ok: false, reason: tr('Cannot equip') } as ReturnType<typeof equipItem>);
+  if (!res.ok) return { ok: false, reason: res.reason ?? tr('Cannot equip that') };
   invRemove(c, item);
   for (const d of res.displaced ?? []) {
     if (!d) continue;
     if (!invAdd(c, d)) {
       // No room: put the new item back rather than deleting the old one.
-      events.emit('toast', { text: 'Not enough room in your pack.', kind: 'bad' });
+      events.emit('toast', { text: tr('Not enough room in your pack.'), kind: 'bad' });
     }
   }
   save.touch();
@@ -159,7 +160,7 @@ export function doUnequip(c: Character, slot: EquipSlot): boolean {
   const item = c.equipment[slot];
   if (!item) return false;
   if (invIndexOf(c, item) < 0 && invFirstFree(c, item) < 0) {
-    events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+    events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
     return false;
   }
   const ok = attempt(() => unequipItem(c, slot), false);
@@ -454,7 +455,7 @@ const PD_CELL = 44;
 const PD_GAP = 4;
 
 /** Set on the panel while the character view is being dragged to spin. */
-const SPIN_HINT = 'Drag to turn';
+const SPIN_HINT = tr('Drag to turn');
 
 export class InventoryPanel {
   readonly panel: Panel;
@@ -479,8 +480,8 @@ export class InventoryPanel {
     });
     this.panel = new Panel({
       id: 'inventory',
-      title: 'Equipment',
-      subtitle: 'What you carry is what you lose',
+      title: tr('Equipment'),
+      subtitle: tr('What you carry is what you lose'),
       icon: 'bag',
       width: 1030,
       // The figure animates, so it must not keep drawing behind a closed panel.
@@ -541,7 +542,7 @@ export class InventoryPanel {
           // armour off to put a gem in it.
           if (this.trySocket(p.item, c.equipment[s] ?? null)) return true;
           const r = doEquip(c, p.item, s);
-          if (!r.ok) events.emit('toast', { text: r.reason ?? 'Cannot equip', kind: 'bad' });
+          if (!r.ok) events.emit('toast', { text: r.reason ?? tr('Cannot equip'), kind: 'bad' });
           return r.ok;
         }
       );
@@ -571,7 +572,7 @@ export class InventoryPanel {
     // Sort. `sortSlots` merges stacks first and then orders by rarity and
     // slot, so a pack full of half-stacks of dust collapses on one click.
     const sortBtn = new Button({
-      label: 'Sort',
+      label: tr('Sort'),
       variant: 'ghost',
       icon: 'sparkle',
       small: true,
@@ -602,12 +603,12 @@ export class InventoryPanel {
     });
 
     const hint = div('inv-hint');
-    hint.appendChild(span('', 'Right-click to equip or drink · drag a gem onto gear to socket it · drag onto the ground to drop · hold '));
+    hint.appendChild(span('', tr('Right-click to equip or drink · drag a gem onto gear to socket it · drag onto the ground to drop · hold ')));
     hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', ' and right-click for more, or '));
+    hint.appendChild(span('', tr(' and right-click for more, or ')));
     hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', ' and click a stack to split it, or '));
-    hint.appendChild(span('keycap', 'Ctrl'));
+    hint.appendChild(span('', tr(' and click a stack to split it, or ')));
+    hint.appendChild(span('keycap', tr('Ctrl')));
     hint.appendChild(span('', ' and right-click to drop'));
 
     // Dragging an item out of the window and letting go throws it away, which
@@ -707,11 +708,11 @@ export class InventoryPanel {
 
     if (RARITY_ORDER.indexOf(item.rarity) >= 2 || item.upgrade > 0 || item.sockets.some((s) => s.gemId)) {
       modal({
-        title: 'Drop this?',
+        title: tr('Drop this?'),
         icon: 'trash',
         tone: 'danger',
-        body: `${attempt(() => itemDisplayName(item), 'This item')} will be left on the floor.`,
-        confirmLabel: 'Drop it',
+        body: tr('{0} will be left on the floor.', attempt(() => itemDisplayName(item), tr('This item'))),
+        confirmLabel: tr('Drop it'),
         onConfirm: throwIt,
       });
       return;
@@ -757,7 +758,7 @@ export class InventoryPanel {
       // Prefer the empty ring/hand so the second click does not overwrite the first.
       const target = slots.find((s) => !c.equipment[s]) ?? slots[0];
       const r = doEquip(c, item, target);
-      if (!r.ok) events.emit('toast', { text: r.reason ?? 'Cannot equip that', kind: 'bad' });
+      if (!r.ok) events.emit('toast', { text: r.reason ?? tr('Cannot equip that'), kind: 'bad' });
       else uiSfx('ui.equip');
       return;
     }
@@ -774,7 +775,7 @@ export class InventoryPanel {
       normalizeInventory(c);
       const at = c.inventory[index]?.uid === item.uid ? index : invIndexOf(c, item);
       if (at < 0 || !splitStack(c.inventory, at, n)) {
-        events.emit('toast', { text: 'No empty slot to split into.', kind: 'bad' });
+        events.emit('toast', { text: tr('No empty slot to split into.'), kind: 'bad' });
         return;
       }
       save.touch();
@@ -787,21 +788,21 @@ export class InventoryPanel {
   private townActions(c: Character, item: Item): Array<{ label: string; icon: string; onPick: () => void }> {
     return [
       {
-        label: 'Send to Vault',
+        label: tr('Send to Vault'),
         icon: 'stash',
         onPick: () => {
           if (save.stashItem(item)) {
             invRemove(c, item);
             save.touch();
-            events.emit('toast', { text: 'Stored in the vault.', kind: 'good' });
+            events.emit('toast', { text: tr('Stored in the vault.'), kind: 'good' });
             events.emit('ui:refresh', {});
           } else {
-            events.emit('toast', { text: 'The vault is full.', kind: 'bad' });
+            events.emit('toast', { text: tr('The vault is full.'), kind: 'bad' });
           }
         },
       },
       {
-        label: 'Take to the Blacksmith',
+        label: tr('Take to the Blacksmith'),
         icon: 'anvil',
         onPick: () => events.emit('ui:open', { panel: 'blacksmith' }),
       },
@@ -814,7 +815,7 @@ export class InventoryPanel {
     if (!c) return;
     const at = invIndexOf(c, item);
     const split = stackCount(item) > 1 && at >= 0
-      ? [{ label: 'Split stack', icon: 'bag', hint: 'Shift+click', onPick: () => this.askSplit(item, at) }]
+      ? [{ label: tr('Split stack'), icon: 'bag', hint: tr('Shift+click'), onPick: () => this.askSplit(item, at) }]
       : [];
     // The vault and the forge are town services (see UIRoot's TOWN_ONLY).
     const inTown = this.scene === 'town';
@@ -822,12 +823,12 @@ export class InventoryPanel {
       ...split,
       ...(inTown ? this.townActions(c, item) : []),
       {
-        label: 'Drop on the ground',
+        label: tr('Drop on the ground'),
         icon: 'trash',
-        hint: 'Ctrl+right-click',
+        hint: tr('Ctrl+right-click'),
         onPick: () => this.discard({ kind: 'inventory', item }),
       },
-    ], attempt(() => item.name, 'Item'));
+    ], attempt(() => itemDisplayName(item), tr('Item')));
   }
 
   /**
@@ -846,23 +847,23 @@ export class InventoryPanel {
 
     const free = host.sockets.findIndex((s) => !s.gemId);
     if (free < 0) {
-      const why = host.sockets.length === 0 ? 'has no sockets' : 'has no empty socket';
-      events.emit('toast', { text: `${attempt(() => itemDisplayName(host), 'That')} ${why}.`, kind: 'bad' });
+      const why = host.sockets.length === 0 ? tr('has no sockets') : tr('has no empty socket');
+      events.emit('toast', { text: `${attempt(() => itemDisplayName(host), tr('That'))} ${why}.`, kind: 'bad' });
       // Handled: the player clearly meant to socket it, so do not also swap the
       // two items around as a consolation prize.
       return true;
     }
 
-    const r = attempt(() => insertGem(host, gem.baseId, free), { ok: false, reason: 'Failed' });
+    const r = attempt(() => insertGem(host, gem.baseId, free), { ok: false, reason: tr('Failed') });
     if (!r.ok) {
-      events.emit('toast', { text: r.reason ?? 'It will not seat.', kind: 'bad' });
+      events.emit('toast', { text: r.reason ?? tr('It will not seat.'), kind: 'bad' });
       return true;
     }
     invConsumeOne(c, gem);
     save.touch();
     uiSfx('ui.equip');
     events.emit('toast', {
-      text: `${attempt(() => itemDisplayName(gem), 'Gem')} set into ${attempt(() => itemDisplayName(host), 'it')}.`,
+      text: tr('{0} set into {1}.', attempt(() => itemDisplayName(gem), tr('Gem')), attempt(() => itemDisplayName(host), 'it')),
       kind: 'good',
     });
     events.emit('ui:refresh', {});
@@ -905,7 +906,7 @@ export class InventoryPanel {
       // Same kind of stack: pour it in. Onto one item: trade places. Across
       // two or more, it will not go.
       if (!moveBetween(c.inventory, from, c.inventory, index)) {
-        events.emit('toast', { text: 'It will not fit there.', kind: 'bad' });
+        events.emit('toast', { text: tr('It will not fit there.'), kind: 'bad' });
         return false;
       }
       save.touch();
@@ -915,7 +916,7 @@ export class InventoryPanel {
 
     if (p.kind === 'stash' && p.index !== undefined) {
       if (!placeOrFit(save.account.stash, p.index, c.inventory, index)) {
-        events.emit('toast', { text: 'No room in your pack for that.', kind: 'bad' });
+        events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
         return false;
       }
       save.touch();
@@ -964,7 +965,7 @@ export class InventoryPanel {
 
     const def = classById(c.classId);
     this.crest.innerHTML = classCrestSvg(c.classId, classAccent(c.classId), 190);
-    this.panel.setTitle('Equipment', `${c.name} · Level ${c.level} ${def?.name ?? ''}`);
+    this.panel.setTitle(tr('Equipment'), tr('{0} · Level {1} {2}', c.name, c.level, def?.name ?? ''));
 
     this.renderStatRail(c);
   }
@@ -973,30 +974,30 @@ export class InventoryPanel {
     const st = attempt(() => computeStats(c), null);
     clear(this.statRail);
     if (!st) return;
-    const s = section('At a Glance', 'target');
+    const s = section(tr('At a Glance'), 'target');
     // The right-click attack as it really lands: skill power, crits and its
     // own pace (swing, cast or cooldown), not the bare weapon roll.
     const est = attempt(() => estimateAttack(c, st), null);
-    const what = est?.def ? est.def.name : 'your weapon attack';
-    s.body.appendChild(statLine('Damage', est ? `${fmt(Math.round(est.min))} – ${fmt(Math.round(est.max))}` : '—', { icon: 'sword', hint: `<p>One hit of ${what}, before the target's defences.</p>` }));
+    const what = est?.def ? est.def.name : tr('your weapon attack');
+    s.body.appendChild(statLine(tr('Damage'), est ? `${fmt(Math.round(est.min))} – ${fmt(Math.round(est.max))}` : '—', { icon: 'sword', hint: tr('<p>One hit of {0}, before the target\'s defences.</p>', what) }));
     s.body.appendChild(
-      statLine('Est. DPS', est ? fmt(Math.round(est.dps)) : '—', {
+      statLine(tr('Est. DPS'), est ? fmt(Math.round(est.dps)) : '—', {
         icon: 'crit',
         hint: est
-          ? `<p>Damage a second from ${what} on one target, with crits at their average. Its armour and resistances come off after.</p>`
-          : '<p>Put a spell on the right mouse button to see its damage.</p>',
+          ? tr('<p>Damage a second from {0} on one target, with crits at their average. Its armour and resistances come off after.</p>', what)
+          : tr('<p>Put a spell on the right mouse button to see its damage.</p>'),
       }),
     );
-    s.body.appendChild(statLine('Defense', fmt(st.defense), { icon: 'defense' }));
-    s.body.appendChild(statLine('Life', fmt(st.life), { icon: 'life' }));
-    s.body.appendChild(statLine('Mana', fmt(st.mana), { icon: 'mana' }));
-    s.body.appendChild(statLine('Magic Find', `${fmt(st.magicFind)}%`, { icon: 'magicFind' }));
+    s.body.appendChild(statLine(tr('Defense'), fmt(st.defense), { icon: 'defense' }));
+    s.body.appendChild(statLine(tr('Life'), fmt(st.life), { icon: 'life' }));
+    s.body.appendChild(statLine(tr('Mana'), fmt(st.mana), { icon: 'mana' }));
+    s.body.appendChild(statLine(tr('Magic Find'), `${fmt(st.magicFind)}%`, { icon: 'magicFind' }));
     this.statRail.appendChild(s.root);
 
     const worth = c.inventory.reduce((sum, it) => sum + (it ? attempt(() => vendorPrice(it, false), 0) : 0), 0);
     const foot = div('inv-worth');
     foot.appendChild(icon('coin', { size: 12 }));
-    foot.appendChild(span('', `Pack worth ${fmtInt(worth)}`));
+    foot.appendChild(span('', tr('Pack worth {0}', fmtInt(worth))));
     this.statRail.appendChild(foot);
   }
 }

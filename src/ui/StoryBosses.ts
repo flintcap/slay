@@ -32,6 +32,7 @@ import {
 import { say, showCard } from './StoryOverlay';
 import { addJournalSection, para, pageTitle, type JournalEntry } from './JournalPanel';
 import { div, runtime } from './Widgets';
+import { tr } from '../core/I18n';
 
 /** The fight in progress, if any. */
 let fight: { def: BossDef; taunted: boolean; quietUntil: number } | null = null;
@@ -64,7 +65,7 @@ function floorCard(def: BossDef, depth: number): void {
   const v = BOSS_VOICES[def.id];
   if (!v) return;
   showCard({
-    kicker: depth > 0 ? `Found on tier ${depth}` : 'Found in a boss arena',
+    kicker: depth > 0 ? tr('Found on tier {0}', depth) : tr('Found in a boss arena'),
     title: v.floor.title,
     text: v.floor.text,
     source: v.floor.source,
@@ -167,9 +168,9 @@ export function installStoryBosses(): void {
 
 addJournalSection({
   id: 'bosses',
-  label: 'Bosses',
+  label: tr('Bosses'),
   icon: 'skull',
-  empty: 'Nothing has stood in your way yet. Every run ends with something that will.',
+  empty: tr('Nothing has stood in your way yet. Every run ends with something that will.'),
   entries(): JournalEntry[] {
     const s = story();
     const known = new Set([...s.met, ...s.slain]);
@@ -185,9 +186,9 @@ addJournalSection({
           id: b.id,
           label: b.name,
           sub: b.title,
-          group: slain ? 'Slain' : met ? 'Fought' : 'Heard of',
+          group: slain ? tr('Slain') : met ? tr('Fought') : tr('Heard of'),
           render(page: HTMLElement) {
-            pageTitle(page, `${b.name}, ${b.title}`, slain ? 'Slain' : met ? 'Fought, still standing' : 'Not yet met');
+            pageTitle(page, `${b.name}, ${b.title}`, slain ? tr('Slain') : met ? tr('Fought, still standing') : tr('Not yet met'));
             if (met) {
               para(page, b.intro, 'jr-quiet');
               const q = document.createElement('blockquote');
@@ -200,7 +201,7 @@ addJournalSection({
               page.appendChild(div('jr-meta', v.floor.source));
             }
             if (slain) {
-              page.appendChild(div('jr-group', 'The end of it'));
+              page.appendChild(div('jr-group', tr('The end of it')));
               const q = document.createElement('blockquote');
               q.textContent = fillStory(v.death);
               page.appendChild(q);

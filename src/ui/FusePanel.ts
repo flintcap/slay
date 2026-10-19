@@ -16,6 +16,7 @@ import { getSocketable } from '../data/gems';
 import { itemIconUri } from '../art/Icons';
 import { Panel, Button, div, span, clear, add, fmtInt } from './Widgets';
 import { itemName } from './DepthWidgets';
+import { tr } from '../core/I18n';
 
 /** One look at each stone the panel can make, for its icon and tooltip. */
 const previews = new Map<string, Item>();
@@ -44,8 +45,8 @@ export class FusePanel {
   constructor() {
     this.panel = new Panel({
       id: 'fuse',
-      title: 'Stone Work',
-      subtitle: 'Three of a kind, rendered into one better',
+      title: tr('Stone Work'),
+      subtitle: tr('Three of a kind, rendered into one better'),
       icon: 'gem',
       width: 600,
     });
@@ -72,13 +73,13 @@ export class FusePanel {
     if (!c) return;
     const r = fuseStones(c, recipe.from, times, (cost) => spendCost(cost));
     if (!r.ok) {
-      toast(r.reason ?? 'No.', 'bad');
+      toast(r.reason ?? tr('No.'), 'bad');
       audio.play('ui.error');
       return;
     }
     const name = getSocketable(recipe.to)?.name ?? 'stone';
     audio.play('levelup');
-    toast(r.made > 1 ? `Fused ${r.made} × ${name}` : `Fused: ${name}`, 'good');
+    toast(r.made > 1 ? tr('Fused {0} × {1}', r.made, name) : tr('Fused: {0}', name), 'good');
     if (r.reason) toast(r.reason, 'info');
     save.touch();
     events.emit('ui:refresh', {});
@@ -91,7 +92,7 @@ export class FusePanel {
     this.body.appendChild(
       div(
         'depth-note',
-        'Three gems of the same kind and quality make one of the next quality. Three runes of the same kind make the next rune. Only what you carry in your pack counts.',
+        tr('Three gems of the same kind and quality make one of the next quality. Three runes of the same kind make the next rune. Only what you carry in your pack counts.'),
       ),
     );
     const rows = fusableInPack(c).sort((a, b) =>
@@ -100,7 +101,7 @@ export class FusePanel {
         : a.recipe.kind === 'gem' ? -1 : 1,
     );
     if (rows.length === 0) {
-      this.body.appendChild(div('depth-card-sub', 'Bring me gems or runes. Three of a kind, and I can do something with them.'));
+      this.body.appendChild(div('depth-card-sub', tr('Bring me gems or runes. Three of a kind, and I can do something with them.')));
     }
     const list = div('depth-list');
     list.style.maxHeight = '52vh';
@@ -113,13 +114,13 @@ export class FusePanel {
       const b = div('depth-card-body fuse-body');
       const line = div('fuse-line');
       add(line, stoneIcon(from), span('fuse-times', `${recipe.count} ×`), itemName(from), span('fuse-arrow', '→'), stoneIcon(to), itemName(to));
-      add(b, line, span('depth-dim', `You carry ${have}. ${fmtInt(recipe.gold)}g each.`));
+      add(b, line, span('depth-dim', tr('You carry {0}. {1}g each.', have, fmtInt(recipe.gold))));
       card.appendChild(b);
-      const one = new Button({ label: 'Fuse', small: true, variant: 'gold', onClick: () => this.fuse(recipe, 1) });
+      const one = new Button({ label: tr('Fuse'), small: true, variant: 'gold', onClick: () => this.fuse(recipe, 1) });
       one.setDisabled(affordable < 1);
       card.appendChild(one.root);
       if (sets > 1) {
-        const all = new Button({ label: `Fuse all (${affordable})`, small: true, onClick: () => this.fuse(recipe, affordable) });
+        const all = new Button({ label: tr('Fuse all ({0})', affordable), small: true, onClick: () => this.fuse(recipe, affordable) });
         all.setDisabled(affordable < 2);
         card.appendChild(all.root);
       }
@@ -127,7 +128,7 @@ export class FusePanel {
     }
     this.body.appendChild(list);
     const foot = div('depth-row depth-foot');
-    add(foot, span('depth-dim', `You carry ${fmtInt(c.gold)} gold.`));
+    add(foot, span('depth-dim', tr('You carry {0} gold.', fmtInt(c.gold))));
     this.body.appendChild(foot);
   }
 }

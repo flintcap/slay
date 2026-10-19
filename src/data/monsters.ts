@@ -12,6 +12,7 @@
  */
 
 import type { BiomeId, MonsterDef, MonsterFamily, MonsterRole, Rng } from '../types';
+import { tr } from '../core/I18n';
 
 // Convenience re-exports: the scene layer pulls the whole monster surface from
 // one module rather than three.
@@ -99,7 +100,7 @@ function mon(spec: MonSpec): MonsterDef {
 // ===========================================================================
 
 mon({
-  id: 'skeleton_rattler', name: 'Rattling Skeleton', family: 'undead', role: 'melee',
+  id: 'skeleton_rattler', name: tr('Rattling Skeleton'), family: 'undead', role: 'melee',
   minDepth: 1, weight: 16, lifeMul: 0.75, damageMul: 0.85, speed: 2.9, scale: 0.95,
   abilities: ['basic_strike'],
   resists: { poison: 50, cold: 20, physical: -10 },
@@ -108,7 +109,7 @@ mon({
 });
 
 mon({
-  id: 'skeleton_archer', name: 'Bone Archer', family: 'undead', role: 'ranged',
+  id: 'skeleton_archer', name: tr('Bone Archer'), family: 'undead', role: 'ranged',
   // Slower than the swordsmen it stands behind: testers could not run one down.
   minDepth: 1, weight: 9, attackRange: 13, speed: 2.6,
   abilities: ['arrow_shot'],
@@ -118,7 +119,7 @@ mon({
 });
 
 mon({
-  id: 'skeleton_warden', name: 'Crypt Warden', family: 'undead', role: 'brute',
+  id: 'skeleton_warden', name: tr('Crypt Warden'), family: 'undead', role: 'brute',
   minDepth: 4, weight: 5, lifeMul: 2.2, scale: 1.35, speed: 2.5,
   abilities: ['shield_bash'],
   resists: { poison: 50, physical: 20 },
@@ -127,7 +128,7 @@ mon({
 });
 
 mon({
-  id: 'skeleton_duelist', name: 'Ossuary Duelist', family: 'undead', role: 'melee',
+  id: 'skeleton_duelist', name: tr('Ossuary Duelist'), family: 'undead', role: 'melee',
   minDepth: 6, weight: 8, speed: 3.6, attackSpeed: 1.5, damageMul: 1.1, lifeMul: 0.8,
   abilities: ['double_swipe'],
   resists: { poison: 50, cold: 25 },
@@ -136,7 +137,7 @@ mon({
 });
 
 mon({
-  id: 'skeletal_ballista', name: 'Ossuary Ballista', family: 'undead', role: 'ranged',
+  id: 'skeletal_ballista', name: tr('Ossuary Ballista'), family: 'undead', role: 'ranged',
   minDepth: 13, weight: 4, lifeMul: 1.4, speed: 1.5, scale: 1.4, attackRange: 24,
   abilities: ['ballista_bolt'],
   resists: { poison: 60, physical: 15 },
@@ -145,7 +146,7 @@ mon({
 });
 
 mon({
-  id: 'bone_conjurer', name: 'Bone Conjurer', family: 'undead', role: 'support',
+  id: 'bone_conjurer', name: tr('Bone Conjurer'), family: 'undead', role: 'support',
   minDepth: 6, weight: 5, attackRange: 14,
   abilities: ['raise_dead'],
   resists: { poison: 60, arcane: 25 },
@@ -154,7 +155,7 @@ mon({
 });
 
 mon({
-  id: 'crypt_ghoul', name: 'Crypt Ghoul', family: 'undead', role: 'melee',
+  id: 'crypt_ghoul', name: tr('Crypt Ghoul'), family: 'undead', role: 'melee',
   minDepth: 2, weight: 12, speed: 3.5, lifeMul: 0.9, damageMul: 1.05,
   abilities: ['basic_strike'],
   resists: { poison: 40, cold: 15 },
@@ -163,7 +164,7 @@ mon({
 });
 
 mon({
-  id: 'plague_ghoul', name: 'Plague Ghoul', family: 'undead', role: 'melee',
+  id: 'plague_ghoul', name: tr('Plague Ghoul'), family: 'undead', role: 'melee',
   minDepth: 7, weight: 9, speed: 3.3, lifeMul: 1.0, damageType: 'poison',
   abilities: ['basic_strike', 'plague_death'],
   resists: { poison: 90, cold: 20 },
@@ -172,7 +173,7 @@ mon({
 });
 
 mon({
-  id: 'rotting_bloat', name: 'Rotting Bloat', family: 'undead', role: 'brute',
+  id: 'rotting_bloat', name: tr('Rotting Bloat'), family: 'undead', role: 'brute',
   minDepth: 6, weight: 5, lifeMul: 3.0, speed: 1.7, scale: 1.6, damageType: 'poison',
   abilities: ['heavy_slam', 'plague_death'],
   resists: { poison: 95, physical: 20, fire: -25 },
@@ -181,7 +182,7 @@ mon({
 });
 
 mon({
-  id: 'corpse_hound', name: 'Corpse Hound', family: 'undead', role: 'swarm',
+  id: 'corpse_hound', name: tr('Corpse Hound'), family: 'undead', role: 'swarm',
   minDepth: 3, weight: 13, speed: 4.8, scale: 0.75,
   abilities: ['basic_strike'],
   resists: { poison: 50 },
@@ -190,7 +191,7 @@ mon({
 });
 
 mon({
-  id: 'wraith', name: 'Wraith', family: 'undead', role: 'ambusher',
+  id: 'wraith', name: tr('Wraith'), family: 'undead', role: 'ambusher',
   minDepth: 5, weight: 7, speed: 4.0, damageType: 'cold', attackRange: 2.4,
   abilities: ['phase_shift'],
   resists: { physical: 50, poison: 100, cold: 40, fire: -20 },
@@ -199,7 +200,7 @@ mon({
 });
 
 mon({
-  id: 'banshee', name: 'Banshee', family: 'undead', role: 'caster',
+  id: 'banshee', name: tr('Banshee'), family: 'undead', role: 'caster',
   minDepth: 9, weight: 5, damageType: 'cold', attackRange: 12,
   abilities: ['frost_bolt', 'banshee_wail'],
   resists: { physical: 45, cold: 60, poison: 100 },
@@ -208,7 +209,7 @@ mon({
 });
 
 mon({
-  id: 'gravebound_knight', name: 'Gravebound Knight', family: 'undead', role: 'brute',
+  id: 'gravebound_knight', name: tr('Gravebound Knight'), family: 'undead', role: 'brute',
   minDepth: 10, weight: 5, lifeMul: 2.9, defenseMul: 1.8, scale: 1.45,
   abilities: ['cleave'],
   resists: { poison: 60, physical: 30, cold: 25 },
@@ -217,7 +218,7 @@ mon({
 });
 
 mon({
-  id: 'grave_titan', name: 'Bone Colossus', family: 'undead', role: 'brute',
+  id: 'grave_titan', name: tr('Bone Colossus'), family: 'undead', role: 'brute',
   minDepth: 16, weight: 3, lifeMul: 4.5, damageMul: 2.0, scale: 2.3, speed: 2.0,
   abilities: ['ground_slam', 'shatter_death'],
   resists: { poison: 70, physical: 35 },
@@ -226,7 +227,7 @@ mon({
 });
 
 mon({
-  id: 'mortician_lich', name: 'Mortician Lich', family: 'undead', role: 'caster',
+  id: 'mortician_lich', name: tr('Mortician Lich'), family: 'undead', role: 'caster',
   minDepth: 20, weight: 3, lifeMul: 1.1, damageMul: 1.5, attackRange: 16,
   abilities: ['raise_dead', 'siphon_soul'],
   resists: { poison: 100, cold: 50, arcane: 40, physical: 20 },
@@ -235,7 +236,7 @@ mon({
 });
 
 mon({
-  id: 'barrow_shade', name: 'Barrow Shade', family: 'undead', role: 'ambusher',
+  id: 'barrow_shade', name: tr('Barrow Shade'), family: 'undead', role: 'ambusher',
   minDepth: 14, weight: 6, speed: 4.4, damageMul: 1.7, damageType: 'arcane',
   abilities: ['stealth', 'teleport_strike'],
   resists: { physical: 60, poison: 100, arcane: 30 },
@@ -244,7 +245,7 @@ mon({
 });
 
 mon({
-  id: 'sepulcher_choir', name: 'Sepulcher Choir', family: 'undead', role: 'support',
+  id: 'sepulcher_choir', name: tr('Sepulcher Choir'), family: 'undead', role: 'support',
   minDepth: 18, weight: 3, attackRange: 12,
   abilities: ['shield_ally', 'resurrect_ally'],
   resists: { poison: 80, cold: 40 },
@@ -257,7 +258,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'imp_scamperer', name: 'Scampering Imp', family: 'demon', role: 'swarm',
+  id: 'imp_scamperer', name: tr('Scampering Imp'), family: 'demon', role: 'swarm',
   minDepth: 3, weight: 14, speed: 5.0, scale: 0.6, damageType: 'fire',
   abilities: ['basic_strike'],
   resists: { fire: 60, cold: -25 },
@@ -266,7 +267,7 @@ mon({
 });
 
 mon({
-  id: 'fleshripper', name: 'Fleshripper', family: 'demon', role: 'melee',
+  id: 'fleshripper', name: tr('Fleshripper'), family: 'demon', role: 'melee',
   minDepth: 5, weight: 11, speed: 3.6, damageMul: 1.2, attackSpeed: 1.35,
   abilities: ['basic_strike'],
   resists: { fire: 40, poison: 25 },
@@ -275,7 +276,7 @@ mon({
 });
 
 mon({
-  id: 'hellhound', name: 'Hellhound', family: 'demon', role: 'melee',
+  id: 'hellhound', name: tr('Hellhound'), family: 'demon', role: 'melee',
   minDepth: 7, weight: 9, speed: 4.2, damageType: 'fire', scale: 1.05,
   abilities: ['basic_strike', 'molten_trail'],
   resists: { fire: 85, cold: -30 },
@@ -284,7 +285,7 @@ mon({
 });
 
 mon({
-  id: 'infernal_archer', name: 'Cinder Archer', family: 'demon', role: 'ranged',
+  id: 'infernal_archer', name: tr('Cinder Archer'), family: 'demon', role: 'ranged',
   minDepth: 8, weight: 7, damageType: 'fire', attackRange: 15,
   abilities: ['bomb_lob'],
   resists: { fire: 70, cold: -20 },
@@ -293,7 +294,7 @@ mon({
 });
 
 mon({
-  id: 'pit_brute', name: 'Pit Brute', family: 'demon', role: 'brute',
+  id: 'pit_brute', name: tr('Pit Brute'), family: 'demon', role: 'brute',
   minDepth: 9, weight: 5, lifeMul: 3.0, scale: 1.75, damageMul: 1.7,
   abilities: ['heavy_slam'],
   resists: { fire: 60, physical: 25, cold: -25 },
@@ -302,7 +303,7 @@ mon({
 });
 
 mon({
-  id: 'succubus_lash', name: 'Lash Temptress', family: 'demon', role: 'caster',
+  id: 'succubus_lash', name: tr('Lash Temptress'), family: 'demon', role: 'caster',
   minDepth: 11, weight: 5, attackRange: 12, damageType: 'arcane',
   abilities: ['mind_lash'],
   resists: { fire: 40, arcane: 50 },
@@ -311,7 +312,7 @@ mon({
 });
 
 mon({
-  id: 'void_stalker', name: 'Void Stalker', family: 'demon', role: 'ambusher',
+  id: 'void_stalker', name: tr('Void Stalker'), family: 'demon', role: 'ambusher',
   minDepth: 13, weight: 6, speed: 4.3, damageMul: 1.7, damageType: 'arcane',
   abilities: ['stealth', 'teleport_strike'],
   resists: { arcane: 60, physical: 25 },
@@ -320,7 +321,7 @@ mon({
 });
 
 mon({
-  id: 'ember_fiend', name: 'Ember Fiend', family: 'demon', role: 'ranged',
+  id: 'ember_fiend', name: tr('Ember Fiend'), family: 'demon', role: 'ranged',
   minDepth: 12, weight: 7, damageType: 'fire', attackRange: 14,
   abilities: ['fire_bolt', 'molten_trail'],
   resists: { fire: 95, cold: -40 },
@@ -329,7 +330,7 @@ mon({
 });
 
 mon({
-  id: 'soulbinder', name: 'Soulbinder', family: 'demon', role: 'support',
+  id: 'soulbinder', name: tr('Soulbinder'), family: 'demon', role: 'support',
   minDepth: 15, weight: 4, attackRange: 13,
   abilities: ['summon_imps', 'shield_ally'],
   resists: { fire: 50, arcane: 45 },
@@ -338,7 +339,7 @@ mon({
 });
 
 mon({
-  id: 'chaos_maw', name: 'Chaos Maw', family: 'demon', role: 'brute',
+  id: 'chaos_maw', name: tr('Chaos Maw'), family: 'demon', role: 'brute',
   minDepth: 18, weight: 4, lifeMul: 3.4, scale: 1.9, damageMul: 1.9, speed: 2.6,
   abilities: ['cone_breath_void', 'quake_stomp'],
   resists: { arcane: 60, fire: 45, physical: 30 },
@@ -347,7 +348,7 @@ mon({
 });
 
 mon({
-  id: 'balor_lieutenant', name: 'Balor Lieutenant', family: 'demon', role: 'brute',
+  id: 'balor_lieutenant', name: tr('Balor Lieutenant'), family: 'demon', role: 'brute',
   minDepth: 22, weight: 3, lifeMul: 3.8, scale: 2.0, damageMul: 2.1, damageType: 'fire',
   abilities: ['meteor', 'charge'],
   resists: { fire: 90, physical: 35, cold: -25 },
@@ -356,7 +357,7 @@ mon({
 });
 
 mon({
-  id: 'sin_eater', name: 'Sin Eater', family: 'demon', role: 'melee',
+  id: 'sin_eater', name: tr('Sin Eater'), family: 'demon', role: 'melee',
   minDepth: 20, weight: 6, lifeMul: 1.6, damageMul: 1.5, speed: 3.2,
   abilities: ['flesh_hooks', 'execute_low'],
   resists: { arcane: 40, poison: 40 },
@@ -365,7 +366,7 @@ mon({
 });
 
 mon({
-  id: 'brimstone_hulk', name: 'Brimstone Hulk', family: 'demon', role: 'brute',
+  id: 'brimstone_hulk', name: tr('Brimstone Hulk'), family: 'demon', role: 'brute',
   minDepth: 26, weight: 3, lifeMul: 4.2, scale: 2.1, damageType: 'fire', damageMul: 2.2,
   abilities: ['ground_slam', 'molten_trail', 'death_explode'],
   resists: { fire: 100, physical: 35, cold: -40 },
@@ -378,7 +379,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'dire_rat', name: 'Dire Rat', family: 'beast', role: 'swarm',
+  id: 'dire_rat', name: tr('Dire Rat'), family: 'beast', role: 'swarm',
   minDepth: 1, weight: 16, speed: 4.6, scale: 0.5,
   abilities: ['basic_strike'],
   biomes: ['crypt', 'caverns', 'hive', 'darkForest', 'swamp', 'desert', 'desertTomb'],
@@ -386,7 +387,7 @@ mon({
 });
 
 mon({
-  id: 'cave_bat', name: 'Shriekbat', family: 'beast', role: 'swarm',
+  id: 'cave_bat', name: tr('Shriekbat'), family: 'beast', role: 'swarm',
   minDepth: 2, weight: 14, speed: 5.4, scale: 0.5,
   abilities: ['basic_strike'],
   biomes: ['caverns', 'crypt', 'hive', 'darkForest', 'desertTomb'],
@@ -394,7 +395,7 @@ mon({
 });
 
 mon({
-  id: 'gorge_wolf', name: 'Gorge Wolf', family: 'beast', role: 'melee',
+  id: 'gorge_wolf', name: tr('Gorge Wolf'), family: 'beast', role: 'melee',
   minDepth: 2, weight: 12, speed: 4.1, damageMul: 1.05,
   abilities: ['basic_strike'],
   biomes: ['caverns', 'ashwaste', 'frostvault', 'darkForest', 'desert', 'tundra'],
@@ -402,7 +403,7 @@ mon({
 });
 
 mon({
-  id: 'pack_alpha', name: 'Pack Alpha', family: 'beast', role: 'support',
+  id: 'pack_alpha', name: tr('Pack Alpha'), family: 'beast', role: 'support',
   minDepth: 5, weight: 4, lifeMul: 1.6, scale: 1.25, speed: 3.8, attackRange: 2.4,
   abilities: ['rally_pack'],
   biomes: ['caverns', 'ashwaste', 'frostvault', 'darkForest', 'desert', 'tundra'],
@@ -410,7 +411,7 @@ mon({
 });
 
 mon({
-  id: 'crag_bear', name: 'Crag Bear', family: 'beast', role: 'brute',
+  id: 'crag_bear', name: tr('Crag Bear'), family: 'beast', role: 'brute',
   minDepth: 6, weight: 5, lifeMul: 2.8, scale: 1.6,
   abilities: ['heavy_slam'],
   resists: { physical: 20, cold: 25 },
@@ -419,7 +420,7 @@ mon({
 });
 
 mon({
-  id: 'saber_prowler', name: 'Saber Prowler', family: 'beast', role: 'ambusher',
+  id: 'saber_prowler', name: tr('Saber Prowler'), family: 'beast', role: 'ambusher',
   minDepth: 8, weight: 7, speed: 4.5, damageMul: 1.6,
   abilities: ['stealth'],
   biomes: ['caverns', 'ashwaste', 'darkForest', 'desert', 'tundra'],
@@ -427,7 +428,7 @@ mon({
 });
 
 mon({
-  id: 'harpy_screecher', name: 'Harpy Screecher', family: 'beast', role: 'ranged',
+  id: 'harpy_screecher', name: tr('Harpy Screecher'), family: 'beast', role: 'ranged',
   minDepth: 7, weight: 7, speed: 4.0, attackRange: 11,
   abilities: ['quill_burst'],
   biomes: ['caverns', 'ashwaste', 'voidspire', 'darkForest', 'desert', 'tundra'],
@@ -435,7 +436,7 @@ mon({
 });
 
 mon({
-  id: 'basilisk', name: 'Basilisk', family: 'beast', role: 'caster',
+  id: 'basilisk', name: tr('Basilisk'), family: 'beast', role: 'caster',
   minDepth: 12, weight: 5, lifeMul: 1.2, scale: 1.3, attackRange: 13, speed: 2.4,
   abilities: ['petrify_gaze'],
   resists: { poison: 70, physical: 20 },
@@ -444,7 +445,7 @@ mon({
 });
 
 mon({
-  id: 'gulper_frog', name: 'Gulper', family: 'beast', role: 'ambusher',
+  id: 'gulper_frog', name: tr('Gulper'), family: 'beast', role: 'ambusher',
   minDepth: 4, weight: 8, speed: 3.2, lifeMul: 1.1, damageMul: 1.3,
   abilities: ['grapple_pull'],
   resists: { poison: 50 },
@@ -453,7 +454,7 @@ mon({
 });
 
 mon({
-  id: 'tunnel_worm', name: 'Tunnel Worm', family: 'beast', role: 'brute',
+  id: 'tunnel_worm', name: tr('Tunnel Worm'), family: 'beast', role: 'brute',
   minDepth: 10, weight: 5, lifeMul: 2.6, scale: 1.7, speed: 2.2,
   abilities: ['burrow_emerge'],
   resists: { physical: 30, poison: 45 },
@@ -462,7 +463,7 @@ mon({
 });
 
 mon({
-  id: 'wyvern_whelp', name: 'Wyvern Whelp', family: 'beast', role: 'melee',
+  id: 'wyvern_whelp', name: tr('Wyvern Whelp'), family: 'beast', role: 'melee',
   minDepth: 14, weight: 6, speed: 4.0, scale: 1.25, damageType: 'poison',
   abilities: ['tail_sweep'],
   resists: { poison: 70 },
@@ -471,7 +472,7 @@ mon({
 });
 
 mon({
-  id: 'rime_stag', name: 'Rime Stag', family: 'beast', role: 'brute',
+  id: 'rime_stag', name: tr('Rime Stag'), family: 'beast', role: 'brute',
   minDepth: 16, weight: 4, lifeMul: 2.4, scale: 1.65, speed: 3.4, damageType: 'cold',
   abilities: ['gore_charge', 'shatter_death'],
   resists: { cold: 90, fire: -30 },
@@ -480,7 +481,7 @@ mon({
 });
 
 mon({
-  id: 'ashen_lion', name: 'Ashen Lion', family: 'beast', role: 'melee',
+  id: 'ashen_lion', name: tr('Ashen Lion'), family: 'beast', role: 'melee',
   minDepth: 19, weight: 6, speed: 4.4, damageMul: 1.4, scale: 1.3, damageType: 'fire',
   abilities: ['basic_strike'],
   resists: { fire: 70 },
@@ -489,7 +490,7 @@ mon({
 });
 
 mon({
-  id: 'chasm_leviathan', name: 'Chasm Leviathan', family: 'beast', role: 'brute',
+  id: 'chasm_leviathan', name: tr('Chasm Leviathan'), family: 'beast', role: 'brute',
   minDepth: 24, weight: 3, lifeMul: 4.6, scale: 2.4, speed: 2.0,
   abilities: ['burrow_emerge', 'quake_stomp'],
   resists: { physical: 40, poison: 60 },
@@ -502,7 +503,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'scarab_drone', name: 'Clockwork Scarab', family: 'construct', role: 'swarm',
+  id: 'scarab_drone', name: tr('Clockwork Scarab'), family: 'construct', role: 'swarm',
   minDepth: 4, weight: 13, speed: 4.4, scale: 0.55,
   abilities: ['basic_strike', 'shatter_death'],
   resists: { physical: 25, poison: 100, lightning: -40 },
@@ -511,7 +512,7 @@ mon({
 });
 
 mon({
-  id: 'animated_armor', name: 'Animate Armour', family: 'construct', role: 'melee',
+  id: 'animated_armor', name: tr('Animate Armour'), family: 'construct', role: 'melee',
   minDepth: 5, weight: 10, lifeMul: 1.3, defenseMul: 1.5, speed: 2.6,
   abilities: ['basic_strike'],
   resists: { physical: 35, poison: 100, cold: 30, lightning: -30 },
@@ -520,7 +521,7 @@ mon({
 });
 
 mon({
-  id: 'clockwork_sentry', name: 'Clockwork Sentry', family: 'construct', role: 'ranged',
+  id: 'clockwork_sentry', name: tr('Clockwork Sentry'), family: 'construct', role: 'ranged',
   minDepth: 6, weight: 8, speed: 2.2, attackRange: 16, lifeMul: 0.9,
   abilities: ['crossbow_bolt'],
   resists: { physical: 25, poison: 100, lightning: -35 },
@@ -529,7 +530,7 @@ mon({
 });
 
 mon({
-  id: 'arc_pylon', name: 'Arc Pylon', family: 'construct', role: 'caster',
+  id: 'arc_pylon', name: tr('Arc Pylon'), family: 'construct', role: 'caster',
   minDepth: 9, weight: 6, speed: 1.6, attackRange: 14, damageType: 'lightning',
   abilities: ['shock_bolt', 'chain_lightning'],
   resists: { lightning: 100, physical: 25, poison: 100, cold: -25 },
@@ -538,7 +539,7 @@ mon({
 });
 
 mon({
-  id: 'iron_golem', name: 'Iron Golem', family: 'construct', role: 'brute',
+  id: 'iron_golem', name: tr('Iron Golem'), family: 'construct', role: 'brute',
   minDepth: 11, weight: 5, lifeMul: 3.4, defenseMul: 2.0, scale: 1.8, speed: 1.9,
   abilities: ['ground_slam'],
   resists: { physical: 45, poison: 100, cold: 35, lightning: -35 },
@@ -547,7 +548,7 @@ mon({
 });
 
 mon({
-  id: 'forge_smith', name: 'Forge Smith', family: 'construct', role: 'support',
+  id: 'forge_smith', name: tr('Forge Smith'), family: 'construct', role: 'support',
   minDepth: 12, weight: 4, attackRange: 10, speed: 2.4,
   abilities: ['repair_construct'],
   resists: { fire: 80, poison: 100, physical: 20 },
@@ -556,7 +557,7 @@ mon({
 });
 
 mon({
-  id: 'brass_stalker', name: 'Brass Stalker', family: 'construct', role: 'ambusher',
+  id: 'brass_stalker', name: tr('Brass Stalker'), family: 'construct', role: 'ambusher',
   minDepth: 13, weight: 6, speed: 4.2, damageMul: 1.6,
   abilities: ['stealth'],
   resists: { physical: 30, poison: 100, lightning: -30 },
@@ -565,7 +566,7 @@ mon({
 });
 
 mon({
-  id: 'siege_automaton', name: 'Siege Automaton', family: 'construct', role: 'ranged',
+  id: 'siege_automaton', name: tr('Siege Automaton'), family: 'construct', role: 'ranged',
   minDepth: 17, weight: 4, lifeMul: 1.8, speed: 1.7, attackRange: 22, scale: 1.5,
   abilities: ['ballista_bolt', 'bomb_lob'],
   resists: { physical: 40, poison: 100, lightning: -40 },
@@ -574,7 +575,7 @@ mon({
 });
 
 mon({
-  id: 'rune_guardian', name: 'Rune Guardian', family: 'construct', role: 'support',
+  id: 'rune_guardian', name: tr('Rune Guardian'), family: 'construct', role: 'support',
   minDepth: 15, weight: 4, lifeMul: 1.4, attackRange: 12, damageType: 'arcane',
   abilities: ['shield_ally', 'arcane_nova'],
   resists: { arcane: 60, poison: 100, physical: 30 },
@@ -583,7 +584,7 @@ mon({
 });
 
 mon({
-  id: 'arcane_sentry_totem', name: 'Arcane Sentry', family: 'construct', role: 'ranged',
+  id: 'arcane_sentry_totem', name: tr('Arcane Sentry'), family: 'construct', role: 'ranged',
   minDepth: 15, weight: 0, lifeMul: 0.35, speed: 0, attackRange: 16, scale: 0.8, xpMul: 0.2,
   damageType: 'arcane',
   abilities: ['arcane_sentry'],
@@ -592,7 +593,7 @@ mon({
 });
 
 mon({
-  id: 'colossus_frame', name: 'Colossus Frame', family: 'construct', role: 'brute',
+  id: 'colossus_frame', name: tr('Colossus Frame'), family: 'construct', role: 'brute',
   minDepth: 21, weight: 3, lifeMul: 4.4, defenseMul: 2.3, scale: 2.2, speed: 1.8,
   abilities: ['quake_stomp', 'death_explode'],
   resists: { physical: 50, poison: 100, cold: 40, lightning: -45 },
@@ -601,7 +602,7 @@ mon({
 });
 
 mon({
-  id: 'mercury_construct', name: 'Quicksilver Construct', family: 'construct', role: 'melee',
+  id: 'mercury_construct', name: tr('Quicksilver Construct'), family: 'construct', role: 'melee',
   minDepth: 23, weight: 6, speed: 4.0, lifeMul: 1.5, damageMul: 1.4,
   abilities: ['split_self'],
   resists: { physical: 40, poison: 100, fire: 40 },
@@ -610,7 +611,7 @@ mon({
 });
 
 mon({
-  id: 'obsidian_warden', name: 'Obsidian Warden', family: 'construct', role: 'brute',
+  id: 'obsidian_warden', name: tr('Obsidian Warden'), family: 'construct', role: 'brute',
   minDepth: 27, weight: 3, lifeMul: 4.0, defenseMul: 2.4, scale: 2.0, damageType: 'fire',
   abilities: ['flame_wave', 'shield_self', 'molten_trail'],
   resists: { fire: 95, physical: 50, poison: 100 },
@@ -623,7 +624,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'hive_drone', name: 'Hive Drone', family: 'insect', role: 'swarm',
+  id: 'hive_drone', name: tr('Hive Drone'), family: 'insect', role: 'swarm',
   minDepth: 3, weight: 16, speed: 4.5, scale: 0.6,
   abilities: ['basic_strike'],
   resists: { poison: 60 },
@@ -632,7 +633,7 @@ mon({
 });
 
 mon({
-  id: 'hornet_swarmer', name: 'Blade Hornet', family: 'insect', role: 'swarm',
+  id: 'hornet_swarmer', name: tr('Blade Hornet'), family: 'insect', role: 'swarm',
   minDepth: 6, weight: 13, speed: 5.6, scale: 0.55, damageType: 'poison',
   abilities: ['basic_strike'],
   resists: { poison: 80 },
@@ -641,7 +642,7 @@ mon({
 });
 
 mon({
-  id: 'spitter_beetle', name: 'Spitter Beetle', family: 'insect', role: 'ranged',
+  id: 'spitter_beetle', name: tr('Spitter Beetle'), family: 'insect', role: 'ranged',
   minDepth: 4, weight: 9, damageType: 'poison', attackRange: 12, speed: 2.6,
   abilities: ['acid_spit'],
   resists: { poison: 90, physical: 20 },
@@ -650,7 +651,7 @@ mon({
 });
 
 mon({
-  id: 'lance_mantis', name: 'Lance Mantis', family: 'insect', role: 'melee',
+  id: 'lance_mantis', name: tr('Lance Mantis'), family: 'insect', role: 'melee',
   minDepth: 8, weight: 10, speed: 3.8, damageMul: 1.25, attackRange: 3.0,
   abilities: ['impale'],
   resists: { poison: 50 },
@@ -659,7 +660,7 @@ mon({
 });
 
 mon({
-  id: 'burrow_tick', name: 'Burrow Tick', family: 'insect', role: 'ambusher',
+  id: 'burrow_tick', name: tr('Burrow Tick'), family: 'insect', role: 'ambusher',
   minDepth: 7, weight: 8, speed: 3.4, damageMul: 1.5, damageType: 'poison',
   abilities: ['burrow_emerge'],
   resists: { poison: 90, physical: 25 },
@@ -668,7 +669,7 @@ mon({
 });
 
 mon({
-  id: 'web_spinner', name: 'Web Spinner', family: 'insect', role: 'ranged',
+  id: 'web_spinner', name: tr('Web Spinner'), family: 'insect', role: 'ranged',
   minDepth: 5, weight: 9, attackRange: 13, speed: 3.4,
   abilities: ['acid_spit', 'web_snare'],
   resists: { poison: 70 },
@@ -677,7 +678,7 @@ mon({
 });
 
 mon({
-  id: 'carapace_warden', name: 'Carapace Warden', family: 'insect', role: 'brute',
+  id: 'carapace_warden', name: tr('Carapace Warden'), family: 'insect', role: 'brute',
   minDepth: 12, weight: 5, lifeMul: 3.0, defenseMul: 1.8, scale: 1.7,
   abilities: ['heavy_slam'],
   resists: { physical: 40, poison: 90 },
@@ -686,7 +687,7 @@ mon({
 });
 
 mon({
-  id: 'hive_nurse', name: 'Hive Nurse', family: 'insect', role: 'support',
+  id: 'hive_nurse', name: tr('Hive Nurse'), family: 'insect', role: 'support',
   minDepth: 10, weight: 4, attackRange: 10,
   abilities: ['summon_swarm'],
   resists: { poison: 90 },
@@ -695,7 +696,7 @@ mon({
 });
 
 mon({
-  id: 'venom_wasp', name: 'Venom Wasp', family: 'insect', role: 'ranged',
+  id: 'venom_wasp', name: tr('Venom Wasp'), family: 'insect', role: 'ranged',
   minDepth: 11, weight: 8, speed: 4.4, damageType: 'poison', attackRange: 12,
   abilities: ['acid_spit'],
   resists: { poison: 100 },
@@ -704,7 +705,7 @@ mon({
 });
 
 mon({
-  id: 'chitin_reaver', name: 'Chitin Reaver', family: 'insect', role: 'melee',
+  id: 'chitin_reaver', name: tr('Chitin Reaver'), family: 'insect', role: 'melee',
   minDepth: 15, weight: 9, speed: 3.9, damageMul: 1.4, attackSpeed: 1.3,
   abilities: ['basic_strike'],
   resists: { physical: 30, poison: 80 },
@@ -713,7 +714,7 @@ mon({
 });
 
 mon({
-  id: 'acid_larva', name: 'Acid Larva', family: 'insect', role: 'swarm',
+  id: 'acid_larva', name: tr('Acid Larva'), family: 'insect', role: 'swarm',
   minDepth: 9, weight: 11, speed: 3.6, scale: 0.65, damageType: 'poison',
   abilities: ['basic_strike', 'plague_death'],
   resists: { poison: 100 },
@@ -722,7 +723,7 @@ mon({
 });
 
 mon({
-  id: 'royal_guard_beetle', name: 'Royal Guard', family: 'insect', role: 'brute',
+  id: 'royal_guard_beetle', name: tr('Royal Guard'), family: 'insect', role: 'brute',
   minDepth: 19, weight: 4, lifeMul: 3.4, defenseMul: 2.0, scale: 1.85,
   abilities: ['charge', 'quake_stomp'],
   resists: { physical: 45, poison: 95 },
@@ -731,7 +732,7 @@ mon({
 });
 
 mon({
-  id: 'broodmother_spawn', name: 'Broodmother Spawn', family: 'insect', role: 'support',
+  id: 'broodmother_spawn', name: tr('Broodmother Spawn'), family: 'insect', role: 'support',
   minDepth: 21, weight: 3, lifeMul: 1.8, scale: 1.4, attackRange: 11,
   abilities: ['summon_swarm', 'web_snare'],
   resists: { poison: 100, physical: 30 },
@@ -744,7 +745,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'whisper_wisp', name: 'Whispering Mote', family: 'aberration', role: 'swarm',
+  id: 'whisper_wisp', name: tr('Whispering Mote'), family: 'aberration', role: 'swarm',
   minDepth: 8, weight: 12, speed: 4.0, scale: 0.65, damageType: 'arcane',
   abilities: ['basic_strike'],
   resists: { physical: 40, arcane: 50 },
@@ -753,7 +754,7 @@ mon({
 });
 
 mon({
-  id: 'watcher_eye', name: 'Watcher', family: 'aberration', role: 'ranged',
+  id: 'watcher_eye', name: tr('Watcher'), family: 'aberration', role: 'ranged',
   minDepth: 9, weight: 8, speed: 2.6, attackRange: 16, damageType: 'arcane',
   abilities: ['gaze_beam'],
   resists: { arcane: 60, physical: 25 },
@@ -762,7 +763,7 @@ mon({
 });
 
 mon({
-  id: 'gazer_tyrant', name: 'Gazer Tyrant', family: 'aberration', role: 'caster',
+  id: 'gazer_tyrant', name: tr('Gazer Tyrant'), family: 'aberration', role: 'caster',
   minDepth: 18, weight: 4, lifeMul: 1.4, speed: 2.2, attackRange: 17, damageType: 'arcane', scale: 1.4,
   abilities: ['petrify_gaze', 'mirror_images'],
   resists: { arcane: 70, physical: 30 },
@@ -771,7 +772,7 @@ mon({
 });
 
 mon({
-  id: 'thought_eater', name: 'Thought Eater', family: 'aberration', role: 'caster',
+  id: 'thought_eater', name: tr('Thought Eater'), family: 'aberration', role: 'caster',
   minDepth: 13, weight: 5, attackRange: 14, damageType: 'arcane',
   abilities: ['mind_lash'],
   resists: { arcane: 65, poison: 30 },
@@ -780,7 +781,7 @@ mon({
 });
 
 mon({
-  id: 'tentacle_horror', name: 'Tentacle Horror', family: 'aberration', role: 'brute',
+  id: 'tentacle_horror', name: tr('Tentacle Horror'), family: 'aberration', role: 'brute',
   minDepth: 16, weight: 4, lifeMul: 3.2, scale: 1.9, speed: 2.2,
   abilities: ['tentacle_grasp', 'flesh_hooks'],
   resists: { physical: 35, arcane: 40, poison: 40 },
@@ -789,7 +790,7 @@ mon({
 });
 
 mon({
-  id: 'null_walker', name: 'Null Walker', family: 'aberration', role: 'ambusher',
+  id: 'null_walker', name: tr('Null Walker'), family: 'aberration', role: 'ambusher',
   minDepth: 17, weight: 6, speed: 4.0, damageMul: 1.8, damageType: 'arcane',
   abilities: ['teleport_strike', 'phase_shift'],
   resists: { physical: 55, arcane: 55 },
@@ -798,7 +799,7 @@ mon({
 });
 
 mon({
-  id: 'flesh_amalgam', name: 'Flesh Amalgam', family: 'aberration', role: 'brute',
+  id: 'flesh_amalgam', name: tr('Flesh Amalgam'), family: 'aberration', role: 'brute',
   minDepth: 14, weight: 5, lifeMul: 3.6, scale: 1.75, speed: 2.0,
   abilities: ['heavy_slam', 'heal_self'],
   resists: { physical: 30, poison: 60, cold: 25 },
@@ -807,7 +808,7 @@ mon({
 });
 
 mon({
-  id: 'dimensional_lurker', name: 'Dimensional Lurker', family: 'aberration', role: 'ambusher',
+  id: 'dimensional_lurker', name: tr('Dimensional Lurker'), family: 'aberration', role: 'ambusher',
   minDepth: 22, weight: 5, speed: 4.2, damageMul: 2.0, damageType: 'arcane',
   abilities: ['teleport_strike', 'void_rift'],
   resists: { physical: 60, arcane: 60 },
@@ -816,7 +817,7 @@ mon({
 });
 
 mon({
-  id: 'star_spawn', name: 'Star Spawn', family: 'aberration', role: 'caster',
+  id: 'star_spawn', name: tr('Star Spawn'), family: 'aberration', role: 'caster',
   minDepth: 25, weight: 3, lifeMul: 1.5, damageMul: 1.6, attackRange: 18, damageType: 'arcane',
   abilities: ['void_rift', 'summon_adds'],
   resists: { arcane: 75, cold: 40, physical: 30 },
@@ -825,7 +826,7 @@ mon({
 });
 
 mon({
-  id: 'mirror_image', name: 'Mirror Image', family: 'aberration', role: 'melee',
+  id: 'mirror_image', name: tr('Mirror Image'), family: 'aberration', role: 'melee',
   minDepth: 1, weight: 0, lifeMul: 0.25, damageMul: 0.5, xpMul: 0, speed: 3.6,
   abilities: ['basic_strike'],
   resists: { physical: -50 },
@@ -846,14 +847,14 @@ const roomObject = (id: string, name: string, lifeMul: number, scale: number, pa
     visual: { body: 'floating', palette, ornate: 0.3, eyes: 0, glow },
   });
 
-roomObject('ward_portal', 'Ward Portal', 1.3, 1.1, STONE, 0x80c8ff);
-roomObject('heartstone', 'Heartstone', 1.0, 0.9, CRIMSON, 0xff4040);
-roomObject('rite_bell', 'Rite Bell', 0.35, 0.9, BRASS, 0xffd27a);
-roomObject('rite_brazier', 'Cold Brazier', 0.3, 0.9, IRON, 0x403830);
-roomObject('chain_anchor', 'Chain Anchor', 1.6, 1.0, IRON, 0xc0a070);
+roomObject('ward_portal', tr('Ward Portal'), 1.3, 1.1, STONE, 0x80c8ff);
+roomObject('heartstone', tr('Heartstone'), 1.0, 0.9, CRIMSON, 0xff4040);
+roomObject('rite_bell', tr('Rite Bell'), 0.35, 0.9, BRASS, 0xffd27a);
+roomObject('rite_brazier', tr('Cold Brazier'), 0.3, 0.9, IRON, 0x403830);
+roomObject('chain_anchor', tr('Chain Anchor'), 1.6, 1.0, IRON, 0xc0a070);
 
 mon({
-  id: 'hero_echo', name: 'Your Echo', family: 'aberration', role: 'melee',
+  id: 'hero_echo', name: tr('Your Echo'), family: 'aberration', role: 'melee',
   minDepth: 1, weight: 0, lifeMul: 0.9, damageMul: 0.6, xpMul: 0, speed: 3.4, attackRange: 2.2,
   abilities: ['basic_strike', 'double_swipe', 'charge'],
   resists: { physical: 10, arcane: -20 },
@@ -863,7 +864,7 @@ mon({
 // --- Boss partners and the flocks they call (weight 0: never rolled) -----
 
 mon({
-  id: 'choir_high_voice', name: 'The High Voice', family: 'undead', role: 'support',
+  id: 'choir_high_voice', name: tr('The High Voice'), family: 'undead', role: 'support',
   minDepth: 1, weight: 0, lifeMul: 0.8, damageMul: 0.7, xpMul: 0, speed: 2.2, attackRange: 14, damageType: 'arcane',
   abilities: ['heal_ally', 'banshee_wail', 'hex_bolt'],
   resists: { physical: 15, arcane: 25 },
@@ -871,7 +872,7 @@ mon({
 });
 
 mon({
-  id: 'sallow_orrin', name: 'Orrin Sallow', family: 'humanoid', role: 'caster',
+  id: 'sallow_orrin', name: tr('Orrin Sallow'), family: 'humanoid', role: 'caster',
   minDepth: 1, weight: 0, lifeMul: 0.8, damageMul: 0.8, xpMul: 0, speed: 2.8, attackRange: 14, damageType: 'poison',
   abilities: ['poison_spit', 'frost_bolt', 'acid_spit'],
   resists: { poison: 40, cold: 20 },
@@ -879,7 +880,7 @@ mon({
 });
 
 mon({
-  id: 'slag_cantor', name: 'Slag Cantor', family: 'elemental', role: 'brute',
+  id: 'slag_cantor', name: tr('Slag Cantor'), family: 'elemental', role: 'brute',
   minDepth: 1, weight: 0, lifeMul: 1.0, damageMul: 0.8, xpMul: 0, speed: 2.4, attackRange: 2.6, damageType: 'fire',
   abilities: ['ground_slam', 'lava_pool', 'fire_bolt'],
   resists: { fire: 60, cold: -20 },
@@ -887,7 +888,7 @@ mon({
 });
 
 mon({
-  id: 'tallow_sheep', name: 'Tallow Sheep', family: 'beast', role: 'swarm',
+  id: 'tallow_sheep', name: tr('Tallow Sheep'), family: 'beast', role: 'swarm',
   minDepth: 1, weight: 0, lifeMul: 0.35, damageMul: 0.5, xpMul: 0.2, speed: 3.6, attackRange: 1.6,
   abilities: ['basic_strike'],
   resists: { fire: -30 },
@@ -895,7 +896,7 @@ mon({
 });
 
 mon({
-  id: 'wax_child', name: 'Wax Child', family: 'humanoid', role: 'swarm',
+  id: 'wax_child', name: tr('Wax Child'), family: 'humanoid', role: 'swarm',
   minDepth: 1, weight: 0, lifeMul: 0.3, damageMul: 0.5, xpMul: 0.2, speed: 3.8, attackRange: 1.6,
   abilities: ['basic_strike'],
   resists: { fire: -30, physical: 10 },
@@ -903,7 +904,7 @@ mon({
 });
 
 mon({
-  id: 'unmaker', name: 'The Unmaker', family: 'aberration', role: 'caster',
+  id: 'unmaker', name: tr('The Unmaker'), family: 'aberration', role: 'caster',
   minDepth: 29, weight: 2, lifeMul: 1.8, damageMul: 1.8, attackRange: 18, damageType: 'arcane',
   abilities: ['death_beam', 'void_rift'],
   resists: { arcane: 80, physical: 40, fire: 40, cold: 40 },
@@ -916,7 +917,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'ember_wisp', name: 'Ember Wisp', family: 'elemental', role: 'swarm',
+  id: 'ember_wisp', name: tr('Ember Wisp'), family: 'elemental', role: 'swarm',
   minDepth: 4, weight: 12, speed: 4.4, scale: 0.6, damageType: 'fire',
   abilities: ['basic_strike', 'death_explode'],
   resists: { fire: 100, cold: -50, physical: 30 },
@@ -925,7 +926,7 @@ mon({
 });
 
 mon({
-  id: 'fire_elemental', name: 'Cinder Elemental', family: 'elemental', role: 'melee',
+  id: 'fire_elemental', name: tr('Cinder Elemental'), family: 'elemental', role: 'melee',
   minDepth: 8, weight: 9, damageType: 'fire', speed: 3.3,
   abilities: ['basic_strike', 'molten_trail'],
   resists: { fire: 100, cold: -50, physical: 30, poison: 100 },
@@ -934,7 +935,7 @@ mon({
 });
 
 mon({
-  id: 'magma_hulk', name: 'Magma Hulk', family: 'elemental', role: 'brute',
+  id: 'magma_hulk', name: tr('Magma Hulk'), family: 'elemental', role: 'brute',
   minDepth: 15, weight: 4, lifeMul: 3.2, scale: 1.9, damageType: 'fire',
   abilities: ['ground_slam', 'molten_trail', 'death_explode'],
   resists: { fire: 100, cold: -60, physical: 35, poison: 100 },
@@ -943,7 +944,7 @@ mon({
 });
 
 mon({
-  id: 'frost_shard', name: 'Frost Shard', family: 'elemental', role: 'ranged',
+  id: 'frost_shard', name: tr('Frost Shard'), family: 'elemental', role: 'ranged',
   minDepth: 7, weight: 9, damageType: 'cold', attackRange: 14, speed: 2.8,
   abilities: ['frost_bolt', 'shatter_death'],
   resists: { cold: 100, fire: -50, poison: 100 },
@@ -952,7 +953,7 @@ mon({
 });
 
 mon({
-  id: 'ice_revenant', name: 'Ice Revenant', family: 'elemental', role: 'brute',
+  id: 'ice_revenant', name: tr('Ice Revenant'), family: 'elemental', role: 'brute',
   minDepth: 13, weight: 5, lifeMul: 2.8, scale: 1.7, damageType: 'cold',
   abilities: ['ice_nova', 'shatter_death'],
   resists: { cold: 100, fire: -55, physical: 30, poison: 100 },
@@ -961,7 +962,7 @@ mon({
 });
 
 mon({
-  id: 'lightning_wisp', name: 'Arc Wisp', family: 'elemental', role: 'swarm',
+  id: 'lightning_wisp', name: tr('Arc Wisp'), family: 'elemental', role: 'swarm',
   minDepth: 10, weight: 11, speed: 5.6, scale: 0.55, damageType: 'lightning',
   abilities: ['basic_strike'],
   resists: { lightning: 100, poison: 100, physical: 35 },
@@ -970,7 +971,7 @@ mon({
 });
 
 mon({
-  id: 'storm_djinn', name: 'Storm Djinn', family: 'elemental', role: 'caster',
+  id: 'storm_djinn', name: tr('Storm Djinn'), family: 'elemental', role: 'caster',
   minDepth: 16, weight: 5, damageType: 'lightning', attackRange: 15, speed: 3.4,
   abilities: ['shock_bolt', 'lightning_storm'],
   resists: { lightning: 100, poison: 100, physical: 30 },
@@ -979,7 +980,7 @@ mon({
 });
 
 mon({
-  id: 'living_gale', name: 'Living Gale', family: 'elemental', role: 'ambusher',
+  id: 'living_gale', name: tr('Living Gale'), family: 'elemental', role: 'ambusher',
   minDepth: 12, weight: 6, speed: 5.0, damageMul: 1.3, damageType: 'lightning',
   abilities: ['swarm_dive'],
   resists: { lightning: 80, physical: 50, poison: 100 },
@@ -988,7 +989,7 @@ mon({
 });
 
 mon({
-  id: 'obsidian_elemental', name: 'Obsidian Elemental', family: 'elemental', role: 'melee',
+  id: 'obsidian_elemental', name: tr('Obsidian Elemental'), family: 'elemental', role: 'melee',
   minDepth: 18, weight: 8, lifeMul: 1.6, defenseMul: 1.6, speed: 2.7,
   abilities: ['sunder_armor'],
   resists: { physical: 50, fire: 60, poison: 100 },
@@ -997,7 +998,7 @@ mon({
 });
 
 mon({
-  id: 'tide_caller', name: 'Tide Caller', family: 'elemental', role: 'support',
+  id: 'tide_caller', name: tr('Tide Caller'), family: 'elemental', role: 'support',
   minDepth: 14, weight: 4, attackRange: 12, damageType: 'cold',
   abilities: ['frost_bolt', 'heal_ally'],
   resists: { cold: 80, fire: -30, poison: 100 },
@@ -1006,7 +1007,7 @@ mon({
 });
 
 mon({
-  id: 'void_ember', name: 'Void Ember', family: 'elemental', role: 'caster',
+  id: 'void_ember', name: tr('Void Ember'), family: 'elemental', role: 'caster',
   minDepth: 24, weight: 4, damageType: 'arcane', attackRange: 16,
   abilities: ['void_rift', 'homing_bolt'],
   resists: { arcane: 90, fire: 60, poison: 100, physical: 35 },
@@ -1015,7 +1016,7 @@ mon({
 });
 
 mon({
-  id: 'glacier_titan', name: 'Glacier Titan', family: 'elemental', role: 'brute',
+  id: 'glacier_titan', name: tr('Glacier Titan'), family: 'elemental', role: 'brute',
   minDepth: 26, weight: 3, lifeMul: 4.4, scale: 2.3, damageType: 'cold', speed: 1.9,
   abilities: ['blizzard', 'quake_stomp', 'shatter_death'],
   resists: { cold: 100, fire: -50, physical: 45, poison: 100 },
@@ -1028,7 +1029,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'goblin_scrapper', name: 'Goblin Scrapper', family: 'humanoid', role: 'swarm',
+  id: 'goblin_scrapper', name: tr('Goblin Scrapper'), family: 'humanoid', role: 'swarm',
   minDepth: 1, weight: 15, speed: 4.2, scale: 0.7,
   abilities: ['basic_strike'],
   biomes: ['caverns', 'foundry', 'crypt', 'darkForest', 'desert', 'tundra'],
@@ -1036,7 +1037,7 @@ mon({
 });
 
 mon({
-  id: 'goblin_bomber', name: 'Goblin Bomber', family: 'humanoid', role: 'ranged',
+  id: 'goblin_bomber', name: tr('Goblin Bomber'), family: 'humanoid', role: 'ranged',
   minDepth: 3, weight: 8, damageType: 'fire', attackRange: 12, speed: 3.6,
   abilities: ['bomb_lob', 'death_explode'],
   resists: { fire: 40 },
@@ -1045,7 +1046,7 @@ mon({
 });
 
 mon({
-  id: 'bandit_cutthroat', name: 'Cutthroat', family: 'humanoid', role: 'ambusher',
+  id: 'bandit_cutthroat', name: tr('Cutthroat'), family: 'humanoid', role: 'ambusher',
   minDepth: 2, weight: 8, speed: 3.9, damageMul: 1.4,
   abilities: ['basic_strike'],
   biomes: ['caverns', 'crypt', 'ashwaste', 'darkForest', 'desert', 'tundra'],
@@ -1053,7 +1054,7 @@ mon({
 });
 
 mon({
-  id: 'bandit_crossbow', name: 'Crossbow Bandit', family: 'humanoid', role: 'ranged',
+  id: 'bandit_crossbow', name: tr('Crossbow Bandit'), family: 'humanoid', role: 'ranged',
   minDepth: 3, weight: 8, attackRange: 14,
   abilities: ['crossbow_bolt'],
   biomes: ['caverns', 'crypt', 'ashwaste', 'darkForest', 'desert', 'tundra', 'swamp'],
@@ -1061,7 +1062,7 @@ mon({
 });
 
 mon({
-  id: 'cultist_zealot', name: 'Cultist Zealot', family: 'humanoid', role: 'melee',
+  id: 'cultist_zealot', name: tr('Cultist Zealot'), family: 'humanoid', role: 'melee',
   minDepth: 4, weight: 11, speed: 3.4, damageMul: 1.1,
   abilities: ['basic_strike'],
   biomes: ['crypt', 'sunkenTemple', 'voidspire', 'darkForest', 'desertTomb', 'hell'],
@@ -1069,7 +1070,7 @@ mon({
 });
 
 mon({
-  id: 'cultist_acolyte', name: 'Cultist Acolyte', family: 'humanoid', role: 'caster',
+  id: 'cultist_acolyte', name: tr('Cultist Acolyte'), family: 'humanoid', role: 'caster',
   minDepth: 4, weight: 7, damageType: 'arcane', attackRange: 13,
   abilities: ['hex_bolt'],
   biomes: ['crypt', 'sunkenTemple', 'voidspire', 'darkForest', 'swamp', 'desertTomb'],
@@ -1077,7 +1078,7 @@ mon({
 });
 
 mon({
-  id: 'dark_priest', name: 'Dark Priest', family: 'humanoid', role: 'support',
+  id: 'dark_priest', name: tr('Dark Priest'), family: 'humanoid', role: 'support',
   minDepth: 8, weight: 5, attackRange: 12,
   abilities: ['heal_ally'],
   resists: { arcane: 35 },
@@ -1086,7 +1087,7 @@ mon({
 });
 
 mon({
-  id: 'inquisitor', name: 'Ashen Inquisitor', family: 'humanoid', role: 'brute',
+  id: 'inquisitor', name: tr('Ashen Inquisitor'), family: 'humanoid', role: 'brute',
   minDepth: 11, weight: 5, lifeMul: 2.4, scale: 1.4, damageType: 'fire',
   abilities: ['flame_wave'],
   resists: { fire: 55, physical: 20 },
@@ -1095,7 +1096,7 @@ mon({
 });
 
 mon({
-  id: 'troglodyte', name: 'Troglodyte', family: 'humanoid', role: 'melee',
+  id: 'troglodyte', name: tr('Troglodyte'), family: 'humanoid', role: 'melee',
   minDepth: 5, weight: 10, lifeMul: 1.2, speed: 3.1, damageType: 'poison',
   abilities: ['basic_strike'],
   resists: { poison: 60 },
@@ -1104,7 +1105,7 @@ mon({
 });
 
 mon({
-  id: 'sunken_zealot', name: 'Sunken Zealot', family: 'humanoid', role: 'melee',
+  id: 'sunken_zealot', name: tr('Sunken Zealot'), family: 'humanoid', role: 'melee',
   minDepth: 9, weight: 9, speed: 3.0, lifeMul: 1.2, damageType: 'cold',
   abilities: ['impale'],
   resists: { cold: 60, poison: 40 },
@@ -1113,7 +1114,7 @@ mon({
 });
 
 mon({
-  id: 'ashen_marauder', name: 'Ashen Marauder', family: 'humanoid', role: 'melee',
+  id: 'ashen_marauder', name: tr('Ashen Marauder'), family: 'humanoid', role: 'melee',
   minDepth: 13, weight: 9, speed: 3.5, damageMul: 1.3, attackSpeed: 1.25,
   abilities: ['charge'],
   resists: { fire: 40 },
@@ -1122,7 +1123,7 @@ mon({
 });
 
 mon({
-  id: 'blood_chanter', name: 'Blood Chanter', family: 'humanoid', role: 'support',
+  id: 'blood_chanter', name: tr('Blood Chanter'), family: 'humanoid', role: 'support',
   minDepth: 16, weight: 4, attackRange: 12,
   abilities: ['blood_link', 'siphon_soul'],
   resists: { arcane: 40, poison: 30 },
@@ -1131,7 +1132,7 @@ mon({
 });
 
 mon({
-  id: 'warlock_apostate', name: 'Apostate Warlock', family: 'humanoid', role: 'caster',
+  id: 'warlock_apostate', name: tr('Apostate Warlock'), family: 'humanoid', role: 'caster',
   minDepth: 19, weight: 5, damageMul: 1.4, attackRange: 16, damageType: 'fire',
   abilities: ['fire_bolt', 'meteor', 'summon_imps'],
   resists: { fire: 60, arcane: 45 },
@@ -1140,7 +1141,7 @@ mon({
 });
 
 mon({
-  id: 'iron_captain', name: 'Iron Captain', family: 'humanoid', role: 'brute',
+  id: 'iron_captain', name: tr('Iron Captain'), family: 'humanoid', role: 'brute',
   minDepth: 23, weight: 4, lifeMul: 3.0, defenseMul: 1.9, scale: 1.5,
   abilities: ['battle_cry', 'cleave'],
   resists: { physical: 30, fire: 30 },
@@ -1153,7 +1154,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'spore_pod', name: 'Spore Pod', family: 'plant', role: 'swarm',
+  id: 'spore_pod', name: tr('Spore Pod'), family: 'plant', role: 'swarm',
   minDepth: 5, weight: 12, speed: 2.6, scale: 0.65, damageType: 'poison',
   abilities: ['basic_strike', 'plague_death'],
   resists: { poison: 100, physical: 20, fire: -40 },
@@ -1162,7 +1163,7 @@ mon({
 });
 
 mon({
-  id: 'thorn_creeper', name: 'Thorn Creeper', family: 'plant', role: 'melee',
+  id: 'thorn_creeper', name: tr('Thorn Creeper'), family: 'plant', role: 'melee',
   minDepth: 6, weight: 10, speed: 2.8, attackRange: 4.0,
   abilities: ['thorn_lash'],
   resists: { poison: 90, physical: 25, fire: -45 },
@@ -1171,7 +1172,7 @@ mon({
 });
 
 mon({
-  id: 'strangler_vine', name: 'Strangler Vine', family: 'plant', role: 'ambusher',
+  id: 'strangler_vine', name: tr('Strangler Vine'), family: 'plant', role: 'ambusher',
   minDepth: 8, weight: 7, speed: 0.8, damageMul: 1.8, attackRange: 5.5,
   abilities: ['thorn_lash', 'tentacle_grasp'],
   resists: { poison: 100, physical: 30, fire: -50 },
@@ -1180,7 +1181,7 @@ mon({
 });
 
 mon({
-  id: 'bloom_cannon', name: 'Bloom Cannon', family: 'plant', role: 'ranged',
+  id: 'bloom_cannon', name: tr('Bloom Cannon'), family: 'plant', role: 'ranged',
   minDepth: 10, weight: 7, speed: 0, attackRange: 18, lifeMul: 1.4, damageType: 'poison',
   abilities: ['acid_spit', 'spore_burst'],
   resists: { poison: 100, physical: 30, fire: -50 },
@@ -1189,7 +1190,7 @@ mon({
 });
 
 mon({
-  id: 'fungal_shambler', name: 'Fungal Shambler', family: 'plant', role: 'melee',
+  id: 'fungal_shambler', name: tr('Fungal Shambler'), family: 'plant', role: 'melee',
   minDepth: 9, weight: 9, lifeMul: 1.4, speed: 2.4, damageType: 'poison',
   abilities: ['basic_strike'],
   resists: { poison: 100, physical: 25, fire: -45 },
@@ -1198,7 +1199,7 @@ mon({
 });
 
 mon({
-  id: 'deathcap_priest', name: 'Deathcap Priest', family: 'plant', role: 'support',
+  id: 'deathcap_priest', name: tr('Deathcap Priest'), family: 'plant', role: 'support',
   minDepth: 13, weight: 4, attackRange: 11, damageType: 'poison',
   abilities: ['heal_ally'],
   resists: { poison: 100, fire: -40 },
@@ -1207,7 +1208,7 @@ mon({
 });
 
 mon({
-  id: 'blight_flower', name: 'Blight Flower', family: 'plant', role: 'caster',
+  id: 'blight_flower', name: tr('Blight Flower'), family: 'plant', role: 'caster',
   minDepth: 15, weight: 5, speed: 1.2, attackRange: 15, damageType: 'poison',
   abilities: ['poison_spit'],
   resists: { poison: 100, physical: 25, fire: -50 },
@@ -1216,7 +1217,7 @@ mon({
 });
 
 mon({
-  id: 'ancient_treant', name: 'Ancient Treant', family: 'plant', role: 'brute',
+  id: 'ancient_treant', name: tr('Ancient Treant'), family: 'plant', role: 'brute',
   minDepth: 17, weight: 4, lifeMul: 3.8, defenseMul: 1.9, scale: 2.1, speed: 1.8,
   abilities: ['ground_slam', 'root_snare'],
   resists: { poison: 100, physical: 40, cold: 30, fire: -55 },
@@ -1225,7 +1226,7 @@ mon({
 });
 
 mon({
-  id: 'root_horror', name: 'Root Horror', family: 'plant', role: 'ambusher',
+  id: 'root_horror', name: tr('Root Horror'), family: 'plant', role: 'ambusher',
   minDepth: 20, weight: 5, speed: 2.0, damageMul: 1.9, attackRange: 5,
   abilities: ['thorn_lash', 'burrow_emerge'],
   resists: { poison: 100, physical: 35, fire: -50 },
@@ -1234,7 +1235,7 @@ mon({
 });
 
 mon({
-  id: 'corpse_bloom', name: 'Corpse Bloom', family: 'plant', role: 'caster',
+  id: 'corpse_bloom', name: tr('Corpse Bloom'), family: 'plant', role: 'caster',
   minDepth: 22, weight: 4, attackRange: 16, damageType: 'poison', lifeMul: 1.3,
   abilities: ['corpse_burst', 'summon_swarm'],
   resists: { poison: 100, physical: 30, fire: -50 },
@@ -1247,7 +1248,7 @@ mon({
 // ===========================================================================
 
 mon({
-  id: 'ooze_spawn', name: 'Ooze Spawn', family: 'ooze', role: 'swarm',
+  id: 'ooze_spawn', name: tr('Ooze Spawn'), family: 'ooze', role: 'swarm',
   minDepth: 2, weight: 12, speed: 3.0, scale: 0.55, damageType: 'poison',
   abilities: ['basic_strike'],
   resists: { poison: 100, physical: 25, cold: 30 },
@@ -1256,7 +1257,7 @@ mon({
 });
 
 mon({
-  id: 'green_slime', name: 'Green Slime', family: 'ooze', role: 'melee',
+  id: 'green_slime', name: tr('Green Slime'), family: 'ooze', role: 'melee',
   minDepth: 2, weight: 11, speed: 2.4, lifeMul: 1.2, damageType: 'poison',
   abilities: ['basic_strike', 'split_self'],
   resists: { poison: 100, physical: 30, cold: 30 },
@@ -1265,7 +1266,7 @@ mon({
 });
 
 mon({
-  id: 'acid_ooze', name: 'Acid Ooze', family: 'ooze', role: 'melee',
+  id: 'acid_ooze', name: tr('Acid Ooze'), family: 'ooze', role: 'melee',
   minDepth: 6, weight: 10, speed: 2.5, lifeMul: 1.4, damageType: 'poison',
   abilities: ['split_self', 'plague_death'],
   resists: { poison: 100, physical: 35, cold: 25 },
@@ -1274,7 +1275,7 @@ mon({
 });
 
 mon({
-  id: 'tar_crawler', name: 'Tar Crawler', family: 'ooze', role: 'ambusher',
+  id: 'tar_crawler', name: tr('Tar Crawler'), family: 'ooze', role: 'ambusher',
   minDepth: 9, weight: 7, speed: 3.2, damageMul: 1.5,
   abilities: ['grapple_pull'],
   resists: { poison: 100, physical: 40, fire: -35 },
@@ -1283,7 +1284,7 @@ mon({
 });
 
 mon({
-  id: 'gelatinous_mass', name: 'Gelatinous Mass', family: 'ooze', role: 'brute',
+  id: 'gelatinous_mass', name: tr('Gelatinous Mass'), family: 'ooze', role: 'brute',
   minDepth: 11, weight: 5, lifeMul: 3.4, scale: 1.8, speed: 1.7, damageType: 'poison',
   abilities: ['heavy_slam', 'split_self'],
   resists: { poison: 100, physical: 45, cold: 35, lightning: -30 },
@@ -1292,7 +1293,7 @@ mon({
 });
 
 mon({
-  id: 'magma_ooze', name: 'Magma Ooze', family: 'ooze', role: 'melee',
+  id: 'magma_ooze', name: tr('Magma Ooze'), family: 'ooze', role: 'melee',
   minDepth: 14, weight: 8, speed: 2.6, lifeMul: 1.6, damageType: 'fire',
   abilities: ['basic_strike', 'molten_trail', 'death_explode'],
   resists: { fire: 100, poison: 100, cold: -45, physical: 35 },
@@ -1301,7 +1302,7 @@ mon({
 });
 
 mon({
-  id: 'plague_pudding', name: 'Plague Pudding', family: 'ooze', role: 'brute',
+  id: 'plague_pudding', name: tr('Plague Pudding'), family: 'ooze', role: 'brute',
   minDepth: 18, weight: 4, lifeMul: 3.8, scale: 1.9, speed: 1.6, damageType: 'poison',
   abilities: ['corpse_burst', 'heal_self', 'plague_death'],
   resists: { poison: 100, physical: 45, cold: 30 },
@@ -1310,7 +1311,7 @@ mon({
 });
 
 mon({
-  id: 'glass_gel', name: 'Glass Gel', family: 'ooze', role: 'ranged',
+  id: 'glass_gel', name: tr('Glass Gel'), family: 'ooze', role: 'ranged',
   minDepth: 16, weight: 6, attackRange: 13, damageType: 'physical',
   abilities: ['shrapnel_nova', 'shatter_death'],
   resists: { poison: 100, cold: 60, physical: 20 },
@@ -1319,7 +1320,7 @@ mon({
 });
 
 mon({
-  id: 'void_slime', name: 'Void Slime', family: 'ooze', role: 'melee',
+  id: 'void_slime', name: tr('Void Slime'), family: 'ooze', role: 'melee',
   minDepth: 21, weight: 7, lifeMul: 1.8, speed: 2.8, damageType: 'arcane',
   abilities: ['void_rift', 'split_self'],
   resists: { arcane: 80, poison: 100, physical: 40 },
@@ -1328,7 +1329,7 @@ mon({
 });
 
 mon({
-  id: 'devourer_pudding', name: 'Devourer Pudding', family: 'ooze', role: 'brute',
+  id: 'devourer_pudding', name: tr('Devourer Pudding'), family: 'ooze', role: 'brute',
   minDepth: 25, weight: 3, lifeMul: 4.2, scale: 2.1, speed: 1.9, damageType: 'poison',
   abilities: ['grapple_pull', 'split_self', 'plague_death'],
   resists: { poison: 100, physical: 50, cold: 40, arcane: 30 },
@@ -1348,7 +1349,7 @@ const KEPT_SOOT = 'cloth.linen|0x2a2622';
 const KEPT_RESISTS = { poison: 40, cold: 20, fire: -15 };
 
 mon({
-  id: 'kept_hallsweeper', name: 'Hallsweeper', family: 'kept', role: 'melee',
+  id: 'kept_hallsweeper', name: tr('Hallsweeper'), family: 'kept', role: 'melee',
   minDepth: 30, weight: 12, lifeMul: 1.1, damageMul: 1.05, attackRange: 2.2,
   abilities: ['basic_strike'],
   resists: KEPT_RESISTS,
@@ -1357,7 +1358,7 @@ mon({
 });
 
 mon({
-  id: 'kept_wicktrimmer', name: 'Wick-Trimmer', family: 'kept', role: 'ranged',
+  id: 'kept_wicktrimmer', name: tr('Wick-Trimmer'), family: 'kept', role: 'ranged',
   minDepth: 31, weight: 8, attackRange: 13, speed: 2.7, damageType: 'fire',
   abilities: ['fire_bolt'],
   resists: { ...KEPT_RESISTS, fire: 30 },
@@ -1366,7 +1367,7 @@ mon({
 });
 
 mon({
-  id: 'kept_dustling', name: 'Dustling', family: 'kept', role: 'swarm',
+  id: 'kept_dustling', name: tr('Dustling'), family: 'kept', role: 'swarm',
   minDepth: 32, weight: 14, speed: 4.4,
   abilities: ['basic_strike'],
   resists: { poison: 60, physical: 10, fire: -15 },
@@ -1375,7 +1376,7 @@ mon({
 });
 
 mon({
-  id: 'kept_shelver', name: 'Shelver', family: 'kept', role: 'brute',
+  id: 'kept_shelver', name: tr('Shelver'), family: 'kept', role: 'brute',
   minDepth: 34, weight: 5, lifeMul: 2.8, damageMul: 1.6, scale: 1.6,
   abilities: ['heavy_slam'],
   resists: { ...KEPT_RESISTS, physical: 20 },
@@ -1384,7 +1385,7 @@ mon({
 });
 
 mon({
-  id: 'kept_turnkey', name: 'Turnkey', family: 'kept', role: 'support',
+  id: 'kept_turnkey', name: tr('Turnkey'), family: 'kept', role: 'support',
   minDepth: 36, weight: 4,
   abilities: ['shield_ally'],
   resists: KEPT_RESISTS,
@@ -1393,7 +1394,7 @@ mon({
 });
 
 mon({
-  id: 'kept_housemother', name: 'Housemother', family: 'kept', role: 'ambusher',
+  id: 'kept_housemother', name: tr('Housemother'), family: 'kept', role: 'ambusher',
   minDepth: 40, weight: 5, lifeMul: 1.0, damageMul: 1.5, speed: 3.6,
   abilities: ['teleport_strike'],
   resists: { ...KEPT_RESISTS, arcane: 25 },
@@ -1413,7 +1414,7 @@ const NAIL_DARK = 'crystal.void|0x2a2e3a';
 const NAIL_RESISTS = { physical: 25, lightning: 50, arcane: 40, poison: 60, fire: -10 };
 
 mon({
-  id: 'nail_splinter', name: 'Splinterling', family: 'nailborn', role: 'swarm',
+  id: 'nail_splinter', name: tr('Splinterling'), family: 'nailborn', role: 'swarm',
   minDepth: 50, weight: 14, speed: 4.6,
   abilities: ['basic_strike'],
   resists: NAIL_RESISTS,
@@ -1422,7 +1423,7 @@ mon({
 });
 
 mon({
-  id: 'nail_facet', name: 'Facet', family: 'nailborn', role: 'ranged',
+  id: 'nail_facet', name: tr('Facet'), family: 'nailborn', role: 'ranged',
   minDepth: 52, weight: 8, attackRange: 14, damageType: 'lightning',
   abilities: ['shock_bolt'],
   resists: { ...NAIL_RESISTS, lightning: 75 },
@@ -1431,7 +1432,7 @@ mon({
 });
 
 mon({
-  id: 'nail_walker', name: 'Nailwalker', family: 'nailborn', role: 'melee',
+  id: 'nail_walker', name: tr('Nailwalker'), family: 'nailborn', role: 'melee',
   minDepth: 54, weight: 11, lifeMul: 1.05, damageMul: 1.1, speed: 3.2,
   abilities: ['basic_strike'],
   resists: NAIL_RESISTS,
@@ -1440,7 +1441,7 @@ mon({
 });
 
 mon({
-  id: 'nail_prism', name: 'Split Prism', family: 'nailborn', role: 'caster',
+  id: 'nail_prism', name: tr('Split Prism'), family: 'nailborn', role: 'caster',
   minDepth: 56, weight: 5, lifeMul: 0.8, damageMul: 1.25, attackRange: 15, damageType: 'arcane',
   abilities: ['arcane_orb'],
   resists: { ...NAIL_RESISTS, arcane: 70 },
@@ -1449,7 +1450,7 @@ mon({
 });
 
 mon({
-  id: 'nail_nailhead', name: 'Nailhead', family: 'nailborn', role: 'brute',
+  id: 'nail_nailhead', name: tr('Nailhead'), family: 'nailborn', role: 'brute',
   minDepth: 60, weight: 5, lifeMul: 2.8, damageMul: 1.6, scale: 1.6, speed: 2.3,
   abilities: ['impale'],
   resists: { ...NAIL_RESISTS, physical: 40 },
@@ -1458,7 +1459,7 @@ mon({
 });
 
 mon({
-  id: 'nail_wrongangle', name: 'Wrong Angle', family: 'nailborn', role: 'ambusher',
+  id: 'nail_wrongangle', name: tr('Wrong Angle'), family: 'nailborn', role: 'ambusher',
   minDepth: 64, weight: 5, damageMul: 1.55, speed: 3.9, damageType: 'arcane',
   abilities: ['phase_shift'],
   resists: { ...NAIL_RESISTS, arcane: 60 },
@@ -1476,7 +1477,7 @@ const STAYED_DUST = 'stone.crypt|0xb8b0a0';
 const STAYED_RESISTS = { poison: 50, cold: 25, physical: 10 };
 
 mon({
-  id: 'stayed_sellsword', name: 'Stayed Sellsword', family: 'stayed', role: 'melee',
+  id: 'stayed_sellsword', name: tr('Stayed Sellsword'), family: 'stayed', role: 'melee',
   minDepth: 70, weight: 11, lifeMul: 1.15, damageMul: 1.1,
   abilities: ['basic_strike'],
   resists: STAYED_RESISTS,
@@ -1484,7 +1485,7 @@ mon({
 });
 
 mon({
-  id: 'stayed_archer', name: 'Stayed Archer', family: 'stayed', role: 'ranged',
+  id: 'stayed_archer', name: tr('Stayed Archer'), family: 'stayed', role: 'ranged',
   minDepth: 72, weight: 8, attackRange: 15, speed: 2.8,
   abilities: ['arrow_shot'],
   resists: STAYED_RESISTS,
@@ -1492,7 +1493,7 @@ mon({
 });
 
 mon({
-  id: 'stayed_spellwright', name: 'Stayed Spellwright', family: 'stayed', role: 'caster',
+  id: 'stayed_spellwright', name: tr('Stayed Spellwright'), family: 'stayed', role: 'caster',
   minDepth: 74, weight: 5, attackRange: 14, damageType: 'cold',
   abilities: ['frost_bolt'],
   resists: { ...STAYED_RESISTS, cold: 60, fire: 30 },
@@ -1500,7 +1501,7 @@ mon({
 });
 
 mon({
-  id: 'stayed_cutthroat', name: 'Stayed Cutthroat', family: 'stayed', role: 'ambusher',
+  id: 'stayed_cutthroat', name: tr('Stayed Cutthroat'), family: 'stayed', role: 'ambusher',
   minDepth: 77, weight: 5, damageMul: 1.5, speed: 3.8,
   abilities: ['ambush_leap'],
   resists: { ...STAYED_RESISTS, poison: 75 },
@@ -1508,7 +1509,7 @@ mon({
 });
 
 mon({
-  id: 'stayed_chaplain', name: 'Stayed Chaplain', family: 'stayed', role: 'support',
+  id: 'stayed_chaplain', name: tr('Stayed Chaplain'), family: 'stayed', role: 'support',
   minDepth: 80, weight: 4,
   abilities: ['heal_ally'],
   resists: { ...STAYED_RESISTS, arcane: 30 },
@@ -1516,7 +1517,7 @@ mon({
 });
 
 mon({
-  id: 'stayed_champion', name: 'Stayed Champion', family: 'stayed', role: 'brute',
+  id: 'stayed_champion', name: tr('Stayed Champion'), family: 'stayed', role: 'brute',
   minDepth: 84, weight: 4, lifeMul: 2.9, damageMul: 1.6, scale: 1.5,
   abilities: ['whirlwind'],
   resists: { ...STAYED_RESISTS, physical: 25 },
@@ -1526,7 +1527,7 @@ mon({
 // What climbs out of a Restless monster (data/monsterAffixes.ts): never rolled,
 // only called up. Fast, frail, and it hits cold.
 mon({
-  id: 'restless_shade', name: 'Restless Shade', family: 'undead', role: 'melee',
+  id: 'restless_shade', name: tr('Restless Shade'), family: 'undead', role: 'melee',
   minDepth: 1, weight: 0, lifeMul: 0.45, damageMul: 0.9, speed: 4.3, xpMul: 0,
   damageType: 'cold',
   abilities: ['basic_strike'],

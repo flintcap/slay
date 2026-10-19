@@ -38,6 +38,7 @@ import { legacyStartingBonus } from './Legacy';
 import { repairTownState } from './TownServices';
 import { ONE_HAND_MELEE } from '../data/itemBases';
 import { findFit, firstFreeCell, freeCells } from './Grid';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Creation
@@ -473,30 +474,30 @@ export function pointsSpent(c: Character): number {
 
 export function canAllocateSkill(c: Character, skillId: string): { ok: boolean; reason?: string } {
   const def = SKILL_BY_ID[skillId];
-  if (!def) return { ok: false, reason: 'Unknown skill.' };
+  if (!def) return { ok: false, reason: tr('Unknown skill.') };
 
   const tree = TREE_BY_ID[def.treeId];
-  if (!tree) return { ok: false, reason: 'Unknown skill tree.' };
-  if (tree.classId !== c.classId) return { ok: false, reason: `${tree.name} belongs to another class.` };
+  if (!tree) return { ok: false, reason: tr('Unknown skill tree.') };
+  if (tree.classId !== c.classId) return { ok: false, reason: tr('{0} belongs to another class.', tree.name) };
 
-  if (c.skillPoints <= 0) return { ok: false, reason: 'No skill points available.' };
+  if (c.skillPoints <= 0) return { ok: false, reason: tr('No skill points available.') };
 
   const rank = skillRank(c, skillId);
-  if (rank >= def.maxRank) return { ok: false, reason: `Already at maximum rank (${def.maxRank}).` };
+  if (rank >= def.maxRank) return { ok: false, reason: tr('Already at maximum rank ({0}).', def.maxRank) };
 
   const levelReq = tierLevelRequirement(def.tier);
-  if (c.level < levelReq) return { ok: false, reason: `Requires character level ${levelReq}.` };
+  if (c.level < levelReq) return { ok: false, reason: tr('Requires character level {0}.', levelReq) };
 
   const pointReq = tierPointRequirement(def.tier);
   const spent = pointsInTree(c, def.treeId);
   if (spent < pointReq) {
-    return { ok: false, reason: `Requires ${pointReq} points in ${tree.name} (you have ${spent}).` };
+    return { ok: false, reason: tr('Requires {0} points in {1} (you have {2}).', pointReq, tree.name, spent) };
   }
 
   for (const reqId of def.requires ?? []) {
     if (skillRank(c, reqId) < 1) {
       const reqDef = SKILL_BY_ID[reqId];
-      return { ok: false, reason: `Requires 1 point in ${reqDef?.name ?? reqId}.` };
+      return { ok: false, reason: tr('Requires 1 point in {0}.', reqDef?.name ?? reqId) };
     }
   }
 
@@ -527,16 +528,16 @@ export function allocateSkill(c: Character, skillId: string): boolean {
  */
 export function canDeallocateSkill(c: Character, skillId: string): { ok: boolean; reason?: string } {
   const def = SKILL_BY_ID[skillId];
-  if (!def) return { ok: false, reason: 'Unknown skill.' };
+  if (!def) return { ok: false, reason: tr('Unknown skill.') };
   const rank = skillRank(c, skillId);
-  if (rank <= 0) return { ok: false, reason: 'No points invested.' };
+  if (rank <= 0) return { ok: false, reason: tr('No points invested.') };
 
   if (rank === 1) {
     for (const id of Object.keys(c.skills)) {
       if ((c.skills[id] ?? 0) <= 0) continue;
       const other = SKILL_BY_ID[id];
       if (other?.requires?.includes(skillId)) {
-        return { ok: false, reason: `${other.name} still requires it.` };
+        return { ok: false, reason: tr('{0} still requires it.', other.name) };
       }
     }
   }
@@ -550,7 +551,7 @@ export function canDeallocateSkill(c: Character, skillId: string): { ok: boolean
     if (other?.treeId === def.treeId && other.tier > highestTierUsed) highestTierUsed = other.tier;
   }
   if (treeTotal - 1 < tierPointRequirement(highestTierUsed)) {
-    return { ok: false, reason: 'Higher tier skills in this tree would become invalid.' };
+    return { ok: false, reason: tr('Higher tier skills in this tree would become invalid.') };
   }
 
   return { ok: true };
@@ -632,25 +633,25 @@ export function slotsFor(item: Item, classId?: CharClassId): EquipSlot[] {
 /** Attribute / level / class gate. */
 export function meetsRequirements(c: Character, item: Item, stats?: Stats): { ok: boolean; reason?: string } {
   const base = baseOf(item);
-  if (!base) return { ok: false, reason: 'Unknown item base.' };
+  if (!base) return { ok: false, reason: tr('Unknown item base.') };
   const rules = equipRules(c.classId);
   if (rules.denied.includes(base.category)) {
     return { ok: false, reason: rules.note };
   }
   if (base.classes && base.classes.length > 0 && !base.classes.includes(c.classId)) {
-    return { ok: false, reason: 'Your class cannot use this.' };
+    return { ok: false, reason: tr('Your class cannot use this.') };
   }
   // The unique's or set piece's own level counts too, as the tooltip says:
   // it used to be left out, so a level 10 unique went on at level 7.
   const levelReq = Math.max(base.levelReq + item.upgrade, requiredLevel(item));
-  if (c.level < levelReq) return { ok: false, reason: `Requires level ${levelReq}.` };
+  if (c.level < levelReq) return { ok: false, reason: tr('Requires level {0}.', levelReq) };
 
   const s = stats ?? computeStats(c);
   if (base.strReq && s.strength < base.strReq) {
-    return { ok: false, reason: `Requires ${base.strReq} strength.` };
+    return { ok: false, reason: tr('Requires {0} strength.', base.strReq) };
   }
   if (base.dexReq && s.dexterity < base.dexReq) {
-    return { ok: false, reason: `Requires ${base.dexReq} dexterity.` };
+    return { ok: false, reason: tr('Requires {0} dexterity.', base.dexReq) };
   }
   return { ok: true };
 }
@@ -710,8 +711,8 @@ export function equipItem(
   slot?: EquipSlot,
 ): { ok: boolean; reason?: string; displaced?: Item[] } {
   const legal = slotsFor(item, c.classId);
-  if (legal.length === 0) return { ok: false, reason: 'This item cannot be equipped.' };
-  if (slot && !legal.includes(slot)) return { ok: false, reason: 'Wrong slot for this item.' };
+  if (legal.length === 0) return { ok: false, reason: tr('This item cannot be equipped.') };
+  if (slot && !legal.includes(slot)) return { ok: false, reason: tr('Wrong slot for this item.') };
 
   const stats = computeStats(c);
   const req = meetsRequirements(c, item, stats);
@@ -727,7 +728,7 @@ export function equipItem(
     const offBase = baseOf(item);
     const mainAfter = c.equipment.mainHand?.uid === item.uid ? null : c.equipment.mainHand;
     if (offBase && ONE_HAND_MELEE.has(offBase.category) && !mainAfter) {
-      return { ok: false, reason: 'Equip a weapon in your main hand first.' };
+      return { ok: false, reason: tr('Equip a weapon in your main hand first.') };
     }
   }
 
@@ -739,7 +740,7 @@ export function equipItem(
   const trial = c.inventory.map((it) => (it?.uid === item.uid ? null : it));
   for (const d of displaced) {
     const at = findFit(trial, d);
-    if (at < 0) return { ok: false, reason: 'Not enough inventory space.' };
+    if (at < 0) return { ok: false, reason: tr('Not enough inventory space.') };
     trial[at] = d;
   }
 

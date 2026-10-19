@@ -28,6 +28,7 @@ import { effectiveSkillRank } from '../sim/Character';
 import { tickShifterFX } from '../fx/shifter/ShifterFX';
 import { SHIFTER_SELF_POWER } from '../data/shifterPower';
 import { heroPower } from '../sim/HeroPower';
+import { tr } from '../core/I18n';
 
 /** A leap or a rush the hero is in the middle of (Pounce, Lunge, Overrun...). */
 interface Trip {
@@ -53,9 +54,9 @@ const FORMS: readonly BeastForm[] = ['cat', 'wolf', 'bear'];
 const FOREVER = 1e6;
 
 const FORM_LOOK: Readonly<Record<BeastForm, { name: string; color: number; icon: string; desc: string }>> = {
-  cat: { name: 'Shadowcat', color: 0x6a5aa8, icon: 'ss-catform', desc: 'The black cat: faster feet, faster claws, cleaner kills.' },
-  wolf: { name: 'Grey Wolf', color: 0xb08a4a, icon: 'ss-wolfform', desc: 'The grey wolf: harder bites, and every bite feeds you.' },
-  bear: { name: 'Great Bear', color: 0x8a5a2e, icon: 'ss-bearform', desc: 'The bear: more life, a thicker hide, slower feet.' },
+  cat: { name: tr('Shadowcat'), color: 0x6a5aa8, icon: 'ss-catform', desc: tr('The black cat: faster feet, faster claws, cleaner kills.') },
+  wolf: { name: tr('Grey Wolf'), color: 0xb08a4a, icon: 'ss-wolfform', desc: tr('The grey wolf: harder bites, and every bite feeds you.') },
+  bear: { name: tr('Great Bear'), color: 0x8a5a2e, icon: 'ss-bearform', desc: tr('The bear: more life, a thicker hide, slower feet.') },
 };
 
 for (const f of FORMS) {

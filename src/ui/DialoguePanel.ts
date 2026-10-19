@@ -30,6 +30,7 @@ import {
   npcForStation,
   topicsFor,
 } from '../sim/Story';
+import { tr } from '../core/I18n';
 
 export interface DialogueOption {
   label: string;
@@ -137,7 +138,7 @@ export class DialoguePanel implements DialogueView {
     this.role.textContent = npc.role;
     this.portrait.textContent = npc.portrait;
     const line = greet(npc);
-    this.speak(line ? [line] : [`${npc.name} nods, and goes back to work.`], { narration: !line });
+    this.speak(line ? [line] : [tr('{0} nods, and goes back to work.', npc.name)], { narration: !line });
     this.refresh();
     events.emit('ui:open', { panel: 'dialogue' });
   }
@@ -159,7 +160,7 @@ export class DialoguePanel implements DialogueView {
     const list: DialogueOption[] = [];
     if (npc.station) {
       list.push({
-        label: npc.serviceLabel ?? 'Trade',
+        label: npc.serviceLabel ?? tr('Trade'),
         kind: 'service',
         icon: npc.serviceIcon,
         run: (v) => {
@@ -199,7 +200,7 @@ export class DialoguePanel implements DialogueView {
         },
       });
     }
-    list.push({ label: 'Leave', kind: 'leave', icon: 'exit', run: (v) => v.close() });
+    list.push({ label: tr('Leave'), kind: 'leave', icon: 'exit', run: (v) => v.close() });
     this.current = list;
 
     clear(this.opts);
@@ -289,7 +290,7 @@ export function storyTalkSpots(spots: Record<string, THREE.Vector3 | undefined>)
     if (!known && !fallback) continue;
     const pos = known ? new THREE.Vector3(known.x, 0, known.z + 1.2) : new THREE.Vector3(fallback!.x, 0, fallback!.z);
     const short = npc.name.replace(/^Captain Ilsa /, 'Captain ');
-    out.push({ id: `talk:${id}`, label: `Talk to ${short}`, panel: `talk:${id}`, pos, radius: 2.0 });
+    out.push({ id: `talk:${id}`, label: tr('Talk to {0}', short), panel: `talk:${id}`, pos, radius: 2.0 });
   }
   return out;
 }
@@ -301,5 +302,5 @@ export function stationPrompt(interactId: string, fallback: string): string {
   // 'Merchant — Buy & Sell' becomes 'Hesk — Buy & Sell': the person, then the trade.
   const parts = fallback.split(' — ');
   const label = npc.station && parts.length > 1 ? `${npc.name} — ${parts.slice(1).join(' — ')}` : fallback;
-  return npcHasNews(npc) ? `${label} · has news` : label;
+  return npcHasNews(npc) ? tr('{0} · has news', label) : label;
 }

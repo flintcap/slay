@@ -40,7 +40,7 @@ import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable 
 import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
 import { namedRare } from '../data/namedRares';
-import { chaseHeld, rollDrops, rollItem, rollPotion, rollSignature, setLootHero, SIGNATURE_CHANCE } from '../sim/Loot';
+import { chaseHeld, itemDisplayName, rollDrops, rollItem, rollPotion, rollSignature, setLootHero, SIGNATURE_CHANCE } from '../sim/Loot';
 import { skillRank } from '../sim/Character';
 import { buildDropModel, clearDropModels } from '../art/ItemModels';
 import { emissiveMaterial } from '../art/Materials';
@@ -86,6 +86,7 @@ import { bakeLooks, dropQueuedLooks, type LookAsk } from '../world/BakePool';
 import { Weather } from '../world/Weather';
 import { markStaticShadows } from '../core/ShadowCache';
 import { peril } from '../core/Peril';
+import { tr } from '../core/I18n';
 
 /** Half the hero lantern's cone, radians: from four metres up it lights about twelve metres round. */
 const LANTERN_ANGLE = 1.25;
@@ -139,15 +140,15 @@ function shownIn(o: THREE.Object3D, scene: THREE.Object3D): boolean {
 
 /** What the prompt calls each thing you can use. */
 const INTERACT_LABEL: Record<string, string> = {
-  shrine: 'Pray at the shrine',
-  chest: 'Open the chest',
-  barrel: 'Smash the barrel',
-  crate: 'Smash the crate',
-  urn: 'Smash the urn',
-  bookcase: 'Search the shelves',
-  lever: 'Pull the lever',
-  quest: 'Use the altar',
-  altar: 'Use the altar',
+  shrine: tr('Pray at the shrine'),
+  chest: tr('Open the chest'),
+  barrel: tr('Smash the barrel'),
+  crate: tr('Smash the crate'),
+  urn: tr('Smash the urn'),
+  bookcase: tr('Search the shelves'),
+  lever: tr('Pull the lever'),
+  quest: tr('Use the altar'),
+  altar: tr('Use the altar'),
 };
 
 /**
@@ -171,28 +172,28 @@ interface Blessing {
  */
 const SHRINE_BLESSINGS: Record<string, Blessing[]> = {
   power: [
-    { id: 'might', duration: 120, blurb: 'Your blows land heavier.' },
-    { id: 'overcharged', duration: 120, blurb: 'The air crackles around you.' },
+    { id: 'might', duration: 120, blurb: tr('Your blows land heavier.') },
+    { id: 'overcharged', duration: 120, blurb: tr('The air crackles around you.') },
   ],
   ward: [
-    { id: 'sanctified', duration: 120, blurb: 'Blessed against everything below.' },
-    { id: 'fortitude', duration: 120, blurb: 'You can take more than you could.' },
+    { id: 'sanctified', duration: 120, blurb: tr('Blessed against everything below.') },
+    { id: 'fortitude', duration: 120, blurb: tr('You can take more than you could.') },
   ],
   haste: [
-    { id: 'haste', duration: 120, blurb: 'The floor comes at you faster.' },
-    { id: 'veiled', duration: 90, blurb: 'They lose sight of you.' },
+    { id: 'haste', duration: 120, blurb: tr('The floor comes at you faster.') },
+    { id: 'veiled', duration: 90, blurb: tr('They lose sight of you.') },
   ],
   fortune: [
-    { id: 'treasureSense', duration: 180, blurb: 'The dark keeps fewer secrets.' },
-    { id: 'inspired', duration: 120, blurb: 'Your craft comes easier.' },
+    { id: 'treasureSense', duration: 180, blurb: tr('The dark keeps fewer secrets.') },
+    { id: 'inspired', duration: 120, blurb: tr('Your craft comes easier.') },
   ],
   wrath: [
-    { id: 'siphoning', duration: 120, blurb: 'Their wounds feed you.' },
-    { id: 'soulharvest', duration: 150, blurb: 'Each death leaves something behind.' },
+    { id: 'siphoning', duration: 120, blurb: tr('Their wounds feed you.') },
+    { id: 'soulharvest', duration: 150, blurb: tr('Each death leaves something behind.') },
   ],
   vitality: [
-    { id: 'secondWind', duration: 180, blurb: 'Something will catch you once.' },
-    { id: 'evasion', duration: 120, blurb: 'You are harder to catch.' },
+    { id: 'secondWind', duration: 180, blurb: tr('Something will catch you once.') },
+    { id: 'evasion', duration: 120, blurb: tr('You are harder to catch.') },
   ],
 };
 
@@ -720,7 +721,7 @@ export class DungeonScene extends GameScene {
         if (!this.player) return;
         this.dropItem(item, this.player.position);
         audio.play('ui.click');
-        toast(`Dropped ${item.name}.`, 'info');
+        toast(tr('Dropped {0}.', itemDisplayName(item)), 'info');
       }),
     );
 
@@ -1167,7 +1168,7 @@ export class DungeonScene extends GameScene {
       if (!blocked && melee && e.thornsMeleePct > 0) back += taken * (e.thornsMeleePct / 100);
       if (back > 0) {
         attacker.takeDamage(
-          { amount: back, type: 'physical', crit: false, source: 'player', ability: 'Thorns' },
+          { amount: back, type: 'physical', crit: false, source: 'player', ability: tr('Thorns') },
           ctx,
         );
         this.effects.impact('physical', attacker.root.position.x, 1.0, attacker.root.position.z, {
@@ -1232,7 +1233,7 @@ export class DungeonScene extends GameScene {
         en.applyStatuses([{ id: 'stunned', duration: e.cheatDeathStunSec || 3, magnitude: 1 }], ctx);
       }
     }
-    toast('You should have died there.', 'epic');
+    toast(tr('You should have died there.'), 'epic');
     audio.play('levelup');
     return true;
   }
@@ -1332,7 +1333,7 @@ export class DungeonScene extends GameScene {
               type: 'poison',
               crit: false,
               source: 'player',
-              ability: 'Wither',
+              ability: tr('Wither'),
             },
             ctx,
           );
@@ -1379,7 +1380,7 @@ export class DungeonScene extends GameScene {
         if (!best) break;
         struck.add(best.id);
         best.takeDamage(
-          { amount: carried, type: 'fire', crit: false, source: 'player', ability: 'Cataclysm' },
+          { amount: carried, type: 'fire', crit: false, source: 'player', ability: tr('Cataclysm') },
           ctx,
         );
         this.effects.impact('fire', best.root.position.x, 1.0, best.root.position.z, { scale: 0.8, shake: 0 });
@@ -2098,12 +2099,12 @@ export class DungeonScene extends GameScene {
       return;
     }
     if (family === 'chest' && tier === 'warden' && this.warden?.alive) {
-      toast(`${this.warden.bossDef.name} keeps this chest. It will not open while they stand.`, 'bad');
+      toast(tr('{0} keeps this chest. It will not open while they stand.', this.warden.bossDef.name), 'bad');
       audio.play('ui.error');
       return;
     }
     if (family === 'chest' && tier === 'vault' && !this.vaultOpen) {
-      toast('The vault is barred. There is a lever somewhere in this room.', 'bad');
+      toast(tr('The vault is barred. There is a lever somewhere in this room.'), 'bad');
       audio.play('ui.error');
       return;
     }
@@ -2171,9 +2172,9 @@ export class DungeonScene extends GameScene {
     const event = RunEvents.prompt(it.kind);
     if (event) return event;
     const family = it.kind.split('.')[0]!;
-    if (family === 'chest' && it.kind.split('.')[1] === 'vault' && !this.vaultOpen) return 'Barred vault';
-    if (family === 'chest' && it.kind.split('.')[1] === 'warden' && this.warden?.alive) return 'Sealed chest';
-    return INTERACT_LABEL[family] ?? INTERACT_LABEL[it.propKind] ?? 'Search';
+    if (family === 'chest' && it.kind.split('.')[1] === 'vault' && !this.vaultOpen) return tr('Barred vault');
+    if (family === 'chest' && it.kind.split('.')[1] === 'warden' && this.warden?.alive) return tr('Sealed chest');
+    return INTERACT_LABEL[family] ?? INTERACT_LABEL[it.propKind] ?? tr('Search');
   }
 
   /**
@@ -2190,7 +2191,7 @@ export class DungeonScene extends GameScene {
     this.vaultOpen = true;
     this.effects.teleportIn(it.x, 0.8, it.z, 0xffd66b);
     audio.play('ui.open');
-    toast('Something heavy moves. The vault is open.', 'good');
+    toast(tr('Something heavy moves. The vault is open.'), 'good');
   }
 
   /** The quest altar in a quest room. Counts toward `interact` objectives. */
@@ -2198,7 +2199,7 @@ export class DungeonScene extends GameScene {
     this.effects.summonCircle(it.x, it.z, 2.0, 1.2, 0x9fd8ff);
     this.fx.burst('levelup', it.x, 1.0, it.z, { count: 26 });
     audio.play('ui.open');
-    toast('The altar goes quiet.', 'good');
+    toast(tr('The altar goes quiet.'), 'good');
     onInteract(this.run.quest, 'altar');
     questTokens.altar(this.run.quest);
   }
@@ -2236,7 +2237,7 @@ export class DungeonScene extends GameScene {
     this.effects.teleportIn(it.x, 0.6, it.z, def?.color ?? 0xffd66b);
     this.fx.burst('levelup', it.x, 1.0, it.z, { count: 40 });
     audio.play('shrine', { x: it.x, z: it.z });
-    toast(`${def?.name ?? 'Blessing'} — ${blessing.blurb}`, 'good');
+    toast(`${def?.name ?? tr('Blessing')} — ${blessing.blurb}`, 'good');
     onInteract(this.run.quest, 'shrine');
   }
 
@@ -2350,11 +2351,11 @@ export class DungeonScene extends GameScene {
     if (i < 0) return false;
     const l = this.loot[i]!;
     if (l.pos.distanceTo(this.player.position) > 4.5) {
-      toast('Too far away.', 'bad');
+      toast(tr('Too far away.'), 'bad');
       return false;
     }
     if (!l.item || !addItemToInventory(this.player.character, l.item)) {
-      toast('Your pack is full.', 'bad');
+      toast(tr('Your pack is full.'), 'bad');
       heroBark('bagFull');
       return false;
     }
@@ -2448,7 +2449,7 @@ export class DungeonScene extends GameScene {
       save.setCharacter(c);
       this.director?.onRunCleared();
       events.emit('run:cleared', { depth: this.run.depth });
-      toast(this.run.map ? `${this.run.map.name} cleared.` : `Tier ${this.run.depth} cleared.`, 'epic');
+      toast(this.run.map ? tr('{0} cleared.', this.run.map.name) : tr('Tier {0} cleared.', this.run.depth), 'epic');
       void this.engine.goTo('town');
     }
   }
@@ -2486,7 +2487,7 @@ export class DungeonScene extends GameScene {
     if (!loud) return;
     this.effects.gateway(at.x, at.y, at.z, 0x7ec8ff, 'open');
     audio.play('portal');
-    toast('The way home has opened.', 'epic');
+    toast(tr('The way home has opened.'), 'epic');
   }
 
   // -------------------------------------------------------------------------
@@ -2500,18 +2501,18 @@ export class DungeonScene extends GameScene {
     const def = trinketOf(item);
     if (!c || !def) return;
     if (def.use === 'death') {
-      toast('Keep it in your pack. It breaks on its own when you would die.', 'info');
+      toast(tr('Keep it in your pack. It breaks on its own when you would die.'), 'info');
       return;
     }
     if (this.transitioning || !this.player.alive) return;
     if (this.homeDoor) {
-      toast('Your portal to town is already open.', 'bad');
+      toast(tr('Your portal to town is already open.'), 'bad');
       audio.play('ui.error');
       return;
     }
     const spot = this.doorSpot();
     if (!spot) {
-      toast('There is no room for a portal here.', 'bad');
+      toast(tr('There is no room for a portal here.'), 'bad');
       audio.play('ui.error');
       return;
     }
@@ -2553,7 +2554,7 @@ export class DungeonScene extends GameScene {
     if (!loud) return;
     this.effects.gateway(at.x, at.y, at.z, 0xa8f0ff, 'open');
     audio.play('portal');
-    toast('A portal to town opens. Step through to go home.', 'good');
+    toast(tr('A portal to town opens. Step through to go home.'), 'good');
   }
 
   private closeHomeDoor(): void {
@@ -2656,7 +2657,7 @@ export class DungeonScene extends GameScene {
     }
     // The chart was wiped when the area was entered (`depth:changed`).
     if (back.chart) hudRuntime.explored.set(this.level.seed, unpackChart(back.chart, this.level.width * this.level.height));
-    toast('Back through the portal. It closes behind you.', 'info');
+    toast(tr('Back through the portal. It closes behind you.'), 'info');
   }
 
   /**
@@ -2678,7 +2679,7 @@ export class DungeonScene extends GameScene {
     save.touch();
     save.flush();
     events.emit('ui:refresh', {});
-    toast('The Trinket of Death breaks. You wake in town.', 'epic');
+    toast(tr('The Trinket of Death breaks. You wake in town.'), 'epic');
     void this.engine.goTo('town');
     return true;
   }
@@ -2722,7 +2723,7 @@ export class DungeonScene extends GameScene {
     if (take <= 0) return;
     c.gold -= take;
     this.wardenPurse += take;
-    events.emit('toast', { text: `-${take} gold. "Noted."`, kind: 'bad' });
+    events.emit('toast', { text: tr('-{0} gold. "Noted."', take), kind: 'bad' });
     events.emit('ui:refresh', {});
   }
 
@@ -2759,7 +2760,7 @@ export class DungeonScene extends GameScene {
       if (near) {
         g.warned = true;
         const m = BOSS_MOODS[boss!.mood];
-        events.emit('toast', { text: `${boss!.bossDef.name} waits within. ${m.name}: ${m.text}.`, kind: 'bad' });
+        events.emit('toast', { text: tr('{0} waits within. {1}: {2}.', boss!.bossDef.name, m.name, m.text), kind: 'bad' });
       }
     }
     if (!g.sealed && bossUp && this.player.alive) {
@@ -2824,7 +2825,7 @@ export class DungeonScene extends GameScene {
     g.rise = 0;
     audio.play('slam');
     this.rig.addTrauma(0.35);
-    toast('The gate slams shut behind you.', 'bad');
+    toast(tr('The gate slams shut behind you.'), 'bad');
   }
 
   private openArena(g: NonNullable<DungeonScene['arenaGate']>): void {
@@ -2866,7 +2867,7 @@ export class DungeonScene extends GameScene {
     if (near !== this.nearWaypoint) {
       this.nearWaypoint = near;
       // Leaving the ring for a prop keeps the prop's prompt on screen.
-      if (near) toast('[E] Waypoint: return to town (this map is lost)', 'info');
+      if (near) toast(tr('[E] Waypoint: return to town (this map is lost)'), 'info');
       else if (!this.nearProp) toast('', 'info');
     }
     if (!near || !input.wasPressed('interact')) return;
@@ -2904,7 +2905,7 @@ export class DungeonScene extends GameScene {
     const payload = {
       // Named from the last hit's source (ui/RunStats.ts), so the memorial
       // says what actually did it.
-      killedBy: runStats.killerName() ?? 'the depths',
+      killedBy: runStats.killerName() ?? tr('the depths'),
       depth: this.run.depth,
       level: c.level,
       name: c.name,

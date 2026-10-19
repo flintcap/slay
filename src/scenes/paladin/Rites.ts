@@ -22,6 +22,7 @@ import type { EffectSystem, School } from '../../fx/Effects';
 import { getBase } from '../../sim/Loot';
 import { skillAction } from '../../art/hero/SkillActions';
 import { SELF_POWER } from '../../data/skillPower';
+import { tr } from '../../core/I18n';
 
 type Target = Enemy | Boss;
 
@@ -458,9 +459,9 @@ export function riteRefusal(def: SkillDef, player: Player): string | null {
   const rite = RITES[def.id];
   if (!rite) return null;
   const main = categoryIn(player, 'mainHand');
-  if (rite.grip === 'blunt' && !(main && BLUNT.includes(main))) return `${def.name} needs a mace or a scepter.`;
-  if (rite.grip === 'blade' && !(main && BLADE.includes(main))) return `${def.name} needs a sword.`;
-  if (rite.grip === 'shield' && categoryIn(player, 'offHand') !== 'shield') return `${def.name} needs a shield.`;
+  if (rite.grip === 'blunt' && !(main && BLUNT.includes(main))) return tr('{0} needs a mace or a scepter.', def.name);
+  if (rite.grip === 'blade' && !(main && BLADE.includes(main))) return tr('{0} needs a sword.', def.name);
+  if (rite.grip === 'shield' && categoryIn(player, 'offHand') !== 'shield') return tr('{0} needs a shield.', def.name);
   return null;
 }
 

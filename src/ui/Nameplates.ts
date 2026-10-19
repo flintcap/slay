@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import type { MonsterRank } from '../types';
 import { affixIconUri } from '../art/Icons';
+import { tr } from '../core/I18n';
 
 /** The shape both Enemy and Boss expose via their `nameplate` getter. */
 export interface PlateData {
@@ -39,10 +40,10 @@ export interface PlateTarget {
 }
 
 const RANK_LABEL: Partial<Record<MonsterRank, string>> = {
-  champion: 'Champion',
-  elite: 'Elite',
-  rare: 'Rare',
-  boss: 'Boss',
+  champion: tr('Champion'),
+  elite: tr('Elite'),
+  rare: tr('Rare'),
+  boss: tr('Boss'),
 };
 
 interface Plate {

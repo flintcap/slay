@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import { events } from './Events';
 import { PACKED } from './Build';
+import { tr } from './I18n';
 
 const cache = new Map<string, Promise<ArrayBuffer | null>>();
 
@@ -363,7 +364,7 @@ function report(label: string): void {
  */
 export async function preloadAssets(
   rels: string[],
-  label = 'Loading',
+  label = tr('Loading'),
   onProgress?: (p: number, label: string) => void,
 ): Promise<{ ok: number; missing: string[] }> {
   const list = Array.from(new Set(rels));

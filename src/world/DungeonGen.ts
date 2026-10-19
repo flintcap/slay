@@ -63,6 +63,7 @@ import { chestKindFor, placeProps } from './Props';
 import { rollRunTheme, runTheme, themeFits } from './Themes';
 import { getMonster } from '../data/monsters';
 import { MAP_QUESTS, QUESTS, questById, questWeight, scaleObjective, type QuestDefEx } from '../data/quests';
+import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -299,24 +300,24 @@ export interface RunModifierDef {
 }
 
 export const RUN_MODIFIERS: RunModifierDef[] = [
-  { id: 'mod.swarm', name: 'Teeming', desc: 'Monster packs are {v}% larger.', minDepth: 1, weight: 10, maxTier: 4 },
-  { id: 'mod.elites', name: 'Warband', desc: '{v}% more elite packs roam the map.', minDepth: 4, weight: 9, maxTier: 4 },
-  { id: 'mod.hardened', name: 'Hardened', desc: 'Enemies have {v}% more life.', minDepth: 2, weight: 9, maxTier: 5 },
-  { id: 'mod.savage', name: 'Savage', desc: 'Enemies deal {v}% more damage.', minDepth: 5, weight: 8, maxTier: 5 },
-  { id: 'mod.swift', name: 'Swift', desc: 'Enemies move {v}% faster.', minDepth: 4, weight: 7, maxTier: 3 },
-  { id: 'mod.gloom', name: 'Gloom', desc: 'Light sources are dimmed and sight is short.', minDepth: 3, weight: 6, maxTier: 2, excludes: ['mod.blaze'] },
-  { id: 'mod.blaze', name: 'Conflagration', desc: 'Fire pools erupt where enemies die.', minDepth: 8, weight: 6, maxTier: 3, excludes: ['mod.gloom'] },
-  { id: 'mod.frostbite', name: 'Frostbite', desc: 'Standing still chills you.', minDepth: 10, weight: 6, maxTier: 3 },
-  { id: 'mod.resistant', name: 'Warded', desc: 'Enemies gain {v}% all resistances.', minDepth: 16, weight: 7, maxTier: 4 },
-  { id: 'mod.reflect', name: 'Thorned', desc: 'Enemies reflect {v}% of melee damage.', minDepth: 20, weight: 5, maxTier: 3 },
-  { id: 'mod.ambush', name: 'Ambush', desc: 'While you fight, more monsters burst out of the dark around you.', minDepth: 6, weight: 6, maxTier: 2 },
-  { id: 'mod.greed', name: 'Hoard', desc: 'You gain {v}% magic find, and more gold find besides.', minDepth: 1, weight: 8, maxTier: 4 },
-  { id: 'mod.fragile', name: 'Brittle Bones', desc: 'You deal {v}% more damage, but lose {v}% of every resistance.', minDepth: 25, weight: 5, maxTier: 3 },
-  { id: 'mod.hunted', name: 'Hunted', desc: 'A stalker follows you through every area.', minDepth: 30, weight: 4, maxTier: 2 },
-  { id: 'mod.unstable', name: 'Unstable', desc: 'Elites detonate on death.', minDepth: 22, weight: 5, maxTier: 3 },
-  { id: 'mod.drain', name: 'Leeching', desc: 'Enemies drain {v}% of damage dealt as life.', minDepth: 28, weight: 5, maxTier: 3 },
-  { id: 'mod.void', name: 'Unravelling', desc: 'Reality tears open, spilling voidspawn.', minDepth: 45, weight: 4, maxTier: 3 },
-  { id: 'mod.legion', name: 'Legion', desc: 'Every pack is champion rank or better.', minDepth: 60, weight: 3, maxTier: 2 },
+  { id: 'mod.swarm', name: tr('Teeming'), desc: tr('Monster packs are {v}% larger.'), minDepth: 1, weight: 10, maxTier: 4 },
+  { id: 'mod.elites', name: tr('Warband'), desc: tr('{v}% more elite packs roam the map.'), minDepth: 4, weight: 9, maxTier: 4 },
+  { id: 'mod.hardened', name: tr('Hardened'), desc: tr('Enemies have {v}% more life.'), minDepth: 2, weight: 9, maxTier: 5 },
+  { id: 'mod.savage', name: tr('Savage'), desc: tr('Enemies deal {v}% more damage.'), minDepth: 5, weight: 8, maxTier: 5 },
+  { id: 'mod.swift', name: tr('Swift'), desc: tr('Enemies move {v}% faster.'), minDepth: 4, weight: 7, maxTier: 3 },
+  { id: 'mod.gloom', name: tr('Gloom'), desc: tr('Light sources are dimmed and sight is short.'), minDepth: 3, weight: 6, maxTier: 2, excludes: ['mod.blaze'] },
+  { id: 'mod.blaze', name: tr('Conflagration'), desc: tr('Fire pools erupt where enemies die.'), minDepth: 8, weight: 6, maxTier: 3, excludes: ['mod.gloom'] },
+  { id: 'mod.frostbite', name: tr('Frostbite'), desc: tr('Standing still chills you.'), minDepth: 10, weight: 6, maxTier: 3 },
+  { id: 'mod.resistant', name: tr('Warded'), desc: tr('Enemies gain {v}% all resistances.'), minDepth: 16, weight: 7, maxTier: 4 },
+  { id: 'mod.reflect', name: tr('Thorned'), desc: tr('Enemies reflect {v}% of melee damage.'), minDepth: 20, weight: 5, maxTier: 3 },
+  { id: 'mod.ambush', name: tr('Ambush'), desc: tr('While you fight, more monsters burst out of the dark around you.'), minDepth: 6, weight: 6, maxTier: 2 },
+  { id: 'mod.greed', name: tr('Hoard'), desc: tr('You gain {v}% magic find, and more gold find besides.'), minDepth: 1, weight: 8, maxTier: 4 },
+  { id: 'mod.fragile', name: tr('Brittle Bones'), desc: tr('You deal {v}% more damage, but lose {v}% of every resistance.'), minDepth: 25, weight: 5, maxTier: 3 },
+  { id: 'mod.hunted', name: tr('Hunted'), desc: tr('A stalker follows you through every area.'), minDepth: 30, weight: 4, maxTier: 2 },
+  { id: 'mod.unstable', name: tr('Unstable'), desc: tr('Elites detonate on death.'), minDepth: 22, weight: 5, maxTier: 3 },
+  { id: 'mod.drain', name: tr('Leeching'), desc: tr('Enemies drain {v}% of damage dealt as life.'), minDepth: 28, weight: 5, maxTier: 3 },
+  { id: 'mod.void', name: tr('Unravelling'), desc: tr('Reality tears open, spilling voidspawn.'), minDepth: 45, weight: 4, maxTier: 3 },
+  { id: 'mod.legion', name: tr('Legion'), desc: tr('Every pack is champion rank or better.'), minDepth: 60, weight: 3, maxTier: 2 },
 ];
 
 /** Encoded as `id@tier` so the sim can read magnitude without a second table. */

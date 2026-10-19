@@ -9,6 +9,7 @@
  *   node tools/uilab.mjs --shots=hud --width=1280 --height=720
  *   node tools/uilab.mjs --shots=inventory --clip=440,140,620,200 --dpr=2
  *   node tools/uilab.mjs --shots=loading --q=biome:caverns;stairs:1
+ *   node tools/uilab.mjs --shots=inventory,tooltip --lang=qps   pseudo language
  */
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
@@ -29,6 +30,7 @@ const WIDTH = Number(args.width ?? 1920);
 const HEIGHT = Number(args.height ?? 1080);
 const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4301);
 const CLS = args.class ? `&class=${args.class}` : '';
+const LANG_Q = args.lang ? `&lang=${args.lang}` : '';
 const NODE_Q = args.node ? `&node=${args.node}` : '';
 // Extra scenario options: --q=biome:caverns;stairs:1 becomes &biome=caverns&stairs=1.
 const EXTRA_Q = args.q ? '&' + String(args.q).replaceAll(':', '=').replaceAll(';', '&') : '';
@@ -55,13 +57,13 @@ for (const name of WANT) {
   page.on('console', (m) => {
     if (m.type() === 'error' && !m.text().includes('404')) errors.push(`${name}: ${m.text()}`);
   });
-  await page.goto(`http://127.0.0.1:${PORT}/tools/uilab.html?s=${encodeURIComponent(name)}${CLS}${NODE_Q}${EXTRA_Q}`, {
+  await page.goto(`http://127.0.0.1:${PORT}/tools/uilab.html?s=${encodeURIComponent(name)}${CLS}${NODE_Q}${EXTRA_Q}${LANG_Q}`, {
     waitUntil: 'load',
     timeout: 120000,
   });
   await page.waitForFunction(() => window.LAB_READY === true, null, { timeout: 120000 });
   await page.waitForTimeout(Number(args.wait ?? 1400));
-  const file = path.join(OUT, `${name.replace(/\+/g, '_')}${WIDTH === 1920 ? '' : `_${WIDTH}`}.png`);
+  const file = path.join(OUT, `${name.replace(/\+/g, '_')}${WIDTH === 1920 ? '' : `_${WIDTH}`}${args.lang ? `_${args.lang}` : ''}.png`);
   // --clip=x,y,w,h photographs one region, handy with --dpr=2 for detail.
   const clip = args.clip ? String(args.clip).split(',').map(Number) : null;
   await page.screenshot({ path: file, clip: clip ? { x: clip[0], y: clip[1], width: clip[2], height: clip[3] } : undefined });

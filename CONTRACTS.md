@@ -1595,3 +1595,48 @@ licences (read from ASSETS.md and the npm packages' LICENSE files at build
 time, `ui/Credits.ts`). `.github/workflows/checks.yml` runs on every push:
 typecheck and fast checkers, the release builds and lock, and
 `tools/smoke.mjs` on a Mac runner's real GPU.
+
+## Translation — `src/core/I18n.ts`, `src/boot.ts` — owned by Release
+
+```ts
+// src/core/I18n.ts. The English text is the key; a missing line falls back to English.
+export function tr(text: string, ...args: (string | number)[]): string;   // '{0}' gaps filled from args
+export function trn(count: number, one: string, other: string, ...args): string; // plural form by Intl.PluralRules
+export function trc(context: string, text: string, ...args): string;      // keyed 'context::text', for patterns like '{0} {1}'
+export function trk<T extends string>(text: T): T;                         // English kept as is (saved, matched); tr(value) where shown
+export function numText(n: number, decimals?: number): string;            // "1.5" / "1,5", no grouping
+export function numGrouped(n: number): string;                            // "12,345" / "12.345"
+export function groupSeparator(): string;
+export function locale(): LocaleInfo;
+export function translating(): boolean;                                   // anything but English
+export function setLocale(info: LocaleInfo, rows: LocaleTable | null): void; // boot only
+export const LOCALES: readonly LocaleInfo[];  // the languages offered; PSEUDO joins them off release
+export const LANG_KEY = 'slay.lang';          // localStorage: the chosen code
+```
+
+`index.html` loads `src/boot.ts`, which sets the language (saved choice, else
+the browser's) and only then imports `main.ts`, because the game's data builds
+its text when it loads. Changing language is a restart (Settings, Gameplay).
+
+Rules for every module:
+- Text a player reads goes through `tr`/`trn`/`trc`. Values go in gaps, never
+  glued on (`tr('{0} kills', n)`, not `` `${n} ` + tr('kills') ``).
+- Code never matches shown text. Match ids; keep English that must be matched
+  or saved with `trk` (rare item words). `tools/check-i18n.mjs` fails on
+  `name === 'Attack'` against a translated line.
+- Item names are rebuilt where shown: `itemDisplayName(item)` (Loot.ts), not
+  `item.name`. Magic names come from the affix words, rare names from the
+  saved English words, uniques and set pieces from their defs.
+- Numbers shown with decimals use `numText`, large whole ones `numGrouped`
+  (Widgets `fmt`/`fmtInt`/`pct`/`signed` already do).
+- Not text: ids, CSS, keys, log lines, art. Mark a line `// i18n-ignore`, a
+  block `// i18n-ignore-start` … `// i18n-ignore-end`, a file
+  `// i18n-ignore-file` (the fx and art folders). A `// i18n: note` on or
+  above a line goes to the translators with it.
+
+Text that is saved (death records, quest lines already written, hero names)
+stays in the language it was made in. `node tools/i18n-extract.mjs` lists
+every line in `locales/strings.json`; `locales/README.md` is the translators'
+guide. The pseudo language (test builds) shows what was missed: plain text
+was not wrapped, cut-off text has no room for longer languages.
+`node tools/uilab.mjs --lang=qps` takes the UI pictures in it.

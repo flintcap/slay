@@ -29,11 +29,12 @@ import type {
   PanelPlace,
 } from '../types';
 import { RARITY_COLOR } from '../types';
-import { getBase } from '../sim/Loot';
+import { getBase, itemDisplayName } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import * as SkillData from '../data/skills';
 import { uiSfx } from './Sfx';
 import { isUpgrade } from './Compare';
+import { tr, numText, numGrouped } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // DOM helpers
@@ -114,25 +115,25 @@ export function mixHex(a: number, b: number, t: number): string {
 export function fmt(n: number): string {
   if (!Number.isFinite(n)) return '—';
   const abs = Math.abs(n);
-  if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
-  if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
-  if (abs >= 10000) return `${Math.round(n).toLocaleString('en-US')}`;
+  if (abs >= 1e9) return `${numText(n / 1e9, 2)}B`;
+  if (abs >= 1e6) return `${numText(n / 1e6, 2)}M`;
+  if (abs >= 10000) return numGrouped(Math.round(n));
   if (abs >= 100) return String(Math.round(n));
   if (Number.isInteger(n)) return String(n);
-  return n.toFixed(1);
+  return numText(n, 1);
 }
 
 export function fmtInt(n: number): string {
-  return Math.round(n).toLocaleString('en-US');
+  return numGrouped(Math.round(n));
 }
 
 export function signed(n: number, decimals = 0): string {
-  const v = decimals ? n.toFixed(decimals) : String(Math.round(n));
+  const v = decimals ? numText(n, decimals) : String(Math.round(n));
   return n > 0 ? `+${v}` : v;
 }
 
 export function pct(n: number, decimals = 0): string {
-  return `${n.toFixed(decimals)}%`;
+  return `${numText(n, decimals)}%`;
 }
 
 /** 3725 -> "1h 02m". Used for playtime and long timers. */
@@ -141,20 +142,20 @@ export function duration(seconds: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
-  if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
-  return `${sec}s`;
+  if (h > 0) return tr('{0}h {1}m', h, String(m).padStart(2, '0'));
+  if (m > 0) return tr('{0}m {1}s', m, String(sec).padStart(2, '0'));
+  return tr('{0}s', sec);
 }
 
 export function timeAgo(ms: number): string {
   const d = Math.max(0, Date.now() - ms);
   const mins = Math.floor(d / 60000);
-  if (mins < 1) return 'moments ago';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return tr('moments ago');
+  if (mins < 60) return tr('{0}m ago', mins);
   const h = Math.floor(mins / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return tr('{0}h ago', h);
   const days = Math.floor(h / 24);
-  return days === 1 ? 'yesterday' : `${days}d ago`;
+  return days === 1 ? tr('yesterday') : tr('{0}d ago', days);
 }
 
 // ---------------------------------------------------------------------------
@@ -382,46 +383,46 @@ export function classCrestSvg(id: string, accent: string, size = 96): string {
 // ---------------------------------------------------------------------------
 
 export const STAT_LABEL: Record<StatKey, string> = {
-  strength: 'Strength',
-  dexterity: 'Dexterity',
-  vitality: 'Vitality',
-  energy: 'Energy',
-  life: 'Life',
-  mana: 'Mana',
-  lifeRegen: 'Life Regeneration',
-  manaRegen: 'Mana Regeneration',
-  attackRating: 'Attack Rating',
-  minDamage: 'Minimum Damage',
-  maxDamage: 'Maximum Damage',
-  attackSpeed: 'Attack Speed',
-  castSpeed: 'Cast Speed',
-  critChance: 'Critical Chance',
-  critDamage: 'Critical Damage',
-  lifeSteal: 'Life Steal',
-  manaSteal: 'Mana Steal',
-  defense: 'Defense',
-  blockChance: 'Block Chance',
-  damageReduction: 'Damage Reduction',
-  physicalResist: 'Physical Resistance',
-  fireResist: 'Fire Resistance',
-  coldResist: 'Cold Resistance',
-  lightningResist: 'Lightning Resistance',
-  poisonResist: 'Poison Resistance',
-  arcaneResist: 'Arcane Resistance',
-  fireDamage: 'Fire Damage',
-  coldDamage: 'Cold Damage',
-  lightningDamage: 'Lightning Damage',
-  poisonDamage: 'Poison Damage',
-  arcaneDamage: 'Arcane Damage',
-  enhancedDamage: 'Enhanced Damage',
-  enhancedDefense: 'Enhanced Defense',
-  elementalDamagePct: 'Elemental Damage',
-  areaDamagePct: 'Area Damage',
-  moveSpeed: 'Movement Speed',
-  magicFind: 'Magic Find',
-  goldFind: 'Gold Find',
-  cooldownReduction: 'Cooldown Reduction',
-  skillLevels: 'All Skills',
+  strength: tr('Strength'),
+  dexterity: tr('Dexterity'),
+  vitality: tr('Vitality'),
+  energy: tr('Energy'),
+  life: tr('Life'),
+  mana: tr('Mana'),
+  lifeRegen: tr('Life Regeneration'),
+  manaRegen: tr('Mana Regeneration'),
+  attackRating: tr('Attack Rating'),
+  minDamage: tr('Minimum Damage'),
+  maxDamage: tr('Maximum Damage'),
+  attackSpeed: tr('Attack Speed'),
+  castSpeed: tr('Cast Speed'),
+  critChance: tr('Critical Chance'),
+  critDamage: tr('Critical Damage'),
+  lifeSteal: tr('Life Steal'),
+  manaSteal: tr('Mana Steal'),
+  defense: tr('Defense'),
+  blockChance: tr('Block Chance'),
+  damageReduction: tr('Damage Reduction'),
+  physicalResist: tr('Physical Resistance'),
+  fireResist: tr('Fire Resistance'),
+  coldResist: tr('Cold Resistance'),
+  lightningResist: tr('Lightning Resistance'),
+  poisonResist: tr('Poison Resistance'),
+  arcaneResist: tr('Arcane Resistance'),
+  fireDamage: tr('Fire Damage'),
+  coldDamage: tr('Cold Damage'),
+  lightningDamage: tr('Lightning Damage'),
+  poisonDamage: tr('Poison Damage'),
+  arcaneDamage: tr('Arcane Damage'),
+  enhancedDamage: tr('Enhanced Damage'),
+  enhancedDefense: tr('Enhanced Defense'),
+  elementalDamagePct: tr('Elemental Damage'),
+  areaDamagePct: tr('Area Damage'),
+  moveSpeed: tr('Movement Speed'),
+  magicFind: tr('Magic Find'),
+  goldFind: tr('Gold Find'),
+  cooldownReduction: tr('Cooldown Reduction'),
+  skillLevels: tr('All Skills'),
 };
 
 /** Stats rendered as a percentage rather than a flat number. */
@@ -545,17 +546,17 @@ export function isTwoHanded(item: Item | null): boolean {
 }
 
 export const SLOT_LABEL: Record<EquipSlot, string> = {
-  mainHand: 'Main Hand',
-  offHand: 'Off Hand',
-  helm: 'Helm',
-  chest: 'Body Armour',
-  gloves: 'Gloves',
-  legs: 'Legs',
-  boots: 'Boots',
-  belt: 'Belt',
-  amulet: 'Amulet',
-  ring1: 'Ring',
-  ring2: 'Ring',
+  mainHand: tr('Main Hand'),
+  offHand: tr('Off Hand'),
+  helm: tr('Helm'),
+  chest: tr('Body Armour'),
+  gloves: tr('Gloves'),
+  legs: tr('Legs'),
+  boots: tr('Boots'),
+  belt: tr('Belt'),
+  amulet: tr('Amulet'),
+  ring1: tr('Ring'),
+  ring2: tr('Ring'),
 };
 
 export const SLOT_ICON: Record<EquipSlot, string> = {
@@ -849,8 +850,8 @@ class DragController {
     g.appendChild(body);
     if (payload.item) {
       g.style.setProperty('--rc', rarityHex(payload.item.rarity));
-      g.appendChild(div('drag-ghost-name', payload.item.name));
-      g.appendChild(div('drag-ghost-hint', 'Release to drop'));
+      g.appendChild(div('drag-ghost-name', itemDisplayName(payload.item)));
+      g.appendChild(div('drag-ghost-hint', tr('Release to drop')));
     }
     document.body.appendChild(g);
     this.ghost = g;
@@ -1125,7 +1126,7 @@ export class Panel {
     this.header.appendChild(titles);
 
     if (opts.closable !== false) {
-      const close = new IconButton('close', 'Close', () => this.close());
+      const close = new IconButton('close', tr('Close'), () => this.close());
       close.root.classList.add('panel-close');
       this.header.appendChild(close.root);
     }
@@ -1180,7 +1181,7 @@ export class Panel {
     let oy = 0;
     let dragging = false;
     this.header.classList.add('draggable');
-    this.header.title = 'Drag to move. Let go by an edge to dock it there. Double-click to send it back.';
+    this.header.title = tr('Drag to move. Let go by an edge to dock it there. Double-click to send it back.');
     this.header.addEventListener('pointerdown', (e) => {
       if ((e.target as HTMLElement).closest('button')) return;
       dragging = true;
@@ -1985,7 +1986,7 @@ export function modal(opts: ModalOpts): void {
     setTimeout(() => wrap.remove(), 180);
   };
   const cancel = new Button({
-    label: opts.cancelLabel ?? 'Cancel',
+    label: opts.cancelLabel ?? tr('Cancel'),
     variant: 'ghost',
     onClick: () => {
       close();
@@ -1993,7 +1994,7 @@ export function modal(opts: ModalOpts): void {
     },
   });
   const confirm = new Button({
-    label: opts.confirmLabel ?? 'Confirm',
+    label: opts.confirmLabel ?? tr('Confirm'),
     variant: opts.tone === 'danger' ? 'danger' : 'primary',
     onClick: () => {
       close();
@@ -2024,14 +2025,14 @@ export function splitStackDialog(name: string, held: number, onSplit: (n: number
   const half = Math.max(1, Math.floor(held / 2));
   let n = half;
   const body = div('split-body');
-  body.appendChild(div('split-note', `Take some off this stack of ${held}. They go in the first empty slot.`));
-  const slider = new Slider('Take out', n, 1, held - 1, 1, (v) => (n = v), (v) => `${v}, leaving ${held - v}`);
+  body.appendChild(div('split-note', tr('Take some off this stack of {0}. They go in the first empty slot.', held)));
+  const slider = new Slider(tr('Take out'), n, 1, held - 1, 1, (v) => (n = v), (v) => tr('{0}, leaving {1}', v, held - v));
   body.appendChild(slider.root);
   const quick = row('split-quick');
-  const picks: Array<[string, number]> = [['One', 1], ['Half', half], ['All but one', held - 1]];
+  const picks: Array<[string, number]> = [[tr('One'), 1], [tr('Half'), half], [tr('All but one'), held - 1]];
   for (const [label, v] of picks) add(quick, new Button({ label, variant: 'ghost', small: true, onClick: () => slider.set(v) }).root);
   body.appendChild(quick);
-  modal({ title: `Split ${name}`, body, icon: 'bag', confirmLabel: 'Split', onConfirm: () => onSplit(n) });
+  modal({ title: tr('Split {0}', name), body, icon: 'bag', confirmLabel: tr('Split'), onConfirm: () => onSplit(n) });
 }
 
 // ---------------------------------------------------------------------------

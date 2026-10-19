@@ -28,6 +28,7 @@ import {
 } from '../fx/UtilityTextures';
 import { resolveSurface, surfaceBaseColor, type SurfaceDef } from './SurfaceLibrary';
 import { setTextures, preloadSets, TEXTURE_SETS, type TextureSetName } from './TextureSets';
+import { tr } from '../core/I18n';
 
 export { surfaceBaseColor };
 
@@ -339,16 +340,16 @@ function nextFrame(): Promise<void> {
  * hitch. A missing file is not an error; its fallback colour stands in.
  */
 export async function warmMaterials(onProgress: (p: number, label: string) => void): Promise<void> {
-  const labels = ['Quarrying stone…', 'Packing the earth…', 'Beating iron…', 'Weaving cloth…', 'Curing leather…'];
-  await preloadSets(BOOT_SETS, 'Textures', (p) => {
+  const labels = [tr('Quarrying stone…'), tr('Packing the earth…'), tr('Beating iron…'), tr('Weaving cloth…'), tr('Curing leather…')];
+  await preloadSets(BOOT_SETS, tr('Textures'), (p) => {
     onProgress(p * 0.9, labels[Math.min(labels.length - 1, Math.floor(p * labels.length))]!);
   });
   for (const set of BOOT_SETS) setTextures(set);
-  onProgress(0.92, 'Kindling the runes…');
+  onProgress(0.92, tr('Kindling the runes…'));
   await nextFrame();
   radialGlowTexture();
   runeRingTexture();
   emissiveMaterial(0xffa040, 1.8);
   emissiveMaterial(0x6f8cff, 1.6);
-  onProgress(1, 'Materials ready');
+  onProgress(1, tr('Materials ready'));
 }

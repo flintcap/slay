@@ -78,6 +78,7 @@ import { legacyPriceMultiplier } from './Legacy';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
 import { getTrinket } from '../data/trinkets';
 import { NO_FIND, payoutGold, type Find } from './Payout';
+import { tr, trc, trk, numText, translating } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -89,7 +90,7 @@ export const AFFIXES = ALL_AFFIXES;
 /** Fallback so a corrupt save or a bad id can never hard-crash a scene. */
 const UNKNOWN_BASE: ItemBase = {
   id: 'unknown',
-  name: 'Unknown Object',
+  name: tr('Unknown Object'),
   category: 'material',
   slot: 'none',
   levelReq: 1,
@@ -510,35 +511,36 @@ const THEME_OF_STAT: Partial<Record<StatKey, NameTheme>> = {
   energy: 'skill',
 };
 
+// A rare's two words are saved in English and shown with tr() (rareShown).
 const THEME_WORDS: Record<NameTheme, string[]> = {
-  fire: ['Ember', 'Cinder', 'Pyre', 'Blaze', 'Scorch', 'Sunfall', 'Kiln', 'Wildfire', 'Char', 'Hearth'],
-  cold: ['Frost', 'Rime', 'Glacier', 'Hoar', 'Winter', 'Blizzard', 'Icefall', 'Chill', 'Whiteout', 'Snowbind'],
-  lightning: ['Storm', 'Thunder', 'Spark', 'Arc', 'Tempest', 'Skyfire', 'Galebreak', 'Bolt', 'Flashpoint', 'Static'],
-  poison: ['Blight', 'Venom', 'Rot', 'Plague', 'Spore', 'Bile', 'Wither', 'Mire', 'Canker', 'Fenrot'],
-  arcane: ['Void', 'Null', 'Ether', 'Rift', 'Dream', 'Umbra', 'Aether', 'Cipher', 'Hollow', 'Starless'],
-  physical: ['Havoc', 'Gore', 'Brute', 'Carnage', 'Warbrand', 'Butcher', 'Grim', 'Ironhewn', 'Bloodrust', 'Skullsplit'],
-  life: ['Bloodroot', 'Heartwood', 'Vital', 'Quickblood', 'Redoak', 'Marrow', 'Lifespring', 'Thrum', 'Pulse', 'Sanguine'],
-  defense: ['Ironhold', 'Stonefast', 'Bulwark', 'Aegis', 'Anvil', 'Granite', 'Rampart', 'Deepstone', 'Shieldwall', 'Bastion'],
-  speed: ['Swiftmark', 'Windcut', 'Fleet', 'Quicksilver', 'Blur', 'Featherfall', 'Racing', 'Slipstream', 'Hasten', 'Darting'],
-  fortune: ['Goldvein', 'Magpie', 'Raven', 'Treasure', 'Kingsluck', 'Coinfall', 'Hoard', 'Fortune', 'Gilded', 'Windfall'],
-  skill: ['Mystic', 'Sagebound', 'Prophet', 'Oracle', 'Runeward', 'Elder', 'Adept', 'Whispering', 'Arcanum', 'Farseer'],
+  fire: [trk('Ember'), trk('Cinder'), trk('Pyre'), trk('Blaze'), trk('Scorch'), trk('Sunfall'), trk('Kiln'), trk('Wildfire'), trk('Char'), trk('Hearth')],
+  cold: [trk('Frost'), trk('Rime'), trk('Glacier'), trk('Hoar'), trk('Winter'), trk('Blizzard'), trk('Icefall'), trk('Chill'), trk('Whiteout'), trk('Snowbind')],
+  lightning: [trk('Storm'), trk('Thunder'), trk('Spark'), trk('Arc'), trk('Tempest'), trk('Skyfire'), trk('Galebreak'), trk('Bolt'), trk('Flashpoint'), trk('Static')],
+  poison: [trk('Blight'), trk('Venom'), trk('Rot'), trk('Plague'), trk('Spore'), trk('Bile'), trk('Wither'), trk('Mire'), trk('Canker'), trk('Fenrot')],
+  arcane: [trk('Void'), trk('Null'), trk('Ether'), trk('Rift'), trk('Dream'), trk('Umbra'), trk('Aether'), trk('Cipher'), trk('Hollow'), trk('Starless')],
+  physical: [trk('Havoc'), trk('Gore'), trk('Brute'), trk('Carnage'), trk('Warbrand'), trk('Butcher'), trk('Grim'), trk('Ironhewn'), trk('Bloodrust'), trk('Skullsplit')],
+  life: [trk('Bloodroot'), trk('Heartwood'), trk('Vital'), trk('Quickblood'), trk('Redoak'), trk('Marrow'), trk('Lifespring'), trk('Thrum'), trk('Pulse'), trk('Sanguine')],
+  defense: [trk('Ironhold'), trk('Stonefast'), trk('Bulwark'), trk('Aegis'), trk('Anvil'), trk('Granite'), trk('Rampart'), trk('Deepstone'), trk('Shieldwall'), trk('Bastion')],
+  speed: [trk('Swiftmark'), trk('Windcut'), trk('Fleet'), trk('Quicksilver'), trk('Blur'), trk('Featherfall'), trk('Racing'), trk('Slipstream'), trk('Hasten'), trk('Darting')],
+  fortune: [trk('Goldvein'), trk('Magpie'), trk('Raven'), trk('Treasure'), trk('Kingsluck'), trk('Coinfall'), trk('Hoard'), trk('Fortune'), trk('Gilded'), trk('Windfall')],
+  skill: [trk('Mystic'), trk('Sagebound'), trk('Prophet'), trk('Oracle'), trk('Runeward'), trk('Elder'), trk('Adept'), trk('Whispering'), trk('Arcanum'), trk('Farseer')],
 };
 
 const NOUN_GROUPS: Record<string, string[]> = {
-  blade: ['Edge', 'Brand', 'Fang', 'Song', 'Sliver', 'Whisper', 'Bite', 'Tooth', 'Razor', 'Reaver'],
-  heavy: ['Cleaver', 'Splitter', 'Crusher', 'Weight', 'Ruin', 'Breaker', 'Maw', 'Spike', 'Sunder', 'Hew'],
-  ranged: ['Arc', 'Reach', 'Hunt', 'Sight', 'Wing', 'Strand', 'Cry', 'Flight', 'Talon', 'Loft'],
-  caster: ['Call', 'Chant', 'Sigh', 'Rune', 'Wish', 'Grasp', 'Star', 'Echo', 'Spell', 'Verse'],
-  helm: ['Crown', 'Visage', 'Gaze', 'Brow', 'Mask', 'Vigil', 'Halo', 'Skull', 'Cowl', 'Helm'],
-  chest: ['Guard', 'Shell', 'Hide', 'Coat', 'Ward', 'Carapace', 'Bulwark', 'Weave', 'Mantle', 'Shroud'],
-  gloves: ['Grasp', 'Grip', 'Touch', 'Clutch', 'Hand', 'Talon', 'Fist', 'Knuckle', 'Palm', 'Snare'],
-  pants: ['Stance', 'Hold', 'Root', 'Ground', 'Haunch', 'Kneel', 'Brace', 'Footing', 'Greave', 'Legs'],
-  boots: ['Stride', 'Tread', 'Trail', 'Step', 'Walk', 'Pace', 'Trek', 'March', 'Gait', 'Course'],
-  belt: ['Cord', 'Girth', 'Clasp', 'Wrap', 'Bind', 'Loop', 'Cinch', 'Knot', 'Girdle', 'Sash'],
-  shield: ['Wall', 'Ward', 'Bastion', 'Guard', 'Face', 'Rampart', 'Barrier', 'Aegis', 'Refuge', 'Stand'],
-  jewel: ['Eye', 'Heart', 'Knot', 'Token', 'Seal', 'Tear', 'Vow', 'Oath', 'Star', 'Coil'],
-  quiver: ['Sheaf', 'Bundle', 'Score', 'Volley', 'Cache', 'Flight'],
-  misc: ['Relic', 'Shard', 'Fragment', 'Remnant', 'Sign', 'Mark'],
+  blade: [trk('Edge'), trk('Brand'), trk('Fang'), trk('Song'), trk('Sliver'), trk('Whisper'), trk('Bite'), trk('Tooth'), trk('Razor'), trk('Reaver')],
+  heavy: [trk('Cleaver'), trk('Splitter'), trk('Crusher'), trk('Weight'), trk('Ruin'), trk('Breaker'), trk('Maw'), trk('Spike'), trk('Sunder'), trk('Hew')],
+  ranged: [trk('Arc'), trk('Reach'), trk('Hunt'), trk('Sight'), trk('Wing'), trk('Strand'), trk('Cry'), trk('Flight'), trk('Talon'), trk('Loft')],
+  caster: [trk('Call'), trk('Chant'), trk('Sigh'), trk('Rune'), trk('Wish'), trk('Grasp'), trk('Star'), trk('Echo'), trk('Spell'), trk('Verse')],
+  helm: [trk('Crown'), trk('Visage'), trk('Gaze'), trk('Brow'), trk('Mask'), trk('Vigil'), trk('Halo'), trk('Skull'), trk('Cowl'), trk('Helm')],
+  chest: [trk('Guard'), trk('Shell'), trk('Hide'), trk('Coat'), trk('Ward'), trk('Carapace'), trk('Bulwark'), trk('Weave'), trk('Mantle'), trk('Shroud')],
+  gloves: [trk('Grasp'), trk('Grip'), trk('Touch'), trk('Clutch'), trk('Hand'), trk('Talon'), trk('Fist'), trk('Knuckle'), trk('Palm'), trk('Snare')],
+  pants: [trk('Stance'), trk('Hold'), trk('Root'), trk('Ground'), trk('Haunch'), trk('Kneel'), trk('Brace'), trk('Footing'), trk('Greave'), trk('Legs')],
+  boots: [trk('Stride'), trk('Tread'), trk('Trail'), trk('Step'), trk('Walk'), trk('Pace'), trk('Trek'), trk('March'), trk('Gait'), trk('Course')],
+  belt: [trk('Cord'), trk('Girth'), trk('Clasp'), trk('Wrap'), trk('Bind'), trk('Loop'), trk('Cinch'), trk('Knot'), trk('Girdle'), trk('Sash')],
+  shield: [trk('Wall'), trk('Ward'), trk('Bastion'), trk('Guard'), trk('Face'), trk('Rampart'), trk('Barrier'), trk('Aegis'), trk('Refuge'), trk('Stand')],
+  jewel: [trk('Eye'), trk('Heart'), trk('Knot'), trk('Token'), trk('Seal'), trk('Tear'), trk('Vow'), trk('Oath'), trk('Star'), trk('Coil')],
+  quiver: [trk('Sheaf'), trk('Bundle'), trk('Score'), trk('Volley'), trk('Cache'), trk('Flight')],
+  misc: [trk('Relic'), trk('Shard'), trk('Fragment'), trk('Remnant'), trk('Sign'), trk('Mark')],
 };
 
 function nounGroupFor(category: ItemCategory): string {
@@ -608,14 +610,39 @@ function rareName(base: ItemBase, mods: ItemMod[], rng: Rng): string {
   return `${first} ${second}`;
 }
 
-function magicName(base: ItemBase, mods: ItemMod[]): string {
+/**
+ * A magic item's name: its first prefix's word, the base, its first suffix's
+ * word; with no suffix, its power's word ("Hand Axe of Cleaving").
+ */
+function magicName(base: ItemBase, mods: readonly ItemMod[], powers?: Item['powers']): string {
   const prefix = mods.find((m) => m.kind === 'prefix');
   const suffix = mods.find((m) => m.kind === 'suffix');
   const preWord = prefix ? affixNameWord(prefix.affixId) : undefined;
-  const sufWord = suffix ? affixNameWord(suffix.affixId) : undefined;
-  let name = base.name;
-  if (preWord) name = `${preWord} ${name}`;
-  if (sufWord) name = `${name} ${sufWord}`;
+  const sufWord = suffix ? affixNameWord(suffix.affixId) : powers?.[0] ? powerWord(powers[0].id) : undefined;
+  if (preWord && sufWord) return trc('magic item name: prefix, base, suffix', '{0} {1} {2}', preWord, base.name, sufWord);
+  if (preWord) return trc('magic item name: prefix, base', '{0} {1}', preWord, base.name);
+  if (sufWord) return trc('magic item name: base, suffix', '{0} {1}', base.name, sufWord);
+  return base.name;
+}
+
+const RARE_FIRST = new Set(Object.values(THEME_WORDS).flat());
+const RARE_SECOND = new Set(Object.values(NOUN_GROUPS).flat());
+
+/** A rare's name, saved in English ("Ember Edge", "Emberbrand"), in the current language. */
+function rareShown(name: string): string {
+  const space = name.indexOf(' ');
+  if (space > 0) {
+    const first = name.slice(0, space);
+    const second = name.slice(space + 1);
+    if (RARE_FIRST.has(first) && RARE_SECOND.has(second)) return trc('rare item name: theme word, then noun', '{0} {1}', tr(first), tr(second));
+    return name;
+  }
+  for (const first of RARE_FIRST) {
+    if (!name.startsWith(first)) continue;
+    const rest = name.slice(first.length);
+    const second = rest.charAt(0).toUpperCase() + rest.slice(1);
+    if (RARE_SECOND.has(second)) return `${tr(first)}${tr(second).toLowerCase()}`;
+  }
   return name;
 }
 
@@ -629,14 +656,25 @@ function maybeAddPower(item: Item, base: ItemBase, rarity: ItemRarity, ilvl: num
   const roll = rollPowerAffix(base.category, rarity, ilvl, rng);
   if (!roll) return;
   item.powers = [roll];
-  if (rarity === 'magic' && !item.mods.some((m) => m.kind === 'suffix')) {
-    const word = powerWord(roll.id);
-    if (word) item.name = `${item.name} ${word}`;
-  }
+  if (rarity === 'magic') item.name = magicName(base, item.mods, item.powers);
 }
 
+/**
+ * The name to show. The saved name is in the language the item was found in,
+ * so the name is put back together from what the item is: a unique's or set
+ * piece's own name, a magic item's base and words, a plain item's base. A
+ * rare keeps the two words it rolled, saved in English.
+ */
 export function itemDisplayName(item: Item): string {
-  return item.name;
+  if (item.uniqueId) {
+    const own = item.setId ? getSetPiece(item.uniqueId) : getUnique(item.uniqueId);
+    return own?.name ?? item.name;
+  }
+  const base = findBase(item.baseId);
+  if (!base) return item.name;
+  if (item.rarity === 'rare') return translating() ? rareShown(item.name) : item.name;
+  if (item.rarity === 'magic') return magicName(base, item.mods, item.powers);
+  return base.name;
 }
 
 /** Single unmistakable colour for every rune, whatever its tier. */
@@ -1534,39 +1572,39 @@ export function rarityColor(rarity: ItemRarity): string {
 }
 
 const CATEGORY_LABEL: Record<ItemCategory, string> = {
-  sword: 'Sword',
-  axe: 'Axe',
-  mace: 'Mace',
-  dagger: 'Dagger',
-  spear: 'Polearm',
-  bow: 'Bow',
-  crossbow: 'Crossbow',
-  wand: 'Wand',
-  staff: 'Staff',
-  scepter: 'Scepter',
-  shield: 'Shield',
-  orb: 'Orb',
-  quiver: 'Quiver',
-  helm: 'Helm',
-  chest: 'Body Armor',
-  gloves: 'Gloves',
-  pants: 'Pants',
-  boots: 'Boots',
-  belt: 'Belt',
-  amulet: 'Amulet',
-  ring: 'Ring',
-  charm: 'Charm',
-  trinket: 'Trinket',
-  gem: 'Gem',
-  rune: 'Rune',
-  potion: 'Potion',
+  sword: tr('Sword'),
+  axe: tr('Axe'),
+  mace: tr('Mace'),
+  dagger: tr('Dagger'),
+  spear: tr('Polearm'),
+  bow: tr('Bow'),
+  crossbow: tr('Crossbow'),
+  wand: tr('Wand'),
+  staff: tr('Staff'),
+  scepter: tr('Scepter'),
+  shield: tr('Shield'),
+  orb: tr('Orb'),
+  quiver: tr('Quiver'),
+  helm: tr('Helm'),
+  chest: tr('Body Armor'),
+  gloves: tr('Gloves'),
+  pants: tr('Pants'),
+  boots: tr('Boots'),
+  belt: tr('Belt'),
+  amulet: tr('Amulet'),
+  ring: tr('Ring'),
+  charm: tr('Charm'),
+  trinket: tr('Trinket'),
+  gem: tr('Gem'),
+  rune: tr('Rune'),
+  potion: tr('Potion'),
   material: 'Crafting Material',
 };
 
 function typeLine(base: ItemBase): string {
   const label = CATEGORY_LABEL[base.category] ?? base.category;
-  if (base.slot === 'twoHand') return `Two-Handed ${label}`;
-  if (base.slot === 'mainHand' && base.baseMinDamage !== undefined) return `One-Handed ${label}`;
+  if (base.slot === 'twoHand') return tr('Two-Handed {0}', label);
+  if (base.slot === 'mainHand' && base.baseMinDamage !== undefined) return tr('One-Handed {0}', label);
   return label;
 }
 
@@ -1583,46 +1621,46 @@ export function modLine(mod: ItemMod): string {
 }
 
 const STAT_LABEL: Partial<Record<StatKey, string>> = {
-  strength: 'Strength',
-  dexterity: 'Dexterity',
-  vitality: 'Vitality',
-  energy: 'Energy',
-  life: 'Life',
-  mana: 'Mana',
-  lifeRegen: 'Life Regeneration',
-  manaRegen: '% Mana Regeneration',
-  attackRating: 'Attack Rating',
-  minDamage: 'Minimum Damage',
-  maxDamage: 'Maximum Damage',
-  attackSpeed: '% Attack Speed',
-  castSpeed: '% Cast Speed',
-  critChance: '% Critical Strike Chance',
-  critDamage: '% Critical Strike Damage',
-  lifeSteal: '% Life Stolen per Hit',
-  manaSteal: '% Mana Stolen per Hit',
-  defense: 'Defense',
-  blockChance: '% Block Chance',
-  damageReduction: '% Damage Reduction',
-  physicalResist: '% Physical Resistance',
-  fireResist: '% Fire Resistance',
-  coldResist: '% Cold Resistance',
-  lightningResist: '% Lightning Resistance',
-  poisonResist: '% Poison Resistance',
-  arcaneResist: '% Arcane Resistance',
-  fireDamage: 'Fire Damage',
-  coldDamage: 'Cold Damage',
-  lightningDamage: 'Lightning Damage',
-  poisonDamage: 'Poison Damage',
-  arcaneDamage: 'Arcane Damage',
-  enhancedDamage: '% Enhanced Damage',
-  enhancedDefense: '% Enhanced Defense',
-  elementalDamagePct: '% Elemental Damage',
-  areaDamagePct: '% Area Damage',
-  moveSpeed: '% Movement Speed',
-  magicFind: '% Magic Find',
-  goldFind: '% Gold Find',
-  cooldownReduction: '% Cooldown Reduction',
-  skillLevels: 'to All Skills',
+  strength: tr('Strength'),
+  dexterity: tr('Dexterity'),
+  vitality: tr('Vitality'),
+  energy: tr('Energy'),
+  life: tr('Life'),
+  mana: tr('Mana'),
+  lifeRegen: tr('Life Regeneration'),
+  manaRegen: tr('% Mana Regeneration'),
+  attackRating: tr('Attack Rating'),
+  minDamage: tr('Minimum Damage'),
+  maxDamage: tr('Maximum Damage'),
+  attackSpeed: tr('% Attack Speed'),
+  castSpeed: tr('% Cast Speed'),
+  critChance: tr('% Critical Strike Chance'),
+  critDamage: tr('% Critical Strike Damage'),
+  lifeSteal: tr('% Life Stolen per Hit'),
+  manaSteal: tr('% Mana Stolen per Hit'),
+  defense: tr('Defense'),
+  blockChance: tr('% Block Chance'),
+  damageReduction: tr('% Damage Reduction'),
+  physicalResist: tr('% Physical Resistance'),
+  fireResist: tr('% Fire Resistance'),
+  coldResist: tr('% Cold Resistance'),
+  lightningResist: tr('% Lightning Resistance'),
+  poisonResist: tr('% Poison Resistance'),
+  arcaneResist: tr('% Arcane Resistance'),
+  fireDamage: tr('Fire Damage'),
+  coldDamage: tr('Cold Damage'),
+  lightningDamage: tr('Lightning Damage'),
+  poisonDamage: tr('Poison Damage'),
+  arcaneDamage: tr('Arcane Damage'),
+  enhancedDamage: tr('% Enhanced Damage'),
+  enhancedDefense: tr('% Enhanced Defense'),
+  elementalDamagePct: tr('% Elemental Damage'),
+  areaDamagePct: tr('% Area Damage'),
+  moveSpeed: tr('% Movement Speed'),
+  magicFind: tr('% Magic Find'),
+  goldFind: tr('% Gold Find'),
+  cooldownReduction: tr('% Cooldown Reduction'),
+  skillLevels: tr('to All Skills'),
 };
 
 /** Sort order inside the affix block — offence, then defence, then utility. */
@@ -1709,7 +1747,8 @@ export interface TooltipContext {
   classId?: CharClassId;
 }
 
-type Line = { text: string; color: string; bold?: boolean };
+/** `block` marks the first line of a part the tooltip draws in its own box. */
+type Line = { text: string; color: string; bold?: boolean; block?: 'gem' | 'sockets' | 'runeword' };
 
 /**
  * Full D2-style tooltip.
@@ -1724,23 +1763,26 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   const lines: Line[] = [];
   const rc = rarityColor(item.rarity);
 
-  const push = (text: string, color: string, bold?: boolean) => {
-    if (bold) lines.push({ text, color, bold: true });
-    else lines.push({ text, color });
+  const push = (text: string, color: string, bold?: boolean, block?: Line['block']) => {
+    const line: Line = { text, color };
+    if (bold) line.bold = true;
+    if (block) line.block = block;
+    lines.push(line);
   };
   const blank = () => {
     if (lines.length && lines[lines.length - 1].text !== '') push('', COLOR.dim);
   };
 
   // --- header -------------------------------------------------------------
-  const title = item.upgrade > 0 ? `${item.name} +${item.upgrade}` : item.name;
+  const shown = itemDisplayName(item);
+  const title = item.upgrade > 0 ? `${shown} +${item.upgrade}` : shown;
   push(title, rc, true);
-  if (item.name !== base.name) push(base.name, COLOR.dim);
+  if (shown !== base.name) push(base.name, COLOR.dim);
   push(typeLine(base), COLOR.dim);
-  if (item.corrupted) push('Corrupted', COLOR.bad);
+  if (item.corrupted) push(tr('Corrupted'), COLOR.bad);
   if (base.category === 'charm') {
-    push('Works from your pack', COLOR.implicit);
-    if (item.uniqueId) push('Only one of these counts at a time', COLOR.dim);
+    push(tr('Works from your pack'), COLOR.implicit);
+    if (item.uniqueId) push(tr('Only one of these counts at a time'), COLOR.dim);
   }
   const trinket = base.category === 'trinket' ? getTrinket(base.id) : undefined;
   if (trinket) {
@@ -1756,41 +1798,41 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   const cmpDamage = compareTo ? itemDamageRange(compareTo) : null;
   if (damage) {
     const improved = item.upgrade > 0 || (damage.max > (base.baseMaxDamage ?? 0));
-    push(`Damage: ${damage.min}-${damage.max}`, improved ? COLOR.good : COLOR.body);
+    push(tr('Damage: {0}-{1}', damage.min, damage.max), improved ? COLOR.good : COLOR.body);
     if (cmpDamage) {
       const d = (damage.min + damage.max) / 2 - (cmpDamage.min + cmpDamage.max) / 2;
-      if (Math.abs(d) >= 0.5) push(`  ${d > 0 ? '+' : ''}${d.toFixed(0)} average damage`, d > 0 ? COLOR.good : COLOR.bad);
+      if (Math.abs(d) >= 0.5) push(tr('  {0}{1} average damage', d > 0 ? '+' : '', numText(d, 0)), d > 0 ? COLOR.good : COLOR.bad);
     }
   }
-  if (base.baseSpeed) push(`Attacks per Second: ${base.baseSpeed.toFixed(2)}`, COLOR.body);
+  if (base.baseSpeed) push(tr('Attacks per Second: {0}', numText(base.baseSpeed, 2)), COLOR.body);
   const def = itemDefense(item);
   if (def > 0) {
     const improved = item.upgrade > 0 || def > (base.baseDefense ?? 0);
-    push(`Defense: ${def}`, improved ? COLOR.good : COLOR.body);
+    push(tr('Defense: {0}', def), improved ? COLOR.good : COLOR.body);
     if (compareTo) {
       const d = def - itemDefense(compareTo);
-      if (d !== 0) push(`  ${d > 0 ? '+' : ''}${d} defense`, d > 0 ? COLOR.good : COLOR.bad);
+      if (d !== 0) push(tr('  {0}{1} defense', d > 0 ? '+' : '', d), d > 0 ? COLOR.good : COLOR.bad);
     }
   }
-  if (base.baseBlock) push(`Chance to Block: ${Math.round(base.baseBlock * 100)}%`, COLOR.body);
+  if (base.baseBlock) push(tr('Chance to Block: {0}%', Math.round(base.baseBlock * 100)), COLOR.body);
 
   // --- requirements -------------------------------------------------------
   const reqs: Line[] = [];
   if (base.levelReq > 1) {
     const unmet = ctx?.level !== undefined && ctx.level < requiredLevel(item);
-    reqs.push({ text: `Required Level: ${requiredLevel(item)}`, color: unmet ? COLOR.bad : COLOR.dim });
+    reqs.push({ text: tr('Required Level: {0}', requiredLevel(item)), color: unmet ? COLOR.bad : COLOR.dim });
   }
   if (base.strReq) {
     const unmet = ctx?.strength !== undefined && ctx.strength < base.strReq;
-    reqs.push({ text: `Required Strength: ${base.strReq}`, color: unmet ? COLOR.bad : COLOR.dim });
+    reqs.push({ text: tr('Required Strength: {0}', base.strReq), color: unmet ? COLOR.bad : COLOR.dim });
   }
   if (base.dexReq) {
     const unmet = ctx?.dexterity !== undefined && ctx.dexterity < base.dexReq;
-    reqs.push({ text: `Required Dexterity: ${base.dexReq}`, color: unmet ? COLOR.bad : COLOR.dim });
+    reqs.push({ text: tr('Required Dexterity: {0}', base.dexReq), color: unmet ? COLOR.bad : COLOR.dim });
   }
   if (base.classes && base.classes.length > 0) {
     const unmet = ctx?.classId !== undefined && !base.classes.includes(ctx.classId);
-    reqs.push({ text: `Class: ${base.classes.join(', ')}`, color: unmet ? COLOR.bad : COLOR.dim });
+    reqs.push({ text: tr('Class: {0}', base.classes.join(', ')), color: unmet ? COLOR.bad : COLOR.dim });
   }
   if (reqs.length) {
     blank();
@@ -1835,12 +1877,12 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
     const gem = getSocketable(base.id);
     if (gem) {
       blank();
-      push('When socketed into:', COLOR.dim);
+      push(tr('When socketed into:'), COLOR.dim, false, 'gem');
       const tables: Array<[string, GemBonus[]]> = [
-        ['Weapons', gem.weapon],
-        ['Armour', gem.armor],
-        ['Helms & Shields', gem.armor],
-        ['Rings & Amulets', gem.jewelry],
+        [tr('Weapons'), gem.weapon],
+        [tr('Armour'), gem.armor],
+        [tr('Helms & Shields'), gem.armor],
+        [tr('Rings & Amulets'), gem.jewelry],
       ];
       // Armour and helms share a table; list it once.
       const seen = new Set<string>();
@@ -1856,9 +1898,9 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
       // The level rule is invisible until you try, and "too potent for this
       // base" is a baffling thing to be told after the fact.
       if (gem.levelReq > 26) {
-        push(`Needs a base of level ${gem.levelReq - 25} or higher.`, COLOR.dim);
+        push(tr('Needs a base of level {0} or higher.', gem.levelReq - 25), COLOR.dim);
       }
-      push('Drag onto a socketed item to set it.', COLOR.flavor);
+      push(tr('Drag onto a socketed item to set it.'), COLOR.flavor);
     }
   }
 
@@ -1866,15 +1908,15 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   if (item.sockets.length) {
     blank();
     const filled = item.sockets.filter((s) => s.gemId).length;
-    push(`Sockets: ${filled} / ${item.sockets.length}`, COLOR.socket);
+    push(tr('Sockets: {0} / {1}', filled, item.sockets.length), COLOR.socket, false, 'sockets');
     for (const socket of item.sockets) {
       if (!socket.gemId) {
-        push('  (empty)', COLOR.dim);
+        push(`  ${tr('(empty)')}`, COLOR.dim);
         continue;
       }
       const gem = getSocketable(socket.gemId);
       if (!gem) {
-        push('  (unknown)', COLOR.dim);
+        push(`  ${tr('(unknown)')}`, COLOR.dim);
         continue;
       }
       const bonuses = socketBonuses(socket.gemId, base.category)
@@ -1884,7 +1926,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
     }
     const word = itemRuneword(item);
     if (word) {
-      push(`Runeword: ${word.name}`, COLOR.gold, true);
+      push(tr('Runeword: {0}', word.name), COLOR.gold, true, 'runeword');
       for (const bonus of runewordBonuses(word, item.sockets.map((s) => s.gemId))) {
         push(
           `  ${bonus.value >= 0 ? '+' : ''}${bonus.value} ${STAT_LABEL[bonus.stat] ?? bonus.stat}`,
@@ -1917,7 +1959,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
       }
       for (const bonus of set.bonuses) {
         const active = eq ? count >= bonus.pieces : true;
-        push(`  (${bonus.pieces} pieces) ${bonus.desc}`, active ? COLOR.set : COLOR.dim);
+        push(tr('  ({0} pieces) {1}', bonus.pieces, bonus.desc), active ? COLOR.set : COLOR.dim);
       }
     }
   }
@@ -1939,7 +1981,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
   // --- comparison block ---------------------------------------------------
   if (compareTo && compareTo.uid !== item.uid) {
     blank();
-    push(`Compared to ${compareTo.name}`, COLOR.dim, true);
+    push(tr('Compared to {0}', compareTo.name), COLOR.dim, true);
     const mine = itemStats(item);
     const theirs = itemStats(compareTo);
     const keys = new Set<StatKey>([...(Object.keys(mine) as StatKey[]), ...(Object.keys(theirs) as StatKey[])]);
@@ -1947,7 +1989,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
       .map((k) => ({ stat: k, delta: (mine[k] ?? 0) - (theirs[k] ?? 0) }))
       .filter((d) => d.delta !== 0)
       .sort((x, y) => statOrder(x.stat) - statOrder(y.stat));
-    if (deltas.length === 0) push('  No difference', COLOR.dim);
+    if (deltas.length === 0) push(tr('  No difference'), COLOR.dim);
     for (const d of deltas) {
       push(
         `  ${d.delta > 0 ? '+' : ''}${d.delta} ${STAT_LABEL[d.stat] ?? d.stat}`,
@@ -1958,7 +2000,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
 
   // --- footer -------------------------------------------------------------
   blank();
-  push(`Item Level ${item.ilvl}   Value ${vendorPrice(item, false)}g`, COLOR.dim);
+  push(tr('Item Level {0}   Value {1}g', item.ilvl, vendorPrice(item, false)), COLOR.dim);
 
   return lines;
 }
@@ -1982,12 +2024,12 @@ export function canEquip(
   ctx: { level: number; strength: number; dexterity: number; classId?: CharClassId },
 ): { ok: boolean; reason?: string } {
   const base = getBase(item.baseId);
-  if (!isEquippable(base)) return { ok: false, reason: 'This item cannot be equipped.' };
-  if (ctx.level < requiredLevel(item)) return { ok: false, reason: `Requires level ${requiredLevel(item)}.` };
-  if (base.strReq && ctx.strength < base.strReq) return { ok: false, reason: `Requires ${base.strReq} strength.` };
-  if (base.dexReq && ctx.dexterity < base.dexReq) return { ok: false, reason: `Requires ${base.dexReq} dexterity.` };
+  if (!isEquippable(base)) return { ok: false, reason: tr('This item cannot be equipped.') };
+  if (ctx.level < requiredLevel(item)) return { ok: false, reason: tr('Requires level {0}.', requiredLevel(item)) };
+  if (base.strReq && ctx.strength < base.strReq) return { ok: false, reason: tr('Requires {0} strength.', base.strReq) };
+  if (base.dexReq && ctx.dexterity < base.dexReq) return { ok: false, reason: tr('Requires {0} dexterity.', base.dexReq) };
   if (base.classes && ctx.classId && !base.classes.includes(ctx.classId)) {
-    return { ok: false, reason: 'Your class cannot use this.' };
+    return { ok: false, reason: tr('Your class cannot use this.') };
   }
   return { ok: true };
 }

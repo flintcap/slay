@@ -14,6 +14,7 @@
  * checkers that bundle canvas code never meet a stylesheet.
  */
 
+// i18n-ignore-start
 /** Labels, body text, numbers on the HUD. */
 export const FONT_UI = "'Inter Variable', system-ui, sans-serif";
 /** Names, headings, flavour lines. */
@@ -22,6 +23,7 @@ export const FONT_DISPLAY = "'Alegreya Variable', Georgia, serif";
 export const FONT_NUM = "'JetBrains Mono Variable', ui-monospace, monospace";
 /** The game's title and the big carved words. */
 export const FONT_TITLE = "'Cinzel Variable', Georgia, serif";
+// i18n-ignore-end
 
 /** Every face canvas text draws with. Each `load` fetches the Latin file. */
 const FACES = [

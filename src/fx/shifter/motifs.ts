@@ -2,6 +2,8 @@
  * SLAY — the Shapeshifter's words for the uniqueness check
  * (`fx/SkillLooks.ts` spreads these in). Data only: no Three.js, so the
  * headless tools can read it.
+ *
+ * i18n-ignore-file: words that name what a skill draws, never shown to a player.
  */
 import type { SkillMotif } from '../SkillLooks';
 

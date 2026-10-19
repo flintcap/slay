@@ -17,6 +17,7 @@ import { Panel, div, span, classAccent, classCrestSvg, classById, fmtInt, durati
 import { MenuNav, type MenuItemOpts } from './MenuNav';
 import { DIFFICULTIES } from '../data/difficulties';
 import { versionLabel } from '../core/Build';
+import { tr } from '../core/I18n';
 
 /** The SLAY wordmark: bevelled gold with a slow specular sweep. */
 const LOGO_SVG = `
@@ -57,10 +58,10 @@ const LOGO_SVG = `
 
 /** Short, rotating lines under the logo. One is picked per visit. */
 const TAGLINES = [
-  'Descend. Die. Descend again.',
-  'The vault remembers. Nobody else will.',
-  'Every map is new. Every death is final.',
-  'There is always another portal.',
+  tr('Descend. Die. Descend again.'),
+  tr('The vault remembers. Nobody else will.'),
+  tr('Every map is new. Every death is final.'),
+  tr('There is always another portal.'),
 ];
 
 export class TitlePanel {
@@ -157,12 +158,12 @@ export class TitlePanel {
       const crest = div('ttl-hero-crest');
       crest.innerHTML = classCrestSvg(current.classId, accent, 46);
       const body = div('ttl-hero-body');
-      body.appendChild(div('ttl-hero-kicker', 'Last descended as'));
+      body.appendChild(div('ttl-hero-kicker', tr('Last descended as')));
       body.appendChild(div('ttl-hero-name', current.name));
       const cls = classById(current.classId)?.name ?? current.classId;
       const dif = DIFFICULTIES.find((d) => d.id === current.difficulty);
-      const bits = [`Level ${current.level} ${cls}`];
-      if (current.depthRecord > 0) bits.push(`Deepest ${current.depthRecord}`);
+      const bits = [tr('Level {0} {1}', current.level, cls)];
+      if (current.depthRecord > 0) bits.push(tr('Deepest {0}', current.depthRecord));
       if (current.playtime > 0) bits.push(duration(current.playtime));
       if (dif) bits.push(dif.name);
       body.appendChild(div('ttl-hero-meta', bits.join('  ·  ')));
@@ -173,36 +174,36 @@ export class TitlePanel {
     const items: MenuItemOpts[] = [];
     if (current) {
       items.push({
-        label: 'Continue',
+        label: tr('Continue'),
         tone: 'primary',
-        hint: `Return to town as ${current.name}`,
+        hint: tr('Return to town as {0}', current.name),
         onSelect: () => this.go('town'),
       });
     }
     items.push({
-      label: roster.length > 0 ? 'Characters' : 'New Character',
+      label: roster.length > 0 ? tr('Characters') : tr('New Character'),
       tone: current ? 'default' : 'primary',
       hint:
         roster.length > 0
-          ? `${roster.length} living · choose one or forge another`
-          : 'Choose a class and take up the torch',
+          ? tr('{0} living · choose one or forge another', roster.length)
+          : tr('Choose a class and take up the torch'),
       onSelect: () => this.go('charSelect'),
     });
     items.push({
-      label: 'Settings',
-      hint: 'Picture, sound and controls',
+      label: tr('Settings'),
+      hint: tr('Picture, sound and controls'),
       onSelect: () => events.emit('ui:open', { panel: 'settings' }),
     });
     if (acct.fallen.length > 0) {
       items.push({
-        label: 'The Fallen',
-        hint: `${acct.fallen.length} remembered`,
+        label: tr('The Fallen'),
+        hint: tr('{0} remembered', acct.fallen.length),
         onSelect: () => events.emit('ui:open', { panel: 'memorial' }),
       });
     }
     items.push({
-      label: 'Credits',
-      hint: 'Who made what, and the licences',
+      label: tr('Credits'),
+      hint: tr('Who made what, and the licences'),
       onSelect: () => events.emit('ui:open', { panel: 'settings:about' }),
     });
     this.nav.set(items);
@@ -215,13 +216,13 @@ export class TitlePanel {
       d.append(div('ttl-stat-v', v), div('ttl-stat-l', l));
       stats.appendChild(d);
     };
-    stat(String(acct.bestDepth), 'Best tier');
-    stat(String(roster.length), 'Living');
-    stat(String(acct.fallen.length), 'Fallen');
-    stat(fmtInt(acct.bankGold), 'Banked gold');
+    stat(String(acct.bestDepth), tr('Best tier'));
+    stat(String(roster.length), tr('Living'));
+    stat(String(acct.fallen.length), tr('Fallen'));
+    stat(fmtInt(acct.bankGold), tr('Banked gold'));
     const keys = div('ttl-keys');
-    keys.append(keycap('↑'), keycap('↓'), span('', 'Choose'), keycap('Enter'), span('', 'Confirm'));
-    const motto = div('ttl-motto', 'The vault and the memorial survive. Nothing else does.');
+    keys.append(keycap('↑'), keycap('↓'), span('', tr('Choose')), keycap('Enter'), span('', tr('Confirm')));
+    const motto = div('ttl-motto', tr('The vault and the memorial survive. Nothing else does.'));
     this.foot.append(stats, motto, keys);
     this.foot.appendChild(div('ttl-ver', versionLabel()));
   }

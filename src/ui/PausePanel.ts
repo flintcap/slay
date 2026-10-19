@@ -19,6 +19,7 @@ import { runStats } from './RunStats';
 import { keyLabel } from './AccessibilitySettings';
 import { keyFor } from '../core/Access';
 import { LEAVE_XP_SHARE } from '../sim/RunLedger';
+import { tr, trn } from '../core/I18n';
 
 export class PausePanel {
   readonly panel: Panel;
@@ -43,7 +44,7 @@ export class PausePanel {
 
     const root = div('pz-root');
     const col = div('pz-col');
-    col.appendChild(div('pz-title', 'Paused'));
+    col.appendChild(div('pz-title', tr('Paused')));
     const rule = div('ttl-rule pz-rule');
     rule.appendChild(span('ttl-rule-gem'));
     col.appendChild(rule);
@@ -52,7 +53,7 @@ export class PausePanel {
     this.nav = new MenuNav('mn-list pz-menu');
     col.appendChild(this.nav.root);
     const foot = div('pz-foot');
-    foot.append(keycap('Esc'), span('', 'Resume'), keycap('↑'), keycap('↓'), span('', 'Choose'));
+    foot.append(keycap(tr('Esc')), span('', tr('Resume')), keycap('↑'), keycap('↓'), span('', tr('Choose')));
     col.appendChild(foot);
 
     this.card = div('pz-card');
@@ -61,8 +62,8 @@ export class PausePanel {
 
     events.on('depth:changed', (p) => {
       this.place =
-        p.depth <= 0 ? 'The Town' : p.mapName ? `${p.mapName} · Tier ${p.depth}` : p.place ? `Tier ${p.depth} · ${p.place}` : `Tier ${p.depth}`;
-      this.floor = p.depth > 0 ? (p.mapName ? p.place ?? '' : p.of > 1 ? `Area ${p.level} of ${p.of}` : '') : '';
+        p.depth <= 0 ? tr('The Town') : p.mapName ? tr('{0} · Tier {1}', p.mapName, p.depth) : p.place ? tr('Tier {0} · {1}', p.depth, p.place) : tr('Tier {0}', p.depth);
+      this.floor = p.depth > 0 ? (p.mapName ? p.place ?? '' : p.of > 1 ? tr('Area {0} of {1}', p.level, p.of) : '') : '';
     });
     events.on('zone:entered', (p) => {
       if (p.mapName) this.floor = p.name;
@@ -89,7 +90,7 @@ export class PausePanel {
 
   private render(): void {
     const inDungeon = this.engine.currentSceneId === 'dungeon';
-    this.where.textContent = [this.place || (inDungeon ? 'The Depths' : 'The Town'), this.floor].filter(Boolean).join('  ·  ');
+    this.where.textContent = [this.place || (inDungeon ? tr('The Depths') : tr('The Town')), this.floor].filter(Boolean).join('  ·  ');
 
     const open = (panel: string) => (): void => {
       this.close();
@@ -98,19 +99,19 @@ export class PausePanel {
     // The key each panel is on now, after any rebinding.
     const key = (code: string): string => keyLabel(keyFor(code, save.settings.keybinds));
     const items: MenuItemOpts[] = [
-      { label: 'Resume', tone: 'primary', onSelect: () => this.close() },
-      { label: 'Inventory', hint: key('KeyI'), onSelect: open('inventory') },
-      { label: 'Character', hint: key('KeyC'), onSelect: open('character') },
-      { label: 'Skills', hint: key('KeyT'), onSelect: open('skills') },
-      { label: 'Map', hint: key('KeyM'), onSelect: open('map') },
-      { label: 'Quest Log', hint: key('KeyL'), onSelect: open('questLog') },
-      { label: 'Journal', hint: key('KeyJ'), onSelect: open('journal') },
-      { label: 'Settings', hint: 'Picture, sound, controls', onSelect: () => events.emit('ui:open', { panel: 'settings' }) },
+      { label: tr('Resume'), tone: 'primary', onSelect: () => this.close() },
+      { label: tr('Inventory'), hint: key('KeyI'), onSelect: open('inventory') },
+      { label: tr('Character'), hint: key('KeyC'), onSelect: open('character') },
+      { label: tr('Skills'), hint: key('KeyT'), onSelect: open('skills') },
+      { label: tr('Map'), hint: key('KeyM'), onSelect: open('map') },
+      { label: tr('Quest Log'), hint: key('KeyL'), onSelect: open('questLog') },
+      { label: tr('Journal'), hint: key('KeyJ'), onSelect: open('journal') },
+      { label: tr('Settings'), hint: tr('Picture, sound, controls'), onSelect: () => events.emit('ui:open', { panel: 'settings' }) },
     ];
     // Leaving a map early, at any moment, costs what was found on it and a
     // little experience (`sim/RunLedger.ts`); the waypoint ring and the
     // map's last exit cost nothing. Closing the game counts the same.
-    const cost = `You go back to town with only what you brought down. Everything found on this map is lost, and ${Math.round(LEAVE_XP_SHARE * 100)}% of a level's experience.`;
+    const cost = tr('You go back to town with only what you brought down. Everything found on this map is lost, and {0}% of a level\'s experience.', Math.round(LEAVE_XP_SHARE * 100));
     const leave = (to: 'town' | 'title') => (): void => {
       this.close();
       if (inDungeon) save.forfeitRun();
@@ -120,30 +121,30 @@ export class PausePanel {
     };
     if (inDungeon) {
       items.push({
-        label: 'Return to Town',
-        hint: 'Lose what you found here',
+        label: tr('Return to Town'),
+        hint: tr('Lose what you found here'),
         onSelect: () =>
           modal({
-            title: 'Leave the map?',
+            title: tr('Leave the map?'),
             icon: 'warn',
             tone: 'danger',
-            body: `<p>${cost}</p><p>The waypoint ring where you came in takes you home with everything.</p>`,
-            confirmLabel: 'Return to town',
+            body: tr('<p>{0}</p><p>The waypoint ring where you came in takes you home with everything.</p>', cost),
+            confirmLabel: tr('Return to town'),
             onConfirm: leave('town'),
           }),
       });
     }
     items.push({
-      label: 'Quit to Title',
+      label: tr('Quit to Title'),
       tone: 'danger',
-      hint: inDungeon ? 'Lose what you found here' : 'Your character is saved',
+      hint: inDungeon ? tr('Lose what you found here') : tr('Your character is saved'),
       onSelect: () =>
         modal({
-          title: 'Quit to the title screen?',
+          title: tr('Quit to the title screen?'),
           icon: 'warn',
           tone: 'danger',
-          body: inDungeon ? `<p>${cost}</p><p>Your character will be waiting in town.</p>` : '<p>Your character is saved and will be waiting.</p>',
-          confirmLabel: 'Quit',
+          body: inDungeon ? tr('<p>{0}</p><p>Your character will be waiting in town.</p>', cost) : tr('<p>Your character is saved and will be waiting.</p>'),
+          confirmLabel: tr('Quit'),
           onConfirm: leave('title'),
         }),
     });
@@ -169,7 +170,7 @@ export class PausePanel {
     const names = div('pz-card-names');
     names.append(
       div('pz-card-name', c.name),
-      div('pz-card-class', `Level ${c.level} ${classById(c.classId)?.name ?? c.classId}`),
+      div('pz-card-class', tr('Level {0} {1}', c.level, classById(c.classId)?.name ?? c.classId)),
     );
     head.append(crest, names);
     this.card.appendChild(head);
@@ -182,16 +183,18 @@ export class PausePanel {
     const fill = div('pz-xp-fill');
     fill.style.width = `${(frac * 100).toFixed(1)}%`;
     bar.appendChild(fill);
-    xp.append(bar, div('pz-xp-l', need > 0 ? `${fmtInt(c.xp)} / ${fmtInt(need)} to level ${c.level + 1}` : ''));
+    xp.append(bar, div('pz-xp-l', need > 0 ? tr('{0} / {1} to level {2}', fmtInt(c.xp), fmtInt(need), c.level + 1) : ''));
     this.card.appendChild(xp);
 
     const unspent = (c.statPoints || 0) + (c.skillPoints || 0);
     if (unspent > 0) {
       const nag = div('pz-nag');
+      const stats = trn(c.statPoints, '{0} stat point', '{0} stat points', c.statPoints);
+      const skills = trn(c.skillPoints, '{0} skill point', '{0} skill points', c.skillPoints);
       nag.textContent =
-        `${c.statPoints ? `${c.statPoints} stat point${c.statPoints > 1 ? 's' : ''}` : ''}` +
-        `${c.statPoints && c.skillPoints ? ' and ' : ''}` +
-        `${c.skillPoints ? `${c.skillPoints} skill point${c.skillPoints > 1 ? 's' : ''}` : ''} to spend`;
+        c.statPoints && c.skillPoints
+          ? tr('{0} and {1} to spend', stats, skills)
+          : tr('{0} to spend', c.statPoints ? stats : skills);
       this.card.appendChild(nag);
     }
 
@@ -203,17 +206,17 @@ export class PausePanel {
     };
     const run = runStats.current;
     if (run) {
-      this.card.appendChild(div('pz-section', 'This run'));
-      stat(duration(run.seconds), 'Time');
-      stat(fmtInt(run.kills), 'Kills');
-      stat(fmtInt(run.elites), 'Elites');
-      stat(fmtInt(run.gold), 'Gold found');
+      this.card.appendChild(div('pz-section', tr('This run')));
+      stat(duration(run.seconds), tr('Time'));
+      stat(fmtInt(run.kills), tr('Kills'));
+      stat(fmtInt(run.elites), tr('Elites'));
+      stat(fmtInt(run.gold), tr('Gold found'));
     } else {
-      this.card.appendChild(div('pz-section', 'Account'));
-      stat(fmtInt(c.gold), 'Gold carried');
-      stat(fmtInt(save.account.bankGold), 'Gold banked');
-      stat(c.depthRecord > 0 ? String(c.depthRecord) : '-', 'Deepest');
-      stat(duration(c.playtime || 0), 'Played');
+      this.card.appendChild(div('pz-section', tr('Account')));
+      stat(fmtInt(c.gold), tr('Gold carried'));
+      stat(fmtInt(save.account.bankGold), tr('Gold banked'));
+      stat(c.depthRecord > 0 ? String(c.depthRecord) : '-', tr('Deepest'));
+      stat(duration(c.playtime || 0), tr('Played'));
     }
     this.card.appendChild(grid);
   }

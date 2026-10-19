@@ -13,6 +13,7 @@ import { events, toast } from '../core/Events';
 import { save } from '../core/Save';
 import { LEGACY_UNLOCKS, hasUnlock } from '../sim/Legacy';
 import { surface } from '../art/Materials';
+import { tr } from '../core/I18n';
 
 /** Same shape as TownScene's interaction points. */
 export interface StationSpot {
@@ -39,9 +40,9 @@ interface Own {
 }
 
 export const STATIONS: StationDef[] = [
-  { id: 'gambler', label: 'The Gambler — Sealed Goods', at: [16.4, 1.0], facing: -Math.PI / 2, build: buildTable },
-  { id: 'enchanter', label: 'The Enchanter — Reforge & Imbue', at: [-13.6, -0.8], facing: Math.PI / 2, build: buildLectern },
-  { id: 'bounties', label: 'Bounty Board — Contracts & Rewards', at: [5.0, -10.5], facing: 0, build: buildBoard },
+  { id: 'gambler', label: tr('The Gambler — Sealed Goods'), at: [16.4, 1.0], facing: -Math.PI / 2, build: buildTable },
+  { id: 'enchanter', label: tr('The Enchanter — Reforge & Imbue'), at: [-13.6, -0.8], facing: Math.PI / 2, build: buildLectern },
+  { id: 'bounties', label: tr('Bounty Board — Contracts & Rewards'), at: [5.0, -10.5], facing: 0, build: buildBoard },
 ];
 
 /** Spots open this; the listener below decides between the panel and a refusal. */
@@ -170,7 +171,7 @@ export function mountTownStations(
     const u = LEGACY_UNLOCKS.find((x) => x.id === s.id);
     spots.push({
       id: `station:${s.id}`,
-      label: unlocked ? s.label : `${s.label.split(' — ')[0]} — Renown rank ${u?.rank ?? '?'}`,
+      label: unlocked ? s.label : tr('{0} — Renown rank {1}', s.label.split(' — ')[0], u?.rank ?? '?'),
       panel: `${STATION_PREFIX}${s.id}`,
       pos,
       radius: 2.2,
@@ -187,7 +188,7 @@ export function mountTownStations(
       return;
     }
     const u = LEGACY_UNLOCKS.find((x) => x.id === id);
-    if (u) toast(`${u.name} opens at Renown rank ${u.rank}. ${u.desc}`, 'info');
+    if (u) toast(tr('{0} opens at Renown rank {1}. {2}', u.name, u.rank, u.desc), 'info');
   });
 
   // The enchanter's runes turn slowly. Cheap: six objects, one callback.

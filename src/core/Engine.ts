@@ -6,6 +6,7 @@ import { events } from './Events';
 import { save } from './Save';
 import { sweepAssetTextures, texturesSettled } from './Assets';
 import { beginLoad, endLoad, loadStep } from './LoadProgress';
+import { tr } from './I18n';
 
 /** One distinct error the engine caught, with how often it has happened. */
 export interface CaughtError {
@@ -304,7 +305,7 @@ export class Engine {
         const fb = fallback ? this.scenes.get(fallback) : undefined;
         if (!fallback || !fb) throw err;
         this.active = null;
-        events.emit('toast', { text: 'Something went wrong getting there. You are safe.', kind: 'bad' });
+        events.emit('toast', { text: tr('Something went wrong getting there. You are safe.'), kind: 'bad' });
         await this.enterScene(fallback, fb, undefined);
         arrived = fallback;
       }
@@ -495,7 +496,7 @@ export class Engine {
     } catch {
       /* the save has its own safety */
     }
-    events.emit('toast', { text: 'Something went wrong. You have been moved somewhere safe.', kind: 'bad' });
+    events.emit('toast', { text: tr('Something went wrong. You have been moved somewhere safe.'), kind: 'bad' });
     void this.goTo(to)
       .catch((err) => this.report('enter', err))
       .finally(() => {

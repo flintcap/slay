@@ -29,6 +29,8 @@ import {
   stepWhere,
   turnInStep,
 } from '../sim/Chains';
+import { tr } from '../core/I18n';
+import { itemDisplayName } from '../sim/Loot';
 
 /** The offer a person has made and you have not answered yet. */
 let pending: { npc: string; chain: string } | null = null;
@@ -36,7 +38,7 @@ let pending: { npc: string; chain: string } | null = null;
 function objectiveList(step: ChainStep): HTMLElement {
   const box = div('dlg-reward');
   const where = div('dlg-obj');
-  where.textContent = `A portal opens on ${stepWhere(step)}.`;
+  where.textContent = tr('A portal opens on {0}.', stepWhere(step));
   box.appendChild(where);
   for (const o of step.objectives) {
     const line = div('dlg-obj');
@@ -46,9 +48,9 @@ function objectiveList(step: ChainStep): HTMLElement {
   const pay = chainReward(step);
   const reward = div('');
   reward.style.marginTop = '6px';
-  reward.appendChild(span('', 'Pays '));
+  reward.appendChild(span('', tr('Pays ')));
   const b = document.createElement('b');
-  b.textContent = `${fmtInt(pay.gold)} gold, ${fmtInt(pay.xp)} experience${pay.item ? `, and a ${pay.item} item` : ''}`;
+  b.textContent = tr('{0} gold, {1} experience{2}', fmtInt(pay.gold), fmtInt(pay.xp), pay.item ? tr(', and a {0} item', pay.item) : '');
   reward.appendChild(b);
   box.appendChild(reward);
   return box;
@@ -60,7 +62,7 @@ function contractOptions(npc: NpcDef): DialogueOption[] {
   for (const work of openWorkFor(npc)) {
     if (work.ready) {
       out.push({
-        label: `Hand in: ${work.step.title}`,
+        label: tr('Hand in: {0}', work.step.title),
         kind: 'ready',
         icon: 'check',
         isNew: true,
@@ -69,29 +71,29 @@ function contractOptions(npc: NpcDef): DialogueOption[] {
           const paid = turnInStep(work.chain);
           if (!paid) return;
           if (paid === 'full') {
-            toast('Your pack and the vault are both full. Make room, then hand it in.', 'bad');
+            toast(tr('Your pack and the vault are both full. Make room, then hand it in.'), 'bad');
             audio.play('ui.error');
             return;
           }
           audio.play('quest.complete');
           const box = div('dlg-reward');
           const b = document.createElement('b');
-          b.textContent = `+${fmtInt(paid.gold)} gold, +${fmtInt(paid.xp)} experience`;
+          b.textContent = tr('+{0} gold, +{1} experience', fmtInt(paid.gold), fmtInt(paid.xp));
           box.appendChild(b);
           if (paid.item) {
-            const it = div('', `${paid.item.name} ${paid.itemTo === 'vault' ? '(sent to the vault, your pack is full)' : 'added to your pack'}`);
+            const it = div('', `${itemDisplayName(paid.item)} ${paid.itemTo === 'vault' ? tr('(sent to the vault, your pack is full)') : tr('added to your pack')}`);
             box.appendChild(it);
           }
-          const next = chainDone(work.chain) ? div('', `${work.chain.name}: finished.`) : null;
+          const next = chainDone(work.chain) ? div('', tr('{0}: finished.', work.chain.name)) : null;
           if (next) box.appendChild(next);
           v.speak(lines, { extra: box });
           v.refresh();
-          toast(`${work.step.title} handed in`, 'epic');
+          toast(tr('{0} handed in', work.step.title), 'epic');
         },
       });
     } else {
       out.push({
-        label: `About ${work.step.title}`,
+        label: tr('About {0}', work.step.title),
         kind: 'topic',
         icon: 'quest',
         heard: true,
@@ -106,32 +108,32 @@ function contractOptions(npc: NpcDef): DialogueOption[] {
   if (offer) {
     if (pending && pending.npc === npc.id && pending.chain === offer.chain.id) {
       out.push({
-        label: `Take the contract: ${offer.step.title}`,
+        label: tr('Take the contract: {0}', offer.step.title),
         kind: 'contract',
         icon: 'check',
         run: (v) => {
           acceptStep(offer.chain);
           pending = null;
           audio.play('ui.open');
-          v.speak([`Taken. ${offer.step.brief}`], { narration: true, extra: objectiveList(offer.step) });
+          v.speak([tr('Taken. {0}', offer.step.brief)], { narration: true, extra: objectiveList(offer.step) });
           v.refresh();
-          toast(`Contract taken: ${offer.step.title}`, 'good');
+          toast(tr('Contract taken: {0}', offer.step.title), 'good');
         },
       });
       out.push({
-        label: 'Not yet',
+        label: tr('Not yet'),
         kind: 'topic',
         icon: 'chevronLeft',
         heard: true,
         run: (v) => {
           pending = null;
-          v.speak([`Then not yet. It will keep. Most things down there do.`]);
+          v.speak([tr('Then not yet. It will keep. Most things down there do.')]);
           v.refresh();
         },
       });
     } else {
       out.push({
-        label: `${offer.index === 0 ? 'Work' : 'More work'}: ${offer.step.title}`,
+        label: `${offer.index === 0 ? tr('Work') : tr('More work')}: ${offer.step.title}`,
         kind: 'contract',
         icon: 'quest',
         isNew: true,
@@ -155,10 +157,10 @@ function contractNews(npc: NpcDef): boolean {
 // ---------------------------------------------------------------------------
 
 const STATE_LABEL: Record<string, string> = {
-  idle: 'On offer',
-  active: 'Taken',
-  ready: 'Done. Hand it in',
-  done: 'Handed in',
+  idle: tr('On offer'),
+  active: tr('Taken'),
+  ready: tr('Done. Hand it in'),
+  done: tr('Handed in'),
 };
 
 function chainEntry(chain: ChainDef): JournalEntry {
@@ -170,8 +172,8 @@ function chainEntry(chain: ChainDef): JournalEntry {
   return {
     id: chain.id,
     label: chain.name,
-    sub: done ? `${giver.name} · finished` : `${giver.name} · ${cur?.title ?? ''}`,
-    group: done ? 'Finished' : st === 'ready' ? 'Ready to hand in' : st === 'active' ? 'Open' : 'On offer',
+    sub: done ? tr('{0} · finished', giver.name) : `${giver.name} · ${cur?.title ?? ''}`,
+    group: done ? tr('Finished') : st === 'ready' ? tr('Ready to hand in') : st === 'active' ? tr('Open') : tr('On offer'),
     render(page) {
       pageTitle(page, chain.name, `${giver.name}, ${giver.role}`);
       para(page, chain.blurb, 'jr-quiet');
@@ -192,23 +194,23 @@ function chainEntry(chain: ChainDef): JournalEntry {
           where.textContent = `${stepWhere(step)}.`;
           box.appendChild(where);
           for (const o of step.objectives) box.appendChild(div('dlg-obj', o.desc.replace(/\{n\}/g, String(o.n))));
-          if (s === 'idle') box.appendChild(div('jr-hint', `Talk to ${giver.name} to take it.`));
-          if (s === 'ready') box.appendChild(div('jr-hint', `Go back to ${giver.name}.`));
+          if (s === 'idle') box.appendChild(div('jr-hint', tr('Talk to {0} to take it.', giver.name)));
+          if (s === 'ready') box.appendChild(div('jr-hint', tr('Go back to {0}.', giver.name)));
         }
         page.appendChild(box);
       });
-      if (!done && at + 1 < chain.steps.length) page.appendChild(div('jr-hint', 'There is more to this. It will come.'));
+      if (!done && at + 1 < chain.steps.length) page.appendChild(div('jr-hint', tr('There is more to this. It will come.')));
     },
   };
 }
 
-const GROUP_ORDER = ['Ready to hand in', 'Open', 'On offer', 'Finished'];
+const GROUP_ORDER = [tr('Ready to hand in'), tr('Open'), tr('On offer'), tr('Finished')];
 
 addJournalSection({
   id: 'contracts',
-  label: 'Contracts',
+  label: tr('Contracts'),
   icon: 'quest',
-  empty: 'No contracts yet. The people of Stairhead have work; talk to them.',
+  empty: tr('No contracts yet. The people of Stairhead have work; talk to them.'),
   entries() {
     const s = CHAINS.filter((c) => {
       const at = chainStep(c);
@@ -239,7 +241,7 @@ export function installContracts(): void {
     if (!done) return;
     const giver = NPCS[done.step.giver ?? done.chain.giver];
     say('', done.step.ready, { tone: 'narration', delay: 1.2 });
-    toast(`Contract done. Return to ${giver.name}.`, 'good');
+    toast(tr('Contract done. Return to {0}.', giver.name), 'good');
   });
 
   events.on('depth:changed', (p) => {
@@ -247,6 +249,6 @@ export function installContracts(): void {
     const c = carriedContract();
     if (!c) return;
     const giver = NPCS[c.step.giver ?? c.chain.giver];
-    say('', `${giver.name}'s contract: ${c.step.title}. ${c.step.brief}`, { tone: 'narration', delay: 3.4, hold: 7 });
+    say('', tr('{0}\'s contract: {1}. {2}', giver.name, c.step.title, c.step.brief), { tone: 'narration', delay: 3.4, hold: 7 });
   });
 }

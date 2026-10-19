@@ -13,6 +13,7 @@ import { getBase } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import { buildAtmosphere, type AtmosphereHandle } from './MenuStage';
 import { FONT_DISPLAY } from '../ui/Fonts';
+import { tr } from '../core/I18n';
 
 export interface DeathPayload {
   killedBy: string;
@@ -232,15 +233,15 @@ export class DeathScene extends GameScene {
       ctx.fillStyle = 'rgba(8, 8, 10, 0.88)';
       ctx.fillText(text, W / 2, y);
     };
-    const name = (data.name ?? 'The Nameless').toUpperCase();
+    const name = (data.name ?? tr('The Nameless')).toUpperCase();
     const size = name.length > 11 ? Math.max(38, 66 - (name.length - 11) * 4) : 66;
-    carve('HERE LIES', 70, 30, '600');
+    carve(tr('HERE LIES'), 70, 30, '600');
     carve(name, 150, size);
     ctx.fillStyle = 'rgba(8, 8, 10, 0.7)';
     ctx.fillRect(W / 2 - 110, 200, 220, 3);
     const cls = CLASSES.find((c) => c.id === data.classId)?.name;
-    carve(cls ? `${cls}, level ${data.level ?? 1}` : `Level ${data.level ?? 1}`, 250, 32, '600');
-    carve(`Fell on Tier ${data.depth ?? 0}`, 300, 32, '600');
+    carve(cls ? tr('{0}, level {1}', cls, data.level ?? 1) : tr('Level {0}', data.level ?? 1), 250, 32, '600');
+    carve(tr('Fell on Tier {0}', data.depth ?? 0), 300, 32, '600');
     // A small cross of crossed lines as a mark.
     ctx.strokeStyle = 'rgba(8, 8, 10, 0.8)';
     ctx.lineWidth = 5;

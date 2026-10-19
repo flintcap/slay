@@ -12,16 +12,14 @@
  */
 import type { CharClassDef } from '../../types';
 import type { ClassEquipRules } from '../classes';
+import { tr } from '../../core/I18n';
 
 export const SHAPESHIFTER_CLASS: CharClassDef = {
   id: 'shapeshifter',
-  name: 'Shapeshifter',
-  title: 'He Who Wears Three Skins',
+  name: tr('Shapeshifter'),
+  title: tr('He Who Wears Three Skins'),
   blurb:
-    'Born in the drowned woods with the old blood in him three times over. In the dark he lets one of them out: ' +
-    'the black cat that is gone before the scream, the grey wolf that never stops running, the bear that stands ' +
-    'in the door and does not move. Bone charms on a cord, wet earth under the nails, and something behind the eyes ' +
-    'that is not quite a man.',
+    tr('Born in the drowned woods with the old blood in him three times over. In the dark he lets one of them out: the black cat that is gone before the scream, the grey wolf that never stops running, the bear that stands in the door and does not move. Bone charms on a cord, wet earth under the nails, and something behind the eyes that is not quite a man.'),
   base: { strength: 28, dexterity: 25, vitality: 26, energy: 8 },
   perLevel: { life: 2.5, mana: 0.9, attackRating: 7 },
   lifePerVit: 3.7,
@@ -41,5 +39,5 @@ export const SHAPESHIFTER_EQUIP: ClassEquipRules = {
   denied: ['bow', 'crossbow', 'wand', 'orb', 'scepter', 'shield', 'sword', 'dagger'],
   dualWield: false,
   offHandExtra: [],
-  note: 'Shapeshifters fight with clubs, axes, staves and spears, and keep the other hand free for the change.',
+  note: tr('Shapeshifters fight with clubs, axes, staves and spears, and keep the other hand free for the change.'),
 };

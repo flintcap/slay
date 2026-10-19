@@ -18,44 +18,45 @@ import {
   type LootFilterSettings,
 } from '../sim/LootFilter';
 import { Panel, Segmented, Toggle, Button, div, clear, section, keycap, span, add } from './Widgets';
+import { tr } from '../core/I18n';
 
 const RARITY_OPTS: Array<{ id: ItemRarity; label: string; hint: string }> = [
-  { id: 'normal', label: 'All', hint: 'Show all of it' },
-  { id: 'magic', label: 'Magic', hint: 'Hide plain' },
-  { id: 'rare', label: 'Rare', hint: 'Hide magic and plain' },
-  { id: 'set', label: 'Set', hint: 'Only sets and uniques' },
-  { id: 'unique', label: 'Unique', hint: 'Only uniques and better' },
+  { id: 'normal', label: tr('All'), hint: tr('Show all of it') },
+  { id: 'magic', label: tr('Magic'), hint: tr('Hide plain') },
+  { id: 'rare', label: tr('Rare'), hint: tr('Hide magic and plain') },
+  { id: 'set', label: tr('Set'), hint: tr('Only sets and uniques') },
+  { id: 'unique', label: tr('Unique'), hint: tr('Only uniques and better') },
 ];
 
 const GEM_OPTS = [
-  { id: '0', label: 'All' },
-  { id: '1', label: 'Flawed+' },
-  { id: '2', label: 'Normal+' },
-  { id: '3', label: 'Flawless+' },
-  { id: '4', label: 'Perfect+' },
+  { id: '0', label: tr('All') },
+  { id: '1', label: tr('Flawed+') },
+  { id: '2', label: tr('Normal+') },
+  { id: '3', label: tr('Flawless+') },
+  { id: '4', label: tr('Perfect+') },
 ];
 
 /** Rune bars by cut: every vein's rune of that cut and deeper. */
 const RUNE_OPTS = [1, 2, 3, 4, 5].map((n) => {
   const names = RUNES.filter((x) => x.cut === n).map((x) => x.name.replace(/ Rune$/, '')).join(', ');
-  return { id: String(n), label: n === 1 ? 'All' : `Cut ${n}+`, hint: `From cut ${n} of ${RUNE_CUTS}: ${names}` };
+  return { id: String(n), label: n === 1 ? tr('All') : tr('Cut {0}+', n), hint: tr('From cut {0} of {1}: {2}', n, RUNE_CUTS, names) };
 });
 
 const POTION_OPTS = [
-  { id: 'off', label: 'Off' },
-  { id: '0', label: 'All' },
-  { id: '1', label: 'Light+' },
-  { id: '2', label: 'Greater+' },
-  { id: '3', label: 'Super+' },
+  { id: 'off', label: tr('Off') },
+  { id: '0', label: tr('All') },
+  { id: '1', label: tr('Light+') },
+  { id: '2', label: tr('Greater+') },
+  { id: '3', label: tr('Super+') },
 ];
 
 /** The rarity ladder the glance grid shows, low to high. */
 const LADDER: Array<{ id: ItemRarity; label: string }> = [
-  { id: 'normal', label: 'Plain' },
-  { id: 'magic', label: 'Magic' },
-  { id: 'rare', label: 'Rare' },
-  { id: 'set', label: 'Set' },
-  { id: 'unique', label: 'Unique' },
+  { id: 'normal', label: tr('Plain') },
+  { id: 'magic', label: tr('Magic') },
+  { id: 'rare', label: tr('Rare') },
+  { id: 'set', label: tr('Set') },
+  { id: 'unique', label: tr('Unique') },
 ];
 const RARITY_RANK: ItemRarity[] = LADDER.map((r) => r.id);
 
@@ -77,8 +78,8 @@ export class LootFilterPanel {
   constructor() {
     this.panel = new Panel({
       id: 'lootFilter',
-      title: 'Loot Filter',
-      subtitle: 'Decide what the floor shows you',
+      title: tr('Loot Filter'),
+      subtitle: tr('Decide what the floor shows you'),
       icon: 'filter',
       width: 520,
     });
@@ -142,7 +143,7 @@ export class LootFilterPanel {
 
     this.body.appendChild(this.glance(f));
 
-    const presets = section('Presets', 'sparkle');
+    const presets = section(tr('Presets'), 'sparkle');
     const row = div('depth-row');
     const active = LOOT_FILTER_PRESETS.find((p) => sameSettings(p.settings, f));
     for (const p of LOOT_FILTER_PRESETS) {
@@ -163,13 +164,13 @@ export class LootFilterPanel {
     presets.body.appendChild(row);
     // Say what the current setup is: a preset's own words, or that it is yours.
     presets.body.appendChild(
-      div('lf-preset-note', active ? `${active.label}: ${active.hint}` : 'Custom: your own mix of the settings below.'),
+      div('lf-preset-note', active ? `${active.label}: ${active.hint}` : tr('Custom: your own mix of the settings below.')),
     );
     this.body.appendChild(presets.root);
 
-    const gear = section('Gear', 'target');
-    gear.body.appendChild(new Toggle('Filter on', f.enabled, (v) => this.change({ enabled: v })).root);
-    gear.body.appendChild(div('lf-caption', 'Each row shows the rarity picked and everything rarer.'));
+    const gear = section(tr('Gear'), 'target');
+    gear.body.appendChild(new Toggle(tr('Filter on'), f.enabled, (v) => this.change({ enabled: v })).root);
+    gear.body.appendChild(div('lf-caption', tr('Each row shows the rarity picked and everything rarer.')));
     for (const g of FILTER_GROUPS) {
       const seg = new Segmented<ItemRarity>(g.label, RARITY_OPTS, f.rarityBy[g.id], (v) =>
         this.change({ rarityBy: { ...f.rarityBy, [g.id]: v } }),
@@ -184,34 +185,34 @@ export class LootFilterPanel {
     }
     gear.body.appendChild(
       new Segmented<string>(
-        'Hide outgrown bases',
+        tr('Hide outgrown bases'),
         [
-          { id: '0', label: 'Off' },
-          { id: '10', label: '10+ lvls', hint: 'Plain and magic gear on a base 10 levels behind the drop' },
-          { id: '20', label: '20+ lvls' },
-          { id: '30', label: '30+ lvls' },
+          { id: '0', label: tr('Off') },
+          { id: '10', label: tr('10+ lvls'), hint: tr('Plain and magic gear on a base 10 levels behind the drop') },
+          { id: '20', label: tr('20+ lvls') },
+          { id: '30', label: tr('30+ lvls') },
         ],
         String(f.hideOldBases),
         (v) => this.change({ hideOldBases: Number(v) }),
       ).root,
     );
     gear.body.appendChild(
-      new Toggle("Hide other classes' gear", f.hideOtherClasses, (v) => this.change({ hideOtherClasses: v })).root,
+      new Toggle(tr("Hide other classes' gear"), f.hideOtherClasses, (v) => this.change({ hideOtherClasses: v })).root,
     );
     this.body.appendChild(gear.root);
 
-    const keep = section('Always show', 'sparkle');
+    const keep = section(tr('Always show'), 'sparkle');
     keep.body.appendChild(
-      new Toggle('Powers', f.keepPowers, (v) => this.change({ keepPowers: v }), 'gear with an orange power line').root,
+      new Toggle(tr('Powers'), f.keepPowers, (v) => this.change({ keepPowers: v }), tr('gear with an orange power line')).root,
     );
     keep.body.appendChild(
-      new Toggle('T1 rolls', f.keepTopTier, (v) => this.change({ keepTopTier: v }), 'the best tier of any affix').root,
+      new Toggle(tr('T1 rolls'), f.keepTopTier, (v) => this.change({ keepTopTier: v }), tr('the best tier of any affix')).root,
     );
     keep.body.appendChild(
       new Segmented<string>(
-        'Sockets',
+        tr('Sockets'),
         [
-          { id: '0', label: 'Off' },
+          { id: '0', label: tr('Off') },
           { id: '2', label: '2+' },
           { id: '3', label: '3+' },
           { id: '4', label: '4+' },
@@ -221,7 +222,7 @@ export class LootFilterPanel {
       ).root,
     );
     const wanted = div('field field-segmented');
-    wanted.appendChild(div('field-label', 'Stats I want'));
+    wanted.appendChild(div('field-label', tr('Stats I want')));
     const chips = div('segbar lf-chips');
     for (const c of STAT_CHIPS) {
       const b = document.createElement('button');
@@ -239,11 +240,11 @@ export class LootFilterPanel {
     keep.body.appendChild(wanted);
     keep.body.appendChild(
       new Segmented<string>(
-        'Needs how many',
+        tr('Needs how many'),
         [
-          { id: '1', label: 'Any 1' },
-          { id: '2', label: '2 of them' },
-          { id: '3', label: '3 of them' },
+          { id: '1', label: tr('Any 1') },
+          { id: '2', label: tr('2 of them') },
+          { id: '3', label: tr('3 of them') },
         ],
         String(f.keepStatsMin),
         (v) => this.change({ keepStatsMin: Number(v) }),
@@ -251,19 +252,19 @@ export class LootFilterPanel {
     );
     this.body.appendChild(keep.root);
 
-    const other = section('Gems, runes, potions', 'gem');
+    const other = section(tr('Gems, runes, potions'), 'gem');
     other.body.appendChild(
-      new Segmented<string>('Gems', [{ id: 'off', label: 'Off' }, ...GEM_OPTS], f.showGems ? String(f.minGemQuality) : 'off', (v) =>
+      new Segmented<string>(tr('Gems'), [{ id: 'off', label: tr('Off') }, ...GEM_OPTS], f.showGems ? String(f.minGemQuality) : 'off', (v) =>
         this.change(v === 'off' ? { showGems: false } : { showGems: true, minGemQuality: Number(v) }),
       ).root,
     );
     other.body.appendChild(
-      new Segmented<string>('Runes', [{ id: 'off', label: 'Off' }, ...RUNE_OPTS], f.showRunes ? String(f.minRuneOrder) : 'off', (v) =>
+      new Segmented<string>(tr('Runes'), [{ id: 'off', label: tr('Off') }, ...RUNE_OPTS], f.showRunes ? String(f.minRuneOrder) : 'off', (v) =>
         this.change(v === 'off' ? { showRunes: false } : { showRunes: true, minRuneOrder: Number(v) }),
       ).root,
     );
     other.body.appendChild(
-      new Segmented<string>('Potions', POTION_OPTS, f.showPotions ? String(f.minPotionTier) : 'off', (v) =>
+      new Segmented<string>(tr('Potions'), POTION_OPTS, f.showPotions ? String(f.minPotionTier) : 'off', (v) =>
         this.change(v === 'off' ? { showPotions: false } : { showPotions: true, minPotionTier: Number(v) }),
       ).root,
     );
@@ -271,11 +272,11 @@ export class LootFilterPanel {
 
     const foot = div('depth-row depth-foot');
     const hint = span('depth-dim');
-    add(hint, span('', 'Hold '), keycap('Shift'), span('', ' to see hidden drops. Uniques and better always show.'));
+    add(hint, span('', tr('Hold ')), keycap('Shift'), span('', tr(' to see hidden drops. Uniques and better always show.')));
     foot.appendChild(hint);
     foot.appendChild(
       new Button({
-        label: 'Reset',
+        label: tr('Reset'),
         small: true,
         variant: 'ghost',
         onClick: () => {
