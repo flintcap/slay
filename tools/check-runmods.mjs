@@ -19,7 +19,7 @@ const need = [
   ['src/scenes/DungeonScene.ts', /new RunModifiers\(/, 'DungeonScene runs the modifiers'],
   ['src/scenes/DungeonScene.ts', /this\.runMods\?\.update\(dt\)/, 'modifiers tick'],
   ['src/scenes/DungeonScene.ts', /this\.runMods\?\.onKill\(e\)/, 'modifiers see kills'],
-  ['src/scenes/DungeonScene.ts', /new RunDirector\(depth, pacts\.length\)/, 'pacts reach the director'],
+  ['src/scenes/DungeonScene.ts', /new RunDirector\(depth, pacts\.length[,)]/, 'pacts reach the director'],
   ['src/scenes/TownScene.ts', /planDescent\(/, 'the gate plans the descent'],
   ['src/scenes/RunDirector.ts', /payMilestones\(\)/, 'cleared runs pay milestones'],
 ];
