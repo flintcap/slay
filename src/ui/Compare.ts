@@ -8,11 +8,14 @@
  * An empty slot the hero can fill is an upgrade too. Items the hero cannot
  * wear (class, level, strength, dexterity) never get an arrow.
  */
-import type { Character, EquipSlot, Item, StatKey, Stats } from '../types';
+import type { Character, DamageType, EquipSlot, Item, StatKey, Stats } from '../types';
 import { save } from '../core/Save';
-import { itemStats } from '../sim/Loot';
-import { equipPlan, meetsRequirements } from '../sim/Character';
+import { itemStats, setBonusesFor } from '../sim/Loot';
+import { equipPlan, meetsRequirements, slotsFor } from '../sim/Character';
 import { computeStats, STAT_KEYS } from '../sim/Stats';
+import { effectiveLife, resistAgainst } from '../sim/Combat';
+import { powerLines } from '../sim/ItemPowers';
+import { estimateAttack } from './AttackEstimate';
 
 /** The stats players weigh first, in the order the tooltip lists them. */
 const LEAD_KEYS: StatKey[] = [
@@ -151,4 +154,110 @@ export function compareChoices(c: Character, item: Item): Item[][] | null {
   if ((plan.target === 'ring1' || plan.target === 'ring2') && ring1 && ring2) return [[ring1], [ring2]];
   const worn = plan.displaced.filter((w) => w.uid !== item.uid);
   return worn.length ? [worn] : [];
+}
+
+// ---------------------------------------------------------------------------
+// What wearing it does to the hero
+// ---------------------------------------------------------------------------
+
+const ELEMENTS: Array<{ type: DamageType; label: string }> = [
+  { type: 'fire', label: 'Fire' },
+  { type: 'cold', label: 'Cold' },
+  { type: 'lightning', label: 'Lightning' },
+  { type: 'poison', label: 'Poison' },
+  { type: 'arcane', label: 'Arcane' },
+];
+const ALL_TYPES: DamageType[] = ['physical', 'fire', 'cold', 'lightning', 'poison', 'arcane'];
+
+export interface SwapSummary {
+  /** The right-click attack's damage a second, or null when there is none either side. */
+  dps: { before: number; after: number } | null;
+  life: { before: number; after: number };
+  /**
+   * How many hits of any kind the hero takes to fall, as one number: life
+   * with armour, block, resistances and damage reduction counted, averaged
+   * over the six damage kinds.
+   */
+  toughness: { before: number; after: number };
+  /** Resistances after the cap curve, only the ones that change. */
+  resists: Array<{ label: string; before: number; after: number }>;
+  powersGained: Array<{ name: string; text: string }>;
+  powersLost: Array<{ name: string; text: string }>;
+  setsGained: string[];
+  setsLost: string[];
+}
+
+/** Life against hits of every kind, as one number (see `SwapSummary.toughness`). */
+export function toughnessOf(st: Stats): number {
+  let sum = 0;
+  for (const t of ALL_TYPES) sum += Math.min(effectiveLife(st, 100, t), st.life * 20);
+  return sum / ALL_TYPES.length;
+}
+
+/**
+ * The hero as they would be wearing `item` in place of `worn`: damage, life,
+ * toughness and resistances before and after, the item powers gained and
+ * lost, and the set bonuses that wake or go quiet. Null when it cannot be
+ * worn.
+ */
+export function swapSummary(c: Character, item: Item, worn: readonly Item[]): SwapSummary | null {
+  const plan = equipPlan(c, item);
+  if (!plan) return null;
+  let target: EquipSlot = plan.target;
+  let remove: readonly Item[] = plan.displaced;
+  // One of two worn rings (or another pair): wear it in that one's place.
+  const first = worn[0];
+  if (worn.length === 1 && first && plan.displaced.length) {
+    const at = (Object.keys(c.equipment) as EquipSlot[]).find((k) => c.equipment[k]?.uid === first.uid);
+    if (at && at !== target && slotsFor(item, c.classId).includes(at)) {
+      target = at;
+      remove = [first];
+    }
+  }
+  const equipment = { ...c.equipment };
+  for (const k of Object.keys(equipment) as EquipSlot[]) {
+    const it = equipment[k];
+    if (it && (it.uid === item.uid || remove.some((r) => r.uid === it.uid))) delete equipment[k];
+  }
+  equipment[target] = item;
+  const next: Character = { ...c, equipment };
+
+  const a = computeStats(c);
+  const b = computeStats(next);
+  const ea = estimateAttack(c, a);
+  const eb = estimateAttack(next, b);
+
+  const resists: SwapSummary['resists'] = [];
+  for (const e of ELEMENTS) {
+    const before = resistAgainst(a, e.type);
+    const after = resistAgainst(b, e.type);
+    if (Math.abs(after - before) >= 0.5) resists.push({ label: e.label, before, after });
+  }
+
+  const lines = (list: readonly Item[]) => list.flatMap((it) => powerLines(it));
+  const had = lines(remove);
+  const gets = powerLines(item);
+  const key = (p: { name: string; text: string }) => `${p.name}|${p.text}`;
+  const hadKeys = new Set(had.map(key));
+  const getKeys = new Set(gets.map(key));
+
+  const setLines = (eq: Character['equipment']) =>
+    new Map(
+      setBonusesFor(Object.values(eq))
+        .lines.filter((l) => l.active)
+        .map((l) => [`${l.setId}|${l.required}`, `${l.setName} (${l.required}): ${l.desc}`] as const),
+    );
+  const setsBefore = setLines(c.equipment);
+  const setsAfter = setLines(equipment);
+
+  return {
+    dps: ea || eb ? { before: ea?.dps ?? 0, after: eb?.dps ?? 0 } : null,
+    life: { before: a.life, after: b.life },
+    toughness: { before: toughnessOf(a), after: toughnessOf(b) },
+    resists,
+    powersGained: gets.filter((p) => !hadKeys.has(key(p))),
+    powersLost: had.filter((p) => !getKeys.has(key(p))),
+    setsGained: [...setsAfter].filter(([k]) => !setsBefore.has(k)).map(([, v]) => v),
+    setsLost: [...setsBefore].filter(([k]) => !setsAfter.has(k)).map(([, v]) => v),
+  };
 }

@@ -70,6 +70,7 @@ const CONTROLS: Array<{ group: string; rows: Array<[string, string[]]> }> = [
       ['Skill tree', ['KeyT']],
       ['Vault (in town)', ['KeyB']],
       ['Map', ['KeyM']],
+      ['See-through map over the game', ['Tab']],
       ['Quest log', ['KeyL']],
       ['Journal', ['KeyJ']],
       ['Loot filter', ['KeyO']],
@@ -333,6 +334,18 @@ export class SettingsPanel {
         s.screenShake = v;
         this.commit();
       }, (v) => (v === 0 ? 'Off' : `${Math.round(v * 100)}%`), 'How hard the screen jolts on big hits. 0 turns it off').root,
+    );
+    this.content.appendChild(
+      new Slider('See-through map strength', s.mapOverlayOpacity ?? 0.7, 0.2, 1, 0.05, (v) => {
+        s.mapOverlayOpacity = v;
+        this.commit();
+      }, (v) => `${Math.round(v * 100)}%`, 'How solid the map over the game is drawn. Tab shows and hides it').root,
+    );
+    this.content.appendChild(
+      new Slider('See-through map size', s.mapOverlaySize ?? 1, 0.5, 2, 0.05, (v) => {
+        s.mapOverlaySize = v;
+        this.commit();
+      }, (v) => `${v.toFixed(2)}x`, 'How large the map over the game is drawn. Larger shows less of the floor').root,
     );
     this.content.appendChild(
       new Toggle('Damage numbers', s.showDamageNumbers, (v) => {

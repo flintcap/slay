@@ -30,7 +30,7 @@ import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { BOSS_MOODS, getBoss } from '../data/bosses';
 import { getWarden } from '../data/wardens';
-import { generateRun, isWalkable, BIOMES, modifiersClash, zoneAt } from '../world/DungeonGen';
+import { generateRun, isWalkable, BIOMES, modifiersClash, zoneAt, TILE_SIZE } from '../world/DungeonGen';
 import { DungeonMesh, applyBiomeLighting, type BiomeLighting, type Interactable } from '../world/DungeonBuilder';
 import { NavGrid } from '../world/Nav';
 import { variantLabel, biomeArt } from '../world/Biomes';
@@ -82,6 +82,8 @@ import { peril } from '../core/Peril';
 
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
+/** The hero's spot on screen, for the see-through map. */
+const _heroScreen = new THREE.Vector3();
 const _viewBall = new THREE.Sphere();
 /** A monster root's world-matrix walk, live and frozen (see the enemy loop in update). */
 const MATRIX_WALK = THREE.Object3D.prototype.updateMatrixWorld;
@@ -1663,6 +1665,17 @@ export class DungeonScene extends GameScene {
         window.innerHeight
       );
     }
+
+    // Where the hero stands on screen and how the camera turns, so the
+    // see-through map lies over the floor it charts (ui/MapOverlay.ts).
+    const view = hudRuntime.view;
+    const onScreen = _heroScreen.copy(this.player.position).project(this.camera);
+    view.x = (onScreen.x * 0.5 + 0.5) * window.innerWidth;
+    view.y = (0.5 - onScreen.y * 0.5) * window.innerHeight;
+    view.tx = this.player.position.x / TILE_SIZE + this.level.width / 2;
+    view.ty = this.player.position.z / TILE_SIZE + this.level.height / 2;
+    view.yaw = this.rig.yaw;
+    view.squash = Math.sin(this.rig.pitch);
 
     this.portalLook?.update(dt, this.camera);
     this.waypointLook?.update(dt);

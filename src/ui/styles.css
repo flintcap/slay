@@ -2733,6 +2733,31 @@ input.slider::-moz-range-thumb {
 .tt-delta.down .tt-delta-v {
   color: var(--bad);
 }
+/* "If you wear it": the hero before and after (Tooltip.appendSwap). */
+.tt-swap-from {
+  color: var(--ink-4);
+  font-weight: 400;
+}
+.tt-swap-group {
+  margin-top: 5px;
+  font-size: calc(9px * var(--text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tt-swap-line {
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+  padding-left: 8px;
+}
+.tt-swap-line.gain {
+  color: var(--good);
+}
+.tt-swap-line.loss {
+  color: var(--bad);
+}
+
 .tt-delta-none {
   margin-top: 8px;
   font-size: var(--fs-xs);
@@ -2880,6 +2905,20 @@ input.slider::-moz-range-thumb {
   align-items: flex-end;
   gap: var(--s3);
   width: 200px;
+}
+
+/* The see-through map over the game (MapOverlay.ts). Never takes a click. */
+.map-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+}
+.map-overlay.on {
+  display: block;
+}
+.map-overlay canvas {
+  display: block;
 }
 
 .minimap {
@@ -5110,6 +5149,96 @@ input.slider::-moz-range-thumb {
   font-size: var(--fs-xs);
   color: var(--ink-4);
   font-style: italic;
+}
+
+/* "Your build" on the Character panel (CharacterPanel.renderBuild). */
+.build-skills {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.build-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 80px;
+  gap: var(--s3);
+  align-items: center;
+  padding: 2px var(--s2);
+  font-size: var(--fs-xs);
+  border-radius: var(--radius);
+}
+.build-row:not(.build-head):hover {
+  background: rgb(var(--shade-rgb) / 0.3);
+}
+.build-head {
+  color: var(--ink-4);
+  font-size: calc(9px * var(--text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.build-head span:not(:first-child),
+.build-num {
+  text-align: right;
+}
+.build-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.build-num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+.build-dps {
+  color: var(--ink);
+  font-weight: 700;
+}
+.build-sub {
+  margin-top: var(--s3);
+  margin-bottom: 4px;
+  font-size: calc(9px * var(--text-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.build-guard {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--s2);
+}
+.build-guard-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 0;
+  border-radius: var(--radius);
+  background: rgb(var(--shade-rgb) / 0.26);
+  box-shadow: var(--hairline);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.build-guard-cell.is-thin {
+  color: var(--bad);
+}
+.build-summary {
+  margin-top: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.build-line {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
 }
 
 .resist-grid {

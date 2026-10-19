@@ -509,6 +509,14 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       return out;
     },
 
+    /** Marks the whole current floor as seen, for map pictures and checks. */
+    revealMap(): void {
+      const level = (engine.currentScene as unknown as { level?: { seed: number; width: number; height: number } })
+        ?.level;
+      if (!level) return;
+      runtime.explored.set(level.seed, new Uint8Array(level.width * level.height).fill(1));
+    },
+
     /** How much of the current floor the shared exploration record has seen. */
     exploredCount(): Record<string, number> {
       const level = (engine.currentScene as unknown as { level?: { seed: number; width: number; height: number } })

@@ -22,6 +22,7 @@ import { StashPanel } from './StashPanel';
 import { VendorPanel } from './VendorPanel';
 import { BlacksmithPanel } from './BlacksmithPanel';
 import { MapPanel } from './MapPanel';
+import { MapOverlay } from './MapOverlay';
 import { QuestLogPanel } from './QuestLog';
 import { PausePanel } from './PausePanel';
 import { SettingsPanel } from './SettingsPanel';
@@ -315,6 +316,9 @@ export function mountUI(engine: Engine): void {
   });
   const blacksmith = new BlacksmithPanel();
   const map = new MapPanel();
+  const overlay = new MapOverlay();
+  overlay.mount(root);
+  overlay.hiddenBy = () => map.isOpen;
   const questLog = new QuestLogPanel();
   const pause = new PausePanel(engine);
   const settings = new SettingsPanel(engine);
@@ -472,6 +476,13 @@ export function mountUI(engine: Engine): void {
     }
 
     if (!inWorld) return;
+    // Tab: the see-through map, over the game while you play. A fixed key,
+    // like Escape, and only with no menu open over the world.
+    if (e.code === 'Tab') {
+      e.preventDefault();
+      if (!registry.get('settings')?.isOpen && !registry.get('pause')?.isOpen) overlay.toggle();
+      return;
+    }
     const id = KEYS[remapKey(e.code)] ?? EXTRA_KEYS.get(remapKey(e.code));
     if (id) {
       e.preventDefault();
@@ -519,6 +530,7 @@ export function mountUI(engine: Engine): void {
     runStats.tick(dt);
     hud.update(dt, elapsed);
     map.tick();
+    overlay.tick(dt);
     requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);

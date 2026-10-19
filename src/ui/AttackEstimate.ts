@@ -49,32 +49,23 @@ export function critFactor(st: Stats): number {
   return 1 + chance * (Math.max(100, st.critDamage) / 100 - 1);
 }
 
+/**
+ * One skill's numbers with the gear worn now, or null when it is not learned,
+ * is a passive, or deals no damage of its own (a buff, a summon). The build
+ * summary on the Character panel lists these for every skill on the bar.
+ */
+export function estimateSkill(c: Character, st: Stats, id: string): AttackEstimate | null {
+  const def = SKILL_BY_ID[id];
+  if (!def?.damageScale) return null;
+  return estimateDef(c, st, def);
+}
+
 /** The right-click attack's numbers, or null when there is none (a caster with no spell on it). */
 export function estimateAttack(c: Character, st: Stats): AttackEstimate | null {
   const id = c.primaryAttack;
   const def = id ? SKILL_BY_ID[id] : undefined;
+  if (def) return estimateDef(c, st, def);
   const swing = (k: number): number => (SWING_TIME * k) / Math.max(0.4, 1 + st.attackSpeed / 100);
-  const cast = CAST_TIME / Math.max(0.4, 1 + st.castSpeed / 100);
-
-  if (def) {
-    const rank = skillRank(c, def.id);
-    if (rank <= 0 || def.targeting === 'passive') return null;
-    const params = def.params ?? {};
-    const num = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
-    let scale = 1;
-    try {
-      scale = skillDamageScale(c.skills, st.skillLevels, def.id) * (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num));
-    } catch {
-      scale = 1;
-    }
-    const type: DamageType = def.damageType ?? 'physical';
-    const r = damageRange(st, scale, type);
-    const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
-    const action = SWING_FAMILIES[family] ? swing(SWING_FAMILIES[family]!) : cast;
-    const cd = (def.cooldown ? def.cooldown(rank) : 0) * (1 - Math.min(CDR_CAP, st.cooldownReduction) / 100);
-    const period = Math.max(action, cd);
-    return { def, rank, type, scale, min: r.min, max: r.max, period, dps: (((r.min + r.max) / 2) * critFactor(st)) / period };
-  }
 
   // The plain weapon attack. Caster weapons have none.
   if (castsOnly(c.classId, c.equipment.mainHand?.baseId, c.equipment.offHand?.baseId)) return null;
@@ -83,4 +74,26 @@ export function estimateAttack(c: Character, st: Stats): AttackEstimate | null {
   const ranged = cat === 'bow' || cat === 'crossbow';
   const period = ranged ? SHOT_TIME / Math.max(0.4, 1 + st.attackSpeed / 100) : swing(1);
   return { def: null, rank: 0, type: 'physical', scale: 1, min: r.min, max: r.max, period, dps: (((r.min + r.max) / 2) * critFactor(st)) / period };
+}
+
+function estimateDef(c: Character, st: Stats, def: SkillDef): AttackEstimate | null {
+  const swing = (k: number): number => (SWING_TIME * k) / Math.max(0.4, 1 + st.attackSpeed / 100);
+  const cast = CAST_TIME / Math.max(0.4, 1 + st.castSpeed / 100);
+  const rank = skillRank(c, def.id);
+  if (rank <= 0 || def.targeting === 'passive') return null;
+  const params = def.params ?? {};
+  const num = (k: string, d: number): number => (typeof params[k] === 'number' ? (params[k] as number) : d);
+  let scale = 1;
+  try {
+    scale = skillDamageScale(c.skills, st.skillLevels, def.id) * (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num));
+  } catch {
+    scale = 1;
+  }
+  const type: DamageType = def.damageType ?? 'physical';
+  const r = damageRange(st, scale, type);
+  const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
+  const action = SWING_FAMILIES[family] ? swing(SWING_FAMILIES[family]!) : cast;
+  const cd = (def.cooldown ? def.cooldown(rank) : 0) * (1 - Math.min(CDR_CAP, st.cooldownReduction) / 100);
+  const period = Math.max(action, cd);
+  return { def, rank, type, scale, min: r.min, max: r.max, period, dps: (((r.min + r.max) / 2) * critFactor(st)) / period };
 }

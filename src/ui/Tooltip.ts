@@ -19,7 +19,7 @@ import { itemFlavor } from '../data/story/itemFlavor';
 import { requestItemIcon } from '../art/Icons';
 import { computeStats } from '../sim/Stats';
 import { save } from '../core/Save';
-import { compareChoices, compareItems } from './Compare';
+import { compareChoices, compareItems, swapSummary } from './Compare';
 import { getGem, socketBonuses } from '../data/gems';
 import {
   add,
@@ -153,7 +153,10 @@ class TooltipManager {
         col.style.display = '';
         this.buildItemCard(col, worn, stats, char?.level ?? 1, undefined, true);
       });
-      for (const worn of choices) this.appendDeltas(this.main, item, worn, choices.length > 1);
+      for (const worn of choices) {
+        this.appendDeltas(this.main, item, worn, choices.length > 1);
+        if (char) this.appendSwap(this.main, char, item, worn);
+      }
     } else {
       if (choices.length && !ctx?.noCompare) {
         const hint = div('tt-hint');
@@ -536,6 +539,48 @@ class TooltipManager {
     wrap.appendChild(head);
     for (const r of rows.slice(0, 12)) wrap.appendChild(r);
     host.appendChild(wrap);
+  }
+
+  /**
+   * What wearing it does to the hero as a whole: damage, life, toughness and
+   * resistances before and after, then the item powers and set bonuses that
+   * come and go. The strip above weighs the item's own lines; this weighs
+   * the hero, so a ring that loses a set bonus says so.
+   */
+  private appendSwap(host: HTMLDivElement, char: Parameters<typeof swapSummary>[0], item: Item, worn: Item[]): void {
+    const sum = attempt(() => swapSummary(char, item, worn), null);
+    if (!sum) return;
+    const wrap = div('tt-deltas tt-swap');
+    wrap.appendChild(div('tt-deltas-hd', '')).appendChild(span('tt-sublabel', 'If you wear it'));
+    const row = (label: string, before: number, after: number, show: (v: number) => string): void => {
+      const d = after - before;
+      if (Math.abs(d) < 0.5) return;
+      const line = div(`tt-delta ${d > 0 ? 'up' : 'down'}`);
+      line.appendChild(span('tt-delta-label', label));
+      const v = span('tt-delta-v');
+      v.appendChild(span('tt-swap-from', `${show(before)} → `));
+      v.appendChild(span('', show(after)));
+      line.appendChild(v);
+      wrap.appendChild(line);
+    };
+    const n = (v: number): string => fmtInt(Math.round(v));
+    if (sum.dps) {
+      const pct = sum.dps.before > 0 ? ` (${signed(((sum.dps.after - sum.dps.before) / sum.dps.before) * 100, 0)}%)` : '';
+      row(`Damage a second${pct}`, sum.dps.before, sum.dps.after, n);
+    }
+    row('Life', sum.life.before, sum.life.after, n);
+    row('Toughness', sum.toughness.before, sum.toughness.after, n);
+    for (const r of sum.resists) row(`${r.label} resist`, r.before, r.after, (v) => `${Math.round(v)}%`);
+    const list = (title: string, cls: string, items: string[]): void => {
+      if (!items.length) return;
+      wrap.appendChild(div(`tt-swap-group ${cls}`, title));
+      for (const t of items.slice(0, 4)) wrap.appendChild(div(`tt-swap-line ${cls}`, t));
+    };
+    list('Powers you gain', 'gain', sum.powersGained.map((p) => `${p.name}: ${p.text}`));
+    list('Powers you lose', 'loss', sum.powersLost.map((p) => `${p.name}: ${p.text}`));
+    list('Set bonuses that wake', 'gain', sum.setsGained);
+    list('Set bonuses you lose', 'loss', sum.setsLost);
+    if (wrap.childElementCount > 1) host.appendChild(wrap);
   }
 
   /**

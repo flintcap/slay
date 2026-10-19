@@ -262,9 +262,25 @@ Update this file and push it after every finished step.
   6 known failures; the curve check now fails 1 of 35 (was 3): shapeshifter
   in rares at 40, the wall already noted under #118.
 
+- #121-#124 (Phase 1, owner approved) four interface pieces.
+  See-through map (`ui/MapOverlay.ts`): Tab lays the floor's chart over the
+  game, turned and tilted like the camera, centred on the hero, with way
+  marks, monsters in sight and the hero's arrow; strength and size sliders
+  in Settings, Gameplay. Panels dock: let go of a dragged panel near a
+  screen edge and it sticks there; every panel remembers its place in the
+  save (`settings.panelPlaces`), a header double-click sends it home, and a
+  window resize keeps them on screen. Deeper compare (`Compare.swapSummary`):
+  every item tooltip adds "If you wear it": damage a second, life,
+  toughness and the resists that change (before and after), powers gained
+  and lost, set bonuses gained and lost. Build numbers (Character panel,
+  "Your build"): each bar skill's hit and damage a second with this gear
+  (`AttackEstimate.estimateSkill`), how many ordinary blows of the deepest
+  tier reached it takes to fall to each damage kind, and plain lines on
+  the build's best skill, weak and strong side, life back and crits.
+
 ## In progress
 
-(none)
+- #125 death recap (last hits) and map-clear recap.
 
 ## Phase 0d log
 

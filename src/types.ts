@@ -616,8 +616,27 @@ export interface GameSettings {
   textScale?: number;
   /** Swap rarity colours for a palette every colour-vision type can tell apart. */
   colorBlindRarity?: boolean;
+  /**
+   * Where the player left each panel, by panel id (ui/Widgets.ts `Panel`):
+   * its top-left corner, and the screen edge it is docked to, if any, so a
+   * docked panel stays on its edge when the window changes size.
+   */
+  panelPlaces?: Record<string, PanelPlace>;
+  /** The see-through map over the game is up (ui/MapOverlay.ts; Tab). */
+  mapOverlay?: boolean;
+  /** How solid the see-through map is drawn, 0.2 to 1. */
+  mapOverlayOpacity?: number;
+  /** How large the see-through map is drawn, 0.5 to 2. */
+  mapOverlaySize?: number;
   /** Rebound keys: default key code -> the key the player chose. Always a permutation. */
   keybinds?: Record<string, string>;
+}
+
+/** A panel's remembered place on screen (`GameSettings.panelPlaces`). */
+export interface PanelPlace {
+  x: number;
+  y: number;
+  dock?: 'left' | 'right' | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,7 @@ import type {
   CharClassDef,
   DungeonLevel,
   ItemCategory,
+  PanelPlace,
 } from '../types';
 import { RARITY_COLOR } from '../types';
 import { getBase } from '../sim/Loot';
@@ -700,6 +701,14 @@ export const runtime = {
    * it blank except for a disc around wherever you were standing.
    */
   explored: new Map<number, Uint8Array>(),
+  /**
+   * How the dungeon camera sees the hero, for the see-through map
+   * (`MapOverlay.ts`): the hero's spot on screen in CSS pixels, the hero's
+   * tile position with its fraction, the camera's turn, and how much the
+   * camera's tilt shortens the ground (the sine of its pitch). Written by the
+   * dungeon every frame.
+   */
+  view: { x: 0, y: 0, tx: 0, ty: 0, yaw: 0, squash: 1 },
   depth: 0,
   levelIndex: 0,
   levelsTotal: 0,
@@ -998,6 +1007,11 @@ export interface PanelOpts {
   quiet?: boolean;
 }
 
+/** How near a screen edge or another panel a dropped panel snaps to it. */
+const SNAP = 28;
+/** The gap a docked panel keeps from the screen edge and from its neighbour. */
+const DOCK_GAP = 8;
+
 /** The `--z-panel` layer: open panels stack upward from here. */
 const PANEL_Z = 40;
 /**
@@ -1131,6 +1145,13 @@ export class Panel {
 
     // Clicking anywhere in the panel raises it above its siblings.
     this.frame.addEventListener('pointerdown', () => this.raise(), true);
+    // A double click on the title bar sends it home and forgets the place.
+    if (opts.draggable !== false && !opts.fullscreen) {
+      this.header.addEventListener('dblclick', (e) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        this.forgetPlace();
+      });
+    }
     scrim.addEventListener('pointerdown', (e) => {
       if (opts.closable !== false && opts.fullscreen !== true) {
         e.stopPropagation();
@@ -1159,6 +1180,7 @@ export class Panel {
     let oy = 0;
     let dragging = false;
     this.header.classList.add('draggable');
+    this.header.title = 'Drag to move. Let go by an edge to dock it there. Double-click to send it back.';
     this.header.addEventListener('pointerdown', (e) => {
       if ((e.target as HTMLElement).closest('button')) return;
       dragging = true;
@@ -1192,6 +1214,7 @@ export class Panel {
       if (!dragging) return;
       dragging = false;
       this.frame.classList.remove('is-dragging');
+      this.dock();
       try {
         this.header.releasePointerCapture(e.pointerId);
       } catch {
@@ -1202,6 +1225,75 @@ export class Panel {
     this.header.addEventListener('pointercancel', stop);
   }
 
+  /**
+   * Where it was let go: snapped flush to a screen edge it was dropped near
+   * (and docked there, so it stays on that edge when the window changes size),
+   * or against the side of another open panel, then remembered for next time.
+   */
+  private dock(): void {
+    const r = this.frame.getBoundingClientRect();
+    const W = window.innerWidth;
+    let x = r.left;
+    let y = r.top;
+    let dock: PanelPlace['dock'] = null;
+    if (x < SNAP) {
+      x = DOCK_GAP;
+      dock = 'left';
+    } else if (W - r.right < SNAP) {
+      x = W - r.width - DOCK_GAP;
+      dock = 'right';
+    }
+    if (y < SNAP) y = DOCK_GAP;
+    if (!dock) {
+      for (const other of panelStack) {
+        if (other === this || other.opts.fullscreen) continue;
+        const o = other.frame.getBoundingClientRect();
+        if (o.width === 0 || r.bottom < o.top || r.top > o.bottom) continue;
+        if (Math.abs(r.left - o.right) < SNAP) x = o.right + DOCK_GAP;
+        else if (Math.abs(o.left - r.right) < SNAP) x = o.left - r.width - DOCK_GAP;
+        else continue;
+        if (Math.abs(r.top - o.top) < SNAP) y = o.top;
+        break;
+      }
+    }
+    const places = (save.settings.panelPlaces ??= {});
+    places[this.id] = { x: Math.round(x), y: Math.round(y), dock };
+    save.touch();
+    this.applyPlace();
+  }
+
+  /** Puts it where the player last left it, inside the window as it is now. */
+  applyPlace(): void {
+    const place = save.settings.panelPlaces?.[this.id];
+    if (!place || this.opts.fullscreen || this.opts.draggable === false) return;
+    const w = this.frame.offsetWidth;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    let x = place.dock === 'left' ? DOCK_GAP : place.dock === 'right' ? W - w - DOCK_GAP : place.x;
+    x = Math.max(-w + 120, Math.min(W - 120, x));
+    const y = Math.max(0, Math.min(H - 44, place.y));
+    this.frame.style.position = 'fixed';
+    this.frame.style.margin = '0';
+    this.frame.style.left = `${x}px`;
+    this.frame.style.top = `${y}px`;
+    this.moved = true;
+    this.frame.classList.toggle('is-docked', !!place.dock);
+  }
+
+  /** Back to the middle of the screen, and no place remembered. */
+  forgetPlace(): void {
+    if (save.settings.panelPlaces?.[this.id]) {
+      delete save.settings.panelPlaces[this.id];
+      save.touch();
+    }
+    this.frame.style.position = '';
+    this.frame.style.margin = '';
+    this.frame.style.left = '';
+    this.frame.style.top = '';
+    this.frame.classList.remove('is-docked');
+    this.moved = false;
+  }
+
   get isOpen(): boolean {
     return this.openState;
   }
@@ -1210,6 +1302,7 @@ export class Panel {
     if (this.openState) return;
     this.openState = true;
     this.root.classList.add('is-open');
+    this.applyPlace();
     this.raise();
     if (!this.opts.quiet) uiSfx('ui.open', 0.8);
     this.opts.onOpen?.();
@@ -1237,6 +1330,14 @@ export class Panel {
     const s = this.header.querySelector('.panel-sub');
     if (s && subtitle !== undefined) s.textContent = subtitle;
   }
+}
+
+// A docked panel stays on its edge, and a placed one inside the window, when
+// the window changes size.
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', () => {
+    for (const p of panelStack) p.applyPlace();
+  });
 }
 
 // ---------------------------------------------------------------------------

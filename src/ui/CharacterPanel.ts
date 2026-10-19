@@ -13,7 +13,8 @@ import { events } from '../core/Events';
 import { save } from '../core/Save';
 import { computeStats, xpForLevel } from '../sim/Stats';
 import { allocateStat } from '../sim/Character';
-import { effectiveResist, hitChance, RESIST_HARD_CAP, RESIST_SOFT_CAP, usualAttackRating } from '../sim/Combat';
+import { effectiveLife, effectiveResist, hitChance, RESIST_HARD_CAP, RESIST_SOFT_CAP, usualAttackRating } from '../sim/Combat';
+import { depthCurve } from '../sim/Difficulty';
 import {
   scheduleRefresh,
   Panel,
@@ -37,7 +38,7 @@ import {
   countTo,
 } from './Widgets';
 import { uiSfx } from './Sfx';
-import { estimateAttack } from './AttackEstimate';
+import { estimateAttack, estimateSkill, type AttackEstimate } from './AttackEstimate';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
 
@@ -137,6 +138,7 @@ export class CharacterPanel {
   private colDefense: HTMLDivElement;
   private colUtility: HTMLDivElement;
   private resistBox: HTMLDivElement;
+  private buildBox: HTMLDivElement;
   private pointsBanner: HTMLDivElement;
 
   constructor() {
@@ -161,9 +163,10 @@ export class CharacterPanel {
     this.colDefense = div('char-col');
     this.colUtility = div('char-col');
     this.resistBox = div('char-resists');
+    this.buildBox = div('char-build');
     const cols = div('char-cols');
     add(cols, this.colOffense, this.colDefense, this.colUtility);
-    add(right, cols, this.resistBox);
+    add(right, cols, this.resistBox, this.buildBox);
 
     add(wrap, left, right);
     this.panel.body.appendChild(wrap);
@@ -204,6 +207,7 @@ export class CharacterPanel {
     this.renderGroup(this.colDefense, 'Defense', 'shield', DEFENSE, st);
     this.renderGroup(this.colUtility, 'Utility', 'sparkle', UTILITY, st);
     this.renderResists(st);
+    this.renderBuild(c, st);
   }
 
   // -- identity ------------------------------------------------------------
@@ -367,6 +371,89 @@ export class CharacterPanel {
     const line = statLine(label, value, { icon: 'sword', hint, title: label });
     line.classList.add('statline-attack');
     body.insertBefore(line, body.firstChild);
+  }
+
+  /**
+   * The build in real numbers: what each skill on the bar hits for and deals
+   * a second with this gear, how many ordinary blows of the deepest tier
+   * reached it takes to fall to each kind of damage, and a few plain lines
+   * on what the build leans on and where it is thin.
+   */
+  private renderBuild(c: Character, st: Stats): void {
+    clear(this.buildBox);
+    const s = section('Your build', 'sparkle', 'char-build-section');
+
+    // --- damage per skill ---------------------------------------------------
+    const ids = [...new Set([c.primaryAttack, ...c.hotbar].filter((x): x is string => !!x))];
+    const rows: AttackEstimate[] = [];
+    for (const id of ids) {
+      const e = attempt(() => estimateSkill(c, st, id), null);
+      if (e) rows.push(e);
+    }
+    const weapon = attempt(() => estimateAttack(c, st), null);
+    if (weapon && !weapon.def) rows.unshift(weapon);
+    const dmg = div('build-skills');
+    if (!rows.length) {
+      dmg.appendChild(div('char-empty', 'Put a damage skill on your bar to see what it does.'));
+    } else {
+      const head = div('build-row build-head');
+      add(head, span('', 'Skill'), span('', 'Each hit'), span('', 'A second'));
+      dmg.appendChild(head);
+      for (const e of rows.sort((a, b) => b.dps - a.dps)) {
+        const r = div('build-row');
+        const name = span('build-name');
+        name.appendChild(icon(e.type, { size: 12, cls: `dmg-${e.type}` }));
+        name.appendChild(span('', e.def ? `${e.def.name} ${e.rank}` : 'Weapon attack'));
+        add(r, name, span('build-num', `${fmtInt(Math.round(e.min))}–${fmtInt(Math.round(e.max))}`), span('build-num build-dps', fmtInt(Math.round(e.dps))));
+        tip(
+          r,
+          e.def ? e.def.name : 'Weapon attack',
+          `<p>About <b>${fmtInt(Math.round(e.dps))}</b> ${RESIST_LABEL[e.type].toLowerCase()} damage a second to one target, one use every ${fmt(Math.round(e.period * 100) / 100)} s, crits counted.</p>` +
+            `<p class="tt-explain-how">Before the target's armour and resistances. Areas, chains and damage over time hit more than one target or keep hurting after, so they do more than this in a crowd.</p>`,
+        );
+        dmg.appendChild(r);
+      }
+    }
+
+    // --- how many blows to fall ---------------------------------------------
+    const tier = Math.max(1, c.depthRecord || 1);
+    const blow = Math.max(1, depthCurve(tier).damage);
+    const guard = div('build-guard');
+    const blows: Array<{ type: DamageType; n: number }> = DAMAGE_TYPES.map((t) => ({
+      type: t,
+      n: Math.min(999, effectiveLife(st, blow, t) / blow),
+    }));
+    for (const b of blows) {
+      const cell = div('build-guard-cell');
+      cell.appendChild(icon(b.type, { size: 13, cls: `dmg-${b.type}` }));
+      cell.appendChild(span('build-guard-n', b.n >= 999 ? '999+' : fmtInt(Math.round(b.n))));
+      cell.classList.toggle('is-thin', b.n < 8);
+      tip(
+        cell,
+        `${RESIST_LABEL[b.type]} blows to fall`,
+        `<p>About <b>${fmtInt(Math.round(b.n))}</b> ordinary ${RESIST_LABEL[b.type].toLowerCase()} blows of Tier ${tier} take you from full life to nothing.</p>` +
+          `<p class="tt-explain-how">Your life with armour, block, resistance and damage reduction counted. Elites and bosses hit harder.</p>`,
+      );
+      guard.appendChild(cell);
+    }
+
+    // --- summary --------------------------------------------------------------
+    const lines: string[] = [];
+    const best = rows[0];
+    if (best) lines.push(`Most damage: ${best.def ? best.def.name : 'your weapon'}, ${RESIST_LABEL[best.type].toLowerCase()}.`);
+    const thin = [...blows].sort((a, b) => a.n - b.n)[0];
+    const thick = [...blows].sort((a, b) => b.n - a.n)[0];
+    if (thin && thick && thick.n > thin.n * 1.5) lines.push(`Weakest against ${RESIST_LABEL[thin.type].toLowerCase()}, strongest against ${RESIST_LABEL[thick.type].toLowerCase()}.`);
+    const back: string[] = [];
+    if (st.lifeSteal > 0) back.push(`${fmt(Math.round(st.lifeSteal * 10) / 10)}% of damage dealt`);
+    if (st.lifeRegen > 0) back.push(`${fmt(Math.round(st.lifeRegen * 10) / 10)} a second`);
+    lines.push(back.length ? `Life back: ${back.join(' and ')}.` : 'No life back from gear: you lean on potions.');
+    if (st.critChance >= 25) lines.push(`Crits often: ${Math.round(Math.min(95, st.critChance))}% for ${Math.round(Math.max(100, st.critDamage))}%.`);
+    const summary = div('build-summary');
+    for (const l of lines) summary.appendChild(div('build-line', l));
+
+    add(s.body, dmg, div('build-sub', `Blows to fall at Tier ${tier}`), guard, summary);
+    this.buildBox.appendChild(s.root);
   }
 
   private renderResists(st: Stats): void {

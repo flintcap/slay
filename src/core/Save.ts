@@ -1,4 +1,4 @@
-import type { AccountSave, Character, GameSettings, Item } from '../types';
+import type { AccountSave, Character, GameSettings, Item, PanelPlace } from '../types';
 import { events } from './Events';
 import { bindsAreValid, TEXT_SCALE_MIN, TEXT_SCALE_MAX } from './Access';
 import { UNIQUE_TEXT } from '../data/story/uniqueText';
@@ -107,6 +107,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   textScale: 1,
   colorBlindRarity: false,
   trackerHidden: false,
+  mapOverlay: false,
+  mapOverlayOpacity: 0.7,
+  mapOverlaySize: 1,
   keybinds: {},
 };
 
@@ -557,6 +560,19 @@ function sanitizeSettings(s: Record<string, unknown>, fx: Repairer): GameSetting
     s.cameraDistance === undefined ? d.cameraDistance : fx.num(s.cameraDistance, d.cameraDistance, 'settings.cameraDistance', 0.5, 2);
   out.textScale =
     s.textScale === undefined ? d.textScale : fx.num(s.textScale, d.textScale ?? 1, 'settings.textScale', TEXT_SCALE_MIN, TEXT_SCALE_MAX);
+  out.mapOverlayOpacity =
+    s.mapOverlayOpacity === undefined ? d.mapOverlayOpacity : fx.num(s.mapOverlayOpacity, d.mapOverlayOpacity ?? 0.7, 'settings.mapOverlayOpacity', 0.2, 1);
+  out.mapOverlaySize =
+    s.mapOverlaySize === undefined ? d.mapOverlaySize : fx.num(s.mapOverlaySize, d.mapOverlaySize ?? 1, 'settings.mapOverlaySize', 0.5, 2);
+  // Panel places: keep only well-formed entries; a bad one just recentres.
+  if (isObj(s.panelPlaces)) {
+    const places: Record<string, PanelPlace> = {};
+    for (const [id, v] of Object.entries(s.panelPlaces)) {
+      if (!isObj(v) || !Number.isFinite(v.x) || !Number.isFinite(v.y)) continue;
+      places[id] = { x: Number(v.x), y: Number(v.y), dock: v.dock === 'left' || v.dock === 'right' ? v.dock : null };
+    }
+    out.panelPlaces = places;
+  }
   out.colorBlindRarity = typeof s.colorBlindRarity === 'boolean' ? s.colorBlindRarity : d.colorBlindRarity;
   // Plain on/off settings, including ones other streams add: keep the saved
   // value when it is a boolean, the default otherwise.
