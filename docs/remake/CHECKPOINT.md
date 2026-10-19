@@ -258,7 +258,9 @@ Update this file and push it after every finished step.
   hero's per-kind halving is gone; gear that shortens holds and the boss
   hold cap stay). A reapplied hold now keeps a monster held as long as its
   stun shows. The death screen names the monster whose poison or burn killed
-  you, even after it died. New check: check-status.
+  you, even after it died. New check: check-status. Fast checks: the same
+  6 known failures; the curve check now fails 1 of 35 (was 3): shapeshifter
+  in rares at 40, the wall already noted under #118.
 
 ## In progress
 
