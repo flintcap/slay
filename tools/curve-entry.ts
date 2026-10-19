@@ -28,6 +28,11 @@
  *   --trace                   the hero's sheet, build and what hurt it
  *   --hp=1.13:1.12            try other hero power rates (sim/HeroPower.ts)
  *   --dmg=2 --life=2          scale the hero outright, to see what a cell needs
+ *   --kit=best                the hero a farmer has: uniques, sets and rares, every
+ *                             piece upgraded at the anvil, gems in its sockets and a
+ *                             pack of charms. It must lose real life too.
+ *   --mlife=2 --mdmg=2        scale the monsters outright, to tune `depthCurve`
+ *   --ramp=1.03:1.04          try other depth ramps (`depthRamp` in sim/Difficulty.ts)
  */
 import * as THREE from 'three';
 import { arena, caseLog, shrug, type Arena } from './combat-arena';
@@ -54,10 +59,14 @@ import {
   usingTwoHander,
   startingSkillFor,
 } from '../src/sim/Character';
-import { rollItem, getBase } from '../src/sim/Loot';
+import { rollItem, rollCharm, getBase } from '../src/sim/Loot';
+import { MAX_UPGRADE } from '../src/sim/Crafting';
+import { GEMS } from '../src/data/gems';
+import { activeDifficulty } from '../src/data/difficulties';
 import { MILESTONE_STEP, milestoneReward } from '../src/sim/Legacy';
 import { RunModifiers } from '../src/scenes/RunModifiers';
 import { tuneHeroPower } from '../src/sim/HeroPower';
+import { tuneDepthRamp } from '../src/sim/Difficulty';
 import { Random } from '../src/core/RNG';
 import { events } from '../src/core/Events';
 import type { CharClassId, Character, DamagePacket, DungeonLevel, EquipSlot, Item, SkillDef } from '../src/types';
@@ -99,6 +108,13 @@ const trace = process.argv.includes('--trace');
 // Experiment knobs: scale the hero's damage and life to see what the curve needs.
 const KDMG = Number(arg('dmg') ?? 1);
 const KLIFE = Number(arg('life') ?? 1);
+const BEST = arg('kit') === 'best';
+if (arg('mlife') || arg('mdmg')) {
+  const dif = activeDifficulty() as { monsterLife: number; monsterDamage: number };
+  dif.monsterLife *= Number(arg('mlife') ?? 1);
+  dif.monsterDamage *= Number(arg('mdmg') ?? 1);
+}
+if (arg('ramp')) tuneDepthRamp(Number(arg('ramp')!.split(':')[0]), Number(arg('ramp')!.split(':')[1]));
 if (arg('hp')) tuneHeroPower(Number(arg('hp')!.split(':')[0]), Number(arg('hp')!.split(':')[1]));
 // The default five depths keep the check to a couple of minutes; `--wide` walks
 // the whole run, every class at ten depths out to 60 (balance milestone 4).
@@ -194,6 +210,35 @@ const STYLE: Record<CharClassId, string[]> = {
 
 const SLOTS: EquipSlot[] = ['mainHand', 'offHand', 'helm', 'chest', 'gloves', 'legs', 'boots', 'belt', 'amulet', 'ring1', 'ring2'];
 
+const JEWELRY = new Set(['ring', 'amulet']);
+const SIZES = ['charm.small', 'charm.small', 'charm.medium', 'charm.small', 'charm.large', 'charm.medium', 'charm.grand'];
+
+/**
+ * What a farmer adds to the gear: every worn piece upgraded at the anvil (+1
+ * per eight depths), the common gem of the depth in every socket (crit on
+ * weapons and jewellery, life on armour), and a pack of charms (three for
+ * every four depths, up to 24).
+ */
+function dressUp(c: Character, depth: number, rng: Random): void {
+  const gem = (family: string): string | null => {
+    const fit = GEMS.filter((g) => g.family === family && g.minDepth <= depth).sort((x, y) => y.qualityIndex - x.qualityIndex);
+    return (fit[1] ?? fit[0])?.id ?? null;
+  };
+  for (const item of Object.values(c.equipment)) {
+    if (!item) continue;
+    item.upgrade = Math.min(MAX_UPGRADE, Math.floor(depth / 8));
+    const cat = getBase(item.baseId).category;
+    const id = gem(WEAPON_CATS.has(cat) || JEWELRY.has(cat) ? 'onyx' : 'ruby');
+    for (const sock of item.sockets) if (!sock.gemId && id) sock.gemId = id;
+  }
+  const charms = Math.min(24, Math.round(depth * 0.75));
+  for (let i = 0; i < charms; i++) {
+    const free = c.inventory.findIndex((x) => !x);
+    if (free < 0) break;
+    c.inventory[free] = rollCharm(depth, rng, 150, SIZES[i % SIZES.length]);
+  }
+}
+
 function buildHero(classId: CharClassId, depth: number): { c: Character; level: number; tree: string } {
   const level = levelAt(classId, depth);
   const c = createCharacter('Curve', classId, new Random(5 + depth));
@@ -222,7 +267,9 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
     for (const r of milestoneReward(m).items) cached.push(rollItem(m + 6, new Random(9000 + m * 31 + cached.length), { forceRarity: r, classId }));
   }
   for (let i = 0; i < 600 + cached.length; i++) {
-    const item = i < cached.length ? cached[i]! : rollItem(depth + 1, rng, { forceRarity: rarity, classId });
+    // The best kit draws uniques and set pieces as well as rares.
+    const pick = BEST && depth >= 4 ? (['unique', 'set', 'rare', 'rare'] as const)[i % 4]! : rarity;
+    const item = i < cached.length ? cached[i]! : rollItem(depth + 1, rng, { forceRarity: pick, classId });
     if (!item || !meetsRequirements(c, item).ok) continue;
     // Weapons the build fights with: a dagger build keeps daggers, an archer bows.
     const base = getBase(item.baseId);
@@ -244,6 +291,7 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
       if (trace && !r.ok) console.error(`  could not equip ${item.name} in ${slot}: ${r.reason}`);
     }
   }
+  if (BEST) dressUp(c, depth, new Random(311 + depth));
   if (trace) console.error(`  skills: ${JSON.stringify(c.skills)} left ${c.skillPoints}`);
   if (trace) console.error(`  gear: ${Object.entries(c.equipment).map(([k, v]) => `${k}=${v!.name}(${v!.baseId},i${v!.ilvl})`).join(' ')}`);
   return { c, level, tree };
@@ -495,9 +543,12 @@ function fight(
       acts.busy++;
       continue;
     }
+    // A player breaks what the room put down (heartstones, bells, anchors)
+    // first: while those stand, blows at the boss are turned aside.
+    const objects = alive.filter((e) => e.def.object);
     let near = alive[0]!;
     let nd = Infinity;
-    for (const e of alive) {
+    for (const e of objects.length ? objects : alive) {
       const d = Math.hypot(e.root.position.x - p.x, e.root.position.z - p.z);
       if (d < nd) {
         nd = d;

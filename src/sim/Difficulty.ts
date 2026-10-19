@@ -32,6 +32,28 @@ export interface DepthCurve {
   level: number;
 }
 
+/** Depths up to here keep the base curve as it stands. */
+export const RAMP_FROM = 5;
+/** Extra monster life per depth past `RAMP_FROM`. */
+export let LIFE_RAMP = 1;
+/** Extra monster damage per depth past `RAMP_FROM`. */
+export let DAMAGE_RAMP = 1;
+
+/** For tuning tools only: try other ramps. */
+export function tuneDepthRamp(life: number, damage: number): void {
+  LIFE_RAMP = life;
+  DAMAGE_RAMP = damage;
+}
+
+/**
+ * How much harder than the base curve monsters stand at a depth. Never below
+ * 1, so no depth gets easier.
+ */
+export function depthRamp(depth: number): { life: number; damage: number } {
+  const n = Math.max(0, Math.max(1, depth) - RAMP_FROM);
+  return { life: Math.pow(LIFE_RAMP, n), damage: Math.pow(DAMAGE_RAMP, n) };
+}
+
 /**
  * The monster power curve. Exponential with a linear floor so early depths stay
  * gentle and depth 40+ still climbs without integer overflow silliness.
@@ -45,10 +67,11 @@ export function depthCurve(depth: number): DepthCurve {
   // damage term is lower and ramps in over the first few floors, which leaves
   // the late curve untouched — by depth 10 the eased term is ~1.
   const ease = 0.55 + 0.45 * Math.min(1, (d - 1) / 8);
+  const ramp = depthRamp(d);
 
   return {
-    life: (24 * Math.pow(1.155, d - 1) + d * 11) * dif.monsterLife,
-    damage: (3.1 * Math.pow(1.118, d - 1) + d * 1.15) * ease * dif.monsterDamage,
+    life: (24 * Math.pow(1.155, d - 1) + d * 11) * ramp.life * dif.monsterLife,
+    damage: (3.1 * Math.pow(1.118, d - 1) + d * 1.15) * ease * ramp.damage * dif.monsterDamage,
     defense: (8 * Math.pow(1.095, d - 1) + d * 3) * dif.monsterDefense,
     attackRating: 30 * Math.pow(1.1, d - 1) + d * 12,
     level: monsterLevelForDepth(d),
