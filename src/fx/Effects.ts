@@ -196,8 +196,12 @@ export interface ProjectileOpts {
   /** false skips the impact recipe on arrival. */
   impact?: boolean;
   scale?: number;
-  /** Arrow (a solid shaft), bolt (the school's own body), or a thrown knife, shield, needle, vial or phantom blade. */
-  shape?: 'arrow' | 'bolt' | 'knife' | 'shield' | 'needle' | 'vial' | 'phantom';
+  /**
+   * Arrow (a solid shaft), bolt (the school's own body), a thrown knife,
+   * shield, needle, vial or phantom blade, or a skull (a bone skull flying
+   * face first, with the school's glow and wake behind it).
+   */
+  shape?: 'arrow' | 'bolt' | 'knife' | 'shield' | 'needle' | 'vial' | 'phantom' | 'skull';
   /** A skill's own particle wake, laid over the school's. */
   shed?: string;
   /** false skips the flare at the caster's hand. */
@@ -375,6 +379,8 @@ const enum Body {
   Vial,
   /** A Phantom Blade: a ghost-steel knife, point first. */
   Phantom,
+  /** A Hunting Skull: bone, face first, its glow trailing behind it. */
+  Skull,
 }
 
 class Live {
@@ -846,7 +852,7 @@ export class EffectSystem {
       opts.shape === 'phantom' ? Body.Phantom : null;
     // Solid things that fly: arrows, knives and shields carry no glowing heart.
     const isArrow = thrown !== null || opts.shape === 'arrow' || (opts.shape !== 'bolt' && school === 'physical');
-    const body = thrown ?? (isArrow ? Body.Arrow : school === 'cold' ? Body.Shard : school === 'bone' ? Body.Spear : Body.Core);
+    const body = thrown ?? (opts.shape === 'skull' && !isArrow ? Body.Skull : isArrow ? Body.Arrow : school === 'cold' ? Body.Shard : school === 'bone' ? Body.Spear : Body.Core);
 
     const e = this.spawn(K.Proj, !!opts.onHit);
     e.school = school;
@@ -882,6 +888,7 @@ export class EffectSystem {
     else if (body === Body.Phantom) e.solid = this.solids.alloc('phantom');
     else if (body === Body.Shard) e.solid = this.solids.alloc('shard');
     else if (body === Body.Spear) e.solid = this.solids.alloc('spear');
+    else if (body === Body.Skull) e.solid = this.solids.alloc('skull');
     if (!isArrow) this.take(e, this.cores);
     e.style =
       school === 'fire' ? CORE_STYLE.fireball :
@@ -905,7 +912,7 @@ export class EffectSystem {
       });
     }
     // Travel light: fire and magic carry their own light; arrows and bone do not.
-    if (body === Body.Core || body === Body.Shard) {
+    if (body === Body.Core || body === Body.Shard || body === Body.Skull) {
       if (this.quality.fxScale >= 0.5) e.light = this.lights.hold(from.x, from.y, from.z, e.look.light, 2.2 + size * 6, 4 + size * 8, school === 'fire' ? 0.35 : school === 'lightning' ? 0.6 : 0.1);
     }
 
@@ -936,6 +943,10 @@ export class EffectSystem {
         const c = Math.cos(a);
         const r = Math.max(0.7, e.size * 2.2);
         this.solids.place(e.solid, p.x, p.y, p.z, _v2.x * c, Math.sin(a), _v2.z * c, e.t * 3, r, r);
+      } else if (e.body === Body.Skull) {
+        // A skull flies face first and upright, rocking a little as it hunts.
+        const r = Math.max(0.42, e.size * 1.7);
+        this.solids.place(e.solid, p.x, p.y, p.z, _v2.x, _v2.y, _v2.z, Math.sin(e.t * 7) * 0.22, r, r);
       } else {
         const knife = e.body === Body.Knife || e.body === Body.Phantom;
         const roll = e.body === Body.Shard ? e.t * 4.2 : e.body === Body.Spear ? e.t * 14 : knife ? 0.35 : 0;
@@ -953,9 +964,12 @@ export class EffectSystem {
       let emit = 1;
       if (e.body === Body.Shard) { sz = e.size * 2.6; emit = 0.6; }
       if (e.body === Body.Spear) { sz = e.size * 2.6; emit = 0.45; }
+      // The skull's glow hangs behind it, so the bone is seen and not washed out.
+      const back = e.body === Body.Skull ? e.size * 1.4 : 0;
+      if (back > 0) { sz = e.size * 1.6; emit = 0.55; }
       if (e.school === 'lightning') sz *= this.rng.range(0.8, 1.25);
       const fadeIn = Math.min(1, e.t * 12);
-      this.putCore(e.slot, p.x, p.y, p.z, sz, _v2.x, _v2.y, _v2.z, e.school === 'fire' ? 1.8 : 0.9, e.look, emit, e.style, fadeIn, (e.born % 97) / 97);
+      this.putCore(e.slot, p.x - _v2.x * back, p.y - _v2.y * back, p.z - _v2.z * back, sz, _v2.x, _v2.y, _v2.z, e.school === 'fire' ? 1.8 : 0.9, e.look, emit, e.style, fadeIn, (e.born % 97) / 97);
     }
   }
 

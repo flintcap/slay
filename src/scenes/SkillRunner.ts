@@ -1749,6 +1749,8 @@ export class SkillRunner {
           // shout that grants the hero nothing (a fear, a taunt, a blast) puts
           // nothing on the hero.
           if (family !== 'shout' || SELF_POWER[def.id] || SELF_BUFF_STATUS[def.id]) this.applyBuff(player, def, rank, num, color);
+          // Revenant Form: skulls circle his head for as long as the form holds.
+          if (def.id === 'revenantForm') this.revenant.looks.form(player.root, () => player.alive && player.status.has('skill.revenantForm'), school, color);
           if ((def.effect ?? '').includes('autoStrike')) startStorm(false);
           // Rallying Horn shakes off one hold or slow.
           if (num('cleanse', 0) > 0) {
@@ -1788,6 +1790,8 @@ export class SkillRunner {
             const zone = this.zones[this.zones.length - 1]!;
             zone.fx?.stop();
             zone.fx = this.effects.aura(player.root, { radius, color, element: school, groundRing: true });
+            // Bone Storm's shards orbit him inside it, and stop with it.
+            if (def.id === 'boneStorm') zone.fx = this.revenant.looks.storm(player.root, radius, zone.fx);
             zone.follow = player.root;
             zone.skillId = def.id;
           }
@@ -2011,6 +2015,8 @@ export class SkillRunner {
               .slice(0, most);
             const share = ((num('sharePct', 35) + num('perRank', 3) * Math.max(0, rank - 1)) / 100) * (1 + synergyPct(def.id, player.character.skills) / 100);
             this.link = { members: reach, share, until: this.runTime + num('duration', 10), name: def.name };
+            // A chain of dark iron from one bound enemy to the next, for as long as the bond.
+            this.revenant.looks.tether(reach, num('duration', 10), school, color);
           }
           for (const t of reach) {
             t.applyStatuses(applies, ctx);

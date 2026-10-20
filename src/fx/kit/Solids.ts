@@ -19,6 +19,9 @@ export const SOLID = {
   buckler: 12,
   // The Rogue's thrown things: a venom needle, a glass vial, a phantom blade.
   needle: 13, vial: 14, phantom: 15,
+  // The Revenant's (`fx/revenant/RevenantFX.ts`): a hunting skull, a cage
+  // rib, a grave-hand and a chain link.
+  skull: 16, rib: 17, claw: 18, link: 19,
 } as const;
 export type SolidShape = keyof typeof SOLID;
 
@@ -264,6 +267,128 @@ function featherGeo(): THREE.BufferGeometry {
   return hook(g, 0.08);
 }
 
+/**
+ * A hunting skull, its face to +Z and its crown up (+Y): a bone dome, a brow,
+ * dark sockets and a jaw hanging open. About 0.8 across.
+ */
+function skullGeo(): THREE.BufferGeometry {
+  const dome = new THREE.SphereGeometry(0.34, 12, 9);
+  dome.scale(0.92, 0.9, 1.05);
+  dome.translate(0, 0.1, -0.05);
+  const face = new THREE.SphereGeometry(0.24, 10, 7);
+  face.scale(1.05, 0.8, 0.75);
+  face.translate(0, -0.08, 0.14);
+  const brow = new THREE.BoxGeometry(0.46, 0.07, 0.12);
+  brow.translate(0, 0.07, 0.25);
+  const eyeL = new THREE.SphereGeometry(0.085, 8, 6);
+  eyeL.scale(1.15, 1, 0.5);
+  eyeL.translate(-0.115, -0.01, 0.29);
+  const eyeR = new THREE.SphereGeometry(0.085, 8, 6);
+  eyeR.scale(1.15, 1, 0.5);
+  eyeR.translate(0.115, -0.01, 0.29);
+  const nose = new THREE.ConeGeometry(0.045, 0.1, 3);
+  nose.rotateX(Math.PI);
+  nose.translate(0, -0.13, 0.3);
+  const teeth = new THREE.BoxGeometry(0.26, 0.05, 0.06);
+  teeth.translate(0, -0.22, 0.25);
+  // The jaw hangs open: its front dropped.
+  const jaw = new THREE.BoxGeometry(0.3, 0.07, 0.24);
+  jaw.rotateX(0.35);
+  jaw.translate(0, -0.34, 0.1);
+  const low = new THREE.BoxGeometry(0.24, 0.04, 0.05);
+  low.rotateX(0.35);
+  low.translate(0, -0.3, 0.21);
+  const parts = [
+    tint(dome, 0xd9ccaa), tint(face, 0xe4d8b8), tint(brow, 0xcbbd98), tint(eyeL, 0x0c0806), tint(eyeR, 0x0c0806),
+    tint(nose, 0x1a120c), tint(teeth, 0xf2ead4), tint(jaw, 0xc8b994), tint(low, 0xf2ead4),
+  ];
+  const g = mergeGeometries(parts, false)!;
+  for (const q of parts) q.dispose();
+  return g;
+}
+
+/**
+ * A cage rib, its root at the origin, rising up +Z: it bows out a little,
+ * then curls in over local +X, thinning to a point. A flat band, wider
+ * across (Y) than through.
+ */
+function ribGeo(): THREE.BufferGeometry {
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-0.07, 0, 0.32),
+    new THREE.Vector3(-0.03, 0, 0.64),
+    new THREE.Vector3(0.12, 0, 0.88),
+    new THREE.Vector3(0.34, 0, 1),
+  ]);
+  const along = 14;
+  const round = 6;
+  const g = new THREE.TubeGeometry(curve, along, 0.05, round, false);
+  const p = g.getAttribute('position') as THREE.BufferAttribute;
+  const c = new THREE.Vector3();
+  for (let i = 0; i <= along; i++) {
+    const u = i / along;
+    curve.getPointAt(u, c);
+    const k = 1.15 - 0.85 * u;
+    for (let j = 0; j <= round; j++) {
+      const v = i * (round + 1) + j;
+      p.setXYZ(v, c.x + (p.getX(v) - c.x) * k, c.y + (p.getY(v) - c.y) * k * 1.4, c.z + (p.getZ(v) - c.z) * k);
+    }
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A grave-hand clawing up out of the floor: two forearm bones from the
+ * origin up +Z, a palm, four fingers and a thumb, all curled toward local +Y.
+ * About a metre tall.
+ */
+function clawGeo(): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const bone = (r0: number, r1: number, len: number, x: number, z: number, tilt: number, curl: number): void => {
+    const g = new THREE.CylinderGeometry(r1, r0, len, 5, 4);
+    g.rotateX(Math.PI / 2);
+    g.translate(0, 0, len / 2);
+    // Curl toward +Y, more the further along.
+    const q = g.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < q.count; i++) {
+      const s = q.getZ(i) / len;
+      q.setY(i, q.getY(i) + curl * s * s);
+      q.setZ(i, q.getZ(i) - Math.abs(curl) * 0.35 * s * s);
+    }
+    g.computeVertexNormals();
+    g.rotateY(tilt);
+    g.translate(x, 0, z);
+    parts.push(g.toNonIndexed());
+    g.dispose();
+  };
+  bone(0.04, 0.03, 0.5, -0.04, 0, 0, 0);
+  bone(0.035, 0.028, 0.5, 0.045, 0, 0, 0);
+  const palm = new THREE.BoxGeometry(0.22, 0.07, 0.2);
+  palm.translate(0, 0.01, 0.58);
+  parts.push(palm.toNonIndexed());
+  palm.dispose();
+  // The fingers splay out a little and curl in; the thumb leans off the side.
+  const fingers = [-0.08, -0.027, 0.027, 0.08];
+  for (let i = 0; i < fingers.length; i++) {
+    const x = fingers[i]!;
+    bone(0.022, 0.008, i === 0 || i === 3 ? 0.3 : 0.36, x, 0.66, x * 1.6, 0.2);
+  }
+  bone(0.022, 0.009, 0.26, 0.12, 0.5, 0.7, 0.14);
+  for (const q of parts) q.deleteAttribute('uv');
+  const g = mergeGeometries(parts, false)!;
+  for (const q of parts) q.dispose();
+  return g;
+}
+
+/** One chain link along +Z: an iron ring standing in the YZ plane, longer than it is wide. */
+function linkGeo(): THREE.BufferGeometry {
+  const g = new THREE.TorusGeometry(0.37, 0.1, 4, 10);
+  g.rotateY(Math.PI / 2);
+  g.scale(1, 0.62, 1);
+  return g;
+}
+
 function spikeGeo(): THREE.BufferGeometry {
   // Ground spike: base at the origin, point up +Y (rotated to +Z for the shared layout).
   const g = new THREE.ConeGeometry(0.22, 1, 5);
@@ -316,7 +441,17 @@ export class SolidPool {
     // The phantom blade: ghost steel, unlit and see-through (its stand-in
     // warms it with the rest).
     mats.push(new THREE.MeshBasicMaterial({ vertexColors: true, color: new THREE.Color(1.3, 1.3, 1.3), transparent: true, opacity: 0.8, depthWrite: false }));
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo()];
+    // The Revenant's: the skull is vertex-coloured bone with a faint soul-light
+    // in it, the rib and the grave-hand are the bone spear's own bone, and the
+    // chain is dark iron with a red glow in it. Each is the same kind of
+    // material as one above, so each draws with a shader already built.
+    mats.push(
+      new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65, metalness: 0.05, emissive: 0x24301c, emissiveIntensity: 0.5 }),
+      mats[2]!,
+      mats[2]!,
+      new THREE.MeshStandardMaterial({ color: 0x4a4448, emissive: 0x8a1a2a, emissiveIntensity: 0.55, roughness: 0.45, metalness: 0.7 }),
+    );
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo(), skullGeo(), ribGeo(), clawGeo(), linkGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

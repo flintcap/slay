@@ -11,6 +11,10 @@
  * the mark dies. Bone Cage is one hit and a root, not a field. Doom and Soul
  * Cage take one enemy. Gravewalk sinks the Revenant into the floor and brings
  * him up at the point, where grave-hands hold what stands near.
+ *
+ * What lasts after the cast (the storm's shards, the cage's ribs, the hands,
+ * the tether's chain, the form's skulls) is drawn by `fx/revenant/RevenantFX.ts`
+ * through `looks`, which this kit drives each frame.
  */
 import * as THREE from 'three';
 import type { DamagePacket, StatusApplication } from '../../types';
@@ -19,6 +23,7 @@ import type { Boss } from '../../entities/Boss';
 import type { MageSpells, SpellCast, SpellHost, SpellWorld } from '../mage/Spells';
 import { atRank, boostRank } from '../../fx/kit/Boost';
 import { skillSound } from '../../audio/SkillSounds';
+import { RevenantFX } from '../../fx/revenant/RevenantFX';
 
 type Target = Enemy | Boss;
 
@@ -78,8 +83,14 @@ function nearest(w: SpellWorld, x: number, z: number, reach: number, skip?: Targ
 export class RevenantKit {
   private dooms: Doom[] = [];
   private time = 0;
+  private drawn: RevenantFX | null = null;
 
   constructor(readonly host: RevenantHost, private readonly movers: MageSpells) {}
+
+  /** His lasting looks (`fx/revenant/RevenantFX.ts`), made on first use. */
+  get looks(): RevenantFX {
+    return (this.drawn ??= new RevenantFX(this.host.effects));
+  }
 
   /** True for a skill this module casts. */
   static casts(id: string): boolean {
@@ -123,6 +134,7 @@ export class RevenantKit {
   }
 
   update(dt: number): void {
+    this.drawn?.update(dt);
     const live = this.host.live();
     if (!live) return;
     this.time += dt;
@@ -163,6 +175,7 @@ export class RevenantKit {
   /** Forgets every brand: a new level. */
   clear(): void {
     this.dooms.length = 0;
+    this.drawn?.clear();
   }
 
   /** The Doomed status, for exactly the time the brand has left. */
@@ -230,6 +243,7 @@ const huntingSkull: Cast = (s, k) => {
     flare: !s.released,
     homing: 1,
     target: follow,
+    shape: 'skull',
     onHit: (at) => {
       k.fresh(world);
       // It never misses: it strikes its mark wherever the mark got to.
@@ -254,6 +268,7 @@ const boneCage: Cast = (s, k) => {
     k.host.effects.field(at.x, at.z, radius, hold, { school: s.school, color: s.color, skill: s.def.id, rank: s.rank });
     k.host.effects.nova(at.x, at.z, radius, { element: s.school, color: s.color, emitter: s.sig.emitter, density: s.sig.density });
   });
+  k.looks.cage(at.x, at.z, radius, hold);
   k.host.area(at, radius, (m = 1) => s.packet(m), s.world);
 };
 
@@ -280,6 +295,9 @@ const soulCage: Cast = (s, k) => {
   s.landAt = at.clone().setY(0);
   const holds: StatusApplication[] = s.riders();
   t.applyStatuses(holds, s.world.ctx);
+  let hold = 0;
+  for (const a of holds) hold = Math.max(hold, a.duration);
+  k.looks.hold(t, hold > 0 ? hold : s.num('duration', 12));
   k.quiet(() => {
     k.host.effects.impact(s.school, at.x, 1.0, at.z, { color: s.color, scale: 0.9, decal: false, shake: 0, sfx: null });
     k.host.effects.nova(at.x, at.z, t.hitRadius + 1.1, { element: s.school, color: s.color, emitter: s.sig.emitter, density: s.sig.density * 0.6 });
@@ -316,13 +334,16 @@ const gravewalk: Cast = (s, k) => {
   let held = 0;
   const w = s.world;
   const n = w.enemies.length;
+  const caught: Target[] = [];
   for (let i = 0; i <= n; i++) {
     const t: Target | null = i < n ? w.enemies[i]! : w.boss;
     if (!t || t.life <= 0 || ground(t.root.position, land.x, land.z) > radius + t.hitRadius) continue;
     t.applyStatuses(hold, w.ctx);
+    caught.push(t);
     k.host.hit(t, s.packet(), 'area', land.x, land.z, w);
     held++;
   }
+  k.looks.grasp(land.x, land.z, radius, hold[0]!.duration, caught);
   if (held > 0) s.player.heal(s.player.stats.life * (s.num('healPct', 3) / 100) * held);
 };
 
