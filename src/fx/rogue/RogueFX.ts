@@ -33,6 +33,7 @@ import { registerEmitters, type Emitter, type Layer } from '../kit/Emitters';
 import type { EffectHandle, EffectSystem } from '../Effects';
 import type { BurstOpts } from '../Particles';
 import { Random } from '../../core/RNG';
+import { SKILL_BY_ID } from '../../data/skills';
 
 const DEFAULTS: Layer = {
   sprite: SPRITE.glow, variants: 1, count: 10, speed: [1, 3], spread: 1, up: 0, radius: 0.05, disc: false,
@@ -104,6 +105,71 @@ const EM: Record<string, Emitter> = {
       L({ sprite: SPRITE.smoke, count: 10, ramp: SHADE, speed: [0.3, 0.9], disc: true, radius: 1.2, size: [1.4, 2.2], grow: 1.6, life: [2.4, 3.4], heat: [0.05, 0], emit: 0.02, occl: 0.75, gravity: -2, drag: 1.5, turb: 0.15, spin: 0.25, flat: true, fade: 1, ground: true, bounce: 0, tint: false }),
     ],
   },
+  // --- each tree's bursts and wakes (`rogueParticles`) ---------------------
+  /** Venom: a wet splash, drops thrown and splatting, a breath of green fume. */
+  'rg.splash': {
+    school: 'poison',
+    layers: [
+      L({ sprite: SPRITE.glow, count: 1, ramp: VENOM, speed: [0, 0], radius: 0, size: [0.55, 0.65], grow: 1.4, life: [0.09, 0.12], heat: [1, 0.5], emit: 0.9, occl: 0, fade: 2.2, tint: false }),
+      L({ sprite: SPRITE.drop, count: 14, ramp: VENOM, speed: [2, 5], spread: 0.8, up: 0.7, radius: 0.15, size: [0.05, 0.1], grow: 0.8, life: [0.5, 0.9], heat: [0.85, 0.4], emit: 0.85, occl: 0.5, gravity: -11, drag: 1, stretch: 0.35, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gas, count: 3, ramp: VENOM, speed: [0.3, 0.9], radius: 0.25, size: [0.5, 0.8], grow: 1.8, life: [0.9, 1.4], heat: [0.5, 0], emit: 0.35, occl: 0.45, gravity: 0.15, drag: 2, turb: 0.3, spin: 0.6, tint: false }),
+    ],
+  },
+  /** Venom: a low cloud that rolls out and hangs, drops falling out of it. */
+  'rg.fumes': {
+    school: 'poison',
+    layers: [
+      L({ sprite: SPRITE.gas, count: 6, ramp: VENOM, speed: [0.6, 1.6], up: 0.2, disc: true, radius: 0.5, size: [0.6, 1.0], grow: 2.2, life: [1.4, 2.2], heat: [0.45, 0], emit: 0.3, occl: 0.5, gravity: 0.1, drag: 2.2, turb: 0.35, spin: 0.5, fade: 1, tint: false }),
+      L({ sprite: SPRITE.drop, count: 6, ramp: VENOM, speed: [0.8, 2.2], up: 0.8, radius: 0.3, size: [0.04, 0.07], grow: 0.8, life: [0.5, 0.8], heat: [0.85, 0.4], emit: 0.85, occl: 0.45, gravity: -9, drag: 1, stretch: 0.3, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.gas, count: 3, ramp: VENOM, speed: [0.2, 0.5], up: 1, radius: 0.6, size: [0.8, 1.2], grow: 1.8, life: [2.0, 2.8], heat: [0.3, 0], emit: 0.2, occl: 0.45, gravity: 0.2, drag: 1.4, turb: 0.4, fade: 0.9, tint: false, rich: true }),
+    ],
+  },
+  /** Venom shed in flight: drops falling off it. */
+  'rg.drips': {
+    school: 'poison',
+    layers: [
+      L({ sprite: SPRITE.drop, count: 3, ramp: VENOM, speed: [0.1, 0.5], radius: 0.05, size: [0.03, 0.05], grow: 0.8, life: [0.4, 0.7], heat: [0.9, 0.4], emit: 0.9, occl: 0.4, gravity: -9, drag: 0.8, stretch: 0.35, ground: true, bounce: 0, tint: false }),
+    ],
+  },
+  /** Venom shed in flight: a thread of fume. */
+  'rg.fumewake': {
+    school: 'poison',
+    layers: [
+      L({ sprite: SPRITE.gas, count: 3, ramp: VENOM, speed: [0.05, 0.25], radius: 0.06, size: [0.16, 0.26], grow: 2.2, life: [0.6, 1.0], heat: [0.45, 0], emit: 0.3, occl: 0.4, gravity: 0.15, drag: 1.5, turb: 0.3, spin: 0.8, tint: false }),
+    ],
+  },
+  /** Shadow: dark smoke rolling out, unlit, a few pale motes caught in it. */
+  'rg.smokeburst': {
+    school: 'arcane',
+    layers: [
+      L({ sprite: SPRITE.smoke, count: 8, ramp: SHADE, speed: [0.8, 2.2], up: 0.4, disc: true, radius: 0.4, size: [0.55, 0.9], grow: 2.4, life: [1.2, 1.8], heat: [0.1, 0], emit: 0.04, occl: 0.85, gravity: 0.2, drag: 2.4, turb: 0.35, spin: 0.6, fade: 1, tint: false }),
+      L({ sprite: SPRITE.mote, count: 6, ramp: DUSK, speed: [0.6, 1.8], up: 0.5, radius: 0.3, size: [0.035, 0.06], grow: 0.6, life: [0.7, 1.2], heat: [1, 0.3], emit: 0.9, occl: 0, gravity: 0.3, drag: 1.5, turb: 0.5, fade: 1.2, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 3, ramp: SHADE, speed: [0.2, 0.6], up: 1, radius: 0.5, size: [0.8, 1.2], grow: 2, life: [1.8, 2.6], heat: [0.05, 0], emit: 0.03, occl: 0.8, gravity: 0.3, drag: 1.4, turb: 0.4, fade: 0.9, tint: false, rich: true }),
+    ],
+  },
+  /** Shadow: a darkness that spreads low over the floor and settles. */
+  'rg.gloom': {
+    school: 'arcane',
+    layers: [
+      L({ sprite: SPRITE.smoke, count: 7, ramp: SHADE, speed: [1, 2.4], spread: 1, up: -0.6, disc: true, radius: 0.5, size: [0.7, 1.1], grow: 2.2, life: [1.4, 2.0], heat: [0.05, 0], emit: 0.03, occl: 0.85, gravity: -0.4, drag: 2.6, turb: 0.25, spin: 0.4, fade: 1, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.mote, count: 5, ramp: DUSK, speed: [0.3, 1], up: 0.8, disc: true, radius: 0.6, size: [0.03, 0.055], grow: 0.6, life: [0.9, 1.5], heat: [1, 0.3], emit: 0.8, occl: 0, gravity: -0.6, drag: 1.2, turb: 0.5, fade: 1.2, tint: false }),
+    ],
+  },
+  /** Shadow shed in flight: small dark puffs. */
+  'rg.smokewake': {
+    school: 'arcane',
+    layers: [
+      L({ sprite: SPRITE.smoke, count: 3, ramp: SHADE, speed: [0.05, 0.3], radius: 0.08, size: [0.22, 0.34], grow: 2.4, life: [0.8, 1.2], heat: [0.05, 0], emit: 0.04, occl: 0.8, gravity: 0.25, drag: 1.6, turb: 0.3, spin: 0.8, tint: false }),
+    ],
+  },
+  /** Shadow shed in flight: pale motes and a wisp of dark. */
+  'rg.gloomwake': {
+    school: 'arcane',
+    layers: [
+      L({ sprite: SPRITE.mote, count: 3, ramp: DUSK, speed: [0.1, 0.4], radius: 0.06, size: [0.03, 0.05], grow: 0.6, life: [0.4, 0.7], heat: [1, 0.4], emit: 0.9, occl: 0, drag: 2, turb: 0.4, fade: 1.4, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 3, ramp: SHADE, speed: [0.05, 0.2], radius: 0.06, size: [0.18, 0.28], grow: 2.2, life: [0.6, 1.0], heat: [0.05, 0], emit: 0.03, occl: 0.75, gravity: 0.2, drag: 1.5, turb: 0.3, tint: false }),
+    ],
+  },
   /** What a phantom blade leaves in the air: pale motes and a glint of ghost steel. */
   'rg.phantomwake': {
     school: 'physical',
@@ -118,6 +184,26 @@ registerEmitters(EM);
 
 /** Every Rogue emitter id, for the checkers. */
 export const ROGUE_EMITTERS: readonly string[] = Object.keys(EM);
+
+/**
+ * Each Rogue tree's bursts and wakes. Venom is wet and green; Shadowcraft is
+ * dark smoke with no glow (its untyped skills would otherwise draw as arcane
+ * sparkle). Bladework is steel and keeps the physical pool.
+ */
+const POOLS: Readonly<Record<string, { burst: readonly string[]; trail: readonly string[] }>> = {
+  venom: { burst: ['rg.splash', 'rg.fumes'], trail: ['rg.drips', 'rg.fumewake'] },
+  shadowcraft: { burst: ['rg.smokeburst', 'rg.gloom'], trail: ['rg.smokewake', 'rg.gloomwake'] },
+};
+
+/**
+ * A Rogue skill's own burst and wake, from its tree's look; null for any
+ * other skill. `h` is the skill's id hash, so two skills of a tree differ.
+ */
+export function rogueParticles(skillId: string, h: number): { emitter: string; trail: string } | null {
+  const pool = POOLS[SKILL_BY_ID[skillId]?.treeId ?? ''];
+  if (!pool) return null;
+  return { emitter: pool.burst[h % pool.burst.length]!, trail: pool.trail[(h >>> 4) % pool.trail.length]! };
+}
 
 /** Cosmetic only: where along the blade a bead falls. */
 const rng = new Random(0x0a5e1d);
