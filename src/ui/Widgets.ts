@@ -33,7 +33,7 @@ import { getBase, itemDisplayName } from '../sim/Loot';
 import { CLASSES } from '../data/classes';
 import * as SkillData from '../data/skills';
 import { uiSfx } from './Sfx';
-import { isUpgrade } from './Compare';
+import { cannotWear, isUpgrade } from './Compare';
 import { tr, numText, numGrouped } from '../core/I18n';
 import { cssPx, uiHeight, uiScale, uiWidth } from '../core/UiScale';
 
@@ -1821,8 +1821,10 @@ export class ItemSlot {
     // and sockets change in place for the same reason.
     // The upgrade arrow depends on what the hero wears, so it is part of what
     // was drawn too (isUpgrade is cached per state of the hero's gear).
+    // So does the red tint: a level gained or a point spent can lift it.
     const up = !!item && this.opts.source !== 'equipment' && isUpgrade(item);
-    const sig = item ? `${item.uid}|${(item as { count?: number }).count ?? 1}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}|${up ? 1 : 0}` : '';
+    const no = !!item && this.opts.source !== 'equipment' && cannotWear(item);
+    const sig = item ? `${item.uid}|${(item as { count?: number }).count ?? 1}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}|${up ? 1 : 0}|${no ? 1 : 0}` : '';
     if (item === this.item && sig === this.sig) return;
     this.item = item;
     this.sig = sig;
@@ -1849,6 +1851,12 @@ export class ItemSlot {
     const item = this.item;
     clear(this.inner);
     this.root.classList.toggle('is-empty', !item);
+    // Gear the hero cannot put on (class, level, strength, dexterity) is
+    // tinted red, so it reads at a glance without a hover.
+    const barred = !!item && this.opts.source !== 'equipment' && cannotWear(item);
+    if (barred) addBarredFilter();
+    this.root.classList.toggle('is-barred', barred);
+    this.root.classList.toggle('is-corrupted', !!item?.corrupted);
     if (!item) {
       this.root.removeAttribute('data-rarity');
       this.root.removeAttribute('data-uid');
@@ -1911,9 +1919,34 @@ export class ItemSlot {
       }
       this.inner.appendChild(s);
     }
-    if (item.corrupted) this.root.classList.add('is-corrupted');
     if (item.seen === false) this.inner.appendChild(span('islot-new'));
   }
+}
+
+let barredFilter = false;
+
+/**
+ * The red wash for gear the hero cannot wear, added to the page once. CSS
+ * has no colour multiply for an image, so it is an SVG filter that
+ * `.islot.is-barred .islot-img` points at. Each channel is weighed toward red
+ * but keeps a little of the art's own colour, so the item still reads.
+ */
+function addBarredFilter(): void {
+  if (barredFilter) return;
+  barredFilter = true;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '0');
+  svg.setAttribute('height', '0');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.style.position = 'absolute';
+  svg.innerHTML =
+    '<filter id="slay-barred" color-interpolation-filters="sRGB">' +
+    '<feColorMatrix type="matrix" values="' +
+    '0.55 0.25 0.10 0 0.06 ' +
+    '0.12 0.22 0.05 0 0 ' +
+    '0.10 0.10 0.18 0 0 ' +
+    '0 0 0 1 0"/></filter>';
+  document.body.appendChild(svg);
 }
 
 // ---------------------------------------------------------------------------

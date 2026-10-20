@@ -485,6 +485,10 @@ Update this file and push it after every finished step.
   The resting lens fringe now grows from zero at the centre (it had a
   half-pixel floor that put red and blue edges on the hero once sharpened);
   only a hit fringes the middle.
+- #154 Red tint on gear the hero cannot wear (owner): `cannotWear` in
+  Compare.ts (class, level, strength, dexterity; cached like the upgrade
+  arrow) marks bag, stash and shop slots `is-barred`; the art goes through a
+  red colour-matrix SVG filter on a red ground. Checked in the bag shot.
 
 ## Phase 0d log
 

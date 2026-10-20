@@ -6,7 +6,8 @@
  * The rule is the tooltip's: compare the item's own stats with the worn
  * piece's, key by key. No line worse and at least one better is an upgrade.
  * An empty slot the hero can fill is an upgrade too. Items the hero cannot
- * wear (class, level, strength, dexterity) never get an arrow.
+ * wear (class, level, strength, dexterity) never get an arrow; their slots
+ * are tinted red instead (cannotWear).
  */
 import type { Character, DamageType, EquipSlot, Item, StatKey, Stats } from '../types';
 import { save } from '../core/Save';
@@ -94,6 +95,7 @@ export function compareItems(item: Item, worn: Item | readonly Item[]): { deltas
 let cacheSig = '';
 let cacheStats: Stats | null = null;
 const cache = new Map<string, boolean>();
+const barred = new Map<string, boolean>();
 
 function heroSig(c: Character): string {
   let s = `${c.id}|${c.level}|${c.allocated.strength}|${c.allocated.dexterity}`;
@@ -104,17 +106,26 @@ function heroSig(c: Character): string {
   return s;
 }
 
+/** Drops every cached answer when the hero's gear, level or points moved. */
+function freshen(c: Character): void {
+  const sig = heroSig(c);
+  if (sig === cacheSig) return;
+  cacheSig = sig;
+  cacheStats = null;
+  cache.clear();
+  barred.clear();
+}
+
+function itemKey(item: Item): string {
+  return `${item.uid}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}`;
+}
+
 /** True when wearing `item` would be a clear step up for the current hero. */
 export function isUpgrade(item: Item): boolean {
   const c = save.account.current;
   if (!c) return false;
-  const sig = heroSig(c);
-  if (sig !== cacheSig) {
-    cacheSig = sig;
-    cacheStats = null;
-    cache.clear();
-  }
-  const key = `${item.uid}|${item.upgrade}|${item.sockets.map((s) => s.gemId ?? '').join(',')}`;
+  freshen(c);
+  const key = itemKey(item);
   const hit = cache.get(key);
   if (hit !== undefined) return hit;
   let out = false;
@@ -124,6 +135,32 @@ export function isUpgrade(item: Item): boolean {
     out = false;
   }
   cache.set(key, out);
+  return out;
+}
+
+/**
+ * True when `item` is gear the current hero cannot put on: the class, the
+ * level, the strength or the dexterity rules it out. The slots tint these
+ * red. Things that are never worn (potions, gems, charms) are not gear, so
+ * they are never barred.
+ */
+export function cannotWear(item: Item): boolean {
+  const c = save.account.current;
+  if (!c) return false;
+  freshen(c);
+  const key = itemKey(item);
+  const hit = barred.get(key);
+  if (hit !== undefined) return hit;
+  let out = false;
+  try {
+    if (slotsFor(item).length > 0) {
+      cacheStats ??= computeStats(c);
+      out = !equipPlan(c, item) || !meetsRequirements(c, item, cacheStats).ok;
+    }
+  } catch {
+    out = false;
+  }
+  barred.set(key, out);
   return out;
 }
 

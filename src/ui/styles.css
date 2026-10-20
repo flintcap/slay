@@ -1723,6 +1723,19 @@ input.slider::-moz-range-thumb {
     opacity: 0.25;
   }
 }
+/* Gear the hero cannot wear (class, level, strength, dexterity): the art is
+   washed red by the SVG filter Widgets adds, on a red ground. */
+.islot.is-barred:not(.is-empty) {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 110%, rgb(196 36 28 / 0.42), transparent 72%),
+    radial-gradient(ellipse at 50% 30%, #3a1512 0%, #160807 85%);
+}
+.islot.is-barred .islot-art .islot-img {
+  filter: url(#slay-barred) drop-shadow(0 2px 3px rgb(var(--shade-rgb) / 0.55));
+}
+.islot.is-big.is-barred .islot-art .islot-img {
+  filter: url(#slay-barred) drop-shadow(0 3px 5px rgb(var(--shade-rgb) / 0.6));
+}
 .islot.is-corrupted .islot-bevel {
   border-color: rgba(255, 90, 51, 0.5);
 }
