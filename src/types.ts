@@ -453,6 +453,13 @@ export interface Character {
   /** Bosses this character has fought, so a life does not meet one twice too soon. */
   bossesMet?: string[];
   /**
+   * This hero's own story: chapters, pages, people met and the contract
+   * chains. Every hero starts fresh. Optional: `sim/Story.ts` fills it in.
+   */
+  story?: StorySave;
+  /** What the floor shows this hero. Optional: repaired by `sim/LootFilter.ts`. */
+  lootFilter?: LootFilterSettings;
+  /**
    * The map in progress, if any: what the hero carried into it
    * (`sim/RunLedger.ts`). Cleared when a map ends well. A map left any other
    * way (the menu, closing the game, a crash) is settled from it: the hero is
@@ -578,18 +585,19 @@ export interface AccountSave {
   materials: Record<string, number>;
   settings: GameSettings;
   /**
-   * Narrative progress: what the account has learned, who it has talked to,
-   * which contracts are open. Optional so saves from before it existed load;
-   * `sim/Story.ts` fills in and repairs it on first use.
+   * Before save v4 the story and the loot filter were shared by every hero.
+   * The load copies them onto each hero already on the roster and drops them
+   * here (`core/Save.ts`); nothing reads them after that.
    */
   story?: StorySave;
-  /** What the floor shows you. Optional: repaired by `sim/LootFilter.ts`. */
   lootFilter?: LootFilterSettings;
+  /** The last thing that happened below, for the camp to react to, whoever plays next. */
+  news?: CampNews;
   /** Progression that survives death. Optional: repaired by `sim/Legacy.ts`. */
   legacy?: LegacyState;
 }
 
-/** Account-wide story state. Survives death, like the vault and the memorial. */
+/** One hero's story state. A new hero starts with none of it. */
 export interface StorySave {
   v: number;
   /** Chapter and Deep Ledger ids revealed. */
@@ -611,8 +619,14 @@ export interface StorySave {
    * to be handed in. A chain past its last step is finished.
    */
   chains: Record<string, { step: number; state: 'idle' | 'active' | 'ready' }>;
-  /** The last thing that happened below, for the camp to react to. */
-  last?: { kind: 'cleared' | 'died'; at: number; depth: number; name: string };
+}
+
+/** A map cleared or a hero lost, so the camp can speak of it. */
+export interface CampNews {
+  kind: 'cleared' | 'died';
+  at: number;
+  depth: number;
+  name: string;
 }
 
 /** Account-level progression. See `sim/Legacy.ts`. */

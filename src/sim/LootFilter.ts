@@ -14,10 +14,11 @@
  *   4. Plain and magic gear on an outgrown base hides.
  *   5. Otherwise the item's group sets the rarity bar.
  *
- * Pure: it reads an item and the account's settings and returns a yes or no.
+ * Pure: it reads an item and the hero's settings and returns a yes or no.
+ * Each hero keeps a filter of their own; a new hero starts on the default.
  */
 
-import type { AccountSave, CharClassId, Item, ItemCategory, ItemRarity, LootFilterGroup, LootFilterSettings, StatKey } from '../types';
+import type { CharClassId, Item, ItemCategory, ItemRarity, LootFilterGroup, LootFilterSettings, StatKey } from '../types';
 export type { LootFilterGroup, LootFilterSettings };
 import { RARITY_ORDER } from '../types';
 import { getBase, affixTierRank } from './Loot';
@@ -157,9 +158,9 @@ const RANK = (r: ItemRarity) => RARITY_ORDER.indexOf(r);
 const clampInt = (v: unknown, lo: number, hi: number, dflt: number): number =>
   typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, Math.round(v))) : dflt;
 
-/** The account's filter, repaired in place if missing, partial or from before the groups. */
-export function lootFilterOf(account: AccountSave): LootFilterSettings {
-  const raw = account.lootFilter;
+/** A hero's filter, repaired in place if missing, partial or from before the groups. */
+export function lootFilterOf(owner: { lootFilter?: LootFilterSettings }): LootFilterSettings {
+  const raw = owner.lootFilter;
   const merged: LootFilterSettings = { ...DEFAULT_LOOT_FILTER, ...(raw ?? {}) };
   const legacy = raw?.minRarity && RARITY_ORDER.includes(raw.minRarity) ? raw.minRarity : 'normal';
   const by = { ...allGroups(legacy), ...(raw?.rarityBy ?? {}) };
@@ -175,7 +176,7 @@ export function lootFilterOf(account: AccountSave): LootFilterSettings {
   if (typeof merged.minRuneOrder === 'number' && merged.minRuneOrder > RUNE_CUTS) merged.minRuneOrder = Math.ceil((merged.minRuneOrder * RUNE_CUTS) / 33);
   merged.minRuneOrder = clampInt(merged.minRuneOrder, 1, RUNE_CUTS, 1);
   merged.minPotionTier = clampInt(merged.minPotionTier, 0, 3, 0);
-  account.lootFilter = merged;
+  owner.lootFilter = merged;
   return merged;
 }
 

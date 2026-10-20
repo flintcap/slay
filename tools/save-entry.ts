@@ -579,6 +579,32 @@ check('speed lines from before version 3 move to the new scale and keep their pl
   return true;
 });
 
+check('the shared story and loot filter from before version 4 move onto each hero', () => {
+  const a = hero('a', 5);
+  const b = hero('b', 3);
+  const old = {
+    ...account(a, [a, b]),
+    version: 3,
+    story: { v: 1, chapters: ['ch.first'], notes: [], biomes: [], met: [], slain: [], heard: [], talked: { renn: 5 }, chains: { renn: { step: 1, state: 'active' } }, last: { kind: 'died', at: 9, depth: 4, name: 'Gone' } },
+    lootFilter: { enabled: true, rarityBy: { weapons: 'rare', armour: 'rare', jewellery: 'normal', charms: 'normal' } },
+  };
+  const { data, report } = migrateAccount(JSON.parse(JSON.stringify(old)));
+  if (report.repairs.length) return `reported as damage: ${report.repairs.join('; ')}`;
+  if ('story' in data || 'lootFilter' in data) return 'the account still holds a shared story or filter';
+  if (data.news?.kind !== 'died' || data.news.name !== 'Gone') return 'the camp lost its news';
+  const [x, y] = data.roster!;
+  if (x!.story?.chains.renn?.step !== 1 || y!.story?.chains.renn?.step !== 1) return 'a hero lost the contracts they had';
+  if (x!.story === y!.story || x!.lootFilter === y!.lootFilter) return 'two heroes share one story or filter';
+  if ('last' in x!.story!) return 'a hero kept the old camp news in their story';
+  if (x!.lootFilter?.rarityBy?.weapons !== 'rare' || y!.lootFilter?.rarityBy?.weapons !== 'rare') return 'a hero lost the filter they had';
+  // A save already on version 4 is left alone, and a new hero has neither.
+  const again = migrateAccount(JSON.parse(JSON.stringify(data))).data;
+  if (JSON.stringify(again.roster) !== JSON.stringify(data.roster)) return 'a second load changed the heroes';
+  const fresh = migrateAccount(JSON.parse(JSON.stringify({ ...account(hero('c', 1), []), version: SAVE_VERSION }))).data.current!;
+  if (fresh.story || fresh.lootFilter) return 'a new hero started with a story or filter';
+  return true;
+});
+
 // Fuzz: random damage to a good save never throws and always yields a valid
 // account; the hero survives whenever their class does.
 const fuzz = { runs: 0, heroKept: 0, heroExpected: 0, failures: [] as string[] };

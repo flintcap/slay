@@ -74,8 +74,10 @@ export function purgeStaleCache(prefix: string, current: string): void {
  *     copy of it), every field range-checked on load
  *  3  item attack and cast speed moved to the Wave 5 scale (smaller lines;
  *     every owned roll keeps its place in its range, `rescaleOldSpeed`)
+ *  4  the story and the loot filter belong to each hero, not the account;
+ *     the camp's news of the last map moved to `news`
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export const STASH_TAB_SIZE = STASH_COLS * STASH_ROWS; // 12 x 10 grid per tab
 export const DEFAULT_STASH_TABS = 4;
@@ -605,6 +607,29 @@ export function migrateAccount(raw: unknown): { data: AccountSave; report: LoadR
   out.current = cur;
   out.roster = roster;
   fitGrids(out, fx);
+
+  // v3 -> v4: the story and the loot filter were shared by every hero; now
+  // each hero keeps their own (owner). Heroes already made keep a copy of
+  // what they had, so nothing is lost; heroes made from now on start fresh.
+  if (from < 4) {
+    const old = isObj(s.story) ? s.story : null;
+    for (const c of roster) {
+      if (old && !c.story) {
+        const own = structuredClone(old) as Record<string, unknown>;
+        delete own.last;
+        c.story = own as unknown as NonNullable<Character['story']>;
+      }
+      if (isObj(s.lootFilter) && !c.lootFilter) c.lootFilter = structuredClone(s.lootFilter) as Character['lootFilter'];
+    }
+    if (old && isObj(old.last)) out.news = old.last as unknown as AccountSave['news'];
+  }
+  delete out.story;
+  delete out.lootFilter;
+  const news = out.news as unknown;
+  if (news !== undefined && !(isObj(news) && (news.kind === 'cleared' || news.kind === 'died') && finite(news.at) && finite(news.depth) && isStr(news.name))) {
+    delete out.news;
+    fx.note('camp news did not read');
+  }
 
   report.quarantined = fx.quarantine.length;
   return { data: out, report, quarantine: fx.quarantine };

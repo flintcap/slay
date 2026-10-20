@@ -50,10 +50,12 @@ All six milestones are done. Nothing is queued. If more story work is wanted lat
   Spire). The checker holds them together.
 
 - The premise is written at the top of `src/data/story/premise.ts`. Read it before writing anything: the Tenant,
-  the layers, the delvers as the lid, Stairhead. Chapters reveal once per account on reaching their tier; past
+  the layers, the delvers as the lid, Stairhead. Chapters reveal once per hero on reaching their tier; past
   tier 100 the Deep Ledger generates an entry every 20 tiers, deterministically.
-- Story state is `AccountSave.story` (`StorySave` in `src/types.ts`). It is optional; `ensureStory()` in
-  `src/sim/Story.ts` is the migration and runs on every access. `Save.ts` needs no change.
+- Story state is `Character.story` (`StorySave` in `src/types.ts`): each hero has their own, and a new hero
+  starts fresh (owner). It is optional; `ensureStory()` in `src/sim/Story.ts` repairs it on every access.
+  The camp's news of the last map cleared or hero lost is `AccountSave.news`, shared. Save v4 copied the
+  old shared block onto every hero who already existed.
 - `src/ui/StoryOverlay.ts` holds `installStory()` (called once from `main.ts`), spoken lines (`say`) and cards
   (`showCard`). `src/ui/JournalPanel.ts` is the journal (J; was a duplicate of L). Other modules add tabs with
   `addJournalSection`.

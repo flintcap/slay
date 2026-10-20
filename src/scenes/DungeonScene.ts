@@ -2336,7 +2336,8 @@ export class DungeonScene extends GameScene {
     this.scene.add(model);
     // The loot filter hides what you told it to. Hidden drops make no sound
     // and draw nothing until Shift is held.
-    const hidden = !passesFilter(item, lootFilterOf(save.account), this.player?.character.classId);
+    const hero = this.player?.character ?? save.account.current;
+    const hidden = !!hero && !passesFilter(item, lootFilterOf(hero), hero.classId);
     if (hidden) model.visible = false;
     const entry = { item, gold: 0, root: model, pos, bornAt: this.runTime, hidden };
     this.loot.push(entry);

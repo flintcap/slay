@@ -41,7 +41,7 @@ try {
   // Renn's first contract: taken, done below, waiting to be handed in.
   const setup = await page.evaluate(async () => {
     const S = window.SLAY;
-    const st = S.save.account.story;
+    const st = S.save.account.current.story;
     st.chains.renn = { step: 0, state: 'ready' };
     S.events.emit('ui:refresh', {});
     const s = S.engine.currentScene;

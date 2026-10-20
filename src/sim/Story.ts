@@ -1,17 +1,18 @@
 /**
  * SLAY — the story runtime.
  *
- * Owns `AccountSave.story`: what the account has learned, who it has talked
+ * Owns `Character.story`: what the hero has learned, who they have talked
  * to, which contracts are open. Reads the text in `data/story/` and decides
  * what applies right now. Presentation lives in `ui/StoryOverlay.ts`,
  * `ui/DialoguePanel.ts` and `ui/JournalPanel.ts`; nothing here touches the DOM.
  *
- * Story state is account-wide on purpose. A character dies; the town's
- * business does not. The next delver inherits the open contracts, the
- * journal and the Listener's opinion of the family.
+ * Story state is per hero (owner): every new hero starts the contracts and
+ * the journal from the first night. Only the camp's news of the last map
+ * cleared or hero lost (`AccountSave.news`) is shared, so the camp still
+ * speaks of the one who died.
  */
 
-import type { AccountSave, Character, StorySave } from '../types';
+import type { Character, StorySave } from '../types';
 import { save } from '../core/Save';
 import type { Chapter, LoreNote, Line, NpcDef, NpcId, Topic, When } from '../data/story/types';
 import { NOTES } from '../data/story/notes';
@@ -49,8 +50,8 @@ const strings = (v: unknown): string[] =>
  * returns it. Safe to call on every access: a sound block passes through
  * untouched.
  */
-export function ensureStory(acct: AccountSave): StorySave {
-  const raw = acct.story as Partial<StorySave> | undefined;
+export function ensureStory(owner: { story?: StorySave }): StorySave {
+  const raw = owner.story as Partial<StorySave> | undefined;
   if (raw && raw.v === STORY_VERSION && Array.isArray(raw.chapters) && raw.chains && raw.talked) {
     return raw as StorySave;
   }
@@ -76,15 +77,17 @@ export function ensureStory(acct: AccountSave): StorySave {
         };
       }
     }
-    if (raw.last && typeof raw.last === 'object') s.last = raw.last;
   }
-  acct.story = s;
+  owner.story = s;
   return s;
 }
 
-/** The live account's story block. */
+/** Stands in when no hero is in play (the menu). Never saved. */
+const idle: { story?: StorySave } = {};
+
+/** The live hero's story block. */
 export function story(): StorySave {
-  return ensureStory(save.account);
+  return ensureStory(current() ?? idle);
 }
 
 /** Persists after a story change. Never throws: story must not break the game. */
@@ -142,7 +145,7 @@ export function holds(w: When | undefined, npcId?: string): boolean {
     if (w.first === spoke) return false;
   }
   if (w.after) {
-    const last = s.last;
+    const last = acct.news;
     if (!last || last.kind !== w.after) return false;
     // Only news if it happened since this person last spoke to you.
     if (npcId && (s.talked[npcId] ?? 0) >= last.at) return false;
@@ -164,7 +167,7 @@ export function fillStory(text: string): string {
     best: String(acct.bestDepth),
     fallen: String(acct.fallen.length),
     lastFallen,
-    lastDepth: String(lastF?.depth ?? story().last?.depth ?? 0),
+    lastDepth: String(lastF?.depth ?? acct.news?.depth ?? 0),
   };
   return text.replace(/\{(\w+)\}/g, (whole, k: string) => vars[k] ?? whole);
 }
@@ -226,12 +229,12 @@ export function nextChapter(): Chapter | null {
 
 export function noteRunCleared(depth: number): void {
   const c = current();
-  story().last = { kind: 'cleared', at: Date.now(), depth, name: c?.name ?? '' };
+  save.account.news = { kind: 'cleared', at: Date.now(), depth, name: c?.name ?? '' };
   persist();
 }
 
 export function noteDeath(depth: number, name: string): void {
-  story().last = { kind: 'died', at: Date.now(), depth, name };
+  save.account.news = { kind: 'died', at: Date.now(), depth, name };
   persist();
 }
 
@@ -426,7 +429,7 @@ export function hearTopic(npc: NpcDef, t: Topic): string[] {
  */
 export function arrivalLine(): { npc: NpcDef; text: string } | null {
   const s = story();
-  const stamp = s.last?.at ?? 0;
+  const stamp = save.account.news?.at ?? 0;
   const order: NpcId[] = ['renn', 'gilder', 'marrow', 'listener', 'hesk', 'kale', 'vell', 'corvane', 'wenna'];
   for (const id of order) {
     const npc = NPCS[id];

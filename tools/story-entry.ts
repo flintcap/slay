@@ -5,7 +5,7 @@
  * The sections grow with the story: chapters, people, contracts, bosses,
  * notes and flavour each get their own block below.
  */
-import type { AccountSave } from '../src/types';
+import type { AccountSave, Character } from '../src/types';
 import { save } from '../src/core/Save';
 import { CHAPTERS, chaptersUpTo, deepLedger, isLedgerTier, chapterById } from '../src/data/story/premise';
 import {
@@ -68,6 +68,16 @@ const fail = (msg: string): void => {
 };
 const section = (name: string): void => console.log(`\n== ${name}`);
 
+// Story state is the live hero's. The checks play as one hero throughout.
+const tester = createCharacter('Checker', 'warden', new Random(3));
+save.account.current = tester;
+const hero = (): Character => save.account.current!;
+/** A clean slate: the hero's story and the camp's news both gone. */
+function resetStory(): void {
+  delete hero().story;
+  delete save.account.news;
+}
+
 /** House style for anything a player reads. */
 function lintText(where: string, text: string): void {
   if (!text || !text.trim()) fail(`${where}: empty text`);
@@ -117,32 +127,33 @@ section('Chapters');
 section('Save migration');
 
 {
-  const acct = save.account as AccountSave;
+  // The story is the live hero's: every check below plays as this one.
+  const h = hero();
   // A save from before the story existed.
-  delete acct.story;
-  const s = ensureStory(acct);
-  if (!acct.story || s.chapters.length !== 0) fail('migration: missing story block not created clean');
+  delete h.story;
+  const s = ensureStory(h);
+  if (!h.story || s.chapters.length !== 0) fail('migration: missing story block not created clean');
 
   // A damaged block keeps what it can.
-  (acct as unknown as { story: unknown }).story = {
+  (h as unknown as { story: unknown }).story = {
     chapters: ['ch.first', 7, 'ch.first'],
     chains: { 'x': { step: 2, state: 'nonsense' }, 'y': { step: -1 } },
     talked: { hesk: 5, bad: 'x' },
   };
-  const r = ensureStory(acct);
+  const r = ensureStory(h);
   if (r.chapters.length !== 1) fail('migration: chapters not cleaned');
   if (r.chains.x?.state !== 'idle' || r.chains.y) fail('migration: chains not cleaned');
   if (r.talked.hesk !== 5 || 'bad' in r.talked) fail('migration: talked not cleaned');
-  if (ensureStory(acct) !== r) fail('migration: a sound block should pass through untouched');
+  if (ensureStory(h) !== r) fail('migration: a sound block should pass through untouched');
 
-  // Revealing is once per account.
-  delete acct.story;
+  // Revealing is once per hero.
+  resetStory();
   const first = revealChaptersUpTo(5);
   const again = revealChaptersUpTo(5);
   if (first.length !== CHAPTERS.filter((c) => c.depth <= 5).length) fail('reveal: wrong count at tier 5');
   if (again.length !== 0) fail('reveal: chapters revealed twice');
   if (story().chapters.length !== first.length) fail('reveal: not recorded');
-  delete acct.story;
+  resetStory();
 }
 
 // ---------------------------------------------------------------------------
@@ -210,8 +221,7 @@ section('People');
   }
 
   // Play a conversation through: first meeting, then news after a death.
-  const acct = save.account as AccountSave;
-  delete acct.story;
+  resetStory();
   for (const id of NPC_IDS) {
     const first = greet(NPCS[id]);
     const expected = NPCS[id].lines.find((l) => l.when?.first)!;
@@ -220,14 +230,14 @@ section('People');
     if (second === first) fail(`npc ${id}: said the first-meeting line twice`);
   }
   noteDeath(4, 'Tester');
-  story().last!.at = Date.now() + 1000;
+  save.account.news!.at = Date.now() + 1000;
   for (const id of NPC_IDS) {
     if (!hasNews(NPCS[id])) fail(`npc ${id}: no news after a death`);
     const line = greet(NPCS[id]);
     const died = NPCS[id].lines.find((l) => l.when?.after === 'died')!;
     if (!line.startsWith(fillStory(died.text).slice(0, 10))) fail(`npc ${id}: after a death said "${line}"`);
   }
-  delete acct.story;
+  resetStory();
   console.log(`${NPC_IDS.length} people, ${lineIds.size} lines`);
 }
 
@@ -311,7 +321,6 @@ setMonsterCatalog({
   }
 
   // Play every step through the real world generator with the director in.
-  const acct = save.account as AccountSave;
   installChains();
   let runs = 0;
   for (const chain of CHAINS) {
@@ -319,7 +328,7 @@ setMonsterCatalog({
       const where = `chain ${chain.id}[${i}] ${step.title}`;
       for (const offset of [0, 7]) {
         for (let seed = 1; seed <= 4; seed++) {
-          delete acct.story;
+          resetStory();
           story().chains[chain.id] = { step: i, state: 'active' };
           const depth = step.minDepth + offset;
           const run = generateRun(depth, 0x5eed + seed * 7919 + i * 31, 'warden');
@@ -363,7 +372,7 @@ setMonsterCatalog({
       }
     });
   }
-  delete acct.story;
+  resetStory();
   // Without an open contract the generator must behave exactly as before.
   const a = generateRun(6, 1234, 'warden');
   if (carriedContract()) fail('director: a run with no open contract still carried one');
@@ -378,7 +387,6 @@ setMonsterCatalog({
   g.window ??= { setTimeout: () => 0, clearTimeout: () => undefined };
   g.localStorage ??= { getItem: () => null, setItem: () => undefined };
   const acct = save.account as AccountSave;
-  delete acct.story;
   const c = createCharacter('Tester', 'warden', new Random(7));
   save.setCharacter(c);
   const renn = NPCS.renn;
@@ -408,8 +416,14 @@ setMonsterCatalog({
     const second = offerFor(renn);
     if (!second || second.chain.id !== 'treeline' || second.index !== 0) fail('loop: Renn does not offer her second contract once the first is done');
   }
-  save.setCharacter(null);
-  delete acct.story;
+  // A new hero starts every contract again.
+  const other = createCharacter('Second', 'mage', new Random(8));
+  save.setCharacter(other);
+  if (stepState(CHAINS.find((ch) => ch.id === 'renn')!, 0) !== 'idle' || story().chapters.length) fail('per hero: a new hero inherited the last one\'s contracts');
+  save.setCharacter(c);
+  if (stepState(CHAINS.find((ch) => ch.id === 'renn')!, 0) !== 'done') fail('per hero: switching back lost the contracts');
+  save.account.current = tester;
+  resetStory();
 }
 
 for (const [where, ref] of chainRefs) {
@@ -467,8 +481,7 @@ section('Bosses');
   if (tauntMood(0.1) !== 'ahead' || tauntMood(0.5) !== 'even' || tauntMood(0.95) !== 'behind') fail('tauntMood: wrong mood');
 
   // State is once per account and feeds the conditions people's lines use.
-  const acct = save.account as AccountSave;
-  delete acct.story;
+  resetStory();
   const b0 = BOSSES[0]!;
   if (!noteBossMet(b0.id) || noteBossMet(b0.id)) fail('noteBossMet: not once-only');
   if (holds({ slain: b0.id })) fail('slain condition holds before the kill');
@@ -476,7 +489,7 @@ section('Bosses');
   if (!holds({ slain: b0.id }) || holds({ notSlain: b0.id })) fail('slain condition does not read the kill');
   if (!noteBossFloor(b0.id) || noteBossFloor(b0.id)) fail('noteBossFloor: not once-only');
   if (!story().notes.includes(floorNoteId(b0.id))) fail('floor lore not recorded');
-  delete acct.story;
+  resetStory();
   console.log(`${BOSSES.length} bosses, every one with a voice and floor lore`);
 }
 
@@ -524,8 +537,7 @@ section('Notes and places');
 
   // Every page can really be found: searches turn up pages until there are
   // none left, and each turns up only where and when it belongs.
-  const acct = save.account as AccountSave;
-  delete acct.story;
+  resetStory();
   for (const n of NOTES) {
     const biome = n.biome ?? 'crypt';
     if (!notesFindable(n.minDepth, biome).includes(n)) fail(`note ${n.id}: not findable at its own tier`);
@@ -538,16 +550,16 @@ section('Notes and places');
   const missing = NOTES.filter((n) => !story().notes.includes(n.id));
   if (missing.length) fail(`notes never found by searching: ${missing.map((n) => n.id).join(', ')}`);
   if (searchForNote('fallen', 200, 'crypt')) fail('a search found a page when none were left');
-  delete acct.story;
+  resetStory();
   // Chance stays a chance: a chest is not a guaranteed page.
   let hits = 0;
   for (let i = 0; i < 400; i++) {
     if (searchForNote('chest', 20, 'crypt')) hits++;
-    delete acct.story;
+    resetStory();
   }
   if (hits < 20 || hits > 100) fail(`chests turned up a page ${hits} times in 400; expected about 48`);
   if (!enterBiome('crypt') || enterBiome('crypt')) fail('enterBiome: not once-only');
-  delete acct.story;
+  resetStory();
 
   // Every floor of every biome offers something to search: a chest at least.
   for (const b of BIOMES) {

@@ -74,6 +74,7 @@ function sameSettings(a: LootFilterSettings, b: LootFilterSettings): boolean {
 export class LootFilterPanel {
   readonly panel: Panel;
   private body: HTMLDivElement;
+  private idle: { lootFilter?: LootFilterSettings } = {};
 
   constructor() {
     this.panel = new Panel({
@@ -98,8 +99,9 @@ export class LootFilterPanel {
     return this.panel.isOpen;
   }
 
+  /** The live hero's filter. With no hero in play, a default nobody keeps. */
   private settings(): LootFilterSettings {
-    return lootFilterOf(save.account);
+    return lootFilterOf(save.account.current ?? this.idle);
   }
 
   /**
@@ -280,7 +282,7 @@ export class LootFilterPanel {
         small: true,
         variant: 'ghost',
         onClick: () => {
-          save.account.lootFilter = structuredClone(DEFAULT_LOOT_FILTER);
+          (save.account.current ?? this.idle).lootFilter = structuredClone(DEFAULT_LOOT_FILTER);
           save.touch();
           this.render();
         },

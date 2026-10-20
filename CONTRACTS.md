@@ -1239,7 +1239,7 @@ and `onKill(enemy)` when loot is granted.
 ## `src/sim/LootFilter.ts` — owned by DEPTH
 
 ```ts
-export function lootFilterOf(account: AccountSave): LootFilterSettings;
+export function lootFilterOf(owner: { lootFilter?: LootFilterSettings }): LootFilterSettings; // the hero's own (Character.lootFilter)
 export function passesFilter(item: Item, f: LootFilterSettings, classId?: CharClassId): boolean;
 ```
 

@@ -201,11 +201,11 @@ const drivers = {
     await closePanels();
     // Give every tab something to show: a few chapters, pages, places, bosses
     // and a contract in hand. Only the in-memory save; nothing is written.
-    // Opening the journal once creates the story save if this account has none.
+    // Opening the journal once creates the story save if this hero has none.
     await page.evaluate(() => window.SLAY_STORY.journal('descent'));
     await page.evaluate(() => {
       window.SLAY.events.emit('ui:close', { panel: 'journal' });
-      const st = window.SLAY.save.account.story;
+      const st = window.SLAY.save.account.current?.story;
       if (!st) return;
       const add = (list, ids) => ids.forEach((id) => list.includes(id) || list.push(id));
       add(st.chapters, ['ch.stairhead', 'ch.first', 'ch.tenant']);
