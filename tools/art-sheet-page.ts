@@ -153,6 +153,10 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
   async skillsC() {
     return skillSheet(SKILL_TREES.slice(12));
   },
+  /** Every Rogue skill at 96px and at hotbar size, named, tree by tree. */
+  async rogue() {
+    return classSheet('shadowblade');
+  },
 
   /** Every status chip at 48px and at the HUD's 17px, then every affix badge at 32px and 14px. */
   async statuses() {
@@ -191,7 +195,7 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     const { MONSTER_AFFIXES } = await import('../src/data/monsterAffixes');
     const ids = ['desecrator', 'fire_chains', 'bulwark', 'splitter', 'hexing', 'adaptive', 'lancer'];
     const list = ids.map((b) => MONSTER_AFFIXES.find((a) => a.behavior === b)!).filter(Boolean);
-    const skills = ['harvest', 'execute', 'bone-spear', 'knight', 'golem', 'cloak', 'shroud'].map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
+    const skills = ['harvest', 'rg-assassinate', 'bone-spear', 'knight', 'golem', 'rg-veil', 'shroud'].map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
     const S = 140;
     const COLS = 7;
     const { c, g } = sheet(COLS * S, 2 * (S + 30));
@@ -220,7 +224,7 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
 
   /** A handful of skill icons at native size, to judge the brushwork. */
   async skillcloseup() {
-    const ids = ['bash', 'nova-fire', 'bone-spear', 'chain', 'fang', 'rain', 'mastery-fire', 'cleave', 'blizzard', 'zero', 'smoke-bomb', 'harvest'];
+    const ids = ['bash', 'nova-fire', 'bone-spear', 'chain', 'rg-adderskiss', 'rain', 'mastery-fire', 'cleave', 'blizzard', 'zero', 'rg-smokebomb', 'harvest'];
     const list = ids.map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
     const S = 192;
     const COLS = 4;
@@ -475,6 +479,38 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     return c;
   },
 };
+
+/** Every skill of one class at 96px with a 40px copy under it, named, one block per tree. */
+async function classSheet(classId: string): Promise<HTMLCanvasElement> {
+  const trees = SKILL_TREES.filter((t) => t.classId === classId);
+  const per = trees.map((t) => SKILLS.filter((s) => s.treeId === t.id));
+  const COLS = 9;
+  const CW = 112;
+  const RH = 96 + 40 + 20;
+  const rows = per.reduce((n, l) => n + Math.ceil(l.length / COLS), 0);
+  const { c, g } = sheet(COLS * CW + 8, rows * RH + trees.length * 16 + 8);
+  let y = 4;
+  for (let ti = 0; ti < trees.length; ti++) {
+    const list = per[ti]!;
+    g.fillStyle = '#d8c690';
+    g.textAlign = 'left';
+    g.fillText(trees[ti]!.name, 6, y);
+    g.textAlign = 'center';
+    y += 14;
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i]!;
+      const im = await img(IC.skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon));
+      const x = (i % COLS) * CW + 8;
+      const yy = y + Math.floor(i / COLS) * RH;
+      g.drawImage(im, x, yy, 96, 96);
+      g.drawImage(im, x + 28, yy + 98, 40, 40);
+      g.fillStyle = INK;
+      g.fillText(String(s.name).slice(0, 18), x + 48, yy + 140);
+    }
+    y += Math.ceil(list.length / COLS) * RH + 2;
+  }
+  return c;
+}
 
 /** Every skill in the given trees at hotbar size (48px): ready, cooldown, locked. */
 async function skillSheet(trees: typeof SKILL_TREES): Promise<HTMLCanvasElement> {

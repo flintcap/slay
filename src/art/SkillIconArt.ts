@@ -18,6 +18,7 @@
  * class's own colour. Passives sit smaller inside a hexagonal plate.
  */
 import type { DamageType } from '../types';
+import { ROGUE_ICONS } from './icons/rogueIcons';
 import { SHIFTER_ICONS } from './icons/shifterIcons';
 import { KNIGHT_ICONS } from './icons/knightIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
@@ -90,6 +91,19 @@ const CLASS_LOOK: Record<string, ClassLook> = {
 
 const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8, ground: 0x1c1c22 };
 
+/**
+ * Classes whose trees each carry their own light and ground, in tree order.
+ * The Rogue: Venom acid green, Shadowcraft violet-black smoke with a pale
+ * green edge, Bladework bright steel in the class green.
+ */
+const TREE_LOOK: Record<string, readonly ClassLook[]> = {
+  shadowblade: [
+    { ...CLASS_LOOK.shadowblade!, light: 0x8fd84a, ground: 0x0e1a08 },
+    { ...CLASS_LOOK.shadowblade!, light: 0xa6e8c4, ground: 0x160f20 },
+    { ...CLASS_LOOK.shadowblade!, light: 0x6ad8a0, ground: 0x101820 },
+  ],
+};
+
 // ---------------------------------------------------------------------------
 // Icon name -> pictogram and modifier
 // ---------------------------------------------------------------------------
@@ -120,19 +134,8 @@ const ICON_MAP: Record<string, string> = {
   fireball: 'orb^speed', inferno: 'flame^burst', stream: 'beam', kindle: 'flame', blast: 'nova', eruption: 'flame^rise', burst: 'nova^burst',
   shimmer: 'wave', 'rain-fire': 'flame^rain', core: 'orb^aura', dragon: 'wing:1^burst', 'chain-fire': 'flame^chain', nuke: 'sun',
   'soul-fire': 'skull:2',
-  // Rogue — venom
-  fang: 'fang', vial: 'vial', flask: 'vial:1', dart: 'arrow^drip', acid: 'drop:1', 'cloud-green': 'cloud', nerve: 'hand^drip',
-  garden: 'leaf:1', 'throw-vial': 'vial:1^speed', syringe: 'dagger^drip', 'burst-green': 'nova', trail: 'footprints',
-  'heart-green': 'heart', lotus: 'leaf:1^aura', antidote: 'vial^aura', apex: 'star^mastery', serpent: 'serpent',
-  'mastery-poison': 'drop^mastery',
-  // Rogue — shadowcraft
-  step: 'footprints', cloak: 'figure^aura', eye: 'eye', 'smoke-bomb': 'cloud^burst', clone: 'figure:1', boot: 'boot',
-  ambush: 'dagger^impact', pact: 'hand^aura', vanish: 'figure^speed', legion: 'figure:2', silhouette: 'figure', nightfall: 'moon',
-  'mirror-dark': 'mirror', 'void-walk': 'rift', gloom: 'cloud', unseen: 'eye:2', execute: 'scythe', 'mastery-shadow': 'moon^mastery',
-  // Rogue — bladework
-  cut: 'sword^speed', 'mastery-blade': 'dagger^mastery', fan: 'dagger:2', tendon: 'boot^drip', aim: 'target:1', double: 'dagger:1',
-  chink: 'crack', 'whirl-dash': 'dagger^spin', knives: 'dagger:2^spin', edge: 'sword', 'knife-halo': 'dagger:2^aura', lethal: 'skull',
-  phantom: 'ghost', finish: 'skull^impact', thousand: 'dagger:2^nova', waltz: 'dagger:1^spin', parry: 'sword^cross',
+  // The Rogue paints his own set (`icons/rogueIcons.ts`); these stay for the Ranger's skills that share the names.
+  vial: 'vial', apex: 'star^mastery', eye: 'eye', fan: 'dagger:2',
   // Mage — lightning
   spark: 'bolt', 'mastery-lightning': 'bolt^mastery', 'nova-shock': 'bolt^nova', chain: 'bolt^chain', clap: 'hand^nova',
   conduct: 'coil', 'strike-down': 'cloud:1', fork: 'bolt^multi', orb: 'orb', storm: 'cloud:1^rain', fury: 'bolt^burst',
@@ -186,6 +189,7 @@ const ICON_MAP: Record<string, string> = {
   bounce: 'arrow^chain', quiver: 'quiver', multi: 'arrow:2^multi',
   ...SHIFTER_ICONS,
   ...KNIGHT_ICONS,
+  ...ROGUE_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */
@@ -406,7 +410,7 @@ function drawGlyph(x: Ctx, g: Glyph, t: Tone, v: number, cx: number, cy: number,
 
 /** Paints a skill icon onto a clear 128px context. */
 export function paintSkillIcon(x: Ctx, spec: SkillIconSpec): void {
-  const look = CLASS_LOOK[spec.classId ?? ''] ?? NEUTRAL;
+  const look = TREE_LOOK[spec.classId ?? '']?.[spec.treeIndex ?? 0] ?? CLASS_LOOK[spec.classId ?? ''] ?? NEUTRAL;
   const elem = spec.damageType && spec.damageType !== 'physical' ? ELEMENT_TONE[spec.damageType] : null;
   const tone = elem ?? toneOf(look.trees?.[spec.treeIndex ?? 0] ?? look.light);
   const h = hashString(spec.skillId);

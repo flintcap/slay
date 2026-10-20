@@ -44,6 +44,7 @@ import {
   starP,
 } from './Paint';
 import { PALADIN_GLYPHS } from './PaladinGlyphs';
+import { ROGUE_GLYPHS } from './RogueGlyphs';
 import { SHIFTER_GLYPHS } from './ShifterGlyphs';
 import { KNIGHT_GLYPHS } from './KnightGlyphs';
 
@@ -1624,6 +1625,7 @@ export const GLYPHS: Record<string, Glyph> = {
   ...PALADIN_GLYPHS,
   ...SHIFTER_GLYPHS,
   ...KNIGHT_GLYPHS,
+  ...ROGUE_GLYPHS,
 };
 
 export { obj as paintObject, energy as paintEnergy, ray as paintRay };
