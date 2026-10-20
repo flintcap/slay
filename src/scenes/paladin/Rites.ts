@@ -59,7 +59,7 @@ export interface RiteCast {
   num: (key: string, dflt: number) => number;
   school: School;
   color: number;
-  /** Seconds one weapon swing takes at the hero's attack speed. */
+  /** Seconds one use takes at the hero's attack speed (the skill's own `attackTime` swings, `sim/Speed.ts`). */
   attackTime: number;
   hitSound: string | null;
 }
@@ -76,8 +76,6 @@ interface Rite {
   step?: 'flank' | 'behind';
   /** The body clip until the skill has a gesture of its own. */
   clip: string;
-  /** Action length as a multiple of one swing. */
-  time: number;
   kind: HitKind;
   /** How far the blow reaches from the hero, before the target's body. */
   reach: number;
@@ -174,7 +172,6 @@ const RITES: Record<string, Rite> = {
   tollingBlow: {
     grip: 'blunt',
     clip: 'slam',
-    time: 1.25,
     kind: 'heavy',
     reach: 2.6,
     land(r, host, t) {
@@ -185,7 +182,6 @@ const RITES: Record<string, Rite> = {
   shieldCrack: {
     grip: 'shield',
     clip: 'lunge',
-    time: 0.9,
     kind: 'heavy',
     reach: 2.2,
     land(r, host, t) {
@@ -196,7 +192,6 @@ const RITES: Record<string, Rite> = {
   anvilfall: {
     grip: 'blunt',
     clip: 'slam',
-    time: 1.55,
     kind: 'heavy',
     reach: 2.7,
     land(r, host, t) {
@@ -207,7 +202,6 @@ const RITES: Record<string, Rite> = {
   doorbreaker: {
     grip: 'shield',
     clip: 'lunge',
-    time: 1.1,
     kind: 'heavy',
     reach: 2.2,
     rush: 9,
@@ -219,7 +213,6 @@ const RITES: Record<string, Rite> = {
   knell: {
     grip: 'blunt',
     clip: 'slam',
-    time: 1.35,
     kind: 'heavy',
     reach: 2.6,
     land(r, host, t) {
@@ -235,7 +228,6 @@ const RITES: Record<string, Rite> = {
   pilgrimsMaul: {
     grip: 'blunt',
     clip: 'slam',
-    time: 1.7,
     kind: 'heavy',
     reach: 2.7,
     land(r, host, t) {
@@ -247,7 +239,6 @@ const RITES: Record<string, Rite> = {
   barTheDoor: {
     grip: 'shield',
     clip: 'cast',
-    time: 0.8,
     kind: 'melee',
     reach: 0,
     self: true,
@@ -260,7 +251,6 @@ const RITES: Record<string, Rite> = {
   hurlCenser: {
     grip: 'any',
     clip: 'hurl',
-    time: 1.1,
     kind: 'heavy',
     reach: 14,
     land(r, host, t) {
@@ -279,7 +269,6 @@ const RITES: Record<string, Rite> = {
   relicBash: {
     grip: 'shield',
     clip: 'lunge',
-    time: 1.0,
     kind: 'heavy',
     reach: 2.2,
     land(r, host, t) {
@@ -293,7 +282,6 @@ const RITES: Record<string, Rite> = {
   ironVerdict: {
     grip: 'blunt',
     clip: 'slam',
-    time: 2.0,
     kind: 'heavy',
     reach: 2.8,
     land(r, host, t) {
@@ -307,7 +295,6 @@ const RITES: Record<string, Rite> = {
   oathCut: {
     grip: 'blade',
     clip: 'thrust',
-    time: 0.8,
     kind: 'melee',
     reach: 2.5,
     land(r, host, t) {
@@ -318,7 +305,6 @@ const RITES: Record<string, Rite> = {
   turnTheBlade: {
     grip: 'blade',
     clip: 'thrust',
-    time: 0.7,
     kind: 'heavy',
     reach: 2.6,
     self: true,
@@ -338,7 +324,6 @@ const RITES: Record<string, Rite> = {
   twinVerse: {
     grip: 'blade',
     clip: 'attack2',
-    time: 1.0,
     kind: 'melee',
     reach: 2.5,
     land(r, host, t) {
@@ -349,7 +334,6 @@ const RITES: Record<string, Rite> = {
   feint: {
     grip: 'blade',
     clip: 'thrust',
-    time: 0.9,
     kind: 'melee',
     reach: 2.5,
     step: 'flank',
@@ -361,7 +345,6 @@ const RITES: Record<string, Rite> = {
   litany: {
     grip: 'blade',
     clip: 'attack1',
-    time: 1.5,
     kind: 'melee',
     reach: 2.5,
     land(r, host, t) {
@@ -372,7 +355,6 @@ const RITES: Record<string, Rite> = {
   confessionThrust: {
     grip: 'blade',
     clip: 'lunge',
-    time: 1.1,
     kind: 'heavy',
     reach: 2.5,
     rush: 5,
@@ -386,7 +368,6 @@ const RITES: Record<string, Rite> = {
   crosswise: {
     grip: 'blade',
     clip: 'attack2',
-    time: 1.1,
     kind: 'melee',
     reach: 2.5,
     land(r, host, t) {
@@ -397,7 +378,6 @@ const RITES: Record<string, Rite> = {
   mercyStroke: {
     grip: 'blade',
     clip: 'thrust',
-    time: 1.0,
     kind: 'heavy',
     reach: 2.5,
     land(r, host, t) {
@@ -412,7 +392,6 @@ const RITES: Record<string, Rite> = {
   sevenfold: {
     grip: 'blade',
     clip: 'attack1',
-    time: 1.6,
     kind: 'melee',
     reach: 2.5,
     land(r, host, t) {
@@ -425,7 +404,6 @@ const RITES: Record<string, Rite> = {
   lastRites: {
     grip: 'blade',
     clip: 'lunge',
-    time: 1.3,
     kind: 'heavy',
     reach: 2.5,
     step: 'behind',
@@ -588,7 +566,7 @@ export function castRite(host: RiteHost, r: RiteCast): void {
   const target = rite.self ? null : pickOne(p, r.aim, r.enemies, r.boss, rush ?? reach);
   if (target) p.faceTowards(target.root.position.x, target.root.position.z);
   if (!rite.self) r.landAt = target ? target.root.position.clone().setY(0) : inReach(p, r.aim, reach);
-  p.beginAction(skillAction(r.def.id) ?? rite.clip, r.attackTime * rite.time);
+  p.beginAction(skillAction(r.def.id) ?? rite.clip, r.attackTime);
   const id = p.actionId;
   if (target && rush) rushTo(host, r, target, p.contactIn * 0.9);
   if (target && rite.step) stepTo(host, r, target, rite.step, p.contactIn * 0.8);

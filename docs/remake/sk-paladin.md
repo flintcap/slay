@@ -64,7 +64,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. Speed audit (sk-paladin: speed audit) (owner: before any skill is changed). Under skillcore's model, write a table
   under "Notes for resume": the Paladin's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -136,6 +136,58 @@ Waiting for skillcore. When resumed:
    skill, then Hurl the Censer's censer and The Last Hour's bell.
 
 ## Notes for resume
+
+### Milestone 3: speed audit (read from the code after skillcore, 0616b06)
+
+How it works now (`sim/Speed.ts`): a rite is an attack (family `rite`),
+`pace.attack` = its `attackTime` swings of the weapon in hand; a vigil is a
+spell (`vigil` is not in `CAST_BASE`), `pace.cast` = its `castTime`
+seconds. Before this milestone `Rites.ts` and `Vigils.ts` multiplied their
+own `time` factor onto one swing or one 0.5 s cast; those factors are gone
+and each skill carries its own `attackTime` / `castTime` in `paladin.ts`.
+Speed gear: summed % through `100p/(p+100)`, so x1.5 at +100% and never
+past x2; the attack ceiling is 3 a second (0.33 s), the cast ceiling 3.4 a
+second (0.29 s). A rush or step adds its travel by distance
+(`travelTime`, 14 m/s rush, 12 lunge, 10 step) before the blow. Columns:
+seconds per use with no gear / at x2 (the limit). Weapon: 1h mace 1.05
+(Mace) to 1.2 (Club); sword 1.4 (Short Sword; Broad 1.2, Rapier 1.55);
+2h mace 1.00-1.08; 2h sword 1.08; spell 0.5 s.
+
+| Use | Was | Now | No gear | Limit | Reference feel | Mark |
+| --- | --- | --- | --- | --- | --- | --- |
+| Basic, 1h mace | 1 swing | same | 0.83-0.95 | 0.42-0.48 | heavy one-hander, 0.8-1 s | right |
+| Basic, scepter | 1 swing | same | 0.74-0.95 | 0.37-0.48 | as a mace | right |
+| Basic, 1h sword | 1 swing | same | 0.65-0.83 | 0.33-0.42 | quick blade, 0.6-0.8 s | right |
+| Basic, 2h mace / sword | 1 swing | same | 0.93-1.0 | 0.46-0.5 | big two-hander, about 1 s | right |
+| Tolling Blow (mace) | 1.25 | 1.0 | 0.95 | 0.48 | the starter, a plain heavy blow | too slow, fixed |
+| Shield Crack | 0.9 | 0.9 | 0.86 | 0.43 | a quick rim strike | right |
+| Anvilfall | 1.55 | 1.3 | 1.24 | 0.62 | big two-hand drop | too slow, fixed |
+| Doorbreaker | 1.1, 9 m in 0.3 s (30 m/s) | run by distance + 0.7 | 0.15-0.6 run + 0.67 | run + 0.33 | a charge you can watch | too fast (a blink), fixed |
+| Knell | 1.35 | 1.3 | 1.24 | 0.62 | a heavy side blow | right |
+| Pilgrim's Maul | 1.7 | 1.6 | 1.52 | 0.76 | the slow, long coil | right |
+| Bar the Door | 0.8 | 0.6 | 0.57 | 0.33 | setting a shield, a beat | slightly slow, fixed |
+| Hurl the Censer | 1.1, left on the press | 0.9, leaves on the throw frame | 0.86 | 0.43 | an underarm throw | slightly slow, fixed |
+| Relic Bash | 1.0 | 1.0 | 0.95 | 0.48 | a shield punch | right |
+| Iron Verdict | 2.0 | 1.8 | 1.71 | 0.86 | the biggest single blow | slightly slow, fixed |
+| Oath Cut (sword) | 0.8 | 0.8 | 0.57 | 0.33 | a short thrust from guard | right |
+| Turn the Blade | 0.7, answer had no swing | 0.6 guard, 0.8 answer | 0.43 + 0.57 | 0.33 + 0.33 | a parry then a riposte | answer fixed |
+| Twin Verse | 1.0, gap 0.16 s fixed | 1.2, cuts on the gesture | 0.86 | 0.43 | two real cuts | too fast, fixed |
+| Feint | 0.9, 5-hop slide | 1.0 + a 10 m/s step | 0.2 step + 0.71 | step + 0.36 | a side step and a cut | slide fixed |
+| Litany | 1.5, gaps 0.12 s fixed | 1.6, cuts on the gesture | 1.14 | 0.57 | five cuts, one prayer | right, gaps fixed |
+| Confession Thrust | 1.1, 5 m in 0.23 s (22 m/s) | 12 m/s lunge + 0.8 | 0.15-0.35 + 0.57 | lunge + 0.33 | a fencer's lunge | too fast, fixed |
+| Crosswise | 1.1, gap 0.2 s fixed | 1.3, cuts on the gesture | 0.93 | 0.46 | a sweep and a downcut | too fast, fixed |
+| Mercy Stroke | 1.0 | 1.0 | 0.71 | 0.36 | a stab | right |
+| Sevenfold | 1.6, gaps 0.09 s fixed | 1.8, cuts on the gesture | 1.29 | 0.64 | seven thrusts | right, gaps fixed |
+| Last Rites | 1.3, 5-hop slide | 1.1 + a 10 m/s step round | 0.3-0.5 step + 0.79 | step + 0.39 | a step round and a stab | slide fixed |
+| Vigils (8 rings) | 0.5 x 1.2 | castTime 0.6 | 0.6 | 0.3 | a short calm rite | right |
+| Anoint | 0.5 x 1.1 | 0.55 | 0.55 | 0.29 | a quick buff | right |
+| Martyr's Vow | 0.5 x 1.2 | 0.6 | 0.6 | 0.3 | a quick buff | right |
+| Censure | 0.5, landed on the press | 0.5, lands on the gesture | 0.5 | 0.29 | a pointed curse | right |
+| The Last Hour | 0.5 x 1.3, bell called on the press | 0.8, called on the gesture, falls 0.7 s | 0.8 (+0.7 fall) | 0.4 | a long call | slightly fast, fixed |
+
+Damage per hit is untouched everywhere. Tolling Blow, Anvilfall and Iron
+Verdict are quicker than before; Twin Verse, Crosswise, Litany and
+Sevenfold are a little slower because their cuts now follow the swing.
 
 ### Milestone 1: skill audit (read from the code on 2026-10-20, before skillcore)
 

@@ -48,7 +48,7 @@ export interface VigilHost extends RiteHost {
 
 /** One press of an Aura skill. */
 export interface VigilCast extends RiteCast {
-  /** Seconds one spell takes at the hero's cast speed. */
+  /** Seconds one use takes at the hero's cast speed (the skill's own `castTime`, `sim/Speed.ts`). */
   castTime: number;
 }
 
@@ -164,29 +164,24 @@ export function snuffVigil(def: SkillDef, player: Player): boolean {
 
 interface Act {
   clip: string;
-  /** Action length as a multiple of one spell. */
-  time: number;
   run(r: VigilCast, host: VigilHost): void;
 }
 
 const ACTS: Record<string, Act> = {
   anoint: {
     clip: 'cast',
-    time: 1.1,
     run(r) {
       selfPower(r, 'anointed');
     },
   },
   martyrsVow: {
     clip: 'cast',
-    time: 1.2,
     run(r) {
       selfPower(r, 'martyred');
     },
   },
   censure: {
     clip: 'point',
-    time: 1,
     run(r, host) {
       const p = r.player;
       const t = pickOne(p, r.aim, r.enemies, r.boss, r.num('range', 14));
@@ -210,7 +205,6 @@ const ACTS: Record<string, Act> = {
   },
   lastHour: {
     clip: 'point',
-    time: 1.3,
     run(r, host) {
       const p = r.player;
       const t = pickOne(p, r.aim, r.enemies, r.boss, r.num('range', 12));
@@ -246,12 +240,12 @@ export function castVigil(host: VigilHost, r: VigilCast): void {
   const p = r.player;
   const act = ACTS[r.def.id];
   if (act) {
-    p.beginAction(skillAction(r.def.id) ?? act.clip, r.castTime * act.time);
+    p.beginAction(skillAction(r.def.id) ?? act.clip, r.castTime);
     act.run(r, host);
     return;
   }
   if (!RINGS[r.def.id]) return;
-  p.beginAction(skillAction(r.def.id) ?? 'cast', r.castTime * 1.2);
+  p.beginAction(skillAction(r.def.id) ?? 'cast', r.castTime);
   const w = watchOf(p.character);
   if (w.lit.some((l) => l.id === r.def.id)) return;
   // A toll rings as soon as the bell is hung.

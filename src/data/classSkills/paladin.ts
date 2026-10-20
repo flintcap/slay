@@ -56,6 +56,7 @@ const MACE = build('palMace', [
     mana: [2, 0.2],
     dmg: [1.5, 0.18],
     fx: 'rite.toll',
+    attackTime: 1.0,
     p: { reach: 2.6, duration: 2 },
   },
   {
@@ -80,6 +81,7 @@ const MACE = build('palMace', [
     dmg: [0.8, 0.12],
     type: 'physical',
     fx: 'rite.crack',
+    attackTime: 0.9,
     p: { reach: 2.2, stun: 1, stunPerRank: 0.03, knockback: 1.5 },
   },
   // --------------------------------------------------------------- tier 2
@@ -96,6 +98,7 @@ const MACE = build('palMace', [
     dmg: [2.2, 0.3],
     type: 'physical',
     fx: 'rite.anvil',
+    attackTime: 1.3,
     p: { reach: 2.7, dents: 2, duration: 6 },
   },
   {
@@ -122,6 +125,7 @@ const MACE = build('palMace', [
     dmg: [1.4, 0.2],
     type: 'physical',
     fx: 'rite.door',
+    attackTime: 0.7,
     p: { range: 9, reach: 2.2, duration: 2, knockback: 3 },
   },
   // --------------------------------------------------------------- tier 3
@@ -138,6 +142,7 @@ const MACE = build('palMace', [
     dmg: [1.7, 0.22],
     type: 'physical',
     fx: 'rite.knell',
+    attackTime: 1.3,
     p: { reach: 2.6, echo: 0.5, echoDelay: 0.55, ring: 0.6, ringPerRank: 0.02 },
   },
   {
@@ -178,6 +183,7 @@ const MACE = build('palMace', [
     dmg: [3, 0.42],
     type: 'physical',
     fx: 'rite.maul',
+    attackTime: 1.6,
     p: { reach: 2.7, perDent: 0.3 },
   },
   {
@@ -203,6 +209,7 @@ const MACE = build('palMace', [
     mana: [7, 0.3],
     cd: [16, 0.3, 9],
     fx: 'rite.bar',
+    attackTime: 0.6,
     p: { duration: 5, durationPerRank: 0.15, block: 20, blockPerRank: 0.5, dr: 10, drPerRank: 0.5 },
   },
   // --------------------------------------------------------------- tier 5
@@ -220,6 +227,7 @@ const MACE = build('palMace', [
     dmg: [1.6, 0.2],
     type: 'fire',
     fx: 'rite.censer',
+    attackTime: 0.9,
     p: { range: 14, speed: 18, duration: 4, durationPerRank: 0.1 },
   },
   {
@@ -246,6 +254,7 @@ const MACE = build('palMace', [
     dmg: [1.4, 0.18],
     type: 'physical',
     fx: 'rite.relic',
+    attackTime: 1.0,
     p: { reach: 2.2, healPct: 3, healPctPerRank: 0.15 },
   },
   // --------------------------------------------------------------- tier 6
@@ -274,6 +283,7 @@ const MACE = build('palMace', [
     dmg: [5, 0.7],
     type: 'physical',
     fx: 'rite.verdict',
+    attackTime: 1.8,
     p: { reach: 2.8, ring: 0.4, ringPerDent: 0.4, ringCap: 2.5 },
   },
   {
@@ -323,6 +333,7 @@ const BLADE = build('palBlade', [
     dmg: [1.2, 0.16],
     type: 'physical',
     fx: 'rite.oath',
+    attackTime: 0.8,
     p: { reach: 2.5, bleedShare: 0.12, bleedTime: 5 },
   },
   {
@@ -347,6 +358,7 @@ const BLADE = build('palBlade', [
     dmg: [2, 0.25],
     type: 'physical',
     fx: 'rite.turn',
+    attackTime: 0.6,
     p: { window: 1.2, duration: 3 },
   },
   // --------------------------------------------------------------- tier 2
@@ -363,6 +375,7 @@ const BLADE = build('palBlade', [
     dmg: [0.9, 0.12],
     type: 'physical',
     fx: 'rite.twin',
+    attackTime: 1.2,
     p: { reach: 2.5, gap: 0.16, bleedShare: 0.1, bleedTime: 5 },
   },
   {
@@ -390,6 +403,7 @@ const BLADE = build('palBlade', [
     dmg: [1.4, 0.2],
     type: 'physical',
     fx: 'rite.feint',
+    attackTime: 1.0,
     p: { reach: 2.5, duration: 4, durationPerRank: 0.1 },
   },
   // --------------------------------------------------------------- tier 3
@@ -406,6 +420,7 @@ const BLADE = build('palBlade', [
     dmg: [0.5, 0.07],
     type: 'physical',
     fx: 'rite.litany',
+    attackTime: 1.6,
     p: { reach: 2.5, cuts: 5, gap: 0.12, bleedShare: 0.08, bleedTime: 5 },
   },
   {
@@ -444,6 +459,7 @@ const BLADE = build('palBlade', [
     dmg: [2.6, 0.36],
     type: 'physical',
     fx: 'rite.confess',
+    attackTime: 0.8,
     p: { range: 5, reach: 2.5, perCut: 0.4 },
   },
   {
@@ -470,6 +486,7 @@ const BLADE = build('palBlade', [
     dmg: [1.3, 0.18],
     type: 'physical',
     fx: 'rite.cross',
+    attackTime: 1.3,
     p: { reach: 2.5, gap: 0.2, duration: 5 },
   },
   // --------------------------------------------------------------- tier 5
@@ -487,6 +504,7 @@ const BLADE = build('palBlade', [
     dmg: [2.2, 0.3],
     type: 'physical',
     fx: 'rite.mercy',
+    attackTime: 1.0,
     p: { reach: 2.5, threshold: 15, thresholdPerRank: 0.5, mercyMult: 8 },
   },
   {
@@ -514,6 +532,7 @@ const BLADE = build('palBlade', [
     dmg: [0.45, 0.065],
     type: 'physical',
     fx: 'rite.seven',
+    attackTime: 1.8,
     p: { reach: 2.5, cuts: 7, gap: 0.09, duration: 5, bleedShare: 0.12, bleedTime: 5 },
   },
   // --------------------------------------------------------------- tier 6
@@ -542,6 +561,7 @@ const BLADE = build('palBlade', [
     dmg: [4.5, 0.65],
     type: 'physical',
     fx: 'rite.rites',
+    attackTime: 1.1,
     p: { reach: 2.5, opens: 3, duration: 6, bleedShare: 0.15, bleedTime: 6 },
   },
   {
@@ -594,6 +614,7 @@ const AURA = build('palAura', [
     mana: [6, 0.3],
     cd: [1, 0, 1],
     fx: 'vigil.tallow',
+    castTime: 0.6,
     p: { radius: 5, regen: 4, regenPerRank: 1.5, mana: 1.5, manaPerRank: 0.3 },
   },
   {
@@ -616,6 +637,7 @@ const AURA = build('palAura', [
     mana: [6, 0.3],
     cd: [1, 0, 1],
     fx: 'vigil.iron',
+    castTime: 0.6,
     p: { radius: 5, def: 30, defPerRank: 5, dr: 4, drPerRank: 0.6 },
   },
   // --------------------------------------------------------------- tier 2
@@ -633,6 +655,7 @@ const AURA = build('palAura', [
     dmg: [0.28, 0.045],
     type: 'fire',
     fx: 'vigil.rood',
+    castTime: 0.6,
     p: { radius: 5 },
   },
   {
@@ -647,6 +670,7 @@ const AURA = build('palAura', [
     mana: [8, 0.4],
     cd: [12, 0.2, 6],
     fx: 'vigil.anoint',
+    castTime: 0.55,
     p: { duration: 20, durationPerRank: 1, dmg: 20, dmgPerRank: 3, ar: 30, arPerRank: 6 },
   },
   {
@@ -661,6 +685,7 @@ const AURA = build('palAura', [
     mana: [7, 0.4],
     cd: [4, 0.08, 2],
     fx: 'vigil.censure',
+    castTime: 0.5,
     p: { range: 14, leap: 8, duration: 8, durationPerRank: 0.4, ar: 20, arPerRank: 2, def: 15, defPerRank: 2 },
   },
   // --------------------------------------------------------------- tier 3
@@ -676,6 +701,7 @@ const AURA = build('palAura', [
     mana: [10, 0.5],
     cd: [1, 0, 1],
     fx: 'vigil.smoke',
+    castTime: 0.6,
     p: { radius: 5, ar: 15, arPerRank: 1.5, slow: 8, slowPerRank: 0.8 },
   },
   {
@@ -701,6 +727,7 @@ const AURA = build('palAura', [
     mana: [10, 0.5],
     cd: [1, 0, 1],
     fx: 'vigil.fervour',
+    castTime: 0.6,
     p: { radius: 5, speed: 8, speedPerRank: 1.2, move: 6, movePerRank: 0.8 },
   },
   // --------------------------------------------------------------- tier 4
@@ -718,6 +745,7 @@ const AURA = build('palAura', [
     dmg: [1.2, 0.18],
     type: 'physical',
     fx: 'vigil.bell',
+    castTime: 0.6,
     p: { radius: 5, every: 3, ring: 0.3, ringPerRank: 0.02 },
   },
   {
@@ -743,6 +771,7 @@ const AURA = build('palAura', [
     mana: [12, 0.6],
     cd: [18, 0.3, 10],
     fx: 'vigil.vow',
+    castTime: 0.6,
     p: { duration: 10, durationPerRank: 0.3, ward: 15, wardPerRank: 2, dr: 5, drPerRank: 0.5 },
   },
   // --------------------------------------------------------------- tier 5
@@ -758,6 +787,7 @@ const AURA = build('palAura', [
     mana: [14, 0.7],
     cd: [1, 0, 1],
     fx: 'vigil.writ',
+    castTime: 0.6,
     p: { radius: 5, shred: 8, shredPerRank: 1 },
   },
   {
@@ -783,6 +813,7 @@ const AURA = build('palAura', [
     mana: [14, 0.7],
     cd: [1, 0, 1],
     fx: 'vigil.ground',
+    castTime: 0.6,
     p: { radius: 5, slow: 20, slowPerRank: 1.5, drag: 5, dragPerRank: 0.5 },
   },
   // --------------------------------------------------------------- tier 6
@@ -811,6 +842,7 @@ const AURA = build('palAura', [
     dmg: [6, 0.85],
     type: 'physical',
     fx: 'vigil.hour',
+    castTime: 0.8,
     p: { range: 12, fall: 0.7, ring: 1.5 },
   },
   {
