@@ -92,7 +92,7 @@ the first browser check.
 - [x] 5. Icons (sk-paladin: icons). Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost (sk-paladin: effects and cost). Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
@@ -109,14 +109,30 @@ the first browser check.
 
 ## Next up
 
-1. Milestone 6: effects polish and cost (the looks in `fx/paladin/`
-   already exist and are warmed; check per-frame code for allocation).
-2. Milestone 7: `check-skills --classes=paladin` once (get-chrome first,
+1. Milestone 7: `check-skills --classes=paladin` once (get-chrome first,
    `mkdir -p shots`, flock, timeout 3500), `check-curve --classes=paladin`
    once.
-3. Milestone 8: handover.
+2. Milestone 8: handover.
 
 ## Notes for resume
+
+### Milestone 6: effects and cost
+
+- Read every per-frame path: `tickVigils` (the vigil rings, the censures,
+  the pulse twice a second), `tickPaladinFX` (steel arcs, the censer and
+  its chain, the great bell), `VigilRing.update`. None makes anything a
+  frame: scratch vectors and fixed pools only. The vigil tick's
+  `forEach` (a new callback each frame) is now a plain loop. What is made
+  per blow or per pulse (option objects, the lane shove's hit set) is made
+  once per event, never per frame.
+- Every burst goes through `Particles.burst` and every decal through
+  `Decals`, which scale their counts by the quality's `fxScale`; nova
+  rings are drawn without particles. The steel arcs are a pool of 8, the
+  bell a pool of 2, the censer one.
+- Warmup: `paladinStandIns()` (steel arc, censer and chain, great bell)
+  and `vigilStandIn()` are in `DungeonScene.warmup()`, so nothing compiles
+  on first cast.
+- Not seen in motion here (no frame time measured): see "For skillqa".
 
 ### Milestone 5: icons
 

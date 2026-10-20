@@ -306,7 +306,9 @@ export function tickVigils(host: VigilHost, player: Player, dt: number, world: W
   }
   if (!w.lit.length) return;
   const scene = host.effects.scene;
-  w.lit.forEach((lit, slot) => {
+  // A plain loop: this runs every frame, and a callback here would be made new each time.
+  for (let slot = 0; slot < w.lit.length; slot++) {
+    const lit = w.lit[slot]!;
     lit.pulse += dt;
     // A new level is a new scene: the ring is drawn again there.
     if (lit.ring && lit.ring.scene !== scene) {
@@ -317,7 +319,7 @@ export function tickVigils(host: VigilHost, player: Player, dt: number, world: W
     if (!lit.ring && look) lit.ring = new VigilRing(scene, look, slot * 1.7);
     // Drawn small at his feet (owner); what it reaches is still `radius`.
     lit.ring?.update(dt, player.position.x, player.position.y, player.position.z, DRAWN_RING + slot * SECOND_RING);
-  });
+  }
   w.acc += dt;
   if (w.acc < TICK) return;
   w.acc = Math.min(w.acc - TICK, TICK);
