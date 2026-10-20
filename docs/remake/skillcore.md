@@ -81,7 +81,7 @@ to paste.
   passives, stacking buffs, auras) with its range, and the caps. Next to it,
   the target column from the reference above, per weapon type and per
   caster. Say plainly which are too fast and by how much.
-- [ ] 2. One speed model. The weapon's base speed drives the basic attack
+- [x] 2. One speed model. ("skillcore: one speed model in sim/Speed.ts") The weapon's base speed drives the basic attack
   and attack skills. Add the shared fields class streams will time skills
   with: a per-skill attack time factor (attack skills) and a per-skill cast
   time (spells), both in `src/types.ts` on the skill shape, with sensible
@@ -135,10 +135,14 @@ to paste.
 
 ## Next up
 
-Milestone 2: new `src/sim/Speed.ts` (one speed function with diminishing
-returns and ceilings), `attackTime` / `castTime` / `timing` on `SkillDef`,
-switch SkillRunner, ShifterRunner hand-off, paladin hand-off, AttackEstimate,
-then delete `DUAL_SWING`, `DUAL_SKILL_TIME`, `speedBonus`, 0.42/0.46/0.5.
+Milestone 3: add `speedLineSize(v)` to `src/sim/Speed.ts` (sign(v) x
+round(40|v| / (|v| + 40))), apply it to every item speed literal (affix
+ladders, base implicits, uniques, extraLines, sets, setsDepth, batch
+tuples, kit.ts CURVE, gems, runes, runewords, ItemPowers), then a
+SAVE_VERSION 3 step in `src/core/Save.ts` that maps stored speed mods and
+offers through it (charm lines at the 0.8 charm scale) before
+`refreshFixedLines` clamps. Checkers: items, uniques, setpower, charms,
+socket, stattext.
 
 ## Notes for resume
 
