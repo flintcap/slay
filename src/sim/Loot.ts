@@ -78,6 +78,7 @@ import { legacyPriceMultiplier } from './Legacy';
 import { MATERIALS, materialDropPool, materialName } from '../data/materials';
 import { getTrinket } from '../data/trinkets';
 import { NO_FIND, payoutGold, type Find } from './Payout';
+import { activeDifficulty } from '../data/difficulties';
 import { tr, trc, trk, numText, translating } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
@@ -209,6 +210,37 @@ export function magicFindFactor(magicFind: number, cap: number): number {
   return 1 + effective / 100;
 }
 
+/**
+ * How well the drop being rolled rolls: the tier's loot quality
+ * (`DifficultyDef.lootQuality`). `rollItem` and `rollCharm` set it for the
+ * length of one roll; everything else (the blacksmith's reforge, a shop's
+ * stock) rolls at 1, as written.
+ */
+let quality = 1;
+
+/** Runs one drop roll at the active tier's loot quality. A shop's roll stays at 1. */
+function atQuality<T>(source: DropSource | undefined, roll: () => T): T {
+  const was = quality;
+  quality = source === 'vendor' ? 1 : activeDifficulty().lootQuality;
+  try {
+    return roll();
+  } finally {
+    quality = was;
+  }
+}
+
+/**
+ * A whole number in [min, max]. At quality 1 an even roll; above it the roll
+ * leans to `max` (quality 2 lands on average two thirds of the way up), below
+ * it to `min`. Every line's better end is its `max`: downsides are written
+ * as negative ranges.
+ */
+function rollValue(min: number, max: number, rng: Rng): number {
+  if (min === max) return min;
+  if (quality === 1) return rng.int(min, max);
+  return Math.min(max, min + Math.floor(Math.pow(rng.next(), 1 / quality) * (max - min + 1)));
+}
+
 // ---------------------------------------------------------------------------
 // uid
 // ---------------------------------------------------------------------------
@@ -287,9 +319,10 @@ function rollOneAffix(
   const affix = rng.weighted(pool, (a) => affixPoolWeight(a, ilvl));
   const tiers = eligibleTiers(affix, ilvl);
   if (tiers.length === 0) return null;
-  const tier = rng.weighted(tiers, (t) => t.weight);
+  // Loot quality makes each better rung that many times as likely.
+  const tier = rng.weighted(tiers, (t) => t.weight * quality ** tiers.indexOf(t));
   usedGroups.add(affix.group);
-  const value = tier.min === tier.max ? tier.min : rng.int(tier.min, tier.max);
+  const value = rollValue(tier.min, tier.max, rng);
   return { affixId: affix.id, stat: affix.stat, value, tier: tier.tier, kind };
 }
 
@@ -450,7 +483,7 @@ function rollImplicits(base: ItemBase, rng: Rng): ItemMod[] {
   return base.implicits.map((imp, i) => ({
     affixId: `implicit.${base.id}.${i}`,
     stat: imp.stat,
-    value: imp.min === imp.max ? imp.min : rng.int(imp.min, imp.max),
+    value: rollValue(imp.min, imp.max, rng),
     tier: 0,
     kind: 'implicit' as const,
   }));
@@ -737,7 +770,7 @@ function rollSockets(base: ItemBase, ilvl: number, rarity: ItemRarity, rng: Rng)
 
 /** One fixed line, rolled inside its own range. */
 function fixedLine(affixId: string, stat: StatKey, min: number, max: number, rng: Rng, kind: ItemMod['kind'] = 'prefix'): ItemMod {
-  return { affixId, stat, value: min === max ? min : rng.int(min, max), tier: 0, kind };
+  return { affixId, stat, value: rollValue(min, max, rng), tier: 0, kind };
 }
 
 /**
@@ -834,7 +867,7 @@ export function buildSetPiece(piece: SetPieceDef, rng: Rng): Item {
   item.mods = rollImplicits(base, rng);
   const fill = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
   piece.mods.forEach((mod: { stat: StatKey; min: number; max: number }, i: number) => {
-    let value = mod.min === mod.max ? mod.min : rng.int(mod.min, mod.max);
+    let value = rollValue(mod.min, mod.max, rng);
     if (mod.stat !== 'skillLevels' && value > 0) value = Math.max(1, Math.round(value * fill));
     item.mods.push({ affixId: `set.${piece.id}.${i}`, stat: mod.stat, value, tier: 0, kind: 'prefix' });
   });
@@ -1045,11 +1078,20 @@ function pickBase(ilvl: number, rng: Rng, category?: ItemCategory, classId?: Cha
  * percentage with diminishing returns per tier: it lifts blues a lot, rares
  * well, and the unique tiers only a little. `source` is who dropped it.
  */
-export function rollItem(
-  ilvl: number,
-  rng: Rng,
-  opts: { magicFind?: number; forceRarity?: ItemRarity; category?: ItemCategory; classId?: CharClassId; source?: DropSource } = {},
-): Item {
+export function rollItem(ilvl: number, rng: Rng, opts: ItemRoll = {}): Item {
+  return atQuality(opts.source, () => rollItemAt(ilvl, rng, opts));
+}
+
+export interface ItemRoll {
+  magicFind?: number;
+  forceRarity?: ItemRarity;
+  category?: ItemCategory;
+  classId?: CharClassId;
+  /** Who dropped it. A shop (`'vendor'`) rolls at loot quality 1. */
+  source?: DropSource;
+}
+
+function rollItemAt(ilvl: number, rng: Rng, opts: ItemRoll): Item {
   const hero = opts.classId ?? lootHero.classId;
   const lvl = Math.max(1, Math.round(ilvl));
   const magicFind = opts.magicFind ?? 0;
@@ -1142,6 +1184,10 @@ const CHARM_SIZE_WEIGHT: Record<string, number> = {
 export const CHARM_UNIQUE_CHANCE = 0.05;
 
 export function rollCharm(ilvl: number, rng: Rng, magicFind = 0, baseId?: string): Item {
+  return atQuality(undefined, () => rollCharmAt(ilvl, rng, magicFind, baseId));
+}
+
+function rollCharmAt(ilvl: number, rng: Rng, magicFind: number, baseId: string | undefined): Item {
   const lvl = Math.max(1, Math.round(ilvl));
   const sizes = ALL_BASES.filter((b) => b.category === 'charm' && b.levelReq <= lvl && (!baseId || b.id === baseId));
   const base = sizes.length

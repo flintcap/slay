@@ -198,7 +198,7 @@ export function rollGambleItem(c: Character, offer: GambleOffer, rng: Random): I
   const ilvl = Math.max(1, c.level + rng.int(-2, 4));
   const cats = offer.categories.length ? offer.categories : classWeapons(c);
   const category = rng.pick(cats);
-  return rollItem(ilvl, rng, { forceRarity: rarity, category, classId: c.classId });
+  return rollItem(ilvl, rng, { forceRarity: rarity, category, classId: c.classId, source: 'vendor' });
 }
 
 // ---------------------------------------------------------------------------

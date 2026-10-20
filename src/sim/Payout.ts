@@ -42,16 +42,17 @@ export interface Find {
 export const NO_FIND: Find = { magicFind: 0, goldFind: 0, goldMul: 1 };
 
 /**
- * The hero's find on the active tier, the same for every roll. Magic find is
- * scaled by the tier and then shifted by it, so an easy tier finds worse than
- * Reaver even with no magic find (the shift can go below zero; `Loot.tierChance`
+ * The hero's find on the active tier, the same for every roll. A hard tier's
+ * magic find is added on top, as gear would add it (+20% on Zealot). An easy
+ * tier scales the hero's down and shifts it below Reaver, so it finds worse
+ * even with no magic find (the shift can go below zero; `Loot.tierChance`
  * reads that as rarer). Gold find goes in as the hero has it, and the tier
  * scales the pile once, after.
  */
 export function findRates(hero: { magicFind: number; goldFind: number }): Find {
   const dif = activeDifficulty();
   return {
-    magicFind: hero.magicFind * dif.magicFind + (dif.magicFind - 1) * 100,
+    magicFind: hero.magicFind * Math.min(1, dif.magicFind) + (dif.magicFind - 1) * 100,
     goldFind: hero.goldFind,
     goldMul: dif.goldFind,
   };

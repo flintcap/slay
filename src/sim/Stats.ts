@@ -34,6 +34,7 @@ import { applyPowerStats } from './ItemPowers';
 import { applyLegacyStats } from './Legacy';
 import { applyHeroPower } from './HeroPower';
 import { getSet } from '../data/sets';
+import { getDifficulty, type DifficultyId } from '../data/difficulties';
 
 export const MAX_LEVEL = 99;
 
@@ -446,6 +447,9 @@ function combinePercent(...pools: number[]): number {
  * Full recompute: class base + level + allocated attributes + gear + set
  * bonuses + skill passives + active statuses.
  */
+/** The resistances a hard tier's penalty comes off. */
+const PENALISED_RESISTS: StatKey[] = ['fireResist', 'coldResist', 'lightningResist', 'poisonResist', 'arcaneResist'];
+
 export function computeStats(c: Character): Stats {
   const cls = getClass(c.classId);
   const level = Math.max(1, Math.min(MAX_LEVEL, c.level));
@@ -510,6 +514,9 @@ export function computeStats(c: Character): Stats {
     'cooldownReduction',
   ];
   for (const key of flatKeys) out[key] = gear[key] + skills[key] + status[key];
+  // The tier's resistance penalty (Nemesis, Damned): every resistance but physical.
+  const penalty = getDifficulty(c.difficulty as DifficultyId | undefined).resistPenalty;
+  if (penalty) for (const key of PENALISED_RESISTS) out[key] -= penalty;
 
   out.skillLevels = externalSkillLevels + skills.skillLevels;
 

@@ -6822,25 +6822,44 @@
    ]
   },
   {
-   "key": "+160% experience",
+   "key": "+{0}% experience",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "+40% experience",
+   "key": "+{0}% gold",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "+50% better loot",
+   "key": "+{0}% magic find",
+   "files": [
+    "data/difficulties.ts",
+    "sim/Legacy.ts"
+   ]
+  },
+  {
+   "key": "-{0} to every resistance",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "+90% experience",
+   "key": "-{0}% experience",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "-{0}% gold",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "-{0}% magic find",
    "files": [
     "data/difficulties.ts"
    ]
@@ -6853,12 +6872,6 @@
   },
   {
    "key": "A gentle run. Good if you want to reach the deep tiers without a fight for every metre.",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "A real fight from tier 2. Worth it for the loot if you know your build.",
    "files": [
     "data/difficulties.ts"
    ]
@@ -6882,73 +6895,23 @@
    ]
   },
   {
-   "key": "Elite packs everywhere from tier 1",
+   "key": "Elite packs from tier {0}",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Elite packs from tier 1",
+   "key": "Elites carry {0} extra power|Elites carry {0} extra powers",
+   "one": "Elites carry {0} extra power",
+   "other": "Elites carry {0} extra powers",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Elite packs from tier 2",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Elites always drop something extra",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Elites carry an extra power",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Elites carry two extra powers",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Elites drop two extra items",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Enemies are far tougher",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Enemies are tougher and hit harder",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Enemies hit much softer",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Enemies hit softer",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Enemies more than double in strength",
+   "key": "Elites drop {0} extra item|Elites drop {0} extra items",
+   "one": "Elites drop {0} extra item",
+   "other": "Elites drop {0} extra items",
    "files": [
     "data/difficulties.ts"
    ]
@@ -6960,55 +6923,85 @@
    ]
   },
   {
-   "key": "Far worse loot quality",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Faster health and mana recovery",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
    "key": "It hits back.",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Learn the game. Nothing serious threatens you until the middle tiers.",
+   "key": "Learn the game. Half the fight of Reaver, and half the reward.",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Less experience",
+   "key": "Life and mana recover {0}% faster",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Less gold",
+   "key": "Life and mana recover {0}% slower",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "More than double the loot quality",
+   "key": "Loot quality x{0}: item lines roll higher",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "More than triple the loot quality",
+   "key": "Loot quality x{0}: item lines roll lower",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Much less experience",
+   "key": "Monsters and bosses have {0}% of the life, damage and armour",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters and bosses have {0}x the life, damage and armour",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters deal {0}% of the damage",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters deal {0}x the damage",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters have {0}% of the armour",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters have {0}% of the life",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters have {0}x the armour",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "Monsters have {0}x the life",
    "files": [
     "data/difficulties.ts"
    ]
@@ -7021,13 +7014,7 @@
    ]
   },
   {
-   "key": "No elite packs until tier 4",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "No elite packs until tier 7",
+   "key": "No elite packs until tier {0}",
    "files": [
     "data/difficulties.ts"
    ]
@@ -7040,18 +7027,6 @@
   },
   {
    "key": "No safety net",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "One extra attribute point every level",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "One extra skill point to start",
    "files": [
     "data/difficulties.ts"
    ]
@@ -7078,7 +7053,7 @@
    ]
   },
   {
-   "key": "Slightly worse loot",
+   "key": "Start with {0} gold",
    "files": [
     "data/difficulties.ts"
    ]
@@ -7096,19 +7071,13 @@
    ]
   },
   {
-   "key": "The intended experience. Everything is tuned around this.",
+   "key": "The intended experience. Every other tier is measured from this one.",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "Three extra attribute points every level",
-   "files": [
-    "data/difficulties.ts"
-   ]
-  },
-  {
-   "key": "Two extra attribute points every level",
+   "key": "Twice the fight of Reaver. Worth it for the loot if you know your build.",
    "files": [
     "data/difficulties.ts"
    ]
@@ -7120,13 +7089,13 @@
    ]
   },
   {
-   "key": "You take 18% more damage",
+   "key": "You take {0}% less damage",
    "files": [
     "data/difficulties.ts"
    ]
   },
   {
-   "key": "You take 32% more damage and heal slowly",
+   "key": "You take {0}% more damage",
    "files": [
     "data/difficulties.ts"
    ]
@@ -7139,6 +7108,52 @@
   },
   {
    "key": "Zealot",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0} extra attribute point every level|{0} extra attribute points every level",
+   "one": "{0} extra attribute point every level",
+   "other": "{0} extra attribute points every level",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0} extra attribute points to start",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0} extra skill point to start|{0} extra skill points to start",
+   "one": "{0} extra skill point to start",
+   "other": "{0} extra skill points to start",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0}% fewer elite packs",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0}% fewer monsters",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0}% more elite packs",
+   "files": [
+    "data/difficulties.ts"
+   ]
+  },
+  {
+   "key": "{0}% more monsters",
    "files": [
     "data/difficulties.ts"
    ]
@@ -45034,12 +45049,6 @@
   },
   {
    "key": "+{0}% gold find",
-   "files": [
-    "sim/Legacy.ts"
-   ]
-  },
-  {
-   "key": "+{0}% magic find",
    "files": [
     "sim/Legacy.ts"
    ]

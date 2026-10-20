@@ -344,7 +344,7 @@ export class VendorPanel {
           const roll = rollItem(ilvl, rng, { magicFind: 40 + this.restocks * 5, classId: c?.classId, source: 'vendor' });
           if (roll && rarityRank(roll.rarity) <= rarityRank('rare')) return roll;
         }
-        return rollItem(ilvl, rng, { classId: c?.classId, forceRarity: 'rare' });
+        return rollItem(ilvl, rng, { classId: c?.classId, forceRarity: 'rare', source: 'vendor' });
       }, null);
       if (item) {
         item.seen = true;

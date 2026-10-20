@@ -553,6 +553,21 @@ Update this file and push it after every finished step.
   the panel. They sit by the search box now; the tab row scrolls (wheel too),
   fades where there is more, and keeps the open tab in view. Checked with 4,
   12 and 24 tabs.
+- #161 Difficulty remake (owner's numbers). Reaver is the baseline; each tier
+  is Reaver plus its changes in `data/difficulties.ts`. One `power` per tier
+  sets monster and boss life, damage and armour: Wanderer 0.5, Seeker 0.75,
+  Reaver 1, Zealot 2, Nemesis 3.5, Damned 6. Rewards: Wanderer and Seeker
+  scale XP, magic find, gold and loot quality by the same 0.5 / 0.75; Zealot
+  +10% XP, +20 MF, loot quality 1.1; Nemesis +20% XP, +30 MF, 1.5, -5
+  resists; Damned +30% XP, +50 MF, 2, +1 attribute point a level, -15
+  resists. Every other lever (elite floor and density, extra affixes, pack
+  size, damage taken, regen, start gold and points, bonus elite drops) is
+  Reaver's on every tier; existing heroes keep points already granted. Loot
+  quality (`Loot.rollValue`): each better rung of a line is q times as likely
+  and values lean to the top of their range (q 2 lands two thirds up); shops
+  and the gambler roll at 1, Reaver rolls exactly as before. Hard-tier MF is
+  a flat add like gear; the resist penalty is on fire, cold, lightning,
+  poison and arcane (`computeStats`). Card lines are built from the numbers.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
