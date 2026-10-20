@@ -225,6 +225,8 @@ export class Player {
     this.hero.trimForPlay();
     // The hero's shadow in a few draws, not one per part.
     this.hero.useShadowBodies();
+    // The cape as cloth on the graphics card.
+    this.hero.useCloth();
     this.root.add(this.hero.root);
     this.bones = this.hero.bones;
     this.animator = this.hero.animator;
@@ -852,6 +854,7 @@ export class Player {
 
     this.animator.setCondition(this.bodyCondition);
     this.animator.update(dt);
+    this.hero.tickCloth(dt);
     this.shape.update(dt);
     this.updateBodyTint(dt);
   }
@@ -933,9 +936,15 @@ export class Player {
     copy.traverse((o) => {
       // Lights, glows and auras would read as the hero's own; a shadow has none.
       // Nor do the shadow bodies: the double casts no shadow.
-      if (o.userData.shadowOnly || (o as THREE.Light).isLight || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite || (o as THREE.Line).isLine) {
+      // The cloth cape moves with this hero's buffers: the double wears the
+      // boned cape it was drawn from, swung by its own animator.
+      if (o.userData.shadowOnly || o.userData.cloth || (o as THREE.Light).isLight || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite || (o as THREE.Line).isLine) {
         drop.push(o);
         return;
+      }
+      if (o.userData.clothed) {
+        o.visible = true;
+        delete o.userData.clothed;
       }
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -966,7 +975,8 @@ export class Player {
     const seen = new Set<string>();
     this.hero.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh || mesh.userData.shadowOnly) return;
+      // The cloth is never copied into a double (`shadowDouble`).
+      if (!mesh.isMesh || mesh.userData.shadowOnly || mesh.userData.cloth) return;
       const key = `${(mesh as THREE.SkinnedMesh).isSkinnedMesh ? 1 : 0}|${Object.keys(mesh.geometry.morphAttributes).join(',')}`;
       if (seen.has(key)) return;
       seen.add(key);

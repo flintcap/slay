@@ -157,6 +157,27 @@ export const HOOKS: readonly ThreeHook[] = [
     check: { on: 'class', test: () => fn(THREE.ViewportTextureNode.prototype, 'getTextureForReference') },
   },
   {
+    id: 'NodeMaterial.setupPosition',
+    ours: 'src/art/Cloth.ts',
+    theirs: 'src/materials/nodes/NodeMaterial.js',
+    needs: ['setupPosition( builder ) {', "positionLocal.assign( subBuild( this.positionNode, 'POSITION', 'vec3' ) );"],
+    check: { on: 'class', test: () => fn(THREE.NodeMaterial.prototype, 'setupPosition') },
+  },
+  {
+    id: 'VelocityNode positionPrevious',
+    ours: 'src/art/Cloth.ts',
+    theirs: 'src/nodes/accessors/VelocityNode.js',
+    needs: ['this.previousProjectionMatrix.mul( previousModelViewMatrix ).mul( positionPrevious )'],
+    check: { on: 'use' },
+  },
+  {
+    id: 'Renderer onBeforeRender, castShadowPositionNode',
+    ours: 'src/art/Cloth.ts',
+    theirs: 'src/renderers/common/Renderer.js',
+    needs: ['object.onBeforeRender( this, scene, camera, geometry, material, group );', 'material.castShadowPositionNode && material.castShadowPositionNode.isNode'],
+    check: { on: 'use' },
+  },
+  {
     id: 'RenderObject.onObjectDispose, _bindings',
     ours: 'src/core/Renderer.ts',
     theirs: 'src/renderers/common/RenderObject.js',

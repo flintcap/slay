@@ -495,6 +495,17 @@ Update this file and push it after every finished step.
   arrow) marks bag, stash and shop slots `is-barred`; the art goes through a
   red colour-matrix SVG filter on a red ground. Checked in the bag shot.
 
+- #130 GPU cloth, part 1 (the hero's cape): `art/Cloth.ts` moves a sheet
+  of points on the graphics card, one compute pass a frame (Verlet steps,
+  edge passes along, across, corner to corner and two apart, a reach limit,
+  capsules for the body, the floor, wind with gusts). The draw reads the
+  points straight from the buffer, with last frame's for the motion blur and
+  the same places for the shadow. The worn cape is drawn as cloth for the
+  hero in play (`hero/CapeCloth.ts`): held at the shoulders, kept off the
+  back, seat, legs and arms; a Shadow Clone still wears the boned cape. The
+  pass keeps its loops as loops: written out it crashed software graphics.
+  Checked in a lab page and in town (stand, run, turn). Next: boss capes and
+  banners.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

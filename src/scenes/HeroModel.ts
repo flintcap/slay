@@ -7,6 +7,7 @@ import { buildHero, setHeroHidden, type HeroModel as HeroBody } from '../art/her
 import { playSkin } from '../art/hero/Body';
 import { HERO_LOOKS } from '../art/hero/Looks';
 import { wearArmour, removeArmour, type WornArmour } from '../art/hero/Armour';
+import { CapeCloth } from '../art/hero/CapeCloth';
 import { holdItem, weaponGrip } from '../art/hero/Hold';
 import { dressOutfit } from '../art/items/Outfit';
 
@@ -83,6 +84,9 @@ export class DressedHero {
   private shadowOn = false;
   private shadowKey = '';
   private shadowBodies: THREE.Mesh[] = [];
+  /** The cape as cloth (`useCloth`), made with the first cape worn. */
+  private clothOn = false;
+  private capeCloth: CapeCloth | null = null;
 
   constructor(
     readonly classId: CharClassId,
@@ -133,7 +137,34 @@ export class DressedHero {
     this.animator.setOffHand(offHandKind(off?.category));
     this.animator.setWeapon(weaponGrip(main?.category, main?.slot === 'twoHand'), main?.category);
     this.syncShadow();
+    this.syncCloth();
     return true;
+  }
+
+  /**
+   * Draws the cape as cloth that moves on the graphics card
+   * (`art/hero/CapeCloth.ts`). Only the hero in play: a preview's cape swings
+   * on its bones as before.
+   */
+  useCloth(): void {
+    this.clothOn = true;
+    this.syncCloth();
+  }
+
+  /** Moves the cloth on; call once a frame after the animator. */
+  tickCloth(dt: number): void {
+    this.capeCloth?.tick(dt);
+  }
+
+  /** Puts the cloth on the cape worn now, or takes it off. */
+  private syncCloth(): void {
+    if (!this.clothOn) return;
+    let cape: THREE.SkinnedMesh | null = null;
+    this.root.traverse((o) => {
+      if (!cape && o.name === 'cape' && (o as THREE.SkinnedMesh).isSkinnedMesh) cape = o as THREE.SkinnedMesh;
+    });
+    if (cape && !this.capeCloth) this.capeCloth = new CapeCloth(this.body);
+    this.capeCloth?.wear(cape);
   }
 
   /**
@@ -359,6 +390,8 @@ export class DressedHero {
 
   dispose(): void {
     this.dropShadow();
+    this.capeCloth?.dispose();
+    this.capeCloth = null;
     this.formBody?.dispose();
     for (const slot of [...this.held.keys()]) this.clear(slot);
     this.root.removeFromParent();

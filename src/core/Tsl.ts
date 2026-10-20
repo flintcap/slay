@@ -337,6 +337,9 @@ export function bindToView(v: V3, Pb: V3, Nb: V3): V3 {
  */
 const nodeTex = new WeakMap<THREE.Material, THREE.Texture[]>();
 
+/** Pictures the game has drawn (`Renderer.render` counts them): one each, however many passes draw it. */
+export const drawnFrames = { n: 0 };
+
 export function setNodeTextures(m: THREE.Material, list: readonly (THREE.Texture | null | undefined)[]): void {
   nodeTex.set(m, list.filter((t): t is THREE.Texture => !!t));
 }

@@ -10,6 +10,9 @@ import * as THREE from 'three';
 import type { HeroModel } from './Hero';
 
 export const CAPE_BONES = 4;
+/** The sheet's grid: points across and down (row 0 at the shoulders). The cloth cape reads it (`CapeCloth.ts`). */
+export const CAPE_COLS = 15;
+export const CAPE_ROWS = 19;
 
 export interface Cape {
   mesh: THREE.SkinnedMesh;
@@ -25,8 +28,8 @@ function capeGeometry(hero: HeroModel, length: number): THREE.BufferGeometry {
   const key = `${h}|${hero.body.hash}|${length}`;
   const hit = geoCache.get(key);
   if (hit) return hit;
-  const NU = 14;
-  const NV = 18;
+  const NU = CAPE_COLS - 1;
+  const NV = CAPE_ROWS - 1;
   const top = 6.08 * h;
   const bottom = top - length * h;
   const pos: number[] = [];

@@ -20,7 +20,7 @@ import { Motes } from './Motes';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { installShadowCache } from './ShadowCache';
 import { hookSeen, selfTest, type HookReport } from './ThreeHooks';
-import { nodeTexturesOf, viewEye, floorDepth, coverShare, waterRays, worldLite } from './Tsl';
+import { drawnFrames, nodeTexturesOf, viewEye, floorDepth, coverShare, waterRays, worldLite } from './Tsl';
 import type { GameSettings, VideoEffect } from '../types';
 import type { SkyPaint } from '../world/Sky';
 import { setAssetAnisotropy } from './Assets';
@@ -1286,6 +1286,7 @@ export class Renderer {
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {
+    drawnFrames.n++;
     const sceneChanged = this.currentScene !== scene;
     this.bind(scene, camera);
     camera.updateMatrixWorld();
