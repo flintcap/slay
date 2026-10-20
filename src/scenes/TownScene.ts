@@ -6,7 +6,7 @@ import { audio } from '../audio/Audio';
 import { classSkillSounds } from '../audio/SkillSounds';
 import { save } from '../core/Save';
 import { forfeitText } from '../sim/RunLedger';
-import { drawItemIconsNow } from '../art/Icons';
+import { drawItemIconsNow, warmSkillIcons } from '../art/Icons';
 import { afterCurtain } from '../core/Idle';
 import { addItemToInventory } from '../sim/Inventory';
 import { Random, randomSeed } from '../core/RNG';
@@ -261,7 +261,11 @@ export class TownScene extends GameScene {
     const items = [...Object.values(character.equipment), ...character.inventory];
     this.offs.push(
       events.on('scene:change', (p) => {
-        if (p.to === 'town') afterCurtain(() => void drawItemIconsNow(items, 1500, 'shaped'));
+        if (p.to === 'town') {
+          afterCurtain(() => void drawItemIconsNow(items, 1500, 'shaped'));
+          // The skill board's icons, before it is first opened.
+          afterCurtain(() => warmSkillIcons(character.classId), 3000);
+        }
       })
     );
   }

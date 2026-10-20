@@ -121,7 +121,7 @@ to paste.
 - [x] 6. Readouts. ("skillcore: readouts show true speed") The character panel shows true attacks a second and
   casts a second; item and skill tooltips show true speed numbers
   (`check-stattext`, `check-skillparams`).
-- [ ] 7. Icon pipeline. Class streams will paint richer icons. Raise the
+- [x] 7. Icon pipeline. ("skillcore: skill icons baked ahead, size measured") Class streams will paint richer icons. Raise the
   skill icon render size in `src/art/SkillIconArt.ts` / `src/art/Icons.ts`
   so icons stay sharp at the largest real display size (hotbar and skill
   board at UI scale 200% on a high density screen). Check memory and first
@@ -135,11 +135,11 @@ to paste.
 
 ## Next up
 
-Rerun `check-curve` (two-handed melee speeds moved after the "after" run)
-and refresh the before/after table. Then milestone 7: raise the skill icon
-bake size in `src/art/SkillIconArt.ts` / `src/art/Icons.ts` for the
-hotbar and skill board at UI scale 200% on a high density screen; measure
-memory and bake time before and after.
+Read the diagnostic curve run (`curve-cap016.log` in the scratchpad:
+`CONTACT_CAP` 0.16 put back for one run only, not committed) against
+`curve-after-2h.log` and write the final before/after table with one line
+on what contact timing costs. Then milestone 8: Handover here and in
+`CONTRACTS.md`, Status: done, push, final report.
 
 ## Notes for resume
 
@@ -351,6 +351,32 @@ Windforce 35 -> 19 and 25 -> 15, second load unchanged).
   SkillRunner does; the Character panel's skill estimates use it too.
 - Passed: `stattext`, `skillparams`, `i18n`, `controls`, `save`,
   `uniques`.
+
+### Icons (milestone 7)
+
+Measured in Chrome 155 (software drawing), all 357 skill icons:
+
+| Screen | Bake | Per icon | Worst | PNG per icon | All 357 |
+| --- | --- | --- | --- | --- | --- |
+| Ratio 1, UI 100% | 128 px | 4.3 ms | 9.9 ms | 44 KB | 15 MB |
+| Ratio 2, UI 100% | 205 px | 7.6 ms | 15.4 ms | 100 KB | 35 MB |
+| Ratio 2, UI 200%, HUD 150% | 307 px | 15.9 ms | 36.9 ms | 206 KB | 72 MB |
+
+- The bake already follows the screen: 128 painted units x `iconScale()`
+  (`items/IconRender.ts`, from `uiRatio`, capped at 3), up to 307 px. The
+  largest a skill icon is shown is 62 CSS px (skill board detail pane;
+  hotbar 40 px x HUD 150% = 60), so 248 screen pixels at UI 200% on a
+  density-2 screen. 307 covers it; a bigger bake would cost memory and
+  time for nothing the screen shows. So the size was not raised; the rule
+  is now written at `S` in `art/Icons.ts`.
+- The cost was the real gap: the skill board's first open baked a class's
+  ~50 icons in one frame (about 0.8 s at the largest bake here). Now
+  `warmSkillIcons(classId)` bakes the hero's own icons in idle time a few
+  at a time, 3 s after the town's curtain lifts. A class holds ~50 icons,
+  about 10 MB of PNG text at the largest bake, 2 MB on a plain screen.
+- Class streams: paint in the 128-unit square. On a plain screen one
+  screen pixel is about 2 units on the skill board and 3 units on the
+  hotbar, so finer detail blurs there. Keep a bake near 16 ms at 307 px.
 
 ### Requests from the class streams (coordinator, for milestone 5)
 

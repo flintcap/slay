@@ -21,7 +21,18 @@ import { paintSkillIcon, paintStatusIcon, paintAffixIcon } from './SkillIconArt'
 import { makeCanvas } from './Paint';
 import { SKILL_BY_ID, TREE_BY_ID, SKILL_TREES } from '../data/skills';
 
-const S = 128; // draw resolution of skill icons on a plain screen; see `iconScale`
+/**
+ * Skill icons are painted in a 128-unit square and baked at 128 x
+ * `iconScale()` pixels: 128 on a plain screen, 205 at a ratio of 2, 307 at
+ * the most (UI scale 200% on a high density screen). The largest a skill icon
+ * is shown is 62 CSS px (the skill board's detail pane; the hotbar's 40 px at
+ * HUD scale 150% is 60), so 248 screen pixels at that setting: the bake is
+ * always at least that sharp. Baking one costs about 4 ms at 128 px and 16 ms
+ * at 307 px in a software-drawn browser, and its PNG holds 45 to 210 KB, so
+ * the hero's own icons are baked ahead of need in idle time
+ * (`warmSkillIcons`) and a bigger bake would buy nothing the screen can show.
+ */
+const S = 128;
 
 /**
  * One canvas, reused for every synchronous icon.
@@ -370,6 +381,46 @@ export function skillIconUri(
   const uri = c.toDataURL('image/png');
   skillCache.set(key, uri);
   return uri;
+}
+
+/** Skills whose icons are waiting for idle time. */
+const skillWarm: SkillDefLike[] = [];
+let skillWarming = 0;
+
+type SkillDefLike = { id: string; effect?: string; damageType?: DamageType; targeting?: string; icon?: string };
+type IdleDeadline = { didTimeout: boolean; timeRemaining(): number };
+
+function skillWarmPump(deadline?: IdleDeadline): void {
+  skillWarming = 0;
+  const t0 = performance.now();
+  const budget = deadline && !deadline.didTimeout ? Math.max(4, deadline.timeRemaining() - 1) : 4;
+  while (skillWarm.length > 0) {
+    const s = skillWarm.shift()!;
+    try {
+      skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon);
+    } catch {
+      /* drawn when shown instead */
+    }
+    if (performance.now() - t0 > budget) break;
+  }
+  if (skillWarm.length > 0) scheduleSkillWarm();
+}
+
+function scheduleSkillWarm(): void {
+  if (skillWarming) return;
+  const idle = (globalThis as { requestIdleCallback?: (cb: (d: IdleDeadline) => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  skillWarming = idle ? idle(skillWarmPump, { timeout: 1000 }) : (setTimeout(() => skillWarmPump(), 50) as unknown as number);
+}
+
+/**
+ * Bakes a class's skill icons ahead of need, a few at a time in the browser's
+ * idle time, so the skill board's first open does not bake fifty icons in
+ * one frame. Costs nothing for icons already baked.
+ */
+export function warmSkillIcons(classId: string): void {
+  const trees = new Set(SKILL_TREES.filter((t) => t.classId === classId).map((t) => t.id));
+  for (const s of Object.values(SKILL_BY_ID)) if (s.treeId && trees.has(s.treeId)) skillWarm.push(s);
+  if (skillWarm.length > 0) scheduleSkillWarm();
 }
 
 // ---------------------------------------------------------------------------
