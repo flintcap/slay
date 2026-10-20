@@ -1,6 +1,6 @@
 # Stream: sk-revenant (Wave 5: Revenant skills remake)
 
-Status: in progress
+Status: done
 
 Class: Revenant (code id `revenant`). Trees: Ossuary, Blight, Grave Pact (`ossuary`, `blight`, `gravepact`). Port 4355.
 Fights with caster: wands and orbs (starts with a femur wand and a cracked orb). No basic attack, ever. Class color: pale teal (`0x8ce0c8`).
@@ -97,23 +97,20 @@ the first browser check.
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
-- [ ] 7. Check. `check-skills --classes=revenant` once (one retry if it fails,
+- [x] 7. Check. (sk-revenant: check and handover) `check-skills --classes=revenant` once (one retry if it fails,
   then note it) and `check-curve --classes=revenant` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+- [x] 8. Handover. (sk-revenant: check and handover) Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
 
 ## Next up
 
-Milestones 1 to 6 are done (what was built is under "Milestone 4",
-"Milestone 5" and "Milestone 6" below). Next is milestone 7: `mkdir -p
-shots`, then `check-skills --classes=revenant` once (one retry) and
-`check-curve --classes=revenant` once, each under flock and timeout; write
-the numbers below. Then 8, handover.
+Nothing. Every milestone is ticked and the stream is done. What is left
+for the owner and `finish` is under "Handover".
 
 ## Notes for resume
 
@@ -461,6 +458,10 @@ checkers pass.
 
 ### Milestone 7: check
 
+- `check-skills --classes=revenant --port=4355` (newest Chrome, under
+  flock and timeout 3500), first run: refused 0, did nothing 0, threw 0,
+  working 30 of 30. Bone Storm, Pestilence, Bone Armor, Blood Pact and
+  Revenant Form show their buff; every damage skill lands.
 - `check-curve --classes=revenant`, run once (2026-10-20, after the looks):
   1 of 5 fails.
   - depth 1 ok: packs 3/3 (low 38%), bosses 3/3, 5 potions.
@@ -615,12 +616,65 @@ No gear = 0% cast speed. Ceiling = 200% (x1.67). Seconds per use.
 
 ## For the owner to test
 
-(empty)
+- Cast Bone Storm: shards fly out from you, circle you for the whole
+  storm, and fall to the floor when it ends.
+- Cast Bone Cage on a pack: ribs burst up round the ring and curl in over
+  it, and they sink the moment the root ends.
+- Gravewalk into a pack: hands claw up round you and at each held
+  enemy's feet, and let go when the grasp ends.
+- Soul Cage one enemy: hands hold it until the cage ends or it dies.
+- Soul Tether a pack: a red-iron chain loops from one to the next; kill
+  one and the chain closes round the rest.
+- Revenant Form: three skulls circle your head for exactly 12 s.
+- Hunting Skull: it flies as a skull, face first, glow behind it.
+- Terror: feared monsters now really run and stop attacking. Mass
+  Confusion: confused monsters fight each other. The Knight's Intimidate
+  fear works now too.
+- Rogue's Plague Vial: Plagued now spreads, as its text always said.
+- Depth 12 was walled in one curve run (numbers under "Milestone 7").
+  Play a run there and tell me if the Revenant feels too weak.
 
 ## For skillqa
 
-(empty)
+- Not seen in motion in the real game: the six new looks (Bone Storm,
+  Bone Cage, Gravewalk, Soul Cage, Soul Tether, Revenant Form) and the
+  skull projectile. Checked only as still frames in a bare scene.
+- Frame time not measured with the new looks. The most at once: about
+  14 shards, 18 ribs, 14 hands, 44 links and 3 skulls, all instances in
+  the shared solid pool (one draw call per shape). Worth one `check-perf`
+  look with Bone Storm, Bone Cage and Soul Tether all up.
+- `check-curve --classes=revenant`: depth 12 walled (packs 0/3), once.
+  Not retried, by the rule. Numbers under "Milestone 7".
+- Blinded, silenced and disarmed still root monsters (their `control`
+  holds set `rootTimer`); only fear and confusion were freed.
+- Reassemble keeps its minion sound (the sound checker requires one).
+  Corpse Explosion and Sanguine Nova have no hit sound (the checker
+  forbids one). Doom's burst replays its cast sound. Gravewalk plays
+  `skill.cold.grave`.
+- Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
+  left for anything else that names them; no Revenant skill uses them.
+- `skillparams`, `unique` and `skillsound` fail on Ranger skills only
+  (sk-ranger's stream, mid-build upstream on 2026-10-20).
 
 ## Handover
 
-(empty)
+What exists now:
+
+- The kit: 54 Revenant skills over Ossuary, Blight and Grave Pact, every
+  one growing each rank (`src/data/skills.ts`, `src/data/skillPower.ts`),
+  tooltips true to the code, speeds from skillcore's model.
+- His own casting: `src/scenes/revenant/RevenantKit.ts` (Femur Lance,
+  Hunting Skull, Bone Cage, Doom, Soul Cage, Gravewalk), hooked from
+  `SkillRunner.castNow`. Fear and confusion in `AI.think` and `Enemy`.
+- His own looks: `src/fx/revenant/RevenantFX.ts` (storm, cage, hands,
+  chain, form skulls), four new solids in `src/fx/kit/Solids.ts` (`skull`,
+  `rib`, `claw`, `link`) and the `skull` projectile body in
+  `src/fx/Effects.ts`.
+- His own icons: `src/art/RevenantGlyphs.ts` and
+  `src/art/icons/revenantIcons.ts`, each tree in its own light.
+
+Left for `finish` or the owner:
+
+- Depth 12 wall in `check-curve` (owner's call; no damage was raised).
+- The new looks in motion and their frame time (see "For skillqa").
+- Blinded, silenced and disarmed still root monsters.
