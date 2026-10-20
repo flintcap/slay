@@ -25,8 +25,8 @@ Done: speed (parts 1 and 2), balance (item list declined), ui, effects, mapvarie
 Paused: no
 
 Wave 5 (skills remake, owner):
-Running: none
-Waiting: skillcore (alone first), then sk-knight, sk-mage, sk-rogue,
+Running: skillcore
+Waiting: sk-knight, sk-mage, sk-rogue,
 sk-revenant, sk-ranger, sk-paladin, sk-shifter (three at a time), then
 skillqa (alone, last)
 Done: none
