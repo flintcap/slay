@@ -94,9 +94,9 @@ const LEATHER = mat([0x170f09, 0x382515, 0x5c3f25, 0x85603b, 0xab8560], 0.1, 'po
 const BLOOD = mat([0x1a0204, 0x4a060a, 0x8a1016, 0xc42a26, 0xf07060], 0.2, null);
 const PALE = mat([0x141318, 0x34333c, 0x5c5b66, 0x8e8c96, 0xc6c4cc], 0.1, 'pores', 0.35);
 const HIDE = mat([0x1a0808, 0x461818, 0x7a3030, 0xa85a50, 0xd8968a], 0.1, 'pores', 0.4);
-const ROSE = mat([0x14040a, 0x360a16, 0x641426, 0x8e2a3a, 0xc06070], 0.1, 'mottle', 0.35);
+const ROSE = mat([0x1a0610, 0x4a0e1e, 0x82203a, 0xb04a5a, 0xe08a90], 0.1, 'mottle', 0.35);
 const STEM = mat([0x0c0e06, 0x1e2410, 0x34401c, 0x4e5c2c, 0x76844a], 0.05, 'grain', 0.3);
-const MIASMA = mat([0x0a0c06, 0x1c2010, 0x30381c, 0x4a542c, 0x6e7a44], 0, 'mottle', 0.4);
+const MIASMA = mat([0x101408, 0x283018, 0x48542a, 0x6c7a40, 0x9aa866], 0, 'mottle', 0.4);
 const PARCH = mat([0x2a2010, 0x5a4828, 0x947a4a, 0xc4aa74, 0xeedcae], 0, 'fine', 0.3);
 const WAX = mat([0x2a241a, 0x6a604a, 0xb0a482, 0xdcd2b4, 0xfaf4e2], 0.2, null);
 
@@ -810,31 +810,27 @@ const rvwilt: Glyph = (x, t) => {
 
 const rvrose: Glyph = (x, t) => {
   // A rose rotting on its stem.
-  glow(x, 88, 54, 40, t.glow, 0.5);
-  const A: Pt = [30, 30];
-  const B: Pt = [100, 110];
-  obj(x, ribbonP([[44, 120], [46, 96], [52, 72], [64, 52], [80, 42], [94, 46]], 6, 4.5), STEM, t, A, B, 0.5);
-  for (const [tx, ty, a] of [[46, 96, 2.8], [54, 70, -0.4], [70, 47, -1.4]] as const) {
-    obj(x, polyP([[tx, ty - 3], [tx + Math.cos(a) * 7, ty + Math.sin(a) * 7], [tx, ty + 3]]), STEM, t, A, B, 0.2);
+  glow(x, 82, 58, 48, t.glow, 0.75);
+  const A: Pt = [30, 24];
+  const B: Pt = [110, 110];
+  obj(x, ribbonP([[34, 120], [36, 96], [42, 70], [54, 46], [72, 30], [90, 30], [100, 40]], 8, 6), STEM, t, A, B, 0.6);
+  for (const [tx, ty, a] of [[37, 96, 2.9], [44, 66, -0.5], [62, 38, -1.6]] as const) {
+    obj(x, polyP([[tx, ty - 3.5], [tx + Math.cos(a) * 8, ty + Math.sin(a) * 8], [tx, ty + 3.5]]), STEM, t, A, B, 0.2);
   }
-  obj(x, smoothP([[50, 82], [36, 70], [28, 72], [36, 84], [48, 86]], 0.45), STEM, t, A, B, 0.4);
-  line(x, [[48, 84], [34, 74]], 1.2, 'rgba(10,7,6,.6)');
+  obj(x, smoothP([[42, 84], [26, 72], [16, 76], [26, 90], [40, 90]], 0.45), STEM, t, A, B, 0.4);
+  line(x, [[40, 88], [22, 78]], 1.4, 'rgba(10,7,6,.6)');
   // The head, hung over and going to rot.
-  const petals: Array<[Pt[], Mat]> = [
-    [[[80, 50], [100, 44], [110, 58], [104, 74], [88, 74], [80, 64]], ROSE],
-    [[[86, 52], [98, 50], [104, 62], [96, 72], [86, 66]], ROSE],
-    [[[84, 58], [94, 56], [96, 66], [88, 70]], ROSE],
+  const petals: Pt[][] = [
+    [[74, 48], [98, 34], [120, 50], [116, 76], [96, 90], [76, 80]],
+    [[80, 52], [100, 42], [114, 56], [108, 76], [88, 80]],
+    [[88, 56], [102, 52], [106, 66], [94, 74]],
   ];
-  for (const [pts, m] of petals) obj(x, smoothP(pts, 0.5), m, t, [80, 44], [110, 76], 0.6);
-  for (const [mx, my, r] of [[100, 62, 4], [90, 70, 3], [104, 52, 2.6]] as const) {
-    x.save();
-    x.globalAlpha = 0.75;
-    energy(x, circleP(mx, my, r), t, mx, my, r * 1.4, 0.5);
-    x.restore();
-  }
-  obj(x, smoothP([[96, 84], [104, 90], [98, 94], [92, 90]], 0.5), ROSE, t, [90, 84], [106, 94], 0.3);
-  obj(x, smoothP([[76, 104], [86, 102], [84, 110], [76, 110]], 0.5), ROSE, t, [76, 102], [86, 110], 0.3);
-  energy(x, dropP(102, 84 - 6, 3), t, 102, 76, 6, 0.5);
+  for (const pts of petals) obj(x, smoothP(pts, 0.5), ROSE, t, [74, 34], [120, 90], 0.8);
+  line(x, [[90, 62], [98, 60], [100, 66]], 1.6, 'rgba(10,7,6,.6)');
+  for (const [mx, my, r] of [[108, 66, 5.5], [88, 80, 4], [112, 50, 3.4], [80, 64, 3]] as const) energy(x, circleP(mx, my, r), t, mx, my, r * 1.6, 0.5);
+  obj(x, smoothP([[94, 96], [106, 100], [100, 108], [90, 104]], 0.5), ROSE, t, [90, 96], [106, 108], 0.4);
+  obj(x, smoothP([[66, 106], [80, 104], [76, 114], [66, 114]], 0.5), ROSE, t, [66, 104], [80, 114], 0.4);
+  energy(x, dropP(104, 96, 3.6), t, 104, 94, 7, 0.5);
 };
 
 const rvflay: Glyph = (x, t) => {
@@ -897,14 +893,16 @@ const rvglob: Glyph = (x, t, v) => {
   }
   if (k === 2) {
     // A plague cloud with a face, flies round it.
-    glow(x, 64, 62, 48, t.glow, 0.5);
-    const cloud = new Path2D();
-    for (const [cx, cy, r] of [[40, 66, 20], [64, 54, 26], [88, 66, 20], [52, 80, 18], [78, 80, 18], [64, 36, 16]] as const) cloud.addPath(circleP(cx, cy, r));
-    obj(x, cloud, MIASMA, t, [24, 24], [104, 100], 1.2);
-    for (const sg of [-1, 1]) hole(x, ellipseP(64 + sg * 11, 56, 6.5, 8, sg * 0.3), t, 64 + sg * 11, 56, 10, 1);
-    for (const sg of [-1, 1]) glint(x, 64 + sg * 11, 56, 4, t.core, 1);
-    hole(x, smoothP([[52, 74], [64, 70], [76, 74], [72, 84], [56, 84]], 0.5), t, 64, 78, 12, 0.8);
-    for (let i = -1; i <= 1; i++) line(x, [[64 + i * 6, 72], [64 + i * 6, 76]], 1.4, 'rgba(10,7,6,.8)');
+    glow(x, 64, 62, 50, t.glow, 0.75);
+    // Puffs back to front, so the cloud has depth; the face is on the front one.
+    for (const [cx, cy, r] of [[64, 32, 15], [36, 62, 19], [92, 62, 19], [48, 86, 17], [80, 86, 17], [64, 62, 26]] as const) {
+      obj(x, circleP(cx, cy, r), MIASMA, t, [cx - r, cy - r], [cx + r, cy + r], r / 18);
+    }
+    for (const sg of [-1, 1]) hole(x, ellipseP(64 + sg * 10, 58, 6.5, 8, sg * 0.3), t, 64 + sg * 10, 58, 10, 1);
+    for (const sg of [-1, 1]) glint(x, 64 + sg * 10, 58, 4.5, t.core, 1);
+    ink(x, polyP([[64, 66], [61, 71], [67, 71]]), 0.8);
+    hole(x, smoothP([[54, 76], [64, 73], [74, 76], [71, 84], [57, 84]], 0.5), t, 64, 79, 12, 0.8);
+    for (let i = -1; i <= 1; i++) line(x, [[64 + i * 5, 74], [64 + i * 5, 78]], 1.4, 'rgba(10,7,6,.8)');
     for (const [fx, fy] of [[18, 40], [108, 44], [24, 98], [104, 96], [70, 14], [40, 22]] as const) {
       ink(x, ellipseP(fx, fy, 2.6, 2));
       x.save();
@@ -1163,12 +1161,12 @@ const rvtether: Glyph = (x, t, v) => {
   if (k === 0) {
     // Life drawn from a heart into a bone hand.
     glow(x, 64, 64, 50, t.glow, 0.45);
-    const beam = smoothP([[44, 78], [52, 66], [62, 68], [70, 56], [80, 54]], 0.5, false);
+    const beam = smoothP([[42, 80], [48, 70], [56, 72], [62, 62], [70, 60]], 0.5, false);
     ray(x, beam, t, 4.6);
-    for (const [dx, dy] of [[54, 66], [68, 60]] as const) energy(x, circleP(dx, dy, 3), t, dx, dy, 5, 0.6);
-    obj(x, heartP(34, 88, 20), BLOOD, t, [16, 70], [52, 108], 1);
-    spec(x, 26, 78, 6, 3, -0.6, 0.6);
-    boneHand(x, t, 110, 20, 0.86, Math.PI * 1.25, 0.25, 26);
+    for (const [dx, dy] of [[50, 70], [60, 64]] as const) energy(x, circleP(dx, dy, 3), t, dx, dy, 5, 0.6);
+    obj(x, heartP(32, 90, 21), BLOOD, t, [12, 70], [52, 110], 1);
+    spec(x, 24, 80, 6, 3, -0.6, 0.6);
+    boneHand(x, t, 102, 26, 1.1, Math.PI * 1.25, 0.3, 20);
     return;
   }
   if (k === 1) {
@@ -1320,7 +1318,7 @@ const rvpact: Glyph = (x, t, v) => {
 
 const rvgrave: Glyph = (x, t) => {
   // Hands bursting up out of a rift; a hood sinking into it.
-  glow(x, 64, 84, 54, t.glow, 0.55);
+  glow(x, 64, 80, 56, t.glow, 0.8);
   mound(x, t, 64, 92, 62, 12);
   const rift = ellipseP(64, 96, 34, 10);
   hole(x, rift, t, 64, 92, 30, 1);
@@ -1331,8 +1329,8 @@ const rvgrave: Glyph = (x, t) => {
   obj(x, hood, CLOTH, t, [46, 66], [82, 98], 0.8);
   hole(x, smoothP([[56, 96], [58, 84], [64, 78], [70, 84], [72, 96]], 0.45), t, 64, 90, 10, 0.4);
   for (const sg of [-1, 1]) glint(x, 64 + sg * 4, 88, 3, t.core, 1);
-  boneHand(x, t, 36, 96, 0.82, -0.42, 0.35, 18);
-  boneHand(x, t, 92, 96, 0.82, 0.42, 0.35, 18);
+  boneHand(x, t, 34, 96, 0.92, -0.42, 0.35, 18);
+  boneHand(x, t, 94, 96, 0.92, 0.42, 0.35, 18);
   for (const [cx, cy, r] of [[22, 54, 4], [106, 50, 3.6], [64, 40, 3], [30, 34, 2.4], [98, 30, 2.6]] as const) {
     part(x, circleP(cx, cy, r), EARTH, t, [cx - r, cy - r], [cx + r, cy + r]);
   }
@@ -1430,15 +1428,16 @@ const rvheart: Glyph = (x, t, v) => {
     return;
   }
   // A heart behind ribs.
-  glow(x, 64, 62, 46, t.glow, 0.6);
-  obj(x, heartP(64, 62, 22), BLOOD, t, [42, 40], [86, 84], 1);
+  glow(x, 64, 62, 50, t.glow, 0.9);
+  obj(x, heartP(64, 64, 27), BLOOD, t, [37, 37], [91, 91], 1.1);
+  spec(x, 52, 52, 8, 3, -0.6, 0.6);
   const A: Pt = [20, 20];
   const B: Pt = [108, 108];
-  part(x, rrectP(60, 30, 8, 64, 3), BONE, t, A, B);
-  for (let i = 0; i < 3; i++) {
-    const y = 40 + i * 15;
-    for (const sg of [-1, 1]) obj(x, ribbonP([[64 + sg * 4, y], [64 + sg * 20, y - 4], [64 + sg * 32, y + 6], [64 + sg * 28, y + 18]], 6.5, 4), BONE, t, A, B, 0.4);
+  for (let i = 0; i < 2; i++) {
+    const y = 42 + i * 26;
+    for (const sg of [-1, 1]) obj(x, ribbonP([[64 + sg * 6, y], [64 + sg * 24, y - 5], [64 + sg * 40, y + 6], [64 + sg * 36, y + 20]], 6, 3.6), BONE, t, A, B, 0.4);
   }
+  obj(x, smoothP([[60, 30], [68, 30], [67, 96], [64, 100], [61, 96]], 0.35), BONE, t, A, B, 0.5);
 };
 
 const rvscythe: Glyph = (x, t) => {
