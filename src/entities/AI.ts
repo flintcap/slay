@@ -54,6 +54,9 @@ function hero(ctx: CombatContext): THREE.Vector3 {
 /** How close a monster must be to notice a Veiled player. Arm's length. */
 const HIDDEN_NOTICE = 1.8;
 
+/** How far a confused monster looks for another monster to go for. */
+const CONFUSED_REACH = 16;
+
 /** How far a monster will look for a summon worth fighting. */
 const MINION_NOTICE = 13;
 /**
@@ -454,6 +457,11 @@ export class AIBrain {
     return this.anchorId;
   }
 
+  /** The other monster a confused brain is going for (Mass Confusion), else null. */
+  confusedFoe: Enemy | null = null;
+  /** True while a fear has this brain running, so it comes back when the fear ends. */
+  private scared = false;
+
 
   constructor(
     private readonly self: Enemy,
@@ -690,6 +698,40 @@ export class AIBrain {
       this.computeSeparation(ctx);
       this.desired.copy(p);
       return;
+    }
+
+    // --- fear and confusion ------------------------------------------------
+    // Feared (Horrify, Intimidate): runs from the hero and starts no attack.
+    // Confused (Mass Confusion): goes for the nearest other monster and starts
+    // nothing on the hero or the summons; its blows land there through
+    // `Enemy.tickConfusion`. A boss keeps its set piece.
+    this.confusedFoe = null;
+    if (!this.fixateOnPlayer && !self.isBoss) {
+      if (self.hasStatus('feared')) {
+        this.anchor.copy(hero(ctx));
+        this.anchorId = null;
+        this.mode = 'flee';
+        this.scared = true;
+        this.computeSeparation(ctx);
+        this.setRetreatTarget(ctx, 9);
+        return;
+      }
+      if (self.hasStatus('confused')) {
+        const foe = this.nearestAlly(ctx, CONFUSED_REACH);
+        this.anchorId = null;
+        this.mode = 'engage';
+        this.computeSeparation(ctx);
+        if (foe) {
+          this.confusedFoe = foe;
+          this.desired.set(foe.root.position.x, 0, foe.root.position.z);
+        } else this.desired.copy(p);
+        return;
+      }
+    }
+    // The fright has worn off: back to the fight, whatever its life.
+    if (this.scared) {
+      this.scared = false;
+      if (this.mode === 'flee') this.mode = 'approach';
     }
 
     // --- flee / regroup ----------------------------------------------------
@@ -1290,6 +1332,8 @@ export class AIBrain {
       const dz = this.desired.z - p.z;
       if (dx * dx + dz * dz > 0.04 && this.mode !== 'kite') return Math.atan2(dx, dz);
     }
+    const foe = this.confusedFoe;
+    if (foe) return angleTo(p.x, p.z, foe.root.position.x, foe.root.position.z);
     // The anchor is only trustworthy once this brain has thought at least once;
     // before that it is still zeroed, so fall back to the player.
     _tmpA.copy(this.anchorId !== null ? this.anchor : hero(ctx));

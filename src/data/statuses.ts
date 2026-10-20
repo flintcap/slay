@@ -457,6 +457,15 @@ export const STATUSES: StatusDef[] = [
     icon: 'hourglass',
     tags: ['curse', 'arcane'],
   }),
+  // The Revenant's Attrition: renewed every quarter second on whatever stands
+  // near him, with the rank's numbers carried on the application.
+  def('attrition', tr('Attrition'), -1, {
+    desc: tr('Worn down by the grave: lower resistances and slower attacks.'),
+    baseDuration: 1,
+    color: 0x6a7462,
+    icon: 'hourglass',
+    tags: ['aura', 'shred', 'held'],
+  }),
   def('manaburn', tr('Mana Burn'), -1, {
     desc: tr('Drains mana each second; drained mana is dealt as arcane damage.'),
     dot: dot('arcane', 4),

@@ -287,6 +287,11 @@ export interface PassiveEffects {
   /** Skeletal Knight: extra life (%) for knights, and whether they cleave. */
   minionEliteLifePct: number;
   minionEliteCleave: boolean;
+  /** Death Knight: knights' blows are this much more (%), on top of Skeletal Knight's. */
+  minionEliteMorePct: number;
+  /** Marrow Feast: a minion heals itself for this share (%) of each blow, and this much of its life (%) on a kill. */
+  minionSelfLeechPct: number;
+  minionKillHealPct: number;
   /** Ossuary Lord: extra room per summon skill. */
   capBySkill: Record<string, number>;
   /** The Bone Choir: a fallen minion's pool (radius m, seconds, % of its life a second, % healed back). */
@@ -308,6 +313,12 @@ export interface PassiveEffects {
   auraDebuffRadius: number;
   auraResistShred: number;
   auraSlowPct: number;
+  /** Attrition: enemies this near (m) lose these resistances and this much attack speed (%). */
+  attritionRadius: number;
+  attritionResist: number;
+  attritionAttackSpeed: number;
+  /** Hex Upon Hex: each of your curses on an enemy past the first, it takes this much more damage (%). */
+  hexPct: number;
   /** Mana restored on a kill, as a percentage of maximum. */
   killManaPct: number;
 
@@ -514,6 +525,10 @@ function emptyEffects(): PassiveEffects {
     auraDebuffRadius: 0,
     auraResistShred: 0,
     auraSlowPct: 0,
+    attritionRadius: 0,
+    attritionResist: 0,
+    attritionAttackSpeed: 0,
+    hexPct: 0,
     killManaPct: 0,
     momentumMovePct: 0,
     momentumMoveCap: 0,
@@ -526,6 +541,9 @@ function emptyEffects(): PassiveEffects {
     poisonHoldBelow: 0,
     minionEliteLifePct: 0,
     minionEliteCleave: false,
+    minionEliteMorePct: 0,
+    minionSelfLeechPct: 0,
+    minionKillHealPct: 0,
     capBySkill: {},
     choirRadius: 0,
     choirSec: 0,
@@ -924,8 +942,9 @@ const RULES: Record<string, Contribution> = {
     e.curseDurationPct += param(id, 'costPerRank', 4) * r;
     e.curseEffectPct += param(id, 'costPerRank', 4) * r;
   },
-  wither: (e, r, id) => {
-    e.curseDecayPctPerSec += param(id, 'pct', 2) * (r / Math.max(1, param(id, 'pctPerSecondPerRanks', 4)));
+  // Each curse past the first makes the next blow land harder.
+  hexUponHex: (e, r, id) => {
+    e.hexPct += param(id, 'pct', 6) + param(id, 'perRank', 0.6) * (r - 1);
   },
   bloodCurse: (e, r, id) => {
     e.curseLeechPct += param(id, 'lifePct', 6) + param(id, 'perRank', 0.8) * (r - 1);
@@ -938,10 +957,11 @@ const RULES: Record<string, Contribution> = {
     );
     e.curseSpreadMax = Math.max(e.curseSpreadMax, param(id, 'maxTargets', 6));
   },
+  // Its own status (`attrition`), laid by the scene's aura tick.
   attrition: (e, r, id) => {
-    e.auraDebuffRadius = Math.max(e.auraDebuffRadius, param(id, 'radius', 8));
-    e.auraResistShred += param(id, 'resistPerRank', 1) * r;
-    e.auraSlowPct += param(id, 'attackSpeedPerRank', 2) * r;
+    e.attritionRadius = Math.max(e.attritionRadius, param(id, 'radius', 8));
+    e.attritionResist += param(id, 'resistPerRank', 1) * r;
+    e.attritionAttackSpeed += param(id, 'attackSpeedPerRank', 2) * r;
   },
   theLongDecline: (e, r, id) => {
     e.curseDecayPctPerSec += param(id, 'pctPerSecond', 5) + param(id, 'perRank', 0.5) * (r - 1);
@@ -950,10 +970,11 @@ const RULES: Record<string, Contribution> = {
     e.minionLifePct += param(id, 'lifePerRank', 9) * r;
     e.minionDamagePct += param(id, 'damagePerRank', 7) * r;
   },
+  // The army feeds itself: its own blows and kills heal the minion that landed them.
   marrowFeast: (e, r, id) => {
     e.minionAttackSpeedPct += param(id, 'attackSpeedPerRank', 6) * r;
-    e.minionLeechPct += param(id, 'leechPerRank', 0.8) * r;
-    e.killLifePct = Math.max(e.killLifePct, param(id, 'healOnKillPct', 15) * 0.1);
+    e.minionSelfLeechPct += param(id, 'leechPerRank', 0.8) * r;
+    e.minionKillHealPct = Math.max(e.minionKillHealPct, param(id, 'healOnKillPct', 15));
   },
   ossuaryLord: (e, r, id) => {
     const add = (skill: string, per: number): void => {
@@ -972,8 +993,9 @@ const RULES: Record<string, Contribution> = {
     e.minionEliteLifePct += param(id, 'lifePct', 120);
     e.minionEliteCleave = e.minionEliteCleave || param(id, 'cleave', 0) > 0;
   },
+  // "More": multiplies the knight's blow, Skeletal Knight's bonus included.
   deathKnight: (e, r, id) => {
-    e.minionElitePowerPct += param(id, 'damagePct', 40) + param(id, 'perRank', 4) * (r - 1);
+    e.minionEliteMorePct += param(id, 'damagePct', 40) + param(id, 'perRank', 4) * (r - 1);
     if (e.minionEliteCount === 0) e.minionEliteCount = 1;
   },
   theBoneChoir: (e, r, id) => {
@@ -1080,6 +1102,12 @@ const SYNERGY_FIELDS: Partial<Record<string, Array<keyof PassiveEffects>>> = {
 };
 
 /**
+ * Rules that build on another rule's numbers, so they run after every other:
+ * Harvest adds to and stretches the Souls Reap Soul sets up.
+ */
+const RUN_LAST: ReadonlySet<string> = new Set(['harvestMastery']);
+
+/**
  * Resolve a character's allocated passives into one flat record.
  *
  * Cheap enough to call per frame, but callers generally cache it alongside
@@ -1087,7 +1115,10 @@ const SYNERGY_FIELDS: Partial<Record<string, Array<keyof PassiveEffects>>> = {
  */
 export function passiveEffects(c: Character): PassiveEffects {
   const e = emptyEffects();
-  for (const id of Object.keys(c.skills)) {
+  // Two passes: a rule that grows another rule's numbers runs after it,
+  // whichever was learned first (`RUN_LAST`).
+  for (let pass = 0; pass < 2; pass++) for (const id of Object.keys(c.skills)) {
+    if (RUN_LAST.has(id) !== (pass === 1)) continue;
     const r = rankOf(c, id);
     if (r <= 0) continue;
     const fields = SYNERGY_FIELDS[id];

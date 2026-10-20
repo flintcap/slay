@@ -55,6 +55,11 @@ const shred = (v: number): Partial<Stats> => ({
 
 const r1 = (v: number): number => Math.round(v * 10) / 10;
 
+/** Attrition (Revenant): every resistance down `resist` points and attack speed down `attackSpeed`%. */
+export function attritionMods(resist: number, attackSpeed: number): Partial<Stats> {
+  return { ...shred(r1(resist)), attackSpeed: -r1(attackSpeed) };
+}
+
 
 export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
   // Mage

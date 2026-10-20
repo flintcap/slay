@@ -59,6 +59,7 @@ import { affixIconUri, drawItemIconsNow } from '../art/Icons';
 import { runtime as hudRuntime } from '../ui/Widgets';
 import { quickDrink, drinkPotion } from '../sim/Potions';
 import { getStatus } from '../data/statuses';
+import { attritionMods } from '../data/skillPower';
 import { statusDef } from '../sim/StatusRules';
 import { runStats } from '../ui/RunStats';
 import { clearBuyBack } from '../sim/BuyBack';
@@ -1354,11 +1355,15 @@ export class DungeonScene extends GameScene {
     if (this.auraTimer > 0) return;
     this.auraTimer = 0.25;
 
-    if (e.curseDecayPctPerSec > 0 || e.auraDebuffRadius > 0) {
+    if (e.curseDecayPctPerSec > 0 || e.auraDebuffRadius > 0 || e.attritionRadius > 0) {
+      // One application for the whole tick: every enemy in reach gets the same.
+      const wear = e.attritionRadius > 0
+        ? [{ id: 'attrition', duration: 1, magnitude: 1, mods: attritionMods(e.attritionResist, e.attritionAttackSpeed) }]
+        : null;
       for (const en of this.enemies) {
         if (en.life <= 0) continue;
-        // Wither: a curse that eats through maximum life rather than ticking a
-        // flat number, so it scales with whatever you are fighting.
+        // The Long Decline: a curse that eats through maximum life rather than
+        // ticking a flat number, so it scales with whatever you are fighting.
         if (e.curseDecayPctPerSec > 0 && en.isDebuffed) {
           en.takeDamage(
             {
@@ -1366,12 +1371,14 @@ export class DungeonScene extends GameScene {
               type: 'poison',
               crit: false,
               source: 'player',
-              ability: tr('Wither'),
+              ability: tr('The Long Decline'),
             },
             ctx,
           );
         }
-        // Attrition: everything near you is worse at its job.
+        // Attrition: resistances and attack speed worn down while he lives.
+        if (wear && en.root.position.distanceTo(this.player.position) <= e.attritionRadius) en.applyStatuses(wear, ctx);
+        // Mire (an item): everything near you is worse at its job.
         if (
           e.auraDebuffRadius > 0 &&
           en.root.position.distanceTo(this.player.position) <= e.auraDebuffRadius

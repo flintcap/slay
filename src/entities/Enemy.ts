@@ -918,6 +918,8 @@ export class Enemy implements Combatant {
       } else {
         this.locomotion += (0 - this.locomotion) * Math.min(1, dt * 8);
       }
+      this.confusedSwing = Math.max(0, this.confusedSwing - dt);
+      if (brain.confusedFoe) this.tickConfusion(brain.confusedFoe, ctx);
     }
 
     // Affixes ---------------------------------------------------------------
@@ -947,6 +949,28 @@ export class Enemy implements Combatant {
       const s = 1 + Math.sin(ctx.elapsed * 2.6) * 0.06;
       this.aura.scale.setScalar(this.hitRadius * 2.6 * s);
     }
+  }
+
+  /** Seconds to this monster's next blow while confused. */
+  private confusedSwing = 0;
+
+  /**
+   * Mass Confusion: a confused monster that has reached another monster
+   * strikes it with its own blow (its rolled damage, at its own attack
+   * pace). The brain walked it there and starts nothing else meanwhile.
+   */
+  private tickConfusion(foe: Enemy, ctx: CombatContext): void {
+    if (this.confusedSwing > 0 || this.inst || !foe.alive || foe.disposed || !this.hasStatus('confused')) return;
+    for (const st of this.statuses) if (statusDef(st.id)?.incapacitates) return;
+    const p = this.root.position;
+    const q = foe.root.position;
+    const reach = this.hitRadius + foe.hitRadius + 1.1 * this.sizeScale;
+    if ((p.x - q.x) ** 2 + (p.z - q.z) ** 2 > reach * reach) return;
+    this.confusedSwing = 1.3 / this.actionSpeed();
+    this.facing = angleTo(p.x, p.z, q.x, q.z);
+    this.setAction('attack', 0.4);
+    const amount = ctx.rng.range(this.stats.minDamage, this.stats.maxDamage);
+    foe.takeDamage({ amount, type: 'physical', crit: false, source: this.id, ability: tr('Confused'), from: { x: p.x, z: p.z } }, ctx);
   }
 
   /** Solves the living pose for the time gathered since the last solve. */
@@ -1078,6 +1102,13 @@ export class Enemy implements Combatant {
       });
     }
     return out;
+  }
+
+  /** How many of the named statuses are running, each counted once. Hex Upon Hex. */
+  countStatuses(ids: ReadonlySet<string>): number {
+    let n = 0;
+    for (const s of this.statuses) if (ids.has(s.id)) n++;
+    return n;
   }
 
   drainStatus(id: string): number {

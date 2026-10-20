@@ -226,6 +226,10 @@ const SELF_BUFF_STATUS: Record<string, string> = {
 /** How far from the aim point Corpse Explosion looks for a body, and how long a body lies there. */
 const CORPSE_REACH = 4;
 const CORPSE_LIFE = 30;
+/** How far from the Revenant a summon aimed at a point may rise. */
+const RAISE_REACH = 12;
+/** The Revenant's curses, as the statuses they leave. Hex Upon Hex counts these. */
+const HEXES: ReadonlySet<string> = new Set(['weakened', 'vulnerable', 'feared', 'doomed', 'confused', 'unmade', 'grasped', 'lifelink']);
 
 /** What a cleanse takes off the hero first: holds, then slows. */
 const CLEANSE = ['stunned', 'frozen', 'knockedDown', 'rooted', 'feared', 'grasped', 'entangled', 'crippled', 'chilled', 'slowed'];
@@ -1789,14 +1793,35 @@ export class SkillRunner {
           const minionPower = 1 + (isClone ? mp.clonePowerPct : mp.minionDamagePct) / 100;
           // Skeletal Knight and Death Knight upgrade a few skeletons into knights.
           const elites = def.id === 'raiseSkeleton' ? Math.floor(mp.minionEliteCount) : 0;
-          const elitePower = 1 + mp.minionElitePowerPct / 100;
+          // Death Knight's bonus is "more": it multiplies Skeletal Knight's.
+          const elitePower = (1 + mp.minionElitePowerPct / 100) * (1 + mp.minionEliteMorePct / 100);
           // Minion attack speed (Marrow Feast) goes through the hero's own
           // speed curve (`sim/Speed.ts`), so ranks keep paying without the
           // host swinging like a machine.
           const swingRate = 1 / speedMultiplier(mp.minionAttackSpeedPct);
           // A Shadow Clone is you in shadow, so it fights with your blades;
           // Call the Viper's serpent bites (`melee`).
-          const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel') || def.id === 'shadowClone' || num('melee', 0) > 0;
+          // (`massMinion` counts: Grand Ossuary's wardens are brutes. A Bone
+          // Chanter says `ranged` and keeps its distance.)
+          const fx = (def.effect ?? '').toLowerCase();
+          const melee = num('ranged', 0) <= 0 && (fx.includes('minion') || fx.includes('sentinel') || def.id === 'shadowClone' || num('melee', 0) > 0);
+          // A Revenant summon aimed at a point rises there (within reach), and a
+          // Bone Thrall claws up out of a corpse lying near it, using the body up.
+          let cx = player.position.x;
+          let cz = player.position.z;
+          if (def.targeting === 'point' && classOfSkill(def.id) === 'revenant') {
+            const reach = Math.min(RAISE_REACH, this.groundDistance(target, player.position));
+            const lane = this.wallStop(player.position, dir, reach, ctx, MINION_RADIUS);
+            cx = player.position.x + dir.x * lane;
+            cz = player.position.z + dir.z * lane;
+            const body = def.id === 'raiseSkeleton' ? this.corpseNear(target, CORPSE_REACH) : null;
+            if (body) {
+              this.corpses.splice(this.corpses.indexOf(body), 1);
+              cx = body.x;
+              cz = body.z;
+              this.effects.fx.burst('dust', cx, 0.3, cz, { count: 14 });
+            }
+          }
           // Make room before raising anything. Oldest of this skill goes first, so
           // pressing the button at the cap always does something visible.
           if (!isTotem) this.trimSummons(def.id, Math.max(0, cap - count));
@@ -1809,18 +1834,19 @@ export class SkillRunner {
           let knights = this.turrets.filter((q) => q.skillId === def.id && q.elite && q.life > 0 && q.left > 0).length;
           for (let i = 0; i < Math.min(count, room); i++) {
             const a = (i / count) * Math.PI * 2;
-            const spread = 1.2 + count * 0.25;
+            const spread = count > 1 ? 1.2 + count * 0.25 : cx === player.position.x && cz === player.position.z ? 1.45 : 0;
             const elite = knights < elites;
             if (elite) knights++;
             this.addTurret(
-              player.position.x + Math.cos(a) * spread,
-              player.position.z + Math.sin(a) * spread,
+              cx + Math.cos(a) * spread,
+              cz + Math.sin(a) * spread,
               life,
               num('attackRate', melee ? 1.1 : 1.6) * swingRate,
               num('range', melee ? 2.6 : 11),
-              // A clone hits for its own share of your blow (`damagePct`, which
-              // its rank ladder grows); other summons for `minionScale`.
-              (m = 1) => makePacket(m * (isClone ? num('damagePct', 45) / 100 : num('minionScale', 0.5)) * minionPower * (elite ? elitePower : 1)),
+              // A clone or a Revenant summon hits for the share of your blow its
+              // tooltip names (`damagePct`, which its rank ladder grows); other
+              // summons for `minionScale`.
+              (m = 1) => makePacket(m * (isClone || typeof def.params?.damagePct === 'number' ? num('damagePct', 45) / 100 : num('minionScale', 0.5)) * minionPower * (elite ? elitePower : 1)),
               type, color, melee, def.id,
               // A share of your own pool, which is how the skill descriptions
               // read it — "40% of your life" and so on.
@@ -2788,6 +2814,23 @@ export class SkillRunner {
   }
 
   /**
+   * Hex Upon Hex: every Revenant curse on the target past the first makes it
+   * take more damage. One when the passive is not taken.
+   */
+  private hexMul(t: Target): number {
+    const pct = this.caster?.passives.hexPct ?? 0;
+    if (pct <= 0) return 1;
+    const n = t.countStatuses(HEXES);
+    return n > 1 ? 1 + ((n - 1) * pct) / 100 : 1;
+  }
+
+  /** A melee minion's blow, which skips `tune`, still pays Hex Upon Hex. */
+  private hexed(packet: DamagePacket, t: Target): DamagePacket {
+    const m = this.hexMul(t);
+    return m === 1 ? packet : { ...packet, amount: packet.amount * m };
+  }
+
+  /**
    * Applies the caster's conditional passives to one packet against one target.
    *
    * This is the single choke point for "more damage when...". Executioner,
@@ -2828,7 +2871,7 @@ export class SkillRunner {
       packet.type,
     );
     const st = p.passiveState;
-    let amount = packet.amount * mul;
+    let amount = packet.amount * mul * this.hexMul(t);
 
     // The Fifth Verse: every Nth blow is a guaranteed critical, and hits harder
     // for being one. Counted per landed blow, not per press, so a whirlwind
@@ -3826,8 +3869,8 @@ export class SkillRunner {
               t.hero.play('attack1', { fade: 0.06, restart: true, speed: 1.3, contact: 0.12 });
             }
           }
-          // Marrow Feast: what the army bites, you swallow. Vampiric Touch: so
-          // does a share of your own life steal.
+          // Vampiric Touch: a share of your own life steal, and summons that
+          // leech (an item), feed you on every blow.
           const owner = this.caster;
           const leech = owner ? owner.passives.minionLeechPct + owner.stats.lifeSteal * owner.passives.minionStealShare / 100 : 0;
           if (owner && leech > 0) {
@@ -3836,6 +3879,15 @@ export class SkillRunner {
               owner.life + t.packet().amount * (leech / 100),
             );
           }
+          // Marrow Feast: the army feeds itself. The blow heals the minion that
+          // landed it, and a kill heals it for a share of its life.
+          const feast = owner?.passives;
+          const fed = (blow: DamagePacket, mark: Target): void => {
+            if (!feast || t.life <= 0) return;
+            let heal = blow.amount * (feast.minionSelfLeechPct / 100);
+            if (mark.life <= 0) heal += t.maxLife * (feast.minionKillHealPct / 100);
+            if (heal > 0) t.life = Math.min(t.maxLife, t.life + heal);
+          };
           const to = best.root.position.clone().setY(1.0);
           // One voice per summon: the sound its skill gives it, nothing else.
           const voice = skillSound(t.skillId).minion;
@@ -3843,22 +3895,36 @@ export class SkillRunner {
           this.effects.beginQuiet();
           try {
             if (t.melee) {
-              this.strike(best, t.packet(), ctx, 'minion', t.x, t.z);
+              const blow = this.hexed(t.packet(), best);
+              this.strike(best, blow, ctx, 'minion', t.x, t.z);
+              fed(blow, best);
               // A knight's blow carries on into whatever stands beside its mark.
               if (t.cleave) {
                 for (const o of this.allTargets(enemies, boss)) {
                   if (o === best || o.life <= 0 || this.groundDistance(o.root.position, best.root.position) > 1.8 + o.hitRadius) continue;
-                  this.strike(o, t.packet(), ctx, 'minion', t.x, t.z);
+                  const side = this.hexed(t.packet(), o);
+                  this.strike(o, side, ctx, 'minion', t.x, t.z);
+                  fed(side, o);
                 }
               }
               this.effects.impact(t.type, to.x, to.y, to.z, { color: t.color, scale: 0.7, shake: 0, sfx: null });
             } else {
+              // A Bone Chanter's bolt: a slower, heavier mote of witchlight
+              // that lobs a little, so it reads as thrown, not shot.
+              const chant = t.skillId === 'skeletalMage';
+              const mark = best;
               this.effects.projectile(from.clone(), to, {
                 element: t.type,
                 color: t.color,
-                speed: 26,
-                size: 0.18,
-                onHit: (p) => this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss, 'minion'),
+                speed: chant ? 18 : 26,
+                size: chant ? 0.24 : 0.18,
+                arc: chant ? 0.5 : 0,
+                onHit: (p) => {
+                  this.pointDamage(p, 0.9, t.packet, ctx, enemies, boss, 'minion');
+                  const thud = chant ? skillSound(t.skillId).hit : null;
+                  if (thud) audio.play(thud, { x: p.x, z: p.z });
+                  if (mark.life <= 0) fed({ amount: 0, type: t.type, crit: false, source: 'player' }, mark);
+                },
               });
             }
           } finally {
