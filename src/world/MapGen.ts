@@ -155,9 +155,10 @@ export interface MapPlan {
 export const MAX_AREAS = 4;
 export const MAX_ZONES_PER_AREA = 2;
 /**
- * The first tiers are short maps: one or two areas, then the boss. A hero
- * levels on every area cleared, and four of them a map left the monsters of
- * the early tiers behind on the base difficulty.
+ * The first tiers are short maps: one area that ends in the boss's arena, or
+ * two with the boss at the end of the second (owner). A hero levels on every
+ * area cleared, and four of them a map left the monsters of the early tiers
+ * behind on the base difficulty.
  */
 export const SHORT_MAP_TIERS = 10;
 
@@ -165,15 +166,18 @@ const areaCount = (chain: BiomeId[]): number => Math.max(...splitAreas(chain)) +
 
 /**
  * Drops middle zones until the chain fits in `max` areas, keeping at least
- * `fewest` zones and always two areas, so the boss never shares the way in.
+ * `fewest` zones and `least` areas. A short map (`short`) may drop its way in
+ * too when nothing else can go, so one area can be the boss's zone alone.
  */
-function trimChain(chain: BiomeId[], max: number, fewest: number): void {
+function trimChain(chain: BiomeId[], max: number, fewest: number, least: number, short: boolean): void {
   while (areaCount(chain) > max && chain.length > fewest) {
+    const order = [...chain.keys()].slice(1, -1);
+    if (short && chain.length > 1) order.push(0);
     let cut = -1;
-    for (let i = 1; i < chain.length - 1 && cut < 0; i++) {
+    for (let k = 0; k < order.length && cut < 0; k++) {
       const trial = chain.slice();
-      trial.splice(i, 1);
-      if (areaCount(trial) >= 2) cut = i;
+      trial.splice(order[k]!, 1);
+      if (areaCount(trial) >= least) cut = order[k]!;
     }
     if (cut < 0) return;
     chain.splice(cut, 1);
@@ -236,15 +240,18 @@ export function planMap(tier: number, rng: Rng, want?: BiomeId, minZones = 3): M
     theme = { id: `solo.${b}`, names: [getBiome(b).name.replace(/^The /, '')], weight: 1, chain: [b, b, b] };
     chain = [b, b, b];
   }
-  // Never more loads than the tier allows: drop middle zones until it fits.
-  // A short map is one or two areas and then the boss's, an even roll.
+  // Never more loads than the tier allows: drop zones until it fits. A short
+  // map is exactly one area (the boss at its end) or two, an even roll; a
+  // longer one keeps the boss out of the area you arrive in.
   const short = tier <= SHORT_MAP_TIERS;
-  const maxAreas = short ? (rng.chance(0.5) ? 2 : 3) : MAX_AREAS;
-  const fewest = short ? 2 : 3;
-  trimChain(chain, maxAreas, fewest);
+  const maxAreas = short ? (rng.chance(0.5) ? 1 : 2) : MAX_AREAS;
+  const leastAreas = short ? maxAreas : 2;
+  const fewest = short ? 1 : 3;
+  trimChain(chain, maxAreas, fewest, leastAreas, short);
   // Never fewer zones than asked (the old run's floor count), so a map never
-  // holds fewer fights: repeat a zone before the boss while the loads allow.
-  for (let guard = 0; chain.length < Math.min(5, minZones) && guard < 8; guard++) {
+  // holds fewer fights, and never fewer areas than the roll: repeat a zone
+  // before the boss while the loads allow.
+  for (let guard = 0; (chain.length < Math.min(5, minZones) || areaCount(chain) < leastAreas) && guard < 8; guard++) {
     let grown = false;
     for (let i = chain.length - 2; i >= 0 && !grown; i--) {
       const trial = chain.slice();
@@ -261,7 +268,7 @@ export function planMap(tier: number, rng: Rng, want?: BiomeId, minZones = 3): M
   // the biome the story sent you to, so its monsters are there to be hunted.
   if (want) {
     for (let i = 1; i < chain.length - 1; i++) chain[i] = want;
-    trimChain(chain, maxAreas, fewest);
+    trimChain(chain, maxAreas, fewest, leastAreas, short);
   }
 
   const areaOf = splitAreas(chain);

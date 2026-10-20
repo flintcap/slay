@@ -544,6 +544,12 @@ Update this file and push it after every finished step.
   `trimChain`). Tier 11+ maps are the same as before. About 30% fewer
   monsters a map at tiers 1-10. check-curve now gives the ranger L18 at
   tier 12 (was L19) and calls it walled there (0 of 3 bosses).
+  Corrected (owner): a short map is one floor (its zone or zones end in the
+  boss arena) or two (the boss at the end of the second), an even roll.
+  `trimChain` may drop the way in on a short map; `levelsForDepth` is 1
+  there, so a one-zone map is not given extra monsters. Tier 11+ maps are
+  identical to before (same sample of 60 seeds). check-mapflow runs at tier
+  12 so it still walks a map with more than one area.
 - #159 Bounty board: the reward is sealed (no gold, Renown or item shown);
   rolled on claim from a seed fixed per bounty. Taking or looking no longer
   posts new contracts; abandoning puts one back. "Post new bounties" costs

@@ -571,12 +571,13 @@ function questRoomKind(quest: QuestInstance): DungeonRoom['kind'] | null {
 /**
  * Fewest zones in a map: what a run used to have in floors, 3 and then 5
  * deep, so a map never holds fewer fights than a descent did. The short maps
- * of the first tiers (MapGen.SHORT_MAP_TIERS) may be a way in and a boss.
+ * of the first tiers (MapGen.SHORT_MAP_TIERS) may be the boss's zone alone,
+ * and their monsters are not spread up to make up for it.
  */
 export function levelsForDepth(depth: number): number {
   if (depth >= 25) return 5;
   if (depth > SHORT_MAP_TIERS) return 4;
-  return 2;
+  return 1;
 }
 
 /**

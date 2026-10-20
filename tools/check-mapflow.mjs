@@ -36,7 +36,7 @@ try {
     localStorage.clear();
     window.SLAY.save.hardReset();
     window.SLAY.debug.makeCharacter('warden', 12);
-    await window.SLAY.engine.goTo('dungeon', { depth: 6 });
+    await window.SLAY.engine.goTo('dungeon', { depth: 12 });
   });
   await page.waitForFunction(() => window.SLAY.engine.currentSceneId === 'dungeon', null, { timeout: 600000, polling: 500 });
   await page.evaluate(() => window.SLAY.debug.godMode(true));
@@ -56,7 +56,7 @@ try {
       label: document.querySelector('.hud-depth')?.textContent ?? '(no label)',
     };
   });
-  ok(!!m.name && m.zones >= 2 && m.areas >= 2, 'the run is a map', `${m.name}, ${m.zones} zones in ${m.areas} areas`);
+  ok(!!m.name && m.zones >= 3 && m.areas >= 2, 'the run is a map', `${m.name}, ${m.zones} zones in ${m.areas} areas`);
   ok(m.waypoint && m.ring, 'the first area has a waypoint ring');
   ok(m.hud, 'the HUD shows the tier', m.label);
 
@@ -163,7 +163,7 @@ try {
 
   // 4b. A real boss kill on a fresh map: phases, the reward, the way home.
   await page.evaluate(async () => {
-    await window.SLAY.engine.goTo('dungeon', { depth: 6 });
+    await window.SLAY.engine.goTo('dungeon', { depth: 12 });
   });
   await page.waitForFunction(() => window.SLAY.engine.currentSceneId === 'dungeon' && !window.SLAY.engine.transitioning, null, { timeout: 600000, polling: 500 });
   await frames(page, 10);
@@ -228,7 +228,7 @@ try {
     .then(() => true, () => false);
   ok(wentHome, 'the portal takes you home');
   const record = await page.evaluate(() => window.SLAY.save.account.current?.depthRecord ?? -1);
-  ok(record >= (fight.depth ?? 6), 'the cleared tier is banked', `record ${record}`);
+  ok(record >= (fight.depth ?? 12), 'the cleared tier is banked', `record ${record}`);
 
   // 4c. The next portal opens a fresh map.
   await page.evaluate(() => window.SLAY.events.emit('ui:open', { panel: 'descend' }));
@@ -261,7 +261,7 @@ try {
 
   // 5. The waypoint home, on a fresh map.
   await page.evaluate(async () => {
-    await window.SLAY.engine.goTo('dungeon', { depth: 6 });
+    await window.SLAY.engine.goTo('dungeon', { depth: 12 });
   });
   await page.waitForFunction(
     () => window.SLAY.engine.currentSceneId === 'dungeon' && window.SLAY.engine.currentScene.levelIndex === 0 && window.SLAY.engine.currentScene.waypoint,
