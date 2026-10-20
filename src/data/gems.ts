@@ -136,7 +136,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
     family: 'opal',
     name: tr('Opal'),
     color: 0xb8e0d8,
-    weapon: [{ stat: 'castSpeed', v: [4, 7, 11, 15, 20, 27] }],
+    weapon: [{ stat: 'castSpeed', v: [2, 3, 4, 6, 8, 10] }],
     armor: [{ stat: 'manaRegen', v: [3, 6, 10, 16, 25, 38] }],
     jewelry: [{ stat: 'energy', v: [3, 6, 10, 15, 22, 32] }],
   },
@@ -144,7 +144,7 @@ const GEM_FAMILIES: GemFamilySpec[] = [
     family: 'garnet',
     name: tr('Garnet'),
     color: 0xa8202c,
-    weapon: [{ stat: 'attackSpeed', v: [4, 7, 11, 15, 20, 27] }],
+    weapon: [{ stat: 'attackSpeed', v: [2, 3, 4, 6, 8, 10] }],
     armor: [{ stat: 'vitality', v: [3, 6, 10, 15, 22, 32] }],
     jewelry: [{ stat: 'lifeSteal', v: [1, 1, 2, 3, 4, 6] }],
   },
@@ -232,19 +232,19 @@ type RuneRow = [string, RuneVein, number, StatKey, number, StatKey, number, Stat
 
 const RUNE_ROWS: RuneRow[] = [
   // Ember: fire and fury.
-  [tr('Krae'), 'ember', 1, 'fireDamage', 5, 'strength', 3, 'attackSpeed', 3],
+  [tr('Krae'), 'ember', 1, 'fireDamage', 5, 'strength', 3, 'attackSpeed', 2],
   [tr('Torvek'), 'ember', 2, 'enhancedDamage', 15, 'fireResist', 15, 'fireDamage', 8],
   [tr('Ashmar'), 'ember', 3, 'fireDamage', 18, 'strength', 8, 'critChance', 3],
-  [tr('Brannoc'), 'ember', 4, 'attackSpeed', 10, 'enhancedDefense', 25, 'strength', 12],
+  [tr('Brannoc'), 'ember', 4, 'attackSpeed', 6, 'enhancedDefense', 25, 'strength', 12],
   [tr('Skarth'), 'ember', 5, 'fireDamage', 40, 'fireResist', 30, 'enhancedDamage', 25],
-  [tr('Ignavar'), 'ember', 6, 'enhancedDamage', 45, 'strength', 18, 'attackSpeed', 12],
+  [tr('Ignavar'), 'ember', 6, 'enhancedDamage', 45, 'strength', 18, 'attackSpeed', 7],
   // Rime: frost, storm and the mind.
   [tr('Sile'), 'rime', 1, 'coldDamage', 4, 'mana', 15, 'manaRegen', 5],
-  [tr('Vessa'), 'rime', 2, 'manaSteal', 2, 'coldResist', 15, 'castSpeed', 5],
+  [tr('Vessa'), 'rime', 2, 'manaSteal', 2, 'coldResist', 15, 'castSpeed', 3],
   [tr('Hollin'), 'rime', 3, 'lightningDamage', 16, 'energy', 8, 'mana', 40],
-  [tr('Neveth'), 'rime', 4, 'castSpeed', 10, 'lightningResist', 25, 'cooldownReduction', 4],
+  [tr('Neveth'), 'rime', 4, 'castSpeed', 6, 'lightningResist', 25, 'cooldownReduction', 4],
   [tr('Caelith'), 'rime', 5, 'coldDamage', 34, 'coldResist', 30, 'manaRegen', 30],
-  [tr('Ilvren'), 'rime', 6, 'cooldownReduction', 8, 'energy', 18, 'castSpeed', 14],
+  [tr('Ilvren'), 'rime', 6, 'cooldownReduction', 8, 'energy', 18, 'castSpeed', 8],
   // Marrow: bone, blood and endurance.
   [tr('Grod'), 'marrow', 1, 'minDamage', 2, 'defense', 12, 'life', 10],
   [tr('Osk'), 'marrow', 2, 'lifeSteal', 1, 'vitality', 4, 'lifeRegen', 4],
@@ -355,7 +355,7 @@ export const RUNEWORDS: RunewordDef[] = [
   // --- melee ----------------------------------------------------------------
   rw('rw.kindling', tr('Spark and Tinder'), [E, E], MELEE, tr('Two sparks, struck close, and the blade remembers being in the forge.'), [
     ['fireDamage', 8, 8],
-    ['attackSpeed', 8, 2],
+    ['attackSpeed', 6, 1],
   ]),
   rw('rw.red-tithe', tr('Red Tithe'), [E, M], MELEE, tr('Every cut pays something back. Nobody asks to whom.'), [
     ['enhancedDamage', 20, 12],
@@ -393,7 +393,7 @@ export const RUNEWORDS: RunewordDef[] = [
   ]),
   // --- ranged ---------------------------------------------------------------
   rw('rw.gutter-wind', tr('Gutter Wind'), [U, E], RANGED, tr('It smells of the street, and it never misses the gutter.'), [
-    ['attackSpeed', 10, 3],
+    ['attackSpeed', 8, 1.4],
     ['critChance', 2, 1],
   ]),
   rw('rw.grey-fletch', tr('Grey Fletch'), [R, U, R], RANGED, tr('Feathers from a bird nobody has seen alive.'), [
@@ -405,18 +405,18 @@ export const RUNEWORDS: RunewordDef[] = [
     ['skillLevels', 1, 0],
     ['enhancedDamage', 40, 20],
     ['critDamage', 20, 10],
-    ['attackSpeed', 10, 3],
+    ['attackSpeed', 8, 1.4],
   ]),
   // --- casters --------------------------------------------------------------
   rw('rw.banked-coals', tr('Banked Coals'), [R, E], CASTER, tr('Cold on top. Lift the ash and see.'), [
     ['fireDamage', 6, 6],
-    ['castSpeed', 6, 2],
+    ['castSpeed', 5, 1.2],
     ['manaRegen', 8, 4],
   ]),
   rw('rw.hollow-choir', tr('Hollow Choir'), [R, U, R], CASTER, tr('Voices in the wood, singing a half beat ahead of you.'), [
     ['skillLevels', 1, 0],
     ['mana', 30, 20],
-    ['castSpeed', 8, 3],
+    ['castSpeed', 7, 1.4],
   ]),
   rw('rw.ash-psalm', tr('Ash Psalm'), [E, U, E], CASTER, tr('Read aloud, it leaves soot on the tongue.'), [
     ['fireDamage', 12, 10],
@@ -490,8 +490,8 @@ export const RUNEWORDS: RunewordDef[] = [
     ['goldFind', 15, 8],
   ]),
   rw('rw.quickfrost', tr('Quickfrost'), [R, E], HANDS_FEET, tr('Cold feet, hot hands, and no time to think.'), [
-    ['attackSpeed', 5, 2],
-    ['castSpeed', 5, 2],
+    ['attackSpeed', 4, 1],
+    ['castSpeed', 4, 1],
     ['moveSpeed', 3, 1],
   ]),
 ];

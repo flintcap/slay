@@ -50,7 +50,7 @@ import {
   maxSockets,
   JEWELRY_CATEGORIES,
 } from '../data/itemBases';
-import { AFFIXES as ALL_AFFIXES, affixNameWord } from '../data/affixes';
+import { AFFIXES as ALL_AFFIXES, affixNameWord, getAffix } from '../data/affixes';
 import { EXTRA_LINES } from '../data/extraLines';
 import { UNIQUES, uniqueDropWeight, uniquePool, getUnique } from '../data/uniques';
 import type { UniqueDef } from '../data/uniques';
@@ -954,6 +954,51 @@ export function refreshFixedLines(item: Item): boolean {
   return true;
 }
 
+/**
+ * One attack or cast speed line from before the Wave 5 retune, on today's
+ * scale. It is the curve the item data was retuned by (40v / (v + 40), so 6
+ * stays about 5, 20 becomes 13, 40 becomes 20), halved on a charm, whose
+ * speed lines are half size now (`CHARM_SPEED_SHARE`). The curve only rises,
+ * so a roll keeps its place in its range: the top of the old range lands at
+ * the top of the new one. Costs (negative lines) map the same way.
+ */
+export function speedOnNewScale(v: number, charm: boolean): number {
+  const a = Math.abs(v);
+  if (a === 0) return 0;
+  const g = (40 * a) / (a + 40);
+  return Math.sign(v) * (charm ? Math.max(1, Math.round(g / 2)) : Math.round(g));
+}
+
+/**
+ * Moves an item found before the speed retune (saves before version 3) onto
+ * today's speed scale: every attack and cast speed line it carries (base,
+ * rolled, written, and the Enchanter's waiting offers) goes through
+ * `speedOnNewScale`, and a rolled line is then held inside its tier's range
+ * today (an anvil bonus may sit up to 12% over, as `refreshFixedLines` allows).
+ * Unique and set lines are held in their ranges by `refreshFixedLines`, which
+ * runs after. Returns true when anything changed.
+ */
+export function rescaleOldSpeed(item: Item): boolean {
+  const charm = item.baseId.startsWith('charm.');
+  let changed = false;
+  const fix = (m: ItemMod): void => {
+    if (m.stat !== 'attackSpeed' && m.stat !== 'castSpeed') return;
+    let v = speedOnNewScale(m.value, charm);
+    const tier = m.kind === 'implicit' ? undefined : getAffix(m.affixId)?.tiers.find((t) => t.tier === m.tier);
+    if (tier) {
+      const top = item.upgrade > 0 && tier.max > 0 ? Math.round(tier.max * 1.12) : tier.max;
+      v = Math.min(top, Math.max(tier.min, v));
+    }
+    if (v !== m.value) {
+      m.value = v;
+      changed = true;
+    }
+  };
+  item.mods.forEach(fix);
+  item.offers?.mods.forEach(fix);
+  return changed;
+}
+
 /** Builds a plain instance of a base — used for starting gear and vendors. */
 export function createItem(baseId: string, ilvl: number, rng: Rng, rarity: ItemRarity = 'normal'): Item {
   const base = getBase(baseId);
@@ -1529,8 +1574,8 @@ const STAT_VALUE: Partial<Record<StatKey, number>> = {
   attackRating: 0.5,
   minDamage: 7,
   maxDamage: 5,
-  attackSpeed: 16,
-  castSpeed: 16,
+  attackSpeed: 26,
+  castSpeed: 26,
   critChance: 30,
   critDamage: 3,
   lifeSteal: 60,

@@ -1075,32 +1075,32 @@ const DEFS: PowerDef[] = [
   {
     id: 'fanaticism',
     name: tr('Fanaticism'),
-    desc: (m) => tr('+{0} attack speed, +{1} cast speed and +{2} movement speed.', pct(20 * m), pct(15 * m), pct(10 * m)),
+    desc: (m) => tr('+{0} attack speed, +{1} cast speed and +{2} movement speed.', pct(13 * m), pct(11 * m), pct(10 * m)),
     stats: (s, _c, m) => {
-      s.attackSpeed += 20 * m;
-      s.castSpeed += 15 * m;
+      s.attackSpeed += 13 * m;
+      s.castSpeed += 11 * m;
       s.moveSpeed += 10 * m;
     },
   },
   {
     id: 'werebear',
     name: tr('Bearform'),
-    desc: () => tr('Your maximum life is 50% higher and your defense 30% higher, but you cast 20% slower.'),
+    desc: () => tr('Your maximum life is 50% higher and your defense 30% higher, but you lose 13% cast speed.'),
     stats: (s) => {
       s.life *= 1.5;
       s.defense *= 1.3;
-      s.castSpeed -= 20;
+      s.castSpeed -= 13;
     },
   },
   {
     id: 'hollowPact',
     name: tr('Hollow Pact'),
-    desc: () => tr('Your maximum life is 40% lower. Everything else is greater: +100% damage, +25% attack and cast speed, +20% all resistances.'),
+    desc: () => tr('Your maximum life is 40% lower. Everything else is greater: +100% damage, +15% attack and cast speed, +20% all resistances.'),
     stats: (s) => {
       s.life *= 0.6;
       s.enhancedDamage += 100;
-      s.attackSpeed += 25;
-      s.castSpeed += 25;
+      s.attackSpeed += 15;
+      s.castSpeed += 15;
       s.fireResist += 20;
       s.coldResist += 20;
       s.lightningResist += 20;
@@ -1136,10 +1136,10 @@ const DEFS: PowerDef[] = [
   {
     id: 'featherweight',
     name: tr('Featherweight'),
-    desc: (m) => tr('+{0} movement speed and +{1} attack speed. Your defense is 40% lower and your life 10% lower.', pct(18 * m), pct(12 * m)),
+    desc: (m) => tr('+{0} movement speed and +{1} attack speed. Your defense is 40% lower and your life 10% lower.', pct(18 * m), pct(9 * m)),
     stats: (s, _c, m) => {
       s.moveSpeed += 18 * m;
-      s.attackSpeed += 12 * m;
+      s.attackSpeed += 9 * m;
       s.defense *= 0.6;
       s.life *= 0.9;
     },
@@ -1201,11 +1201,11 @@ const DEFS: PowerDef[] = [
   {
     id: 'slowBlood',
     name: tr('Slow Blood'),
-    desc: (m) => tr('Regenerate {0}% of your maximum life each second. You attack and cast 12% slower.', r1(1.2 * m)),
+    desc: (m) => tr('Regenerate {0}% of your maximum life each second. You lose 9% attack and cast speed.', r1(1.2 * m)),
     stats: (s, _c, m) => {
       s.lifeRegen += s.life * 0.012 * m;
-      s.attackSpeed -= 12;
-      s.castSpeed -= 12;
+      s.attackSpeed -= 9;
+      s.castSpeed -= 9;
     },
   },
   {
@@ -1229,11 +1229,11 @@ const DEFS: PowerDef[] = [
   {
     id: 'stoneSkin',
     name: tr('Stone Skin'),
-    desc: (m) => tr('+{0}% damage reduction. You attack and cast 15% slower and move 8% slower.', r1(12 * m)),
+    desc: (m) => tr('+{0}% damage reduction. You lose 11% attack and cast speed and move 8% slower.', r1(12 * m)),
     stats: (s, _c, m) => {
       s.damageReduction += 12 * m;
-      s.attackSpeed -= 15;
-      s.castSpeed -= 15;
+      s.attackSpeed -= 11;
+      s.castSpeed -= 11;
       s.moveSpeed -= 8;
     },
   },
@@ -1369,29 +1369,29 @@ const DEFS: PowerDef[] = [
   {
     id: 'coldHands',
     name: tr('Cold Hands'),
-    desc: (m) => tr('+{0} cast speed. You attack 20% slower.', pct(20 * m)),
+    desc: (m) => tr('+{0} cast speed. You lose 13% attack speed.', pct(13 * m)),
     stats: (s, _c, m) => {
-      s.castSpeed += 20 * m;
-      s.attackSpeed -= 20;
+      s.castSpeed += 13 * m;
+      s.attackSpeed -= 13;
     },
   },
   {
     id: 'brightBurn',
     name: tr('Bright Burn'),
-    desc: (m) => tr('+{0} elemental damage and +{1} cast speed. Your mana regenerates half as fast.', pct(25 * m), pct(15 * m)),
+    desc: (m) => tr('+{0} elemental damage and +{1} cast speed. Your mana regenerates half as fast.', pct(25 * m), pct(11 * m)),
     stats: (s, _c, m) => {
       s.elementalDamagePct += 25 * m;
-      s.castSpeed += 15 * m;
+      s.castSpeed += 11 * m;
       s.manaRegen *= 0.5;
     },
   },
   {
     id: 'hardHead',
     name: tr('Hard Head'),
-    desc: (m) => tr('{0} more life. You cast 25% slower.', pct(20 * m)),
+    desc: (m) => tr('{0} more life. You lose 15% cast speed.', pct(20 * m)),
     stats: (s, _c, m) => {
       s.life *= 1 + 0.2 * m;
-      s.castSpeed -= 25;
+      s.castSpeed -= 15;
     },
   },
 ];

@@ -191,7 +191,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.gorefoot', tr('Gorefoot'), 'boots.heavy', 22, 20,
     tr('The tread pattern is not a tread pattern.'),
-    [['moveSpeed', 15, 22], ['lifeSteal', 3, 5], ['attackSpeed', 10, 15], ['maxDamage', 10, 18]],
+    [['moveSpeed', 15, 22], ['lifeSteal', 3, 5], ['attackSpeed', 8, 11], ['maxDamage', 10, 18]],
     { hook: tr('Faster the longer you stay in melee.'), special: 'momentum', weight: 100 }),
 
   u('uq.venomward', tr('Venom Ward'), 'shield.kite', 24, 22,
@@ -202,7 +202,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.skystrike', tr('Skystrike'), 'bow.long', 26, 24,
     tr('Loosed once at a storm. The storm moved.'),
-    [['lightningDamage', 20, 90], ['skillLevels', 1, 1], ['attackSpeed', 12, 18], ['dexterity', 12, 20],
+    [['lightningDamage', 20, 90], ['skillLevels', 1, 1], ['attackSpeed', 9, 12], ['dexterity', 12, 20],
      ['elementalDamagePct', 12, 20]],
     { hook: tr('Arrows fork on impact.'), special: 'chainLightning', weight: 95 }),
 
@@ -213,7 +213,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.frostwind', tr('Frostwind'), 'sword.broad', 30, 27,
     tr('The scabbard cracked from the inside within a week.'),
-    [['coldDamage', 60, 110], ['enhancedDamage', 90, 140], ['coldResist', 25, 40], ['attackSpeed', -12, -6],
+    [['coldDamage', 60, 110], ['enhancedDamage', 90, 140], ['coldResist', 25, 40], ['attackSpeed', -9, -5],
      ['critDamage', 40, 70]],
     { hook: tr('Slower swings, and everything you touch slows with you.'), special: 'chillOnHit', weight: 90 }),
 
@@ -225,17 +225,17 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.magefist', tr('Magefist'), 'gloves.silk', 34, 30,
     tr('The fingertips are permanently scorched from the inside.'),
-    [['castSpeed', 18, 25], ['fireDamage', 40, 70], ['manaRegen', 30, 45], ['skillLevels', 1, 1]],
+    [['castSpeed', 12, 15], ['fireDamage', 40, 70], ['manaRegen', 30, 45], ['skillLevels', 1, 1]],
     { hook: tr('Fire spells cost no mana below half your pool.'), special: 'fireFree', weight: 90 }),
 
   u('uq.frostburn', tr('Frostburn'), 'gloves.heavy', 36, 32,
     tr('Both hands ache. Neither hand is cold.'),
-    [['mana', 120, 190], ['coldDamage', 45, 80], ['castSpeed', 12, 18], ['manaSteal', 3, 5]],
+    [['mana', 120, 190], ['coldDamage', 45, 80], ['castSpeed', 9, 12], ['manaSteal', 3, 5]],
     { hook: tr('Mana pool counts double for anything that scales off it.'), special: 'manaScale', weight: 90 }),
 
   u('uq.stormchaser', tr('Stormchaser'), 'staff.cedar', 38, 34,
     tr('It points at weather. Not always the weather you can see.'),
-    [['lightningDamage', 30, 160], ['skillLevels', 2, 2], ['castSpeed', 20, 28], ['lightningResist', 30, 45],
+    [['lightningDamage', 30, 160], ['skillLevels', 2, 2], ['castSpeed', 13, 16], ['lightningResist', 30, 45],
      ['manaRegen', 40, 60]],
     { hook: tr('Lightning damage rolls are never low.'), special: 'lightningFloor', weight: 85 }),
 
@@ -247,7 +247,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.goldwrap', tr('Goldwrap'), 'belt.girdle', 33, 30,
     tr('The buckle is worth more than most of what it has held up.'),
-    [['goldFind', 120, 180], ['magicFind', 20, 30], ['defense', 40, 70], ['attackSpeed', 10, 15]],
+    [['goldFind', 120, 180], ['magicFind', 20, 30], ['defense', 40, 70], ['attackSpeed', 8, 11]],
     { hook: tr('Gold you pick up trickles back as life.'), special: 'goldToLife', weight: 100 }),
 
   u('uq.nagelring', tr('Nagelring'), 'ring.signet', 30, 26,
@@ -268,12 +268,12 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.buriza', tr('Buriza-Do Kyanon'), 'xbow.siege', 42, 38,
     tr('Loaded once, at the top of a mountain, by someone who never came down.'),
-    [['coldDamage', 90, 160], ['critDamage', 100, 150], ['enhancedDamage', 140, 200], ['attackSpeed', -10, -5]],
+    [['coldDamage', 90, 160], ['critDamage', 100, 150], ['enhancedDamage', 140, 200], ['attackSpeed', -8, -4]],
     { hook: tr('Bolts pierce through every target in the line.'), special: 'pierce', weight: 85 }),
 
   u('uq.titans', tr("Titan's Revenge"), 'spear.warspear', 44, 40,
     tr('Thrown at a giant. Came back. The giant did not.'),
-    [['strength', 25, 40], ['enhancedDamage', 150, 210], ['attackSpeed', 15, 22], ['areaDamagePct', 25, 40],
+    [['strength', 25, 40], ['enhancedDamage', 150, 210], ['attackSpeed', 11, 14], ['areaDamagePct', 25, 40],
      ['life', 90, 150]],
     { hook: tr('Returns to your hand.'), special: 'returning', weight: 85 }),
 
@@ -318,13 +318,13 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.thegravenspine', tr('The Graven Spine'), 'staff.war', 46, 42,
     tr('Every knot in the wood is a face, and they are all listening.'),
-    [['skillLevels', 2, 2], ['arcaneDamage', 70, 130], ['manaRegen', 55, 80], ['castSpeed', 22, 30],
+    [['skillLevels', 2, 2], ['arcaneDamage', 70, 130], ['manaRegen', 55, 80], ['castSpeed', 14, 17],
      ['life', -80, -40]],
     { hook: tr('Summons cost half as much and die twice as fast.'), special: 'summonGlass', weight: 85 }),
 
   u('uq.widowmaker', tr('Widowmaker'), 'bow.composite', 43, 39,
     tr('The fletching is human hair. It was donated.'),
-    [['critChance', 12, 18], ['critDamage', 90, 140], ['enhancedDamage', 130, 190], ['attackSpeed', 12, 18],
+    [['critChance', 12, 18], ['critDamage', 90, 140], ['enhancedDamage', 130, 190], ['attackSpeed', 9, 12],
      ['lifeSteal', -4, -2]],
     { hook: tr('Critical strikes cannot heal you. Nothing else matters.'), special: 'noCritLeech', weight: 85 }),
 
@@ -336,19 +336,19 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.spectralshard', tr('Spectral Shard'), 'dagger.blade', 41, 37,
     tr('Half of it is missing and it works better that way.'),
-    [['castSpeed', 28, 38], ['mana', 130, 200], ['skillLevels', 1, 1], ['arcaneResist', 40, 60],
+    [['castSpeed', 16, 19], ['mana', 130, 200], ['skillLevels', 1, 1], ['arcaneResist', 40, 60],
      ['critChance', 6, 10]],
     { hook: tr('The fastest caster weapon in the game, and it barely cuts.'), weight: 90 }),
 
   // Pants.
   u('uq.brambleshanks', tr('Brambleshanks'), 'pants.studded', 26, 24,
     tr('Every stud was hammered in by a hand that had bled on a bramble that day.'),
-    [['enhancedDefense', 80, 120], ['dexterity', 10, 15], ['attackSpeed', 8, 12], ['lifeSteal', 2, 4]],
+    [['enhancedDefense', 80, 120], ['dexterity', 10, 15], ['attackSpeed', 7, 9], ['lifeSteal', 2, 4]],
     { hook: tr('Critical strikes leave them bleeding.'), special: 'critBleed', weight: 95 }),
 
   u('uq.stillwater', tr('Stillwater'), 'pants.mystic', 32, 30,
     tr('Woven at the bottom of the cistern, where the water has not moved in a hundred years.'),
-    [['castSpeed', 12, 18], ['mana', 50, 80], ['manaRegen', 20, 35], ['coldResist', 25, 40]],
+    [['castSpeed', 9, 12], ['mana', 50, 80], ['manaRegen', 20, 35], ['coldResist', 25, 40]],
     { hook: tr('Enemies near you are slowed and weakened.'), special: 'slowAura', weight: 90 }),
 
   u('uq.anvilknees', tr('Anvilknees'), 'pants.cuisses', 40, 36,
@@ -362,7 +362,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.windforce', tr('Windforce'), 'bow.hydra', 72, 68,
     tr('The draw makes a sound like a door opening somewhere behind you.'),
-    [['enhancedDamage', 260, 340], ['attackSpeed', 25, 35], ['maxDamage', 90, 140], ['lifeSteal', 6, 9],
+    [['enhancedDamage', 260, 340], ['attackSpeed', 15, 19], ['maxDamage', 90, 140], ['lifeSteal', 6, 9],
      ['dexterity', 25, 40], ['areaDamagePct', 25, 40]],
     { hook: tr('Every shot knocks its target back.'), special: 'knockback', weight: 80 }),
 
@@ -374,14 +374,14 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.griswold', tr("Griswold's Edge"), 'sword.falchion', 54, 50,
     tr('The smith kept the best one. Obviously.'),
-    [['fireDamage', 120, 200], ['enhancedDamage', 200, 270], ['attackSpeed', 18, 26], ['fireResist', 35, 50],
+    [['fireDamage', 120, 200], ['enhancedDamage', 200, 270], ['attackSpeed', 12, 16], ['fireResist', 35, 50],
      ['lifeRegen', 25, 40]],
     { hook: tr('Ignites the ground where you fight.'), special: 'groundFire', weight: 85 }),
 
   u('uq.azurewrath', tr('Azurewrath'), 'sword.phase', 80, 76,
     tr('It does not reflect torchlight. It replaces it.'),
     [['coldDamage', 200, 340], ['arcaneDamage', 150, 260], ['enhancedDamage', 240, 320], ['skillLevels', 1, 2],
-     ['attackSpeed', 20, 28], ['elementalDamagePct', 25, 40]],
+     ['attackSpeed', 13, 16], ['elementalDamagePct', 25, 40]],
     { hook: tr('Physical damage is split evenly between cold and arcane.'), special: 'convertColdArcane', weight: 70 }),
 
   u('uq.arreatsface', tr("Arreat's Face"), 'helm.spired', 64, 60,
@@ -404,7 +404,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.skinofvipermagi', tr('Skin of the Vipermagi'), 'chest.dusk', 55, 51,
     tr('Shed, not skinned. The magus is still out there, larger.'),
-    [['skillLevels', 1, 1], ['castSpeed', 28, 38], ['fireResist', 30, 45], ['coldResist', 30, 45],
+    [['skillLevels', 1, 1], ['castSpeed', 16, 19], ['fireResist', 30, 45], ['coldResist', 30, 45],
      ['lightningResist', 30, 45], ['poisonResist', 30, 45], ['arcaneResist', 30, 45], ['enhancedDefense', 140, 200]],
     { hook: tr('The caster chest, from level 51 to the end of the game.'), weight: 85 }),
 
@@ -416,7 +416,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.gorerider', tr('Gore Rider'), 'boots.sharkskin', 52, 48,
     tr('The spurs are not decorative and were not originally metal.'),
-    [['moveSpeed', 25, 34], ['critChance', 10, 15], ['attackSpeed', 12, 18], ['areaDamagePct', 20, 30],
+    [['moveSpeed', 25, 34], ['critChance', 10, 15], ['attackSpeed', 9, 12], ['areaDamagePct', 20, 30],
      ['enhancedDefense', 150, 210]],
     { hook: tr('Critical strikes stagger. Staggered enemies take double area damage.'), special: 'critStagger', weight: 85 }),
 
@@ -428,7 +428,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.arachnid', tr('Arachnid Mesh'), 'belt.spiderweb', 60, 56,
     tr('It tightens on its own, very slightly, over years.'),
-    [['skillLevels', 1, 1], ['castSpeed', 22, 30], ['mana', 200, 300], ['manaRegen', 45, 70],
+    [['skillLevels', 1, 1], ['castSpeed', 14, 17], ['mana', 200, 300], ['manaRegen', 45, 70],
      ['poisonDamage', 90, 160]],
     { hook: tr('Slows every enemy within a few paces of you.'), special: 'slowAura', weight: 80 }),
 
@@ -440,7 +440,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.highlords', tr("Highlord's Wrath"), 'amulet.reliquary', 60, 56,
     tr('The Highlord was not a lord and was extremely wrathful.'),
-    [['skillLevels', 1, 1], ['critChance', 12, 18], ['attackSpeed', 18, 25], ['lightningDamage', 20, 200],
+    [['skillLevels', 1, 1], ['critChance', 12, 18], ['attackSpeed', 12, 15], ['lightningDamage', 20, 200],
      ['lightningResist', 30, 45]],
     { hook: tr('Critical chance rises with your character level.'), special: 'critPerLevel', weight: 85 }),
 
@@ -471,7 +471,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.thunderstroke', tr('Thunderstroke'), 'spear.ghost', 70, 66,
     tr('Held upright in a storm, it does not attract lightning. It repels it, upward.'),
-    [['lightningDamage', 60, 420], ['skillLevels', 2, 2], ['enhancedDamage', 220, 300], ['attackSpeed', 15, 22],
+    [['lightningDamage', 60, 420], ['skillLevels', 2, 2], ['enhancedDamage', 220, 300], ['attackSpeed', 11, 14],
      ['lightningResist', 40, 60]],
     { hook: tr('All damage from this weapon is dealt as lightning.'), special: 'convertLightning', weight: 78 }),
 
@@ -496,7 +496,7 @@ export const UNIQUES: UniqueDef[] = [
   u('uq.lastwish', tr('Last Wish'), 'mace.thundermaul', 75, 71,
     tr('Granted exactly once, badly, and then kept swinging.'),
     [['enhancedDamage', 340, 440], ['critDamage', 160, 230], ['areaDamagePct', 45, 65], ['lifeSteal', 8, 12],
-     ['attackSpeed', -15, -8], ['magicFind', 50, 80]],
+     ['attackSpeed', -11, -7], ['magicFind', 50, 80]],
     { hook: tr('Enemies you strike are cursed to drop more.'), special: 'wishCurse', weight: 74 }),
 
   // Pants.
@@ -507,7 +507,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.nightstride', tr('Nightstride'), 'pants.astral', 58, 54,
     tr('Sewn on the roof of the Archive, by the light of stars that are no longer there.'),
-    [['skillLevels', 1, 1], ['castSpeed', 18, 26], ['mana', 120, 180], ['elementalDamagePct', 20, 30],
+    [['skillLevels', 1, 1], ['castSpeed', 12, 16], ['mana', 120, 180], ['elementalDamagePct', 20, 30],
      ['enhancedDefense', 120, 170]],
     { hook: tr('When a hit leaves you low, you blink away.'), special: 'panicBlink', weight: 82 }),
 
@@ -523,7 +523,7 @@ export const UNIQUES: UniqueDef[] = [
 
   m('my.griffonseye', tr("Griffon's Eye"), 'helm.diadem', 76, 72,
     tr('The lens is ground from something that was watching before it was glass.'),
-    [['skillLevels', 2, 2], ['castSpeed', 30, 40], ['elementalDamagePct', 45, 60], ['lightningDamage', 100, 500],
+    [['skillLevels', 2, 2], ['castSpeed', 17, 20], ['elementalDamagePct', 45, 60], ['lightningDamage', 100, 500],
      ['manaRegen', 60, 90]],
     { hook: tr('Enemy elemental resistance is reduced by a flat amount you can feel.'), special: 'elePierce', sockets: 1 }),
 
@@ -549,13 +549,13 @@ export const UNIQUES: UniqueDef[] = [
 
   m('my.the-oculus', tr('The Oculus'), 'orb.vortex', 78, 74,
     tr('It blinks. Not often, and never while you are looking.'),
-    [['skillLevels', 3, 3], ['castSpeed', 32, 42], ['mana', 350, 500], ['elementalDamagePct', 40, 55],
+    [['skillLevels', 3, 3], ['castSpeed', 18, 20], ['mana', 350, 500], ['elementalDamagePct', 40, 55],
      ['magicFind', 45, 70], ['fireResist', 25, 40], ['coldResist', 25, 40], ['lightningResist', 25, 40]],
     { hook: tr('When badly hurt, teleports you somewhere else. It chooses where.'), special: 'panicBlink' }),
 
   m('my.wizardspike', tr('Wizardspike'), 'dagger.mindrender', 82, 78,
     tr('Held point-down it draws a circle in the dust by itself.'),
-    [['castSpeed', 40, 50], ['mana', 400, 560], ['manaRegen', 80, 120], ['arcaneDamage', 250, 400],
+    [['castSpeed', 20, 22], ['mana', 400, 560], ['manaRegen', 80, 120], ['arcaneDamage', 250, 400],
      ['fireResist', 60, 80], ['coldResist', 60, 80], ['lightningResist', 60, 80], ['poisonResist', 60, 80],
      ['arcaneResist', 60, 80]],
     { hook: tr('Spend life instead of mana when mana runs out.'), special: 'bloodMagic' }),
@@ -563,31 +563,31 @@ export const UNIQUES: UniqueDef[] = [
   m('my.the-reapers-toll', tr("The Reaper's Toll"), 'spear.thresher', 80, 76,
     tr('The toll is collected whether or not the debt was yours.'),
     [['enhancedDamage', 360, 460], ['lifeSteal', 12, 16], ['areaDamagePct', 55, 75], ['critDamage', 150, 220],
-     ['strength', 25, 40], ['attackSpeed', 12, 20]],
+     ['strength', 25, 40], ['attackSpeed', 9, 13]],
     { hook: tr('Strikes apply a decrepifying curse that halves enemy damage.'), special: 'decrepify' }),
 
   m('my.beast', tr('Beast'), 'axe.berserker', 78, 74,
     tr('The haft has teeth marks on the inside of the grip.'),
-    [['enhancedDamage', 380, 480], ['attackSpeed', 35, 45], ['strength', 35, 50], ['critChance', 15, 22],
+    [['enhancedDamage', 380, 480], ['attackSpeed', 19, 21], ['strength', 35, 50], ['critChance', 15, 22],
      ['lifeSteal', 8, 12], ['areaDamagePct', 30, 45]],
     { hook: tr('Permanently transforms you into something with a much larger health pool.'), special: 'werebear' }),
 
   m('my.iceblink', tr('Ice Blink'), 'sword.godslayer', 88, 84,
     tr('It rings once, at a pitch you feel in your teeth, and then the room is cold.'),
     [['coldDamage', 400, 700], ['enhancedDamage', 400, 520], ['critDamage', 200, 280], ['skillLevels', 1, 2],
-     ['attackSpeed', 15, 25], ['coldResist', 50, 70]],
+     ['attackSpeed', 11, 15], ['coldResist', 50, 70]],
     { hook: tr('Enemies killed by cold shatter, freezing everything nearby.'), special: 'shatter' }),
 
   m('my.faith', tr('Faith'), 'bow.matron', 84, 80,
     tr('It is not clear who or what the faith was in, and it did not seem to matter.'),
-    [['enhancedDamage', 420, 540], ['attackSpeed', 40, 52], ['skillLevels', 2, 3], ['fireDamage', 250, 450],
+    [['enhancedDamage', 420, 540], ['attackSpeed', 20, 23], ['skillLevels', 2, 3], ['fireDamage', 250, 450],
      ['critChance', 14, 20], ['physicalResist', 10, 15]],
     { hook: tr('Grants a permanent fanaticism aura: everything you do is faster.'), special: 'fanaticism' }),
 
   m('my.spirit-of-the-forge', tr('Spirit of the Forge'), 'mace.ruinhammer', 90, 86,
     tr('It was never quenched. It has been cooling for nine hundred years and is not done.'),
     [['enhancedDamage', 460, 600], ['fireDamage', 400, 700], ['areaDamagePct', 70, 95], ['strength', 40, 60],
-     ['lifeSteal', 10, 14], ['attackSpeed', -20, -10]],
+     ['lifeSteal', 10, 14], ['attackSpeed', -13, -8]],
     { hook: tr('Every swing leaves a lasting pool of molten slag.'), special: 'moltenTrail' }),
 
   m('my.nightwing', tr("Nightwing's Veil"), 'helm.diadem', 76, 72,
@@ -604,7 +604,7 @@ export const UNIQUES: UniqueDef[] = [
 
   m('my.seraphshymn', tr("Seraph's Hymn"), 'amulet.heartstone', 88, 84,
     tr('It sings when carried and stops the moment you set it down.'),
-    [['skillLevels', 3, 3], ['castSpeed', 30, 42], ['lifeRegen', 80, 120], ['manaRegen', 100, 150],
+    [['skillLevels', 3, 3], ['castSpeed', 17, 20], ['lifeRegen', 80, 120], ['manaRegen', 100, 150],
      ['life', 250, 380], ['mana', 250, 380], ['cooldownReduction', 18, 25]],
     { hook: tr('Allied summons and party members inherit half your regeneration.'), special: 'hymnAura' }),
 
@@ -626,7 +626,7 @@ export const UNIQUES: UniqueDef[] = [
 
   a('an.the-long-noon', tr('The Long Noon'), 'sword.sunblade', 90, 86,
     tr('Held up at midnight it casts a shadow anyway, from the wrong direction.'),
-    [['fireDamage', 600, 950], ['enhancedDamage', 520, 680], ['attackSpeed', 30, 42], ['elementalDamagePct', 60, 80],
+    [['fireDamage', 600, 950], ['enhancedDamage', 520, 680], ['attackSpeed', 17, 20], ['elementalDamagePct', 60, 80],
      ['lifeRegen', 90, 130], ['skillLevels', 2, 3]],
     { hook: tr('All damage becomes fire, and fire damage cannot be resisted below 25%.'), special: 'convertFirePierce', sockets: 1 }),
 
@@ -638,14 +638,14 @@ export const UNIQUES: UniqueDef[] = [
 
   a('an.the-first-word', tr('The First Word'), 'staff.worldtree', 95, 90,
     tr('Somebody said something, once, and everything after that was consequences.'),
-    [['skillLevels', 4, 5], ['castSpeed', 45, 58], ['elementalDamagePct', 80, 110], ['mana', 600, 850],
+    [['skillLevels', 4, 5], ['castSpeed', 21, 24], ['elementalDamagePct', 80, 110], ['mana', 600, 850],
      ['manaRegen', 140, 200], ['cooldownReduction', 25, 35], ['arcaneDamage', 500, 800]],
     { hook: tr('Every spell you cast is cast a second time, at half strength, one beat later.'), special: 'echo', sockets: 2 }),
 
   a('an.mourning-star', tr('Mourning Star'), 'mace.sanctified', 92, 88,
     tr('A funeral weapon. It was carried at the front, not used.'),
     [['enhancedDamage', 500, 650], ['lifeSteal', 16, 22], ['critDamage', 220, 300], ['life', 400, 550],
-     ['damageReduction', 14, 20], ['attackSpeed', 20, 30], ['physicalResist', 12, 18]],
+     ['damageReduction', 14, 20], ['attackSpeed', 13, 17], ['physicalResist', 12, 18]],
     { hook: tr('Life stolen above your maximum becomes a shield instead of being wasted.'), special: 'overhealShield', sockets: 1 }),
 
   a('an.the-hollow-crown', tr('The Hollow Crown'), 'helm.corona', 96, 92,
@@ -657,7 +657,7 @@ export const UNIQUES: UniqueDef[] = [
 
   a('an.godsblood-shroud', tr('Shroud of the Sleeping God'), 'chest.aeonshroud', 94, 90,
     tr('It is breathing. Slowly. You will get used to it.'),
-    [['skillLevels', 3, 4], ['mana', 700, 950], ['manaRegen', 160, 220], ['castSpeed', 40, 52],
+    [['skillLevels', 3, 4], ['mana', 700, 950], ['manaRegen', 160, 220], ['castSpeed', 20, 23],
      ['elementalDamagePct', 55, 75], ['arcaneResist', 70, 95], ['damageReduction', 10, 16],
      ['cooldownReduction', 20, 28]],
     { hook: tr('Your mana pool is also your life pool. Nothing else can hurt you.'), special: 'mythicManaShield', sockets: 2 }),
@@ -713,7 +713,7 @@ export const UNIQUES: UniqueDef[] = [
 
   u('uq.charm.mutepsalm', tr('The Mute Psalm'), 'charm.large', 70, 64,
     tr('The words were scraped off the bone one at a time by a monk who had taken a vow of silence and regretted it.'),
-    [['energy', 14, 20], ['mana', 70, 90], ['castSpeed', 6, 8], ['lightningDamage', 10, 38]],
+    [['energy', 14, 20], ['mana', 70, 90], ['castSpeed', 3, 4], ['lightningDamage', 10, 38]],
     { weight: 100 }),
 
   u('uq.charm.drownedidol', tr('The Drowned Idol'), 'charm.grand', 40, 36,

@@ -164,7 +164,7 @@ wpn('sword.falchion', tr('Falchion'), 'sword', 1, 50, 78, 45, 23, 49, 1.4, 'swor
 wpn('sword.phase', tr('Phase Blade'), 'sword', 1, 78, 105, 80, 35, 73, 1.4, 'sword.short', 'crystal.gem', {
   ornate: 0.5,
   glow: 0x6fa8ff,
-  imp: [{ stat: 'attackSpeed', min: 6, max: 12 }],
+  imp: [{ stat: 'attackSpeed', min: 5, max: 9 }],
 });
 
 wpn('sword.broad', tr('Broad Sword'), 'sword', 1, 8, 30, 12, 7, 14, 1.2, 'sword.broad', 'metal.iron');
@@ -302,16 +302,16 @@ wpn('dagger.fanged', tr('Fanged Knife'), 'dagger', 1, 61, 40, 96, 23, 42, 1.5, '
 });
 
 wpn('dagger.stiletto', tr('Stiletto'), 'dagger', 1, 6, 6, 20, 3, 6, 1.75, 'dagger.needle', 'metal.iron', {
-  imp: [{ stat: 'attackSpeed', min: 3, max: 6 }],
+  imp: [{ stat: 'attackSpeed', min: 3, max: 5 }],
 });
 wpn('dagger.poignard', tr('Poignard'), 'dagger', 1, 31, 18, 52, 11, 20, 1.75, 'dagger.needle', 'metal.silver', {
   ornate: 0.22,
-  imp: [{ stat: 'attackSpeed', min: 5, max: 10 }],
+  imp: [{ stat: 'attackSpeed', min: 4, max: 8 }],
 });
 wpn('dagger.nightblade', tr('Nightblade'), 'dagger', 1, 56, 30, 88, 18, 33, 1.75, 'dagger.needle', 'metal.dark', {
   ornate: 0.36,
   glow: 0x8a4fd8,
-  imp: [{ stat: 'attackSpeed', min: 8, max: 14 }],
+  imp: [{ stat: 'attackSpeed', min: 7, max: 10 }],
 });
 
 wpn('dagger.mindrender', tr('Mindrender'), 'dagger', 1, 80, 46, 120, 27, 50, 1.6, 'dagger.wavy', 'crystal.void', {
@@ -402,7 +402,7 @@ wpn('bow.matron', tr('Grand Matron Bow'), 'bow', 2, 82, 60, 140, 59, 114, 1.32, 
   ornate: 0.6,
   glow: 0xffd24a,
   imp: [
-    { stat: 'attackSpeed', min: 8, max: 15 },
+    { stat: 'attackSpeed', min: 7, max: 11 },
     { stat: 'critDamage', min: 20, max: 40 },
   ],
 });
@@ -431,16 +431,16 @@ wpn('xbow.ballista', tr('Ballista'), 'crossbow', 2, 61, 106, 76, 71, 126, 1.0, '
 });
 
 wpn('xbow.repeating', tr('Repeating Crossbow'), 'crossbow', 2, 19, 30, 44, 18, 31, 1.2, 'crossbow.repeat', 'wood.ash', {
-  imp: [{ stat: 'attackSpeed', min: 4, max: 8 }],
+  imp: [{ stat: 'attackSpeed', min: 4, max: 7 }],
 });
 wpn('xbow.chukonu', tr('Chu-Ko-Nu'), 'crossbow', 2, 44, 54, 78, 35, 63, 1.2, 'crossbow.repeat', 'metal.steel', {
   ornate: 0.26,
-  imp: [{ stat: 'attackSpeed', min: 8, max: 14 }],
+  imp: [{ stat: 'attackSpeed', min: 7, max: 10 }],
 });
 wpn('xbow.demon', tr('Demon Crossbow'), 'crossbow', 2, 69, 84, 112, 53, 94, 1.2, 'crossbow.repeat', 'metal.dark', {
   ornate: 0.44,
   glow: 0xe04a20,
-  imp: [{ stat: 'attackSpeed', min: 12, max: 20 }],
+  imp: [{ stat: 'attackSpeed', min: 9, max: 13 }],
 });
 
 wpn('xbow.colossus', tr('Colossus Crossbow'), 'crossbow', 2, 83, 130, 130, 107, 191, 0.95, 'crossbow.heavy', 'metal.mithril', {
@@ -455,18 +455,18 @@ wpn('xbow.colossus', tr('Colossus Crossbow'), 'crossbow', 2, 83, 130, 130, 107, 
 
 wpn('wand.wand', tr('Wand'), 'wand', 1, 1, 4, 4, 4, 8, 1.45, 'wand', 'wood.oak', {
   classes: CASTERS,
-  imp: [{ stat: 'castSpeed', min: 3, max: 6 }],
+  imp: [{ stat: 'castSpeed', min: 3, max: 5 }],
 });
 wpn('wand.yew', tr('Yew Wand'), 'wand', 1, 23, 8, 8, 14, 29, 1.45, 'wand', 'wood.ash', {
   ornate: 0.2,
   classes: CASTERS,
-  imp: [{ stat: 'castSpeed', min: 6, max: 11 }],
+  imp: [{ stat: 'castSpeed', min: 5, max: 9 }],
 });
 wpn('wand.burnt', tr('Burnt Wand'), 'wand', 1, 48, 12, 12, 26, 54, 1.45, 'wand', 'wood.dark', {
   ornate: 0.34,
   glow: 0xd8632a,
   classes: CASTERS,
-  imp: [{ stat: 'castSpeed', min: 11, max: 18 }],
+  imp: [{ stat: 'castSpeed', min: 9, max: 12 }],
 });
 
 // The femur is the Revenant's alone: a thighbone carved to call the dead.
@@ -546,17 +546,17 @@ wpn('staff.elder', tr('Elder Staff'), 'staff', 2, 64, 78, 0, 44, 103, 1.0, 'staf
 wpn('staff.cedar', tr('Cedar Staff'), 'staff', 2, 32, 26, 0, 20, 46, 1.1, 'staff.rune', 'wood.ash', {
   ornate: 0.3,
   glow: 0x6f8cff,
-  imp: [{ stat: 'castSpeed', min: 8, max: 15 }],
+  imp: [{ stat: 'castSpeed', min: 7, max: 11 }],
 });
 wpn('staff.archon', tr('Archon Staff'), 'staff', 2, 56, 40, 0, 32, 75, 1.1, 'staff.rune', 'crystal.gem', {
   ornate: 0.44,
   glow: 0x8fa8ff,
-  imp: [{ stat: 'castSpeed', min: 14, max: 24 }, { stat: 'skillLevels', min: 1, max: 2 }],
+  imp: [{ stat: 'castSpeed', min: 10, max: 15 }, { stat: 'skillLevels', min: 1, max: 2 }],
 });
 wpn('staff.eldritch', tr('Eldritch Staff'), 'staff', 2, 76, 56, 0, 42, 99, 1.1, 'staff.rune', 'crystal.void', {
   ornate: 0.56,
   glow: 0xc060ff,
-  imp: [{ stat: 'castSpeed', min: 20, max: 32 }, { stat: 'skillLevels', min: 2, max: 2 }],
+  imp: [{ stat: 'castSpeed', min: 13, max: 18 }, { stat: 'skillLevels', min: 2, max: 2 }],
 });
 
 wpn('staff.worldtree', tr('Worldtree Staff'), 'staff', 2, 87, 70, 0, 56, 130, 1.03, 'staff.rune', 'wood.dark', {
@@ -720,7 +720,7 @@ arm('orb.cracked', tr('Cracked Focus'), 'orb', 'offHand', 1, 0, 0, 0, 'orb', 'cr
 arm('orb.eagle', tr('Eagle Orb'), 'orb', 'offHand', 8, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
   glow: 0x6f8cff,
-  imp: [{ stat: 'mana', min: 15, max: 30 }, { stat: 'castSpeed', min: 3, max: 7 }],
+  imp: [{ stat: 'mana', min: 15, max: 30 }, { stat: 'castSpeed', min: 3, max: 6 }],
 });
 arm('orb.sacred', tr('Sacred Globe'), 'orb', 'offHand', 16, 0, 0, 0, 'orb', 'crystal.gem', {
   classes: CASTERS,
@@ -732,7 +732,7 @@ arm('orb.smoked', tr('Smoked Sphere'), 'orb', 'offHand', 24, 0, 0, 0, 'orb', 'cr
   classes: CASTERS,
   glow: 0x8a4fd8,
   ornate: 0.34,
-  imp: [{ stat: 'arcaneDamage', min: 8, max: 22 }, { stat: 'castSpeed', min: 6, max: 12 }],
+  imp: [{ stat: 'arcaneDamage', min: 8, max: 22 }, { stat: 'castSpeed', min: 5, max: 9 }],
 });
 
 arm('orb.crystalline', tr('Crystalline Globe'), 'orb', 'offHand', 32, 0, 0, 0, 'orb.faceted', 'crystal.gem', {
@@ -758,7 +758,7 @@ arm('orb.eldritch', tr('Eldritch Orb'), 'orb', 'offHand', 58, 0, 0, 0, 'orb.rune
   classes: CASTERS,
   glow: 0xc060ff,
   ornate: 0.52,
-  imp: [{ stat: 'arcaneDamage', min: 30, max: 70 }, { stat: 'castSpeed', min: 12, max: 20 }],
+  imp: [{ stat: 'arcaneDamage', min: 30, max: 70 }, { stat: 'castSpeed', min: 9, max: 13 }],
 });
 arm('orb.demonheart', tr('Demon Heart'), 'orb', 'offHand', 66, 0, 0, 0, 'orb.rune', 'flesh.rotted', {
   classes: CASTERS,
@@ -815,7 +815,7 @@ misc('quiver.endless', tr('Quiver of the Endless Hunt'), 'quiver', 'offHand', 70
     { stat: 'minDamage', min: 14, max: 26 },
     { stat: 'maxDamage', min: 30, max: 58 },
     { stat: 'critChance', min: 6, max: 11 },
-    { stat: 'attackSpeed', min: 5, max: 10 },
+    { stat: 'attackSpeed', min: 4, max: 8 },
   ],
 });
 
@@ -851,12 +851,12 @@ arm('helm.circlet', tr('Circlet'), 'helm', 'helm', 14, 0, 0, 16, 'helm.circlet',
 arm('helm.coronet', tr('Coronet'), 'helm', 'helm', 38, 0, 0, 40, 'helm.circlet', 'metal.gold', {
   ornate: 0.5,
   glow: 0xffd24a,
-  imp: [{ stat: 'skillLevels', min: 1, max: 1 }, { stat: 'castSpeed', min: 4, max: 9 }],
+  imp: [{ stat: 'skillLevels', min: 1, max: 1 }, { stat: 'castSpeed', min: 4, max: 7 }],
 });
 arm('helm.diadem', tr('Diadem'), 'helm', 'helm', 64, 0, 0, 64, 'helm.circlet', 'metal.mithril', {
   ornate: 0.62,
   glow: 0xdff0ff,
-  imp: [{ stat: 'skillLevels', min: 1, max: 2 }, { stat: 'castSpeed', min: 8, max: 15 }],
+  imp: [{ stat: 'skillLevels', min: 1, max: 2 }, { stat: 'castSpeed', min: 7, max: 11 }],
 });
 
 arm('helm.corona', tr('Corona'), 'helm', 'helm', 86, 150, 0, 171, 'helm.full', 'metal.mithril', {
@@ -937,7 +937,7 @@ arm('gloves.leather', tr('Leather Gloves'), 'gloves', 'gloves', 2, 8, 0, 3, 'glo
 arm('gloves.heavy', tr('Heavy Gloves'), 'gloves', 'gloves', 22, 26, 0, 16, 'gloves.light', 'leather.worn', { ornate: 0.18 });
 arm('gloves.bramble', tr('Bramble Mitts'), 'gloves', 'gloves', 48, 46, 0, 32, 'gloves.light', 'leather.dark', {
   ornate: 0.32,
-  imp: [{ stat: 'attackSpeed', min: 3, max: 7 }],
+  imp: [{ stat: 'attackSpeed', min: 3, max: 6 }],
 });
 
 arm('gloves.gauntlets', tr('Gauntlets'), 'gloves', 'gloves', 12, 30, 0, 17, 'gloves.plate', 'metal.iron');
@@ -957,14 +957,14 @@ arm('gloves.vampirebone', tr('Vampirebone Gloves'), 'gloves', 'gloves', 30, 12, 
 arm('gloves.sorcerer', tr("Sorcerer's Wraps"), 'gloves', 'gloves', 58, 20, 0, 28, 'gloves.silk', 'cloth.silk', {
   ornate: 0.42,
   glow: 0x8fa8ff,
-  imp: [{ stat: 'castSpeed', min: 6, max: 12 }],
+  imp: [{ stat: 'castSpeed', min: 5, max: 9 }],
 });
 
 arm('gloves.eclipse', tr('Gauntlets of the Eclipse'), 'gloves', 'gloves', 83, 138, 0, 97, 'gloves.plate', 'metal.mithril', {
   ornate: 0.62,
   glow: 0xc060ff,
   imp: [
-    { stat: 'attackSpeed', min: 8, max: 15 },
+    { stat: 'attackSpeed', min: 7, max: 11 },
     { stat: 'critChance', min: 4, max: 8 },
   ],
 });
@@ -1009,7 +1009,7 @@ arm('pants.mystic', tr('Mystic Breeches'), 'pants', 'legs', 30, 16, 0, 18, 'pant
 arm('pants.astral', tr('Astral Leggings'), 'pants', 'legs', 54, 26, 0, 34, 'pants.silk', 'cloth.silk|0xd8d0f0', {
   ornate: 0.44,
   glow: 0xc8b8ff,
-  imp: [{ stat: 'vitality', min: 8, max: 13 }, { stat: 'castSpeed', min: 6, max: 12 }],
+  imp: [{ stat: 'vitality', min: 8, max: 13 }, { stat: 'castSpeed', min: 5, max: 9 }],
 });
 
 arm('pants.titan', tr('Legplates of the Titan'), 'pants', 'legs', 82, 170, 0, 150, 'pants.plate', 'metal.mithril', {
@@ -1067,7 +1067,7 @@ arm('boots.gale', tr('Striders of the Gale'), 'boots', 'boots', 80, 60, 0, 87, '
   glow: 0xf0e05a,
   imp: [
     { stat: 'moveSpeed', min: 15, max: 24 },
-    { stat: 'attackSpeed', min: 5, max: 10 },
+    { stat: 'attackSpeed', min: 4, max: 8 },
   ],
 });
 

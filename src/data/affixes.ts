@@ -393,39 +393,44 @@ named(pre('pre.def.great', tr('+{v} Defense'), 'defense', 'flatDefense', [
 // SPEED
 // ===========================================================================
 
+// Sized like the reference games: about 3 to 20% a line on gear, a little
+// more on a weapon's or gloves' own lines, never a blur when stacked (the
+// game turns the sum into real speed with diminishing returns and a
+// ceiling, `sim/Speed.ts`). A save from before this scale moves its rolls
+// onto it, keeping their place in the range (`rescaleOldSpeed`, sim/Loot.ts).
 const ASPD: Rung[] = [
-  [1, 3, 6],
-  [10, 7, 10],
-  [20, 11, 15],
-  [32, 16, 20],
-  [44, 21, 26],
-  [58, 27, 33],
-  [72, 34, 40],
+  [1, 3, 5],
+  [10, 6, 8],
+  [20, 9, 11],
+  [32, 12, 13],
+  [44, 14, 16],
+  [58, 17, 18],
+  [72, 19, 20],
 ];
 const CSPD: Rung[] = [
-  [1, 3, 6],
-  [10, 7, 10],
-  [20, 11, 15],
-  [32, 16, 20],
-  [44, 21, 26],
-  [58, 27, 33],
-  [72, 34, 40],
+  [1, 3, 5],
+  [10, 6, 8],
+  [20, 9, 11],
+  [32, 12, 13],
+  [44, 14, 16],
+  [58, 17, 18],
+  [72, 19, 20],
 ];
 
 named(pre('pre.aspd', tr('+{v}% Attack Speed'), 'attackSpeed', 'attackSpeed', ASPD, { categories: [...WEAPONS, 'gloves', 'ring', 'amulet'] }), tr('Quick'));
 named(suf('suf.aspd', tr('+{v}% Attack Speed'), 'attackSpeed', 'attackSpeed', ASPD, { categories: [...WEAPONS, 'gloves', 'ring', 'amulet'] }), tr('of Alacrity'));
 named(suf('suf.aspd.great', tr('+{v}% Attack Speed'), 'attackSpeed', 'attackSpeed', [
-  [58, 42, 50],
-  [70, 51, 60],
-  [82, 61, 72],
+  [58, 21, 22],
+  [70, 23, 24],
+  [82, 25, 26],
 ], { categories: [...WEAPONS, 'gloves', 'ring', 'amulet'], minRarity: 'rare', rarity: 0.22 }), tr('of Frenzy'));
 
 named(pre('pre.cspd', tr('+{v}% Cast Speed'), 'castSpeed', 'castSpeed', CSPD, { categories: [...CASTER, ...JEWELRY, 'gloves', 'helm'] }), tr('Fluent'));
 named(suf('suf.cspd', tr('+{v}% Cast Speed'), 'castSpeed', 'castSpeed', CSPD, { categories: [...CASTER, ...JEWELRY, 'gloves', 'helm'] }), tr('of Focus'));
 named(suf('suf.cspd.great', tr('+{v}% Cast Speed'), 'castSpeed', 'castSpeed', [
-  [58, 42, 50],
-  [70, 51, 60],
-  [82, 61, 72],
+  [58, 21, 22],
+  [70, 23, 24],
+  [82, 25, 26],
 ], { categories: [...CASTER, ...JEWELRY, 'gloves', 'helm'], minRarity: 'rare', rarity: 0.22 }), tr('of Celerity'));
 
 const MOVE: Rung[] = [
@@ -872,11 +877,11 @@ named(pre('pre.shield.wall', tr('+{v} Defense'), 'defense', 'flatDefense', [
 ], { categories: SHIELD_ONLY, rarity: 0.5 }), tr('Wallbound'));
 
 named(suf('suf.gloves.grip', tr('+{v}% Attack Speed'), 'attackSpeed', 'attackSpeed', [
-  [14, 12, 17],
-  [28, 18, 23],
-  [42, 24, 30],
-  [58, 31, 38],
-  [76, 39, 47],
+  [14, 9, 11],
+  [28, 12, 14],
+  [42, 15, 17],
+  [58, 18, 20],
+  [76, 21, 22],
 ], { categories: HANDS, rarity: 0.45 }), tr('of the Iron Grip'));
 
 named(pre('pre.helm.crown', tr('+{v} to Life'), 'life', 'lifeFlat', [
@@ -945,11 +950,11 @@ named(suf('suf.quiver.hunt', tr('+{v} to Maximum Damage'), 'maxDamage', 'maxDama
 ], { categories: ['quiver'], rarity: 0.6 }), tr('of the Hunt'));
 
 named(pre('pre.orb.conduit', tr('+{v}% Cast Speed'), 'castSpeed', 'castSpeed', [
-  [16, 14, 19],
-  [30, 20, 26],
-  [44, 27, 34],
-  [60, 35, 43],
-  [78, 44, 54],
+  [16, 10, 12],
+  [30, 13, 15],
+  [44, 16, 18],
+  [60, 19, 21],
+  [78, 22, 23],
 ], { categories: ['orb', 'wand'], rarity: 0.4 }), tr('Conduit'));
 
 named(suf('suf.weapon.vorpal', tr('+{v} to Maximum Damage'), 'maxDamage', 'maxDamage', [
@@ -1074,6 +1079,14 @@ const CHARM_SIZES: Array<{ base: string; scale: number; from: number }> = [
   { base: 'charm.grand', scale: 0.8, from: 28 },
 ];
 
+/**
+ * Speed lines on a charm take half the charm's usual share (a Grand Charm's
+ * attack or cast speed is 1 to 8%), because charms stack in the pack and
+ * speed is the one line that turns a hero into a blur. Unique charms follow
+ * the same rule (`uniqueBatches/kit.ts`).
+ */
+export const CHARM_SPEED_SHARE = 0.5;
+
 /** Lines any charm can hold. */
 const CHARM_STATS: StatKey[] = [
   'life', 'mana', 'strength', 'dexterity', 'vitality', 'energy', 'attackRating', 'minDamage', 'maxDamage',
@@ -1098,9 +1111,10 @@ function charmLadders(): void {
     for (const stat of stats) {
       const src = source.get(stat);
       if (!src) continue;
+      const scale = size.scale * (stat === 'attackSpeed' || stat === 'castSpeed' ? CHARM_SPEED_SHARE : 1);
       const tiers: AffixTier[] = src.tiers.map((t) => {
-        const min = Math.max(1, Math.round(t.min * size.scale));
-        return { ...t, ilvl: Math.max(t.ilvl, size.from), min, max: Math.max(min, Math.round(t.max * size.scale)) };
+        const min = Math.max(1, Math.round(t.min * scale));
+        return { ...t, ilvl: Math.max(t.ilvl, size.from), min, max: Math.max(min, Math.round(t.max * scale)) };
       });
       const def: AffixDef = {
         id: `charm.${i}.${stat}`,

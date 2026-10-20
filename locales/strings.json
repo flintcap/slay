@@ -14346,7 +14346,7 @@
    ]
   },
   {
-   "key": "+1 to All Skills, +25% Cast Speed",
+   "key": "+1 to All Skills, +15% Cast Speed",
    "files": [
     "data/sets.ts"
    ]
@@ -14376,13 +14376,19 @@
    ]
   },
   {
+   "key": "+11% Cast Speed, +25% Fire Resistance",
+   "files": [
+    "data/sets.ts"
+   ]
+  },
+  {
    "key": "+12% Block Chance, +150 Defense",
    "files": [
     "data/sets.ts"
    ]
   },
   {
-   "key": "+12% Critical Strike Chance, +25% Attack Speed",
+   "key": "+12% Critical Strike Chance, +15% Attack Speed",
    "files": [
     "data/sets.ts"
    ]
@@ -14406,6 +14412,24 @@
    ]
   },
   {
+   "key": "+13% Attack Speed, +3% Life Stolen per Hit",
+   "files": [
+    "data/sets.ts"
+   ]
+  },
+  {
+   "key": "+13% Attack Speed, Adds 90 Poison Damage",
+   "files": [
+    "data/sets.ts"
+   ]
+  },
+  {
+   "key": "+13% Cast Speed, +60 Mana, +10 Mana Regeneration",
+   "files": [
+    "data/sets.ts"
+   ]
+  },
+  {
    "key": "+14% Damage Reduction, +250 Life",
    "files": [
     "data/sets.ts"
@@ -14418,7 +14442,13 @@
    ]
   },
   {
-   "key": "+15% Cast Speed, +25% Fire Resistance",
+   "key": "+15% Attack Speed, +10% Critical Strike Chance, +45% Critical Strike Damage",
+   "files": [
+    "data/sets.ts"
+   ]
+  },
+  {
+   "key": "+15% Attack Speed, +6% Life Stolen per Hit",
    "files": [
     "data/sets.ts"
    ]
@@ -14448,6 +14478,12 @@
    ]
   },
   {
+   "key": "+17% Attack Speed, +200% Enhanced Damage",
+   "files": [
+    "data/sets.ts"
+   ]
+  },
+  {
    "key": "+18% Movement Speed, +12 Dexterity",
    "files": [
     "data/sets.ts"
@@ -14466,13 +14502,13 @@
    ]
   },
   {
-   "key": "+2 to All Skills, +22% Critical Strike Chance, +260% Critical Strike Damage — criticals cannot be blocked",
+   "key": "+2 to All Skills, +17% Attack Speed",
    "files": [
     "data/sets.ts"
    ]
   },
   {
-   "key": "+2 to All Skills, +30% Attack Speed",
+   "key": "+2 to All Skills, +22% Critical Strike Chance, +260% Critical Strike Damage — criticals cannot be blocked",
    "files": [
     "data/sets.ts"
    ]
@@ -14496,24 +14532,6 @@
    ]
   },
   {
-   "key": "+20% Attack Speed, +3% Life Stolen per Hit",
-   "files": [
-    "data/sets.ts"
-   ]
-  },
-  {
-   "key": "+20% Attack Speed, Adds 90 Poison Damage",
-   "files": [
-    "data/sets.ts"
-   ]
-  },
-  {
-   "key": "+20% Cast Speed, +60 Mana, +10 Mana Regeneration",
-   "files": [
-    "data/sets.ts"
-   ]
-  },
-  {
    "key": "+20% Movement Speed, +200 Life",
    "files": [
     "data/sets.ts"
@@ -14532,18 +14550,6 @@
    ]
   },
   {
-   "key": "+25% Attack Speed, +10% Critical Strike Chance, +45% Critical Strike Damage",
-   "files": [
-    "data/sets.ts"
-   ]
-  },
-  {
-   "key": "+25% Attack Speed, +6% Life Stolen per Hit",
-   "files": [
-    "data/sets.ts"
-   ]
-  },
-  {
    "key": "+25% Cooldown Reduction, +35% Movement Speed",
    "files": [
     "data/sets.ts"
@@ -14557,12 +14563,6 @@
   },
   {
    "key": "+3 to All Skills, +80% Elemental Damage, +600 Mana — spells cost life when mana runs dry",
-   "files": [
-    "data/sets.ts"
-   ]
-  },
-  {
-   "key": "+30% Attack Speed, +200% Enhanced Damage",
    "files": [
     "data/sets.ts"
    ]
@@ -14664,7 +14664,7 @@
    ]
   },
   {
-   "key": "Adds 160 Cold Damage, +40% Cold Resistance, +15% Attack Speed — chilled enemies shatter on death",
+   "key": "Adds 160 Cold Damage, +40% Cold Resistance, +11% Attack Speed — chilled enemies shatter on death",
    "files": [
     "data/sets.ts"
    ]
@@ -14676,7 +14676,7 @@
    ]
   },
   {
-   "key": "Adds 40 Lightning Damage, +20% Cast Speed",
+   "key": "Adds 40 Lightning Damage, +13% Cast Speed",
    "files": [
     "data/sets.ts"
    ]
@@ -15406,6 +15406,12 @@
    ]
   },
   {
+   "key": "+11% Cast Speed, +20% Elemental Damage",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
    "key": "+12% Block Chance, +60 Life",
    "files": [
     "data/setsDepth.ts"
@@ -15424,13 +15430,49 @@
    ]
   },
   {
-   "key": "+15% Block Chance, +40 Life",
+   "key": "+13% Attack Speed, +200 Attack Rating",
    "files": [
     "data/setsDepth.ts"
    ]
   },
   {
-   "key": "+15% Cast Speed, +20% Elemental Damage",
+   "key": "+13% Attack Speed, +4% Life Stolen per Hit",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
+   "key": "+13% Attack Speed, +50% Critical Strike Damage",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
+   "key": "+13% Attack Speed, +6% Critical Strike Chance",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
+   "key": "+13% Cast Speed, +30 Arcane Damage",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
+   "key": "+13% Cast Speed, +80 Mana",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
+   "key": "+15% Attack Speed, +8% Critical Strike Chance",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
+   "key": "+15% Block Chance, +40 Life",
    "files": [
     "data/setsDepth.ts"
    ]
@@ -15472,6 +15514,12 @@
    ]
   },
   {
+   "key": "+17% Cast Speed, +17% Attack Speed",
+   "files": [
+    "data/setsDepth.ts"
+   ]
+  },
+  {
    "key": "+2 to All Skills, +20% Movement Speed",
    "files": [
     "data/setsDepth.ts"
@@ -15484,55 +15532,7 @@
    ]
   },
   {
-   "key": "+20% Attack Speed, +200 Attack Rating",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+20% Attack Speed, +4% Life Stolen per Hit",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+20% Attack Speed, +50% Critical Strike Damage",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+20% Attack Speed, +6% Critical Strike Chance",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+20% Cast Speed, +30 Arcane Damage",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+20% Cast Speed, +80 Mana",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+25% Attack Speed, +8% Critical Strike Chance",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
    "key": "+25% Elemental Damage, +25% Mana Regeneration",
-   "files": [
-    "data/setsDepth.ts"
-   ]
-  },
-  {
-   "key": "+30% Cast Speed, +30% Attack Speed",
    "files": [
     "data/setsDepth.ts"
    ]
@@ -15544,7 +15544,7 @@
    ]
   },
   {
-   "key": "+30% Enhanced Damage, +10% Attack Speed",
+   "key": "+30% Enhanced Damage, +8% Attack Speed",
    "files": [
     "data/setsDepth.ts"
    ]
@@ -19205,7 +19205,7 @@
    ]
   },
   {
-   "key": "Spin through the pack, hitting everything within 3m for 65% weapon damage (+11% per rank) every 0.35s while held.",
+   "key": "Spin through the pack, hitting everything within 3m for 65% weapon damage (+11% per rank) with every spin while held. A spin takes a little less than a swing of your weapon.",
    "files": [
     "data/skills.ts"
    ]
@@ -43599,7 +43599,7 @@
    ]
   },
   {
-   "key": "+{0} cast speed. You attack 20% slower.",
+   "key": "+{0} cast speed. You lose 13% attack speed.",
    "files": [
     "sim/ItemPowers.ts"
    ]
@@ -43659,7 +43659,7 @@
    ]
   },
   {
-   "key": "+{0}% damage reduction. You attack and cast 15% slower and move 8% slower.",
+   "key": "+{0}% damage reduction. You lose 11% attack and cast speed and move 8% slower.",
    "files": [
     "sim/ItemPowers.ts"
    ]
@@ -44356,7 +44356,7 @@
    ]
   },
   {
-   "key": "Regenerate {0}% of your maximum life each second. You attack and cast 12% slower.",
+   "key": "Regenerate {0}% of your maximum life each second. You lose 9% attack and cast speed.",
    "files": [
     "sim/ItemPowers.ts"
    ]
@@ -44718,13 +44718,13 @@
    ]
   },
   {
-   "key": "Your maximum life is 40% lower. Everything else is greater: +100% damage, +25% attack and cast speed, +20% all resistances.",
+   "key": "Your maximum life is 40% lower. Everything else is greater: +100% damage, +15% attack and cast speed, +20% all resistances.",
    "files": [
     "sim/ItemPowers.ts"
    ]
   },
   {
-   "key": "Your maximum life is 50% higher and your defense 30% higher, but you cast 20% slower.",
+   "key": "Your maximum life is 50% higher and your defense 30% higher, but you lose 13% cast speed.",
    "files": [
     "sim/ItemPowers.ts"
    ]
@@ -45012,7 +45012,7 @@
    ]
   },
   {
-   "key": "{0} more life. You cast 25% slower.",
+   "key": "{0} more life. You lose 15% cast speed.",
    "files": [
     "sim/ItemPowers.ts"
    ]

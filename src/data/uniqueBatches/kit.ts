@@ -18,6 +18,7 @@ import type { UniqueDef } from '../uniques';
 import type { SkillBend } from '../skillBends';
 import type { Aura, Feature, Finish, GlowStyle, UniqueDesign } from '../../art/items/Designs';
 import { ITEM_BASES } from '../itemBases';
+import { CHARM_SPEED_SHARE } from '../affixes';
 
 export interface UOpt {
   hook?: string;
@@ -56,8 +57,8 @@ const CURVE: Partial<Record<StatKey, (L: number) => number>> = {
   attackRating: (L) => 30 + 9 * L,
   minDamage: (L) => 2 + 0.35 * L,
   maxDamage: (L) => 4 + 0.8 * L,
-  attackSpeed: (L) => 8 + 0.25 * L,
-  castSpeed: (L) => 8 + 0.25 * L,
+  attackSpeed: (L) => 7 + 0.12 * L,
+  castSpeed: (L) => 7 + 0.12 * L,
   critChance: (L) => 3 + 0.08 * L,
   critDamage: (L) => 10 + 0.6 * L,
   lifeSteal: (L) => 2 + 0.07 * L,
@@ -105,6 +106,7 @@ function sized(stat: StatKey, w: number, L: number, boost: number): [number, num
 
 /** Charms are carried, not worn: their numbers are a fraction of a worn piece's. */
 const CHARM_SHARE: Record<string, number> = { 'charm.small': 0.3, 'charm.medium': 0.42, 'charm.large': 0.55, 'charm.grand': 0.7 };
+const isSpeed = (stat: StatKey): boolean => stat === 'attackSpeed' || stat === 'castSpeed';
 
 export function U(id: string, name: string, baseId: string, ilvl: number, flavor: string, mods: ModSpec[], o: UOpt): UniqueDef {
   const req = o.req ?? Math.min(ilvl, Math.max(BASE_REQ.get(baseId) ?? 1, Math.round(ilvl * 0.92)));
@@ -118,7 +120,8 @@ export function U(id: string, name: string, baseId: string, ilvl: number, flavor
     levelReq: req,
     flavor,
     mods: mods.map((m) => {
-      const [min, max] = m.length === 3 ? [m[1], m[2]] : sized(m[0], m[1], ilvl, boost);
+      const share = CHARM_SHARE[baseId] !== undefined && isSpeed(m[0]) ? CHARM_SPEED_SHARE : 1;
+      const [min, max] = m.length === 3 ? [m[1], m[2]] : sized(m[0], m[1], ilvl, boost * share);
       return { stat: m[0], min, max };
     }),
     weight: o.weight ?? (o.rarity === 'mythic' ? 40 : 100),

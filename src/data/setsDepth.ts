@@ -73,7 +73,7 @@ export const DEPTH_SETS: DepthSet[] = [
       ['set.orrery.amulet', tr('The Little Sun'), 'amulet.reliquary', [['elementalDamagePct', 1], ['mana', 0.8], ['fireResist', 0.6]]],
     ],
     [
-      [2, tr('+20% Cast Speed, +80 Mana'), [['castSpeed', 20], ['mana', 80]]],
+      [2, tr('+13% Cast Speed, +80 Mana'), [['castSpeed', 13], ['mana', 80]]],
       [3, tr('+25% Elemental Damage, +25% Mana Regeneration'), [['elementalDamagePct', 25], ['manaRegen', 25]]],
       [4, tr('+1 to All Skills, +15% Cooldown Reduction'), [['skillLevels', 1], ['cooldownReduction', 15]]],
       [5, tr('+1 to All Skills, +150 Mana, +40 Arcane Damage'), [['skillLevels', 1], ['mana', 150], ['arcaneDamage', 40]]],
@@ -91,7 +91,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+15% Movement Speed, +5% Critical Strike Chance'), [['moveSpeed', 15], ['critChance', 5]]],
-      [3, tr('+20% Attack Speed, +50% Critical Strike Damage'), [['attackSpeed', 20], ['critDamage', 50]]],
+      [3, tr('+13% Attack Speed, +50% Critical Strike Damage'), [['attackSpeed', 13], ['critDamage', 50]]],
       [4, tr('+1 to All Skills, +20 Dexterity, +60 Life'), [['skillLevels', 1], ['dexterity', 20], ['life', 60]]],
     ],
     [4, 'lampblack', 1]),
@@ -108,7 +108,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+150 Attack Rating, +15 Dexterity'), [['attackRating', 150], ['dexterity', 15]]],
-      [3, tr('+20% Attack Speed, +6% Critical Strike Chance'), [['attackSpeed', 20], ['critChance', 6]]],
+      [3, tr('+13% Attack Speed, +6% Critical Strike Chance'), [['attackSpeed', 13], ['critChance', 6]]],
       [4, tr('+70% Enhanced Damage, +60% Critical Strike Damage'), [['enhancedDamage', 70], ['critDamage', 60]]],
       [5, tr('+1 to All Skills, +25 Dexterity, +100 Life'), [['skillLevels', 1], ['dexterity', 25], ['life', 100]]],
     ],
@@ -126,7 +126,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+80 Mana, +20% Mana Regeneration'), [['mana', 80], ['manaRegen', 20]]],
-      [3, tr('+20% Cast Speed, +30 Arcane Damage'), [['castSpeed', 20], ['arcaneDamage', 30]]],
+      [3, tr('+13% Cast Speed, +30 Arcane Damage'), [['castSpeed', 13], ['arcaneDamage', 30]]],
       [4, tr('+1 to All Skills, +15% Cooldown Reduction'), [['skillLevels', 1], ['cooldownReduction', 15]]],
       [5, tr('+1 to All Skills, +150 Life, +10% Damage Reduction'), [['skillLevels', 1], ['life', 150], ['damageReduction', 10]]],
     ],
@@ -161,7 +161,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+80 Life, +10 Strength'), [['life', 80], ['strength', 10]]],
-      [3, tr('+20% Attack Speed, +4% Life Stolen per Hit'), [['attackSpeed', 20], ['lifeSteal', 4]]],
+      [3, tr('+13% Attack Speed, +4% Life Stolen per Hit'), [['attackSpeed', 13], ['lifeSteal', 4]]],
       [4, tr('+1 to All Skills, +150 Life, +60% Enhanced Damage'), [['skillLevels', 1], ['life', 150], ['enhancedDamage', 60]]],
     ],
     [4, 'waxDouble', 1]),
@@ -191,7 +191,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+40 Defense, +25 Life'), [['defense', 40], ['life', 25]]],
-      [3, tr('+30% Enhanced Damage, +10% Attack Speed'), [['enhancedDamage', 30], ['attackSpeed', 10]]],
+      [3, tr('+30% Enhanced Damage, +8% Attack Speed'), [['enhancedDamage', 30], ['attackSpeed', 8]]],
     ],
     [3, 'ironGolems', 0.6], 125),
 
@@ -220,7 +220,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+60 Mana, +20% Mana Regeneration'), [['mana', 60], ['manaRegen', 20]]],
-      [3, tr('+15% Cast Speed, +20% Elemental Damage'), [['castSpeed', 15], ['elementalDamagePct', 20]]],
+      [3, tr('+11% Cast Speed, +20% Elemental Damage'), [['castSpeed', 11], ['elementalDamagePct', 20]]],
       [4, tr('+1 to All Skills, +80 Life'), [['skillLevels', 1], ['life', 80]]],
     ],
     [4, 'ninefold', 1], 110),
@@ -252,7 +252,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+15% Movement Speed, +15 Dexterity'), [['moveSpeed', 15], ['dexterity', 15]]],
-      [3, tr('+20% Attack Speed, +6% Critical Strike Chance'), [['attackSpeed', 20], ['critChance', 6]]],
+      [3, tr('+13% Attack Speed, +6% Critical Strike Chance'), [['attackSpeed', 13], ['critChance', 6]]],
       [4, tr('+1 to All Skills, +60% Critical Strike Damage, +80 Life'), [['skillLevels', 1], ['critDamage', 60], ['life', 80]]],
     ],
     [4, 'glasswing', 1]),
@@ -269,7 +269,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+30% Cold Resistance, +80 Life'), [['coldResist', 30], ['life', 80]]],
-      [3, tr('+20% Attack Speed, +200 Attack Rating'), [['attackSpeed', 20], ['attackRating', 200]]],
+      [3, tr('+13% Attack Speed, +200 Attack Rating'), [['attackSpeed', 13], ['attackRating', 200]]],
       [4, tr('+80% Enhanced Damage, +10% Damage Reduction'), [['enhancedDamage', 80], ['damageReduction', 10]]],
       [5, tr('+1 to All Skills, +150 Life, +20 Strength'), [['skillLevels', 1], ['life', 150], ['strength', 20]]],
     ],
@@ -288,7 +288,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+100 Life, +20 Strength'), [['life', 100], ['strength', 20]]],
-      [3, tr('+25% Attack Speed, +8% Critical Strike Chance'), [['attackSpeed', 25], ['critChance', 8]]],
+      [3, tr('+15% Attack Speed, +8% Critical Strike Chance'), [['attackSpeed', 15], ['critChance', 8]]],
       [4, tr('+100% Enhanced Damage, +80% Critical Strike Damage'), [['enhancedDamage', 100], ['critDamage', 80]]],
       [5, tr('+30% Magic Find, +15% Damage Reduction'), [['magicFind', 30], ['damageReduction', 15]]],
       [6, tr('+2 to All Skills, +250 Life'), [['skillLevels', 2], ['life', 250]]],
@@ -327,7 +327,7 @@ export const DEPTH_SETS: DepthSet[] = [
     ],
     [
       [2, tr('+150 Life, +30% Fire Resistance'), [['life', 150], ['fireResist', 30]]],
-      [3, tr('+30% Cast Speed, +30% Attack Speed'), [['castSpeed', 30], ['attackSpeed', 30]]],
+      [3, tr('+17% Cast Speed, +17% Attack Speed'), [['castSpeed', 17], ['attackSpeed', 17]]],
       [4, tr('+120 Fire Damage, +30% Elemental Damage'), [['fireDamage', 120], ['elementalDamagePct', 30]]],
       [5, tr('+15% Damage Reduction, +30% Cold Resistance'), [['damageReduction', 15], ['coldResist', 30]]],
       [6, tr('+1 to All Skills, +250 Life'), [['skillLevels', 1], ['life', 250]]],

@@ -120,11 +120,11 @@ set(
   120,
   [
     ['set.bloodied.axe', tr("Redgrip, the Bloodied Hand"), 'axe.hand', [['enhancedDamage', 30, 45], ['maxDamage', 4, 7], ['lifeSteal', 1, 2]]],
-    ['set.bloodied.gloves', tr('Redgrip Mitts'), 'gloves.leather', [['attackSpeed', 6, 10], ['strength', 4, 7], ['defense', 8, 14]]],
+    ['set.bloodied.gloves', tr('Redgrip Mitts'), 'gloves.leather', [['attackSpeed', 5, 8], ['strength', 4, 7], ['defense', 8, 14]]],
     ['set.bloodied.belt', tr('Redgrip Cinch'), 'belt.sash', [['life', 18, 30], ['lifeRegen', 3, 6], ['defense', 6, 12]]],
   ],
   [
-    [2, tr('+20% Attack Speed, +3% Life Stolen per Hit'), [['attackSpeed', 20], ['lifeSteal', 3]]],
+    [2, tr('+13% Attack Speed, +3% Life Stolen per Hit'), [['attackSpeed', 13], ['lifeSteal', 3]]],
     [3, tr('+60% Enhanced Damage, +40 Life, +8% Critical Strike Chance'), [['enhancedDamage', 60], ['life', 40], ['critChance', 8]]],
   ],
 );
@@ -137,15 +137,15 @@ set(
   14,
   115,
   [
-    ['set.kindled.wand', tr('Kindling'), 'wand.bone', [['fireDamage', 10, 20], ['castSpeed', 6, 10], ['skillLevels', 1, 1]]],
+    ['set.kindled.wand', tr('Kindling'), 'wand.bone', [['fireDamage', 10, 20], ['castSpeed', 5, 8], ['skillLevels', 1, 1]]],
     ['set.kindled.chest', tr('Kindled Robe'), 'chest.quilted', [['mana', 25, 45], ['fireResist', 15, 25], ['enhancedDefense', 30, 50]]],
     ['set.kindled.helm', tr('Kindled Cowl'), 'helm.cap', [['energy', 5, 9], ['manaRegen', 12, 20], ['fireDamage', 6, 14]]],
-    ['set.kindled.legs', tr('Kindled Breeches'), 'pants.silk', [['mana', 20, 35], ['fireResist', 15, 25], ['castSpeed', 5, 8]]],
+    ['set.kindled.legs', tr('Kindled Breeches'), 'pants.silk', [['mana', 20, 35], ['fireResist', 15, 25], ['castSpeed', 4, 7]]],
   ],
   [
-    [2, tr('+15% Cast Speed, +25% Fire Resistance'), [['castSpeed', 15], ['fireResist', 25]]],
+    [2, tr('+11% Cast Speed, +25% Fire Resistance'), [['castSpeed', 11], ['fireResist', 25]]],
     [3, tr('+1 to All Skills, +25% Elemental Damage, Adds 30 Fire Damage'), [['skillLevels', 1], ['elementalDamagePct', 25], ['fireDamage', 30]]],
-    [4, tr('+20% Cast Speed, +60 Mana, +10 Mana Regeneration'), [['castSpeed', 20], ['mana', 60], ['manaRegen', 10]]],
+    [4, tr('+13% Cast Speed, +60 Mana, +10 Mana Regeneration'), [['castSpeed', 13], ['mana', 60], ['manaRegen', 10]]],
   ],
 );
 
@@ -158,13 +158,13 @@ set(
   110,
   [
     ['set.quickstep.boots', tr('Quickstep Treads'), 'boots.heavy', [['moveSpeed', 10, 15], ['dexterity', 6, 10], ['defense', 12, 20]]],
-    ['set.quickstep.dagger', tr('Quickstep Fang'), 'dagger.dirk', [['attackSpeed', 8, 13], ['critChance', 4, 7], ['maxDamage', 6, 11]]],
-    ['set.quickstep.gloves', tr('Quickstep Wraps'), 'gloves.heavy', [['attackSpeed', 8, 12], ['dexterity', 5, 9], ['maxDamage', 5, 9]]],
+    ['set.quickstep.dagger', tr('Quickstep Fang'), 'dagger.dirk', [['attackSpeed', 7, 10], ['critChance', 4, 7], ['maxDamage', 6, 11]]],
+    ['set.quickstep.gloves', tr('Quickstep Wraps'), 'gloves.heavy', [['attackSpeed', 7, 9], ['dexterity', 5, 9], ['maxDamage', 5, 9]]],
     ['set.quickstep.legs', tr('Quickstep Leggings'), 'pants.studded', [['moveSpeed', 6, 10], ['dexterity', 6, 10], ['defense', 18, 28]]],
   ],
   [
     [2, tr('+18% Movement Speed, +12 Dexterity'), [['moveSpeed', 18], ['dexterity', 12]]],
-    [3, tr('+25% Attack Speed, +10% Critical Strike Chance, +45% Critical Strike Damage'), [['attackSpeed', 25], ['critChance', 10], ['critDamage', 45]]],
+    [3, tr('+15% Attack Speed, +10% Critical Strike Chance, +45% Critical Strike Damage'), [['attackSpeed', 15], ['critChance', 10], ['critDamage', 45]]],
     [4, tr('+12% Movement Speed, +20 Dexterity, +80 Life'), [['moveSpeed', 12], ['dexterity', 20], ['life', 80]]],
   ],
 );
@@ -223,14 +223,14 @@ set(
   [
     ['set.frostwrought.sword', tr('Frostwrought Edge'), 'sword.tusk', [['coldDamage', 40, 75], ['enhancedDamage', 70, 110], ['coldResist', 20, 32]]],
     ['set.frostwrought.chest', tr('Frostwrought Plate'), 'chest.splint', [['enhancedDefense', 100, 155], ['coldResist', 25, 40], ['life', 80, 130]]],
-    ['set.frostwrought.gloves', tr('Frostwrought Grips'), 'gloves.war', [['coldDamage', 25, 50], ['attackSpeed', 8, 13], ['strength', 8, 14]]],
+    ['set.frostwrought.gloves', tr('Frostwrought Grips'), 'gloves.war', [['coldDamage', 25, 50], ['attackSpeed', 7, 10], ['strength', 8, 14]]],
     ['set.frostwrought.helm', tr('Frostwrought Visor'), 'helm.grim', [['coldResist', 25, 40], ['enhancedDefense', 80, 125], ['critDamage', 25, 45]]],
     ['set.frostwrought.legs', tr('Frostwrought Chausses'), 'pants.chausses', [['coldResist', 25, 40], ['enhancedDefense', 90, 140], ['vitality', 10, 16]]],
   ],
   [
     [2, tr('Adds 60 Cold Damage, +30% Cold Resistance'), [['coldDamage', 60], ['coldResist', 30]]],
     [3, tr('+35% Elemental Damage, +60% Critical Strike Damage'), [['elementalDamagePct', 35], ['critDamage', 60]]],
-    [4, tr('Adds 160 Cold Damage, +40% Cold Resistance, +15% Attack Speed — chilled enemies shatter on death'), [['coldDamage', 160], ['coldResist', 40], ['attackSpeed', 15], ['areaDamagePct', 35]]],
+    [4, tr('Adds 160 Cold Damage, +40% Cold Resistance, +11% Attack Speed — chilled enemies shatter on death'), [['coldDamage', 160], ['coldResist', 40], ['attackSpeed', 11], ['areaDamagePct', 35]]],
     [5, tr('+180 Life, +10% Damage Reduction, +40% Elemental Damage'), [['life', 180], ['damageReduction', 10], ['elementalDamagePct', 40]]],
   ],
 );
@@ -243,14 +243,14 @@ set(
   42,
   95,
   [
-    ['set.stormbound.staff', tr('Stormbound Rod'), 'staff.war', [['lightningDamage', 20, 130], ['skillLevels', 1, 1], ['castSpeed', 12, 18]]],
-    ['set.stormbound.helm', tr('Stormbound Circlet'), 'helm.coronet', [['lightningResist', 25, 40], ['manaRegen', 25, 40], ['castSpeed', 10, 16]]],
+    ['set.stormbound.staff', tr('Stormbound Rod'), 'staff.war', [['lightningDamage', 20, 130], ['skillLevels', 1, 1], ['castSpeed', 9, 12]]],
+    ['set.stormbound.helm', tr('Stormbound Circlet'), 'helm.coronet', [['lightningResist', 25, 40], ['manaRegen', 25, 40], ['castSpeed', 8, 11]]],
     ['set.stormbound.chest', tr('Stormbound Weave'), 'chest.studded', [['enhancedDefense', 90, 140], ['mana', 90, 145], ['lightningResist', 25, 40]]],
     ['set.stormbound.boots', tr('Stormbound Striders'), 'boots.war', [['moveSpeed', 10, 16], ['lightningDamage', 10, 90], ['enhancedDefense', 70, 110]]],
     ['set.stormbound.amulet', tr('Stormbound Sigil'), 'amulet.talisman', [['skillLevels', 1, 1], ['lightningDamage', 15, 110], ['energy', 10, 17]]],
   ],
   [
-    [2, tr('Adds 40 Lightning Damage, +20% Cast Speed'), [['lightningDamage', 40], ['castSpeed', 20]]],
+    [2, tr('Adds 40 Lightning Damage, +13% Cast Speed'), [['lightningDamage', 40], ['castSpeed', 13]]],
     [3, tr('+1 to All Skills, +40% Lightning Resistance'), [['skillLevels', 1], ['lightningResist', 40]]],
     [4, tr('+40% Elemental Damage, +18% Cooldown Reduction'), [['elementalDamagePct', 40], ['cooldownReduction', 18]]],
     [5, tr('+2 to All Skills, Adds 320 Lightning Damage, +25% Movement Speed — your lightning arcs to a second target'), [['skillLevels', 2], ['lightningDamage', 320], ['moveSpeed', 25], ['areaDamagePct', 40]]],
@@ -265,13 +265,13 @@ set(
   47,
   95,
   [
-    ['set.venomthread.dagger', tr('Venomthread Fang'), 'dagger.blade', [['poisonDamage', 60, 110], ['critChance', 6, 10], ['attackSpeed', 10, 16]]],
-    ['set.venomthread.gloves', tr('Venomthread Grasp'), 'gloves.bramble', [['attackSpeed', 12, 18], ['poisonDamage', 40, 75], ['dexterity', 12, 20]]],
+    ['set.venomthread.dagger', tr('Venomthread Fang'), 'dagger.blade', [['poisonDamage', 60, 110], ['critChance', 6, 10], ['attackSpeed', 8, 11]]],
+    ['set.venomthread.gloves', tr('Venomthread Grasp'), 'gloves.bramble', [['attackSpeed', 9, 12], ['poisonDamage', 40, 75], ['dexterity', 12, 20]]],
     ['set.venomthread.boots', tr('Venomthread Steps'), 'boots.sharkskin', [['moveSpeed', 14, 21], ['poisonResist', 25, 40], ['critChance', 4, 7]]],
     ['set.venomthread.chest', tr('Venomthread Shroud'), 'chest.dusk', [['enhancedDefense', 110, 170], ['poisonResist', 30, 45], ['dexterity', 14, 22]]],
   ],
   [
-    [2, tr('+20% Attack Speed, Adds 90 Poison Damage'), [['attackSpeed', 20], ['poisonDamage', 90]]],
+    [2, tr('+13% Attack Speed, Adds 90 Poison Damage'), [['attackSpeed', 13], ['poisonDamage', 90]]],
     [3, tr('+12% Critical Strike Chance, +40% Poison Resistance'), [['critChance', 12], ['poisonResist', 40]]],
     [4, tr('Adds 280 Poison Damage, +110% Critical Strike Damage, +30% Movement Speed — poison you apply stacks without limit'), [['poisonDamage', 280], ['critDamage', 110], ['moveSpeed', 30]]],
   ],
@@ -313,15 +313,15 @@ set(
   60,
   88,
   [
-    ['set.ashwalker.axe', tr("Ashwalker's Cleaver"), 'axe.berserker', [['fireDamage', 90, 160], ['enhancedDamage', 160, 240], ['attackSpeed', 10, 16]]],
+    ['set.ashwalker.axe', tr("Ashwalker's Cleaver"), 'axe.berserker', [['fireDamage', 90, 160], ['enhancedDamage', 160, 240], ['attackSpeed', 8, 11]]],
     ['set.ashwalker.chest', tr("Ashwalker's Hide"), 'chest.wyrmhide', [['enhancedDefense', 160, 250], ['fireResist', 30, 48], ['life', 150, 240]]],
     ['set.ashwalker.boots', tr("Ashwalker's Tread"), 'boots.wyrmhide', [['moveSpeed', 15, 23], ['fireResist', 25, 40], ['fireDamage', 45, 85]]],
     ['set.ashwalker.helm', tr("Ashwalker's Mask"), 'helm.spired', [['enhancedDefense', 130, 200], ['fireDamage', 60, 110], ['strength', 15, 25]]],
-    ['set.ashwalker.gloves', tr("Ashwalker's Grip"), 'gloves.ogre', [['attackSpeed', 12, 19], ['strength', 18, 28], ['critDamage', 50, 85]]],
+    ['set.ashwalker.gloves', tr("Ashwalker's Grip"), 'gloves.ogre', [['attackSpeed', 9, 13], ['strength', 18, 28], ['critDamage', 50, 85]]],
   ],
   [
     [2, tr('Adds 120 Fire Damage, +35% Fire Resistance'), [['fireDamage', 120], ['fireResist', 35]]],
-    [3, tr('+25% Attack Speed, +6% Life Stolen per Hit'), [['attackSpeed', 25], ['lifeSteal', 6]]],
+    [3, tr('+15% Attack Speed, +6% Life Stolen per Hit'), [['attackSpeed', 15], ['lifeSteal', 6]]],
     [4, tr('+45% Elemental Damage, +50% Area Damage'), [['elementalDamagePct', 45], ['areaDamagePct', 50]]],
     [5, tr('Adds 480 Fire Damage, +200% Enhanced Damage, +130% Critical Strike Damage — kills leave burning ground'), [['fireDamage', 480], ['enhancedDamage', 200], ['critDamage', 130]]],
   ],
@@ -336,7 +336,7 @@ set(
   85,
   [
     ['set.gilded.helm', tr('Gilded Circlet'), 'helm.diadem', [['magicFind', 30, 48], ['goldFind', 90, 150], ['skillLevels', 1, 1]]],
-    ['set.gilded.gloves', tr('Gilded Touch'), 'gloves.sorcerer', [['magicFind', 25, 40], ['goldFind', 80, 130], ['castSpeed', 10, 16]]],
+    ['set.gilded.gloves', tr('Gilded Touch'), 'gloves.sorcerer', [['magicFind', 25, 40], ['goldFind', 80, 130], ['castSpeed', 8, 11]]],
     ['set.gilded.boots', tr('Gilded Stride'), 'boots.wyrmhide', [['magicFind', 25, 40], ['moveSpeed', 14, 22], ['goldFind', 80, 130]]],
     ['set.gilded.ring', tr('Gilded Circle'), 'ring.circle', [['magicFind', 28, 45], ['goldFind', 100, 160], ['life', 90, 150]]],
   ],
@@ -355,14 +355,14 @@ set(
   70,
   82,
   [
-    ['set.nightfall.dagger', tr('Nightfall Whisper'), 'dagger.fanged', [['critChance', 10, 16], ['critDamage', 110, 170], ['attackSpeed', 14, 22]]],
+    ['set.nightfall.dagger', tr('Nightfall Whisper'), 'dagger.fanged', [['critChance', 10, 16], ['critDamage', 110, 170], ['attackSpeed', 10, 14]]],
     ['set.nightfall.chest', tr('Nightfall Shroud'), 'chest.wyrmhide', [['enhancedDefense', 180, 270], ['dexterity', 22, 34], ['arcaneResist', 30, 48]]],
     ['set.nightfall.boots', tr('Nightfall Passage'), 'boots.myrmidon', [['moveSpeed', 18, 27], ['critChance', 6, 10], ['enhancedDefense', 140, 220]]],
-    ['set.nightfall.gloves', tr('Nightfall Clutch'), 'gloves.eclipse', [['attackSpeed', 15, 23], ['critDamage', 90, 140], ['dexterity', 20, 30]]],
+    ['set.nightfall.gloves', tr('Nightfall Clutch'), 'gloves.eclipse', [['attackSpeed', 11, 15], ['critDamage', 90, 140], ['dexterity', 20, 30]]],
     ['set.nightfall.amulet', tr('Nightfall Oath'), 'amulet.sigil', [['skillLevels', 1, 2], ['critChance', 8, 13], ['arcaneDamage', 90, 160]]],
   ],
   [
-    [2, tr('+12% Critical Strike Chance, +25% Attack Speed'), [['critChance', 12], ['attackSpeed', 25]]],
+    [2, tr('+12% Critical Strike Chance, +15% Attack Speed'), [['critChance', 12], ['attackSpeed', 15]]],
     [3, tr('+150% Critical Strike Damage, +30 Dexterity'), [['critDamage', 150], ['dexterity', 30]]],
     [4, tr('+30% Movement Speed, +10% Cooldown Reduction, +9% Life Stolen per Hit'), [['moveSpeed', 30], ['cooldownReduction', 10], ['lifeSteal', 9]]],
     [5, tr('+2 to All Skills, +22% Critical Strike Chance, +260% Critical Strike Damage — criticals cannot be blocked'), [['skillLevels', 2], ['critChance', 22], ['critDamage', 260]]],
@@ -381,19 +381,19 @@ set(
   78,
   70,
   [
-    ['set.sunderedsky.staff', tr('Sundering'), 'staff.eldritch', [['skillLevels', 2, 2], ['castSpeed', 25, 35], ['elementalDamagePct', 35, 50]], 2],
-    ['set.sunderedsky.helm', tr('Crown of the Sundered Sky'), 'helm.diadem', [['skillLevels', 1, 2], ['mana', 220, 340], ['castSpeed', 15, 24]], 1],
+    ['set.sunderedsky.staff', tr('Sundering'), 'staff.eldritch', [['skillLevels', 2, 2], ['castSpeed', 15, 19], ['elementalDamagePct', 35, 50]], 2],
+    ['set.sunderedsky.helm', tr('Crown of the Sundered Sky'), 'helm.diadem', [['skillLevels', 1, 2], ['mana', 220, 340], ['castSpeed', 11, 15]], 1],
     ['set.sunderedsky.chest', tr('Mantle of the Sundered Sky'), 'chest.aeonshroud', [['enhancedDefense', 200, 300], ['mana', 260, 400], ['arcaneResist', 40, 60]], 2],
     ['set.sunderedsky.orb', tr('Eye of the Sundered Sky'), 'orb.vortex', [['skillLevels', 1, 2], ['cooldownReduction', 12, 20], ['elementalDamagePct', 25, 40]]],
     ['set.sunderedsky.boots', tr('Path of the Sundered Sky'), 'boots.gale', [['moveSpeed', 20, 30], ['manaRegen', 60, 95], ['enhancedDefense', 170, 260]]],
     ['set.sunderedsky.amulet', tr('Vow of the Sundered Sky'), 'amulet.heartstone', [['skillLevels', 1, 2], ['manaRegen', 70, 110], ['mana', 240, 370]]],
   ],
   [
-    [2, tr('+1 to All Skills, +25% Cast Speed'), [['skillLevels', 1], ['castSpeed', 25]]],
+    [2, tr('+1 to All Skills, +15% Cast Speed'), [['skillLevels', 1], ['castSpeed', 15]]],
     [3, tr('+300 Mana, +60% Mana Regeneration'), [['mana', 300], ['manaRegen', 60]]],
     [4, tr('+50% Elemental Damage, +20% Cooldown Reduction'), [['elementalDamagePct', 50], ['cooldownReduction', 20]]],
     [5, tr('+2 to All Skills, +45% All Resistances'), [['skillLevels', 2], ['fireResist', 45], ['coldResist', 45], ['lightningResist', 45], ['poisonResist', 45], ['arcaneResist', 45]]],
-    [6, tr('+3 to All Skills, +80% Elemental Damage, +600 Mana — spells cost life when mana runs dry'), [['skillLevels', 3], ['elementalDamagePct', 80], ['mana', 600], ['manaRegen', 100], ['castSpeed', 25]]],
+    [6, tr('+3 to All Skills, +80% Elemental Damage, +600 Mana — spells cost life when mana runs dry'), [['skillLevels', 3], ['elementalDamagePct', 80], ['mana', 600], ['manaRegen', 100], ['castSpeed', 15]]],
   ],
 );
 
@@ -408,13 +408,13 @@ set(
     ['set.lastlegion.sword', tr('Last Word'), 'sword.godslayer', [['enhancedDamage', 300, 420], ['critDamage', 140, 210], ['lifeSteal', 6, 9]], 2],
     ['set.lastlegion.chest', tr('Last Stand'), 'chest.archon', [['enhancedDefense', 280, 400], ['life', 300, 450], ['physicalResist', 8, 13]], 2],
     ['set.lastlegion.helm', tr('Last Vigil'), 'helm.corona', [['enhancedDefense', 220, 330], ['damageReduction', 8, 13], ['strength', 25, 40]], 1],
-    ['set.lastlegion.gloves', tr('Last Grip'), 'gloves.eclipse', [['attackSpeed', 18, 27], ['critChance', 8, 13], ['strength', 22, 35]]],
-    ['set.lastlegion.boots', tr('Last March'), 'boots.gale', [['moveSpeed', 18, 28], ['enhancedDefense', 200, 300], ['attackSpeed', 8, 13]]],
+    ['set.lastlegion.gloves', tr('Last Grip'), 'gloves.eclipse', [['attackSpeed', 12, 16], ['critChance', 8, 13], ['strength', 22, 35]]],
+    ['set.lastlegion.boots', tr('Last March'), 'boots.gale', [['moveSpeed', 18, 28], ['enhancedDefense', 200, 300], ['attackSpeed', 7, 10]]],
     ['set.lastlegion.belt', tr('Last Cord'), 'belt.worldheart', [['life', 280, 420], ['damageReduction', 6, 10], ['lifeRegen', 50, 80]]],
     ['set.lastlegion.legs', tr('Last Ground'), 'pants.legion', [['enhancedDefense', 240, 360], ['vitality', 30, 45], ['physicalResist', 6, 10]], 2],
   ],
   [
-    [2, tr('+30% Attack Speed, +200% Enhanced Damage'), [['attackSpeed', 30], ['enhancedDamage', 200]]],
+    [2, tr('+17% Attack Speed, +200% Enhanced Damage'), [['attackSpeed', 17], ['enhancedDamage', 200]]],
     [3, tr('+400 Life, +12% Damage Reduction'), [['life', 400], ['damageReduction', 12]]],
     [4, tr('+15% Critical Strike Chance, +180% Critical Strike Damage'), [['critChance', 15], ['critDamage', 180]]],
     [5, tr('+15% Physical Resistance, +12% Life Stolen per Hit'), [['physicalResist', 15], ['lifeSteal', 12]]],
@@ -432,13 +432,13 @@ set(
   55,
   [
     ['set.hollowking.helm', tr("Hollow King's Crown"), 'helm.corona', [['skillLevels', 2, 2], ['damageReduction', 12, 18], ['magicFind', 50, 80]], 2],
-    ['set.hollowking.gloves', tr("Hollow King's Hand"), 'gloves.eclipse', [['critChance', 10, 16], ['attackSpeed', 20, 30], ['lifeSteal', 5, 8]]],
+    ['set.hollowking.gloves', tr("Hollow King's Hand"), 'gloves.eclipse', [['critChance', 10, 16], ['attackSpeed', 13, 17], ['lifeSteal', 5, 8]]],
     ['set.hollowking.boots', tr("Hollow King's Heel"), 'boots.gale', [['moveSpeed', 25, 36], ['cooldownReduction', 10, 16], ['enhancedDefense', 240, 350]]],
     ['set.hollowking.amulet', tr("Hollow King's Heart"), 'amulet.heartstone', [['skillLevels', 2, 2], ['life', 350, 520], ['critDamage', 180, 260]]],
     ['set.hollowking.ring', tr("Hollow King's Signet"), 'ring.eternity', [['skillLevels', 1, 2], ['cooldownReduction', 15, 24], ['magicFind', 60, 95]]],
   ],
   [
-    [2, tr('+2 to All Skills, +30% Attack Speed'), [['skillLevels', 2], ['attackSpeed', 30]]],
+    [2, tr('+2 to All Skills, +17% Attack Speed'), [['skillLevels', 2], ['attackSpeed', 17]]],
     [3, tr('+25% Cooldown Reduction, +35% Movement Speed'), [['cooldownReduction', 25], ['moveSpeed', 35]]],
     [4, tr('+200% Magic Find, +18% Critical Strike Chance'), [['magicFind', 200], ['critChance', 18]]],
     [5, tr('+3 to All Skills, +400% Critical Strike Damage, +25% Damage Reduction — once per minute, death is declined'), [['skillLevels', 3], ['critDamage', 400], ['damageReduction', 25], ['life', 500]]],

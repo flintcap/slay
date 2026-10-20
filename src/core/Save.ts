@@ -6,7 +6,7 @@ import { UNIQUE_TEXT } from '../data/story/uniqueText';
 import { LEGACY_RUNE_IDS, RUNES } from '../data/gems';
 import { migrateClassId } from '../data/classes';
 import { INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS, findFit, repairLayout } from '../sim/Grid';
-import { refreshFixedLines } from '../sim/Loot';
+import { refreshFixedLines, rescaleOldSpeed } from '../sim/Loot';
 import { beginRun, endRun, forfeitRun, type Forfeit } from '../sim/RunLedger';
 import { tr } from './I18n';
 import { FRAME_CAPS } from './FramePace';
@@ -72,8 +72,10 @@ export function purgeStaleCache(prefix: string, current: string): void {
  *  1  the original shape
  *  2  roster made authoritative (the live character is the roster entry, not a
  *     copy of it), every field range-checked on load
+ *  3  item attack and cast speed moved to the Wave 5 scale (smaller lines;
+ *     every owned roll keeps its place in its range, `rescaleOldSpeed`)
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export const STASH_TAB_SIZE = STASH_COLS * STASH_ROWS; // 12 x 10 grid per tab
 export const DEFAULT_STASH_TABS = 4;
@@ -211,6 +213,8 @@ const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFi
 class Repairer {
   repairs: string[] = [];
   quarantine: unknown[] = [];
+  /** Set for saves before version 3: every item's speed lines move to today's scale. */
+  oldSpeed = false;
 
   note(what: string): void {
     if (this.repairs.length < 200) this.repairs.push(what);
@@ -286,6 +290,9 @@ class Repairer {
       const name = UNIQUE_TEXT[it.uniqueId]?.name;
       if (name && it.name !== name) it.name = name;
     }
+    // Speed lines from before the Wave 5 retune move to today's scale first,
+    // so the refresh below holds them in today's ranges. Silent.
+    if (this.oldSpeed) rescaleOldSpeed(it);
     // A unique or set piece found before each name had its own fixed lines
     // takes them now, at its own item level. Silent: nothing was damaged.
     if (isStr(it.uniqueId)) refreshFixedLines(it);
@@ -521,6 +528,9 @@ export function migrateAccount(raw: unknown): { data: AccountSave; report: LoadR
     // v1 -> v2: the roster did not exist in the earliest saves.
     if (!Array.isArray(s.roster)) s.roster = [];
   }
+  // v2 -> v3: item speed lines shrank. Done per item in `Repairer.item`,
+  // which every item in the account passes through below.
+  if (from < 3) fx.oldSpeed = true;
 
   // --- sanitise --------------------------------------------------------------
   const out: AccountSave = { ...base };

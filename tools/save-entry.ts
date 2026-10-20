@@ -17,6 +17,7 @@ import { getUnique } from '../src/data/uniques';
 import { SET_PIECES } from '../src/data/sets';
 import { EXTRA_LINES } from '../src/data/extraLines';
 import { buildSetPiece, refreshFixedLines } from '../src/sim/Loot';
+import { getAffix } from '../src/data/affixes';
 import { xpForLevel } from '../src/sim/Stats';
 
 class MemStore implements SaveStore {
@@ -534,6 +535,47 @@ check('uniques and set pieces from older builds take their fixed lines today', (
   const again = migrateAccount(JSON.parse(JSON.stringify(data))).data.current!;
   if (JSON.stringify(again.equipment.mainHand) !== JSON.stringify(u) || JSON.stringify(again.inventory[2]) !== JSON.stringify(sp)) return 'a second load changed the items';
   if (refreshFixedLines(buildSetPiece(piece, new Random(4)))) return 'a piece built today was changed';
+  return true;
+});
+
+check('speed lines from before version 3 move to the new scale and keep their place', () => {
+  const line = (affixId: string, value: number, tier: number): Item['mods'][number] => ({ affixId, stat: 'attackSpeed', value, tier, kind: 'suffix' });
+  const wf = getUnique('uq.windforce')!;
+  const at = wf.mods.findIndex((m) => m.stat === 'attackSpeed');
+  const bow = (uid: string, v: number): Item =>
+    item(uid, {
+      rarity: 'unique', uniqueId: wf.id, name: wf.name, baseId: wf.baseId, ilvl: wf.ilvl, sockets: [],
+      mods: wf.mods.map((m, i) => ({ affixId: `unique.${wf.id}.${i}`, stat: m.stat, value: i === at ? v : m.max, tier: 0, kind: 'prefix' as const })),
+    });
+  // Written by a version 2 build: the top (40) and bottom (34) of the old best
+  // attack speed tier, a Grand Charm's old top roll (32), and both ends of
+  // Windforce's old attack speed range (25 to 35).
+  const h = hero('s', 40);
+  h.inventory = new Array(60).fill(null);
+  h.inventory[0] = item('s-top', { baseId: 'gloves.leather', rarity: 'rare', sockets: [], mods: [line('suf.aspd', 40, 7)] });
+  h.inventory[1] = item('s-low', { baseId: 'gloves.leather', rarity: 'rare', sockets: [], mods: [line('suf.aspd', 34, 7)] });
+  h.inventory[2] = item('s-charm', { baseId: 'charm.grand', rarity: 'magic', sockets: [], mods: [line('charm.3.attackSpeed', 32, 7)] });
+  h.inventory[3] = bow('s-wf-top', 35);
+  h.inventory[4] = bow('s-wf-low', 25);
+  const { data, report } = migrateAccount(JSON.parse(JSON.stringify({ ...account(h, [h]), version: 2 })));
+  const all = data.current!.inventory;
+  const got = (uid: string, affixId: string): number | undefined => all.find((it) => it?.uid === uid)?.mods.find((m) => m.affixId === affixId)?.value;
+  const best = getAffix('suf.aspd')!.tiers[6]!;
+  const charm = getAffix('charm.3.attackSpeed')!.tiers[6]!;
+  const wfLine = `unique.${wf.id}.${at}`;
+  const want: Array<[string, string, number]> = [
+    ['s-top', 'suf.aspd', best.max],
+    ['s-low', 'suf.aspd', best.min],
+    ['s-charm', 'charm.3.attackSpeed', charm.max],
+    ['s-wf-top', wfLine, wf.mods[at]!.max],
+    ['s-wf-low', wfLine, wf.mods[at]!.min],
+  ];
+  for (const [uid, id, v] of want) if (got(uid, id) !== v) return `${uid}: ${got(uid, id)}, expected ${v}`;
+  if (data.version !== SAVE_VERSION) return `saved as version ${data.version}`;
+  if (report.repairs.length) return `rescale reported as damage: ${report.repairs.join('; ')}`;
+  // A save already on the new scale is left alone.
+  const again = migrateAccount(JSON.parse(JSON.stringify(data))).data.current!.inventory;
+  if (JSON.stringify(again) !== JSON.stringify(all)) return 'a second load changed the speed lines again';
   return true;
 });
 
