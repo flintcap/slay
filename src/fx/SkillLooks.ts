@@ -166,7 +166,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   // Revenant: Gravepact.
   siphonLife: m('wisps', 'converge'),
   bloodPact: m('blood pools', 'ring'),
-  gravechill: m('frost orbs', 'orbit'),
+  gravewalk: m('claw rakes', 'rise'),
   soulCage: m('rune wheels', 'pulse'),
   exsanguinate: m('hearts', 'converge'),
   revenantForm: m('skulls', 'helix'),

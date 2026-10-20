@@ -56,10 +56,10 @@ import { tr } from '../core/I18n';
  * up. Totems keep no body on purpose; a totem is an object, not a creature.
  */
 const MINION_NAME: Record<string, string> = {
-  raiseSkeleton: tr('Skeleton'),
-  skeletalMage: tr('Skeletal Mage'),
+  raiseSkeleton: tr('Bone Thrall'),
+  skeletalMage: tr('Bone Chanter'),
   grandOssuary: tr('Bone Warden'),
-  claySentinel: tr('Clay Sentinel'),
+  claySentinel: tr('Charnel Colossus'),
   swornBrother: tr('Sworn Brother'),
   shadowClone: tr('Shadow'),
   viperGod: tr('Spectral Viper'),
@@ -69,9 +69,11 @@ const MINION_NAME: Record<string, string> = {
 export const MINION_MONSTER: Readonly<Record<string, string>> = {
   ...SHIFTER_MINIONS,
   raiseSkeleton: 'skeleton_rattler',
-  skeletalMage: 'skeleton_archer',
+  // A Bone Chanter is a caster, so it wears a conjurer's shroud, not a bow.
+  skeletalMage: 'bone_conjurer',
   grandOssuary: 'skeleton_warden',
-  claySentinel: 'animated_armor',
+  // Charnel Colossus: a hulk of fused bone.
+  claySentinel: 'grave_titan',
   swornBrother: 'animated_armor',
   shadowClone: 'bandit_cutthroat',
   viperGod: 'basilisk',
@@ -85,11 +87,27 @@ const MINION_LOOK: Readonly<Record<string, Partial<MonsterVisual>>> = {
   viperGod: { palette: 'crystal.void|0x2f8a5c', glow: 0x8affc0, ornate: 0.35 },
   // A Knight's ghost: pale steel you can half see through, gold in the visor.
   swornBrother: { palette: 'crystal.ice|0xb4c4d4', glow: 0xd8a640, ornate: 0.5, weapon: 'sword' },
+  // The Revenant's dead burn with his own pale teal; a chanter's with witchlight.
+  skeletalMage: { glow: 0xb48cff, weapon: 'staff' },
+  claySentinel: { palette: 'stone.crypt|0xb8ae92', glow: 0x9ae0c8, ornate: 0.85 },
 };
 
+/**
+ * A summon raised as an elite wears another body: Skeletal Knight's thralls
+ * come up armoured and taller with a notched blade, Death Knight's with
+ * witchfire in the eyes and on the steel (`minionVisual`'s `dread`).
+ */
+export const ELITE_MONSTER: Readonly<Record<string, string>> = {
+  raiseSkeleton: 'gravebound_knight',
+};
+const ELITE_LOOK: Readonly<Record<string, Partial<MonsterVisual>>> = {
+  raiseSkeleton: { palette: 'stone.crypt|0xa89e84', glow: 0x9ae0c8, ornate: 0.75, weapon: 'sword' },
+};
+const DREAD_LOOK: Partial<MonsterVisual> = { palette: 'metal.dark|0x3a4048', glow: 0x6fffe0, ornate: 0.95, eyes: 3, weapon: 'sword' };
+
 /** The body a summoning skill raises, in its own colours (read by the scene's warm-up too). */
-export function minionVisual(skillId: string, base: MonsterVisual): MonsterVisual {
-  const look = MINION_LOOK[skillId];
+export function minionVisual(skillId: string, base: MonsterVisual, elite = false, dread = false): MonsterVisual {
+  const look = elite ? (dread ? DREAD_LOOK : ELITE_LOOK[skillId]) : MINION_LOOK[skillId];
   return look ? { ...base, ...look } : base;
 }
 
@@ -4201,13 +4219,16 @@ export class SkillRunner {
         hero = null;
       }
     }
-    const monsterId = skillId && !body ? MINION_MONSTER[skillId] : undefined;
+    // A knight (Skeletal Knight) rises in its own armoured body.
+    const elite = (extra.elite ?? false) && !!skillId && !!ELITE_MONSTER[skillId];
+    const monsterId = skillId && !body ? (elite ? ELITE_MONSTER[skillId] : MINION_MONSTER[skillId]) : undefined;
     const mdef = monsterId ? MONSTERS.find((m) => m.id === monsterId) : undefined;
     if (mdef) {
       try {
         // Seeded from the summon count, not the wall clock: same run, same pack.
         const rng = new Random((0x5a11 + this.summonSerial * 7919) >>> 0);
-        const model = buildMonsterModel(minionVisual(skillId ?? '', mdef.visual), rng, (mdef.scale ?? 1) * 0.92);
+        const dread = elite && (owner?.passives.minionEliteMorePct ?? 0) > 0;
+        const model = buildMonsterModel(minionVisual(skillId ?? '', mdef.visual, elite, dread), rng, (mdef.scale ?? 1) * 0.92);
         model.root.position.set(x, 0, z);
         this.effects.scene.add(model.root);
         anim = new RigAnimator(model.root, model.bones, monsterArchetype(mdef.visual.body), rng);

@@ -49,7 +49,7 @@ import { PAYOUT, bossIlvl, findRates, payoutGold, payoutIlvl, sourceFind, type F
 import { addItemToInventory, removeItemFromInventory } from '../sim/Inventory';
 import { packChart, rollTrinket, spendTrinket, trinketOf, unpackChart } from '../sim/Trinkets';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
-import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER, minionVisual } from './SkillRunner';
+import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER, ELITE_MONSTER, minionVisual } from './SkillRunner';
 import { NameplateLayer, type PlateTarget } from '../ui/Nameplates';
 import { itemLookStandIns } from '../art/items/Mats';
 import { CombatTextLayer } from '../ui/CombatText';
@@ -542,6 +542,8 @@ export class DungeonScene extends GameScene {
     }
     const c = this.player.character;
     for (const sk of [...c.hotbar, ...Object.keys(c.skills)]) ask(sk ? MINION_MONSTER[sk] : undefined, true, 'normal', sk ?? undefined);
+    // Skeletal Knight's thralls rise in an armoured body of their own.
+    if ((c.skills.skeletalKnight ?? 0) > 0) for (const sk of Object.keys(c.skills)) ask(ELITE_MONSTER[sk], true, 'normal', sk);
     for (const { def, minion, rank, skill } of want.values()) {
       try {
         // As the summon factory builds them: a monster of its family at the

@@ -83,6 +83,12 @@ function measure(classId: CharClassId, id: string, rank: number): Measure {
   if (SKILLS.find((s) => s.id === id)?.effect === 'minion.heal') {
     c.skills.raiseSkeleton = 1;
     runner.cast('raiseSkeleton', player, new THREE.Vector3(0, 0, 1.8), a.ctx, a.enemies, null);
+    // A Revenant raise lets go on its gesture's release frame: let it stand first.
+    for (let i = 0; i < Math.ceil(1.5 / DT); i++) {
+      a.ctx.elapsed += DT;
+      player.update(DT, pctx, null);
+      runner.update(DT);
+    }
     for (const t of turrets) t.life = t.maxLife * 0.1;
     (player as unknown as { cooldowns?: Map<string, number> }).cooldowns?.clear();
     for (let i = 0; i < 60; i++) {

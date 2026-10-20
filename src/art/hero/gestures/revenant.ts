@@ -285,16 +285,16 @@ const GRAVEPACT: Record<string, Spec> = {
     glow: 'left',
     end: 1.0,
   },
-  /** A long breath in, then a sigh that sags the whole body, palms turned out like the dead. */
-  gravechill: {
+  /** A crouch that sinks into the floor, then a claw thrust up out of it where he rises. */
+  gravewalk: {
     keys: [
-      [0.2, { R: [0.2, 0.3, 0.0, 0.3, 0.3], L: [0.2, 0.3, 0.0, 0.3, 0.3], head: -0.3, lean: -0.15, down: -0.06 }, true],
-      [0.4, { R: [0.3, 0.55, -0.6, 0.15, -1.2], L: [0.3, 0.55, -0.6, 0.15, -1.2], fistR: 0, fistL: 0, head: 0.35, lean: 0.25, down: 0.35 }],
-      [0.66, { R: [0.3, 0.6, -0.6, 0.15, -1.2], L: [0.3, 0.6, -0.6, 0.15, -1.2], head: 0.32, lean: 0.22, down: 0.32 }],
+      [0.16, { R: [0.3, 0.4, -0.3, 0.4, -0.6], L: [0.3, 0.4, -0.3, 0.4, -0.6], fistR: CLAW, fistL: CLAW, head: 0.2, lean: 0.3, down: 0.25 }, true],
+      [0.34, { R: [0.3, 0.55, -0.6, 0.15, -1.2], L: [0.3, 0.55, -0.6, 0.15, -1.2], fistR: 0, fistL: 0, head: 0.4, lean: 0.45, down: 0.55 }],
+      [0.6, { R: [2.6, 0.3, 0.3, 0.65, 0.4], L: [0.6, 0.4, 0.2, 1.0, 0.3], fistR: CLAW, head: -0.25, lean: -0.1, down: 0.05 }],
     ],
-    contact: 0.4,
-    glow: 'both',
-    end: 1.0,
+    contact: 0.34,
+    glow: 'right',
+    end: 0.85,
   },
   /** A claw snapped shut on the soul, pulled to the chest and cupped in the other hand. */
   soulCage: {

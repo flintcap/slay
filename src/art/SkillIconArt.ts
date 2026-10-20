@@ -156,11 +156,11 @@ const ICON_MAP: Record<string, string> = {
   ossuary: 'tower', 'mastery-ossuary': 'skull^mastery',
   // Revenant — blight
   'curse-weak': 'rune^drip', 'bolt-blight': 'skull^speed', decay: 'wilt', amplify: 'horn', 'nova-poison': 'drop^nova',
-  wither: 'wilt^aura', terror: 'skull^nova', 'curse-blood': 'drop^aura', 'corpse-boom': 'skull^burst', contagion: 'cloud^multi',
+  hex: 'rune^multi', terror: 'skull^nova', 'curse-blood': 'drop^aura', 'corpse-boom': 'skull^burst', contagion: 'cloud^multi',
   doom: 'hourglass', attrition: 'hourglass^drip', confusion: 'swirl', pestilence: 'cloud:1', 'mastery-curse': 'rune^mastery',
   decline: 'wilt^drip', lower: 'shield^drip', 'mastery-blight': 'drop^mastery',
   // Revenant — gravepact
-  siphon: 'chalice^drip', 'ward-spirit': 'ghost^aura', 'wisp-soul': 'ghost', 'pact-blood': 'hand^drip', 'chill-aura': 'flake^aura',
+  siphon: 'chalice^drip', 'ward-spirit': 'ghost^aura', 'wisp-soul': 'ghost', 'pact-blood': 'hand^drip', gravewalk: 'hand^rise',
   'fang-dark': 'fang', 'cage-soul': 'cage', 'drain-beam': 'beam', embrace: 'hand^aura', revenant: 'ghost^rise', harvest: 'scythe',
   // Paladin: Mace.
   'toll-blow': 'mace^impact', 'hallowed-iron': 'mace:2', 'shield-crack': 'shield^burst', anvilfall: 'anvil^impact',

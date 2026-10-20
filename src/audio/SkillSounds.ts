@@ -183,7 +183,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   exsanguinate: s('skill.drain.blood'),
   bloodPact: s('skill.blood.pact'),
   sanguineNova: s('skill.blood.nova'),
-  gravechill: s('skill.cold.grave'),
+  gravewalk: s('skill.cold.grave'),
   soulCage: s('skill.soul.cage'),
   soulTether: s('skill.soul.tether'),
   revenantForm: s('skill.revenant.form'),

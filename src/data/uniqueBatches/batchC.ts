@@ -29,7 +29,7 @@ export const BATCH_C: UniqueDef[] = [
   U('uq.splinterwand', tr('Splinterwand'), 'wand.bone', 11,
     tr('Whittled from a rib that broke into a hundred points when it was dropped. It kept all of them.'),
     [['energy', 1], ['mana', 0.8], ['castSpeed', 0.6]],
-    { classId: 'revenant', bend: { skill: 'boneSpear', more: 25, grow: { range: 20 }, add: { count: 2, arc: 70 }, names: { count: 'spears', arc: tr('degrees wider fan') } },
+    { classId: 'revenant', bend: { skill: 'boneSpear', more: 25, grow: { range: 20 }, add: { count: 2, arc: 70 }, names: { count: 'lances', arc: tr('degrees wider fan') } },
       look: D('bone.bleached', 'leather.worn|0x3a2a2a', 'bone.old', ['spikes', 'bones'], 0.4, { cut: { kind: 'bone', wrap: 'cord' } }),
       from: 'boneking_gharruth' }),
 
@@ -49,7 +49,7 @@ export const BATCH_C: UniqueDef[] = [
   U('uq.rollcall', tr('The Roll Call'), 'wand.grim', 36,
     tr('The sexton read the names of the dead from it every winter. This winter, some of them answered.'),
     [['energy', 1], ['life', 0.8], ['mana', 0.6]],
-    { classId: 'revenant', bend: { skill: 'raiseSkeleton', grow: { lifePct: 25, damagePct: 25 }, add: { baseCap: 1 }, names: { baseCap: 'skeletons' } },
+    { classId: 'revenant', bend: { skill: 'raiseSkeleton', grow: { lifePct: 25, damagePct: 25 }, add: { baseCap: 1 }, names: { baseCap: 'thralls' } },
       look: D('bone.old', 'cloth.tattered|0x3a3a3a', 'metal.silver', ['skulls', 'chains'], 0.5, { cut: { kind: 'grim', wrap: 'wire' } }),
       from: 'boneking_gharruth' }),
 
