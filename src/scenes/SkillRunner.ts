@@ -10,7 +10,7 @@ import { skillSound } from '../audio/SkillSounds';
 import { SKILLS, SKILL_BY_ID, classOfSkill, synergyPct } from '../data/skills';
 import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
-import { basicTime, handsOf, skillPace } from '../sim/Speed';
+import { basicTime, handsOf, skillPace, speedMultiplier } from '../sim/Speed';
 
 /** A summon's hits and life at a skill rank, in any unit: only the ratio between ranks is used. */
 export type SummonGrowth = (rank: number) => { damage: number; life: number };
@@ -382,7 +382,7 @@ const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink'
  * (`beginAction(..., { release: true })`, then `atRelease`) instead of on
  * the key press. A class joins once its spells are timed for it.
  */
-const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage', 'warden']);
+const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage', 'warden', 'revenant']);
 /** Families that never wait for a release frame: a channel runs from the press, a move goes at once. */
 const PRESS_FAMILIES: ReadonlySet<string> = new Set(['channel', 'teleport', 'dash', 'leap', 'shift', 'rite', 'vigil']);
 
@@ -1790,7 +1790,10 @@ export class SkillRunner {
           // Skeletal Knight and Death Knight upgrade a few skeletons into knights.
           const elites = def.id === 'raiseSkeleton' ? Math.floor(mp.minionEliteCount) : 0;
           const elitePower = 1 + mp.minionElitePowerPct / 100;
-          const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
+          // Minion attack speed (Marrow Feast) goes through the hero's own
+          // speed curve (`sim/Speed.ts`), so ranks keep paying without the
+          // host swinging like a machine.
+          const swingRate = 1 / speedMultiplier(mp.minionAttackSpeedPct);
           // A Shadow Clone is you in shadow, so it fights with your blades;
           // Call the Viper's serpent bites (`melee`).
           const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel') || def.id === 'shadowClone' || num('melee', 0) > 0;

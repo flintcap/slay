@@ -2520,6 +2520,7 @@ const OSSUARY = build('ossuary', [
     mana: [12, 0.6],
     cd: [1.5, 0, 1.5],
     fx: 'summon.minion',
+    castTime: 0.65,
     p: { maxPerRanks: 2, baseCap: 5, lifePct: 75, damagePct: 55, perRank: 6 },
   },
   {
@@ -2534,6 +2535,7 @@ const OSSUARY = build('ossuary', [
     cd: [12, 0.3, 5],
     stat: { defense: per(12) },
     fx: 'buff.absorb',
+    castTime: 0.45,
     p: { absorb: 80, absorbPerRank: 45, duration: 25 },
   },
   {
@@ -2549,6 +2551,7 @@ const OSSUARY = build('ossuary', [
     cd: [2, 0, 2],
     type: 'arcane',
     fx: 'summon.minion',
+    castTime: 0.65,
     p: { maxPerRanks: 3, baseCap: 4, lifePct: 45, damagePct: 60, perRank: 7, range: 12 },
   },
   {
@@ -2590,6 +2593,7 @@ const OSSUARY = build('ossuary', [
     mana: [30, 1.5],
     cd: [30, 0.8, 12],
     fx: 'summon.minion',
+    castTime: 0.8,
     p: { baseCap: 1, maxPerRanks: 8, lifePct: 260, perRank: 15, damagePct: 70, taunts: 1 },
   },
   {
@@ -2633,6 +2637,7 @@ const OSSUARY = build('ossuary', [
     dmg: [0.9, 0.15],
     type: 'physical',
     fx: 'aura.damage',
+    castTime: 0.5,
     p: { duration: 15, radius: 5, tickRate: 0.5 },
   },
   {
@@ -2669,6 +2674,7 @@ const OSSUARY = build('ossuary', [
     mana: [26, 1.3],
     cd: [30, 0.8, 14],
     fx: 'minion.heal',
+    castTime: 0.6,
     p: { healPct: 40, perRank: 3, reviveWindow: 5 },
   },
   {
@@ -2724,6 +2730,7 @@ const OSSUARY = build('ossuary', [
     mana: [45, 2],
     cd: [60, 1.5, 25],
     fx: 'summon.massMinion',
+    castTime: 0.9,
     p: { radius: 14, count: 6, baseCap: 6, maxPerRanks: 3, lifePct: 75, minionScale: 0.7 },
   },
   {
@@ -2889,6 +2896,7 @@ const BLIGHT = build('blight', [
     dmg: [3.5, 0.55],
     type: 'arcane',
     fx: 'curse.delayedBurst',
+    castTime: 0.6,
     p: { delay: 6, radius: 4, spreadOnKill: 1 },
   },
   {
@@ -2914,6 +2922,7 @@ const BLIGHT = build('blight', [
     mana: [24, 1.2],
     cd: [26, 0.7, 12],
     fx: 'curse',
+    castTime: 0.6,
     p: { radius: 9, duration: 5, perRank: 0.25, friendlyFire: 20, statusId: 4 },
   },
   {
@@ -2929,6 +2938,7 @@ const BLIGHT = build('blight', [
     dmg: [0.4, 0.08],
     type: 'poison',
     fx: 'aura.damage',
+    castTime: 0.5,
     p: { radius: 7, tickRate: 1, plagueChance: 30 },
   },
   {
@@ -3042,6 +3052,7 @@ const GRAVEPACT = build('gravepact', [
     mana: [0, 0],
     cd: [20, 0.5, 9],
     fx: 'buff.sacrifice',
+    castTime: 0.5,
     p: { lifeCostPct: 15, duration: 12, damagePct: 40, perRank: 4 },
   },
   {
@@ -3123,6 +3134,7 @@ const GRAVEPACT = build('gravepact', [
     mana: [30, 1.5],
     cd: [45, 1.2, 20],
     fx: 'buff.transform',
+    castTime: 0.6,
     p: { duration: 12, damagePct: 50, perRank: 4, dr: 30 },
   },
   {
@@ -3224,6 +3236,7 @@ const GRAVEPACT = build('gravepact', [
     dmg: [3.8, 0.58],
     type: 'arcane',
     fx: 'nova',
+    castTime: 0.6,
     p: { radius: 7, executeThreshold: 35, executeBonus: 100, soulsOnKill: 2 },
   },
   {

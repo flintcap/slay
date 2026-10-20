@@ -1,6 +1,6 @@
 # Stream: sk-revenant (Wave 5: Revenant skills remake)
 
-Status: waiting for skillcore
+Status: in progress
 
 Class: Revenant (code id `revenant`). Trees: Ossuary, Blight, Grave Pact (`ossuary`, `blight`, `gravepact`). Port 4355.
 Fights with caster: wands and orbs (starts with a femur wand and a cracked orb). No basic attack, ever. Class color: pale teal (`0x8ce0c8`).
@@ -64,7 +64,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. Speed audit (owner: before any skill is changed). (sk-revenant: speed audit) Under skillcore's model, write a table
   under "Notes for resume": the Revenant's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -109,19 +109,16 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 and 2 are written below (code reading only). Next is
-milestone 3, which needs skillcore. If `docs/remake/skillcore.md` does not
-say `Status: done`, stop and wait. When it does: fetch and rebase, read its
-"Handover" and the speed model in `CONTRACTS.md`, then write the speed
-table (default cast Femur Lance, every active, every summon's attack rate,
-no speed gear and at the ceiling) and set numbers only through skillcore's
-fields. Then milestone 4 in this order: the broken ones first (Mass
-Confusion, Terror flee, Attrition, Skeletal Mage bolts, Grand Ossuary
-melee, Hunting Skull homing, Bone Cage, Soul Cage and Doom single target,
-Marrow Feast, Pestilence spread, zone cap eating auras), then the two new
-skills (Gravewalk, Hex Upon Hex) and the refunds for `gravechill` and
-`wither`, then the renames, then looks (milestones 5 and 6). The plan is
-under "Milestone 2" below.
+Milestones 1 to 3 are done (skillcore is done; cast times are set in the
+skill data, the Revenant lets go on the release frame, minion swings go
+through the speed curve). Next is milestone 4 in this order: the broken
+ones first (Mass Confusion, Horrify flee, Attrition, Bone Chanter bolts,
+Grand Ossuary melee, Hunting Skull homing, Bone Cage, Soul Cage and Doom
+single target, Marrow Feast, Pestilence spread, zone cap eating auras,
+Femur Lance hits as it passes, Bone Thrall and Bone Chanter `damagePct`),
+then the two new skills (Gravewalk, Hex Upon Hex) and the refunds for
+`gravechill` and `wither`, then the renames, then looks (milestones 5 and
+6). The plan is under "Milestone 2" below, the speeds under "Milestone 3".
 
 ## Notes for resume
 
@@ -421,6 +418,65 @@ Hex, Harvest order, Death Knight), `DungeonScene.ts` (Attrition status,
 Long Decline tick name, `warmup()` stand-ins), `data/statuses.ts` (the
 `attrition` status), `fx/BodyFX.ts` (Revenant Form look), and the zone cap
 in `SkillRunner.addZone` (auras kept, pools evicted first).
+
+### Milestone 3: speed audit (skillcore's model, `sim/Speed.ts`)
+
+How a Revenant use is timed now (read from the code after skillcore):
+
+- Every Revenant active is a spell (`skillTiming`): no attack family, and
+  a wand or an orb is neither melee nor ranged. One use takes `castTime`
+  seconds (default 0.5; self buffs and auras 0.35; tethers, family
+  `channel`, 0.8) divided by `castMult`. Every branch the Revenant uses
+  starts its action with that time (`actTime`); no in-code factor is left.
+- `castMult` = `speedMultiplier(castSpeed%)`. `sim/Stats.ts` clamps cast
+  speed at 200%, so the ceiling is x1.67: a 0.5 s spell takes 0.30 s
+  (3.33 a second), under the 3.4 cap. No Revenant skill or passive gives
+  cast speed; all of it comes from gear.
+- No basic attack (wand and orb). The default cast is Femur Lance (Bone
+  Spear), the first hotbar slot.
+- Reference feel: a Diablo II caster of this kind casts a little under 2
+  a second with no gear and about 2.8 at its best; Path of Exile minion
+  spells take 0.75 to 0.85 s base, curses about 0.5 s, buffs 0.5 to 0.6 s.
+- Minion swings are outside skillcore's model. A melee minion swings every
+  1.1 s, a ranged one every 1.6 s, divided by Marrow Feast's minion attack
+  speed (+6% a rank, +120% at rank 20). That was linear: 0.5 s and 0.73 s
+  at rank 20, a skeleton host swinging twice a second each. Now it goes
+  through the same curve as the hero (`speedMultiplier`): 0.71 s and
+  1.04 s at rank 20 (x1.55). Ranks still pay every time.
+- Release frame: the Revenant joined `RELEASE_CLASSES`, as the Mage did.
+  Every Revenant spell but the two tethers (family `channel`) now lets go
+  on its gesture's release frame, a third of the cast and at most 0.25 s.
+  Mana, cooldown and the cast sound go on the press; a dodge before the
+  release cancels the spell.
+
+No gear = 0% cast speed. Ceiling = 200% (x1.67). Seconds per use.
+
+| Skill | castTime before | No gear | Ceiling | Verdict | New castTime |
+| --- | --- | --- | --- | --- | --- |
+| Femur Lance (default cast), Blight Bolt, Hunting Skull | 0.5 | 0.50 (2.0/s) | 0.30 (3.3/s) | Right: the caster pace, a touch quicker than the reference | 0.5 |
+| Wilt, Flay, Horrify, Fray (curses) | 0.5 | 0.50 | 0.30 | Right: a curse is a quick flick | 0.5 |
+| Bone Cage, Soul Cage, Soul Tether, Charnel Burst | 0.5 | 0.50 | 0.30 | Right | 0.5 |
+| Bone Nova, Bile Ring, Sanguine Nova | 0.5 | 0.50 | 0.30 | Right | 0.5 |
+| Siphon Life, Bleed Dry (tethers) | 0.8 | 0.80 | 0.48 | Right: the body locks 0.8 s, the tether runs on 3 to 4 s while he walks | 0.8 |
+| Rib Ward (Bone Armor) | 0.35 | 0.35 | 0.30 (cap) | A little fast for a 25 s ward | 0.45 (0.30 at the ceiling) |
+| Bone Storm | 0.35 | 0.35 | 0.30 | Too fast for 15 s of shards | 0.5 |
+| Pestilence | 0.35 | 0.35 | 0.30 | Too fast for a 30 s plague | 0.5 |
+| Blood Pact | 0.35 | 0.35 | 0.30 | Too fast for a pact that costs life | 0.5 |
+| Revenant Form | 0.35 | 0.35 | 0.30 | Too fast for a 12 s change of body | 0.6 (0.36) |
+| Bone Thrall (Raise Skeleton), Bone Chanter (Skeletal Mage) | 0.5 | 0.50 | 0.30 | Too fast for a raise | 0.65 (0.39) |
+| Reassemble | 0.5 | 0.50 | 0.30 | A little fast for a host mended and the fallen stood up | 0.6 |
+| Charnel Colossus (Clay Sentinel) | 0.5 | 0.50 | 0.30 | Too fast for one hulking construct | 0.8 (0.48) |
+| Grand Ossuary (capstone host) | 0.5 | 0.50 | 0.30 | Too fast: a host from the floor in half a second | 0.9 (0.54) |
+| Doom | 0.5 | 0.50 | 0.30 | A little fast for a brand that holds 6 s | 0.6 |
+| Mass Confusion | 0.5 | 0.50 | 0.30 | A little fast for a tier 5 room curse | 0.6 |
+| Reaping | 0.5 | 0.50 | 0.30 | A little fast for the tier 6 sweep | 0.6 |
+| Gravewalk (new) | - | - | - | A move: sink, travel, rise | built in milestone 4, timed with `castTime` and `travelTime` |
+| Minion swing, melee (thralls, colossus, wardens) | 1.1 s / (1 + 1.2) = 0.50 at Marrow Feast 20 | 1.10 | 0.71 | Was too fast at rank 20 | through `speedMultiplier` |
+| Minion swing, ranged (chanters) | 1.6 s / 2.2 = 0.73 | 1.60 | 1.04 | Was too fast at rank 20 | through `speedMultiplier` |
+
+- Every skill slowed above has a cooldown or a duration far longer than
+  its new cast (summons fill a cap, buffs last 12 to 30 s), so damage per
+  second barely moves. Damage per hit is unchanged for every skill.
 
 ## For the owner to test
 
