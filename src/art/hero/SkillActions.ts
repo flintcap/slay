@@ -44,6 +44,12 @@ export interface G {
    * the off hand follows the grip even though `R` moved it.
    */
   grip?: boolean;
+  /**
+   * The whole body turned about its own axis, radians (+ to the character's
+   * left): a spin. Keys a quarter turn apart run round the short way, so a
+   * spin of two full turns is keyed every quarter.
+   */
+  spin?: number;
 }
 
 export interface Spec {
@@ -69,6 +75,18 @@ export interface Spec {
    * in hand bashes with the haft instead.
    */
   alt?: Partial<Record<MoveKind, Array<G | null>>>;
+  /**
+   * A real blade blow (with `hit`): it swings the weapon like a plain attack,
+   * so it draws no spell around it (`weaponSwing`).
+   */
+  blade?: boolean;
+  /**
+   * Natural times of the blows after the first (a multi-cut skill): each
+   * lands when its key passes (`gestureCuts`).
+   */
+  cuts?: number[];
+  /** The feet go where the body goes (a spin, a leap): not planted. */
+  free?: boolean;
 }
 
 function pose(main: G, i: number, alt: Spec['alt']): (p: Pose, c: ActionCtx) => void {
@@ -84,6 +102,7 @@ function pose(main: G, i: number, alt: Spec['alt']): (p: Pose, c: ActionCtx) => 
     if (g.fistR !== undefined) p.fist('R', g.fistR);
     if (g.fistL !== undefined) p.fist('L', g.fistL);
     trunk(p, g.turn ?? 0, g.lean ?? 0, g.roll ?? 0);
+    if (g.spin) p.add('pelvis', 0, g.spin, 0);
     if (g.head) p.add('head', g.head, 0, 0);
     weight(p, c, g.fwd ?? 0, g.down ?? 0, g.side ?? 0);
   };
@@ -93,7 +112,7 @@ function gesture(s: Spec): ActionDef {
   const keys: ActionKey[] = s.loop ? [] : [k(0, rest)];
   s.keys.forEach(([t, g, hold], i) => keys.push(k(t, pose(g, i, s.alt), hold ?? false)));
   if (!s.loop) keys.push(k(s.end ?? 0.8, rest));
-  const def: ActionDef = { keys, full: true, plantFeet: true };
+  const def: ActionDef = { keys, full: true, plantFeet: !s.free };
   if (s.loop) {
     def.loop = true;
     def.glow = { at: () => 1, hands: s.glow ?? 'both' };
@@ -196,7 +215,17 @@ const WEAPON_ACTIONS = new Set(['attack1', 'attack2', 'thrust', 'lunge', 'slam']
 
 /** True for a skill that swings the real weapon: it draws no spell around it. */
 export function weaponSwing(skillId: string): boolean {
-  return WEAPON_ACTIONS.has(PLAIN_MOVES[skillId] ?? '');
+  return WEAPON_ACTIONS.has(PLAIN_MOVES[skillId] ?? '') || !!(ALL[skillId]?.hit && ALL[skillId]?.blade);
+}
+
+/**
+ * A multi-cut gesture's timing at natural speed: its first blow (`contact`),
+ * the blows after it (`cuts`) and its end. Null for a gesture without cuts.
+ */
+export function gestureCuts(skillId: string): { contact: number; end: number; cuts: readonly number[] } | null {
+  const s = ALL[skillId];
+  if (!s?.cuts?.length) return null;
+  return { contact: s.contact ?? s.keys[1]?.[0] ?? 0.25, end: s.end ?? 0.8, cuts: s.cuts };
 }
 
 /** Skill ids with a gesture of their own. */
