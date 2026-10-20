@@ -24,6 +24,9 @@ Update this file and push it after every finished step.
   changes and wait for approval of each one.
 - Descent sigils (craft a token that sets the next depth) are cut. Do not add.
 - Pinnacle boss (summoned with fragments) is cut. Do not add.
+- Wave 5: the quality stream (skillqa) fixes every issue found, not just
+  lists it (list in `skillqa.md` "Known issues"; the lead adds each class
+  stream's leftovers as it lands).
 
 ## Done
 
