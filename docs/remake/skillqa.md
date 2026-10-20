@@ -120,6 +120,15 @@ Knight (sk-knight, done):
 - sk-knight changed `tools/skillsound-entry.ts` and
   `tools/rankpower-entry.ts`; check the changes are sound.
 
+Paladin (sk-paladin, done):
+- Consecrated Ground's unique gives "+25% damage", but the skill deals no
+  damage, so that line does nothing. Give it a line that works.
+- Saint's Reach has no cap: Mercy Stroke's x8 hit carries x2.4 into the
+  enemy behind. Cap it.
+- Never seen in motion: every new swing, the rushes (Doorbreaker,
+  Confession Thrust, Feint, Last Rites), The Last Hour's bell, Hurl the
+  Censer's chain. Frame time not measured.
+
 ## Next up
 
 Wait for skillcore and the seven class streams. Then start milestone 1.
