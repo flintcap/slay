@@ -25,10 +25,9 @@ Done: speed (parts 1 and 2), balance (item list declined), ui, effects, mapvarie
 Paused: no
 
 Wave 5 (skills remake, owner):
-Running: skillcore, sk-shifter (class streams plan first, build after
-skillcore)
+Running: skillcore
 Planned, waiting for skillcore: sk-knight, sk-rogue, sk-mage, sk-paladin,
-sk-revenant, sk-ranger
+sk-revenant, sk-ranger, sk-shifter
 Building: none yet (three at a time once skillcore is done)
 Waiting: then
 skillqa (alone, last)
