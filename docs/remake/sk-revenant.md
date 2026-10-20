@@ -89,7 +89,7 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons. (sk-revenant: icons) Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
 - [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
@@ -109,13 +109,12 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 4 are done (what was built is under "Milestone 4" below).
-Next is milestone 5, icons: a glyph and modifier of its own for every one
-of the 54 Revenant skills in `ICON_MAP` (`src/art/SkillIconArt.ts`), no
-two alike, with each tree's own accent; `hex` and `gravewalk` are stand-ins
-today. Then milestone 6, looks (Bone Storm's orbit, Soul Tether's chains,
-Revenant Form's body, the Hunting Skull's skull, Bone Cage's ribs,
-Gravewalk's hands, warm-up stand-ins), 7 checks, 8 handover.
+Milestones 1 to 5 are done (what was built is under "Milestone 4" and
+"Milestone 5" below). Next is milestone 6, looks: Bone Storm's orbit, Soul
+Tether's chains, Revenant Form's body, the Hunting Skull's skull with a
+wisp tail, Bone Cage's ribs, Gravewalk's hands and dirt, each with a
+warm-up stand-in in `DungeonScene.warmup()` and no per-frame allocation.
+Then 7 checks (check-skills once, check-curve once), 8 handover.
 
 ## Notes for resume
 
@@ -460,6 +459,25 @@ checkers pass.
   synergies, requirements, unique bend words, minion names, strings.
 - `tools/rankpower-entry.ts`: Reassemble's test lets the raise land on its
   release frame before hurting the thralls (it read x1.00 since milestone 3).
+
+### Milestone 5: icons
+
+- His own pictograms in `src/art/RevenantGlyphs.ts` (26 glyphs, `rv`
+  prefix, 54 forms with their variants; the file header lists each one),
+  spread into `GLYPHS`. His icon keys in `src/art/icons/revenantIcons.ts`
+  (`rv-` prefix), spread into `ICON_MAP`; every Revenant skill's `icon`
+  points at one. No two of the 54 share a glyph, variant and modifier.
+- Each tree has its own light and ground (`TREE_LOOK.revenant` in
+  `SkillIconArt.ts`): Ossuary grave teal `0x9ae0c8`, Blight bile green
+  `0xb4d84a`, Grave Pact heart red `0xe04a5e`. New `ClassLook.ownLight`:
+  his arcane and poison skills take the tree's light, not the element's
+  pink or green, so every tree reads as one.
+- Looked at on a contact sheet of all 54 at 112 px and 32 px (scratch
+  script, newest Chrome): each is one clear shape at hotbar size. All 54
+  bake in about 0.56 s at 128 px, about 10 ms each.
+- The old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on)
+  are left for anything else that still names them; no Revenant skill
+  uses them now. `tools/art-sheet-page.ts` closeups name the new keys.
 
 ### Milestone 3: speed audit (skillcore's model, `sim/Speed.ts`)
 
