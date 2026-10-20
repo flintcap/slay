@@ -373,6 +373,9 @@ export function packIsAlerted(packId: number, elapsed: number): boolean {
 export function resetPacks(): void {
   packAggro.clear();
   packs.clear();
+  // Claims are keyed by the brains that made them: a floor left with a
+  // Shadow Clone up kept those monsters until the next taunt.
+  tauntClaims.clear();
   landings.length = 0;
 }
 

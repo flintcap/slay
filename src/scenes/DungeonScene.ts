@@ -131,6 +131,13 @@ const POSE_FAR = 14;
 const LOW_DETAIL_PX: Record<'low' | 'medium' | 'high' | 'ultra', number> = { low: 150, medium: 90, high: 60, ultra: 45 };
 
 /** True when a light is in `scene` and every node above it is shown. */
+/**
+ * The chase items the account holds, for the loot rules (`setLootHero`).
+ * Out here, not made in `enter`: a function made there kept that call's
+ * scope, and with it the scene, until the next map took its place.
+ */
+const accountChase = (): ReadonlySet<string> => chaseHeld(save.account);
+
 function shownIn(o: THREE.Object3D, scene: THREE.Object3D): boolean {
   for (let n: THREE.Object3D | null = o; n; n = n.parent) {
     if (!n.visible) return false;
@@ -557,7 +564,7 @@ export class DungeonScene extends GameScene {
     }
 
     // Loot knows whose it is: class-only uniques, and one chase item per account.
-    setLootHero(character.classId, () => chaseHeld(save.account));
+    setLootHero(character.classId, accountChase);
 
     // Back through a Trinket of Town's portal: the same map, built again
     // from its note, and its area put back as the hero left it.

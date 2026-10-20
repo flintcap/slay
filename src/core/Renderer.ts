@@ -691,6 +691,10 @@ export class Renderer {
     // The sun's shadow of still things is kept between updates (`ShadowCache`).
     installShadowCache(this.gate);
     this.buildEnvironment();
+    // A thrown-away draw record lets go of its mesh and scene (`cutLoose`).
+    cutLooseOnDispose(this.gl);
+    // Shared bind groups are kept per scene, and go with it (`bindGroupsPerScene`).
+    bindGroupsPerScene();
     // Every place the game reaches inside three.js, looked for once. A missing
     // one only costs speed or a detail, so the game goes on; the log and the
     // bug report say which.
@@ -1502,3 +1506,100 @@ export function skyEnvironment(r: THREE.WebGPURenderer, paint: SkyPaint | null =
   return env;
 }
 
+/** The parts of a three.js draw record (`RenderObject`) that `cutLoose` reads or clears. */
+interface DrawRecord {
+  attributes: unknown[] | null;
+  _nodeBuilderState: unknown;
+  getAttributes(): unknown[];
+  onDispose: (() => void) | null;
+  [k: string]: unknown;
+}
+
+/** Everything a dead record points at except its geometry and the buffers it used. */
+const RECORD_LINKS = ['object', 'material', 'scene', 'camera', 'lightsNode', 'context', 'clippingContext', '_sourceMaterial', 'group', 'bundle', 'drawParams', '_bindings', '_monitor', 'pipeline'];
+
+/**
+ * Makes every draw record three.js throws away drop its links to the scene.
+ *
+ * three remembers, for each geometry, a cleanup to run when that geometry is
+ * disposed, and the cleanup holds the first draw record that used it. The
+ * game's shared geometries (monster bodies, props, drops) are never
+ * disposed, so the first record of each lived on, and through its mesh it
+ * held a whole map: monsters, lights, the scene. The cleanup only needs the
+ * record's geometry and the buffers it drew from, so once the record is
+ * disposed everything else is cut.
+ */
+function cutLooseOnDispose(gl: THREE.WebGPURenderer): void {
+  const objects = (gl as unknown as { _objects?: { createRenderObject?: (...a: unknown[]) => DrawRecord } | null })._objects;
+  const make = objects?.createRenderObject;
+  if (!hookSeen('RenderObjects.createRenderObject, onDispose', typeof make === 'function')) return;
+  objects!.createRenderObject = function (this: unknown, ...args: unknown[]): DrawRecord {
+    const ro = make!.apply(this, args);
+    const done = ro.onDispose;
+    ro.onDispose = () => {
+      // The buffers it drew from, worked out while it still can (three's
+      // geometry cleanup asks for them later).
+      if (ro.attributes === null && ro._nodeBuilderState) {
+        try {
+          ro.getAttributes();
+        } catch {
+          /* left as it was: the cleanup then skips the extra buffers */
+        }
+      }
+      done?.();
+      ro.attributes ??= [];
+      ro._nodeBuilderState = null;
+      for (const k of RECORD_LINKS) ro[k] = null;
+    };
+    return ro;
+  };
+}
+
+/** The parts of a three.js node builder that `bindGroupsPerScene` reads. */
+interface BindGroupMaker {
+  renderer: { _currentRenderContext: object | null };
+  scene: object | null | undefined;
+}
+
+/** For each scene, a stand-in key per pass for three's shared bind groups. */
+const bindGroupKeys = new WeakMap<object, WeakMap<object, object>>();
+let bindGroupsScoped = false;
+
+/**
+ * Makes three.js keep the bind groups its shaders share once per scene.
+ *
+ * three caches each set of shared uniforms (camera, lights, shadows) in a
+ * table of its own, keyed by the pass being drawn, or by the renderer for a
+ * shader built between frames (`ShaderGate`). Both live as long as the game,
+ * and nothing ever leaves the table. A point light's shadow uniforms hold the
+ * shader builder that made them, and through it the whole scene: a crypt lit
+ * by candles stayed in memory, about 240 MB a visit. Here each scene's
+ * shaders key that table by a stand-in that only the scene holds, so the
+ * table's part for a map goes when the map does.
+ */
+function bindGroupsPerScene(): void {
+  if (bindGroupsScoped) return;
+  const proto = THREE.NodeBuilder.prototype as unknown as {
+    _getBindGroup?: (this: BindGroupMaker, groupName: string, bindings: unknown[]) => unknown;
+  };
+  const get = proto._getBindGroup;
+  if (!hookSeen('NodeBuilder._getBindGroup, _currentRenderContext', typeof get === 'function')) return;
+  bindGroupsScoped = true;
+  proto._getBindGroup = function (groupName, bindings) {
+    const r = this.renderer;
+    const scene = this.scene;
+    // A compute shader has no scene: three's own key, as before.
+    if (!scene) return get!.call(this, groupName, bindings);
+    const pass = r._currentRenderContext;
+    let keys = bindGroupKeys.get(scene);
+    if (!keys) bindGroupKeys.set(scene, (keys = new WeakMap()));
+    let key = keys.get(pass ?? r);
+    if (!key) keys.set(pass ?? r, (key = {}));
+    r._currentRenderContext = key;
+    try {
+      return get!.call(this, groupName, bindings);
+    } finally {
+      r._currentRenderContext = pass;
+    }
+  };
+}

@@ -124,6 +124,27 @@ export const HOOKS: readonly ThreeHook[] = [
     check: { on: 'renderer', test: (gl) => (inner(gl)._objects as Inner | null | undefined)?._renderObjects instanceof Set },
   },
   {
+    id: 'RenderObjects.createRenderObject, onDispose',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/renderers/common/RenderObjects.js',
+    needs: [
+      'createRenderObject( nodes, geometries, renderer, object, material, scene, camera, lightsNode, renderContext, clippingContext, passId )',
+      'renderObject.onDispose = () => {',
+    ],
+    check: { on: 'renderer', test: (gl) => fn(inner(gl)._objects, 'createRenderObject') },
+  },
+  {
+    id: 'NodeBuilder._getBindGroup, _currentRenderContext',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/nodes/core/NodeBuilder.js',
+    needs: [
+      '_getBindGroup( groupName, bindings )',
+      'const currentContext = this.renderer._currentRenderContext || this.renderer;',
+      'let bindingGroupsCache = _bindingGroupsCache.get( currentContext );',
+    ],
+    check: { on: 'class', test: () => fn(THREE.NodeBuilder.prototype, '_getBindGroup') },
+  },
+  {
     id: 'RenderObject.scene, dispose',
     ours: 'src/core/Renderer.ts',
     theirs: 'src/renderers/common/RenderObject.js',
