@@ -1,6 +1,6 @@
 # Stream: sk-rogue (Wave 5: Rogue skills remake)
 
-Status: in progress
+Status: waiting for skillcore
 
 Class: Rogue (code id `shadowblade`). Trees: Venom, Shadowcraft, Bladework (`venom`, `shadowcraft`, `bladework`). Port 4354.
 Fights with melee and thrown: daggers, often two at once (starts with two daggers). Class color: green (`0x5ad18f`).
@@ -46,7 +46,7 @@ the first browser check.
 
 ## Milestones
 
-- [ ] 1. Skill audit (read code only). For every skill, read its data, its runner code, its
+- [x] 1. Skill audit (read code only). ("wip(sk-rogue): skill audit table") For every skill, read its data, its runner code, its
   swing or cast animation, its effect, its icon and its sound, and answer
   in one table under "Notes for resume":
   - Does it work? (read the code; flag anything broken)
@@ -56,8 +56,8 @@ the first browser check.
   - Is the icon unique to the skill, sharp, and in class colors?
   - Do the projectile, swing and effect look AAA?
   - Keep, change, or replace, with one line why.
-- [ ] 2. Plan the new kit (owner: change, add and replace skills where
-  needed). Write the list under "Notes for resume": skills to keep, skills
+- [x] 2. Plan the new kit (owner: change, add and replace skills where
+  needed). ("sk-rogue: skill audit and new kit plan") Write the list under "Notes for resume": skills to keep, skills
   to change (what changes), skills to replace (the new skill's idea in one
   line) and new skills to add (where they go, their idea in one line).
   Each tree has 6 tiers x 3 columns = 18 slots (`tier` 1..6, `column`
@@ -111,8 +111,23 @@ the first browser check.
 
 ## Next up
 
-Start milestone 1 (skill audit). Do not touch code before skillcore is
-done.
+Waiting for skillcore. When resumed:
+
+1. Setup as in `PROTOCOL.md`, then fetch and read `docs/remake/skillcore.md`.
+   Go on only if it says `Status: done`; else push nothing new and end with
+   one line saying you are still waiting.
+2. Read skillcore's "Handover" and its part of `CONTRACTS.md`: the speed
+   function, the per-skill attack time factor and cast time fields, the
+   multi-hit timing, how dual wield works now, the icon size.
+3. Milestone 3 (speed audit): re-read every timing in this file's audit
+   against the new code (old numbers here are pre-skillcore), write the
+   speed table, then set each Rogue skill's timing through skillcore's
+   fields, Precise Cut first. Damage per hit never changes.
+4. Milestone 4: build the plan below ("Milestone 2: the new kit"), in this
+   order: broken first (Call the Viper, Plague Vial, Smoke Bomb and
+   Nightfall damage, Gloom Shroud, Razor Dash timing, Throwing Spree,
+   Phantom Blades), then the swings, then the two new skills, then text
+   fixes and renames, then `check-i18n`.
 
 ## Notes for resume
 
@@ -234,6 +249,181 @@ spacing of Double Strike and Death Lotus. Shared bodies: eight blade skills
 swing the basic attack's moves. Icons: built from the shared glyph set,
 fourteen share their picture with another skill. Names copied from Path of
 Exile: Viper Strike, Double Strike, Whirling Blades.
+
+### Milestone 2: the new kit
+
+All three trees are full (18 of 18 each). Venom has 8 actives, Shadowcraft
+9, Bladework 6, and Bladework has no active past tier 3 (tiers 4, 5 and 6
+are nine passives). So Bladework gains two actives by replacing its two
+weakest passives. Everything else stays in its slot. Ids stay the same
+unless a skill is replaced, so saves keep their ranks; renamed skills only
+change their shown name.
+
+Rules for every build item below: time through skillcore's per-skill
+fields and speed function (never new hard-coded seconds); damage per hit
+stays what it is today; every rank grows damage, strength, time or size
+(`skillPower.ts`, `check-rankpower`); text through `tr()`.
+
+#### Keep as they are (code works, idea is good)
+
+Coat Blades (plus a lasting drip on the blades, see Change), Toxicology,
+Corrosive Edge, Noxious Cloud, Paralytic Toxin, Cultivate, Blood Toxin,
+Miasma Trail, Hemotoxin, Antivenom, Apex Predator (capstone), Toxic
+Mastery; Night Eyes, Fleetfoot, Silhouette, The Unseen Blade (capstone),
+Shadow Mastery; Blade Mastery, Fan of Knives, Deadly Aim, Flurry,
+Lethality, Finisher (new prerequisite, see Replace), A Thousand Cuts
+(capstone). Each still gets its own icon (milestone 5).
+
+#### Change
+
+Venom:
+- `viperStrike`: rename to **Adder's Kiss** (Viper Strike is a PoE skill).
+  Own weapon blow: a low coiled jab with the main blade, the off hand
+  flicking venom after it. Keeps 80% + 3 Poisoned stacks.
+- `coatBlades`: while coated, the blades drip and glow faintly green
+  (status-driven, `fx/rogue/`), so the buff is seen, not only an icon.
+- `venomDart`: a real thin needle in flight (new thrown shape), thrown on
+  attack speed, not cast speed. Text says it pierces.
+- `plagueVial`: lobbed in an arc to the aimed point (not the first enemy on
+  the line), a glass vial you can see turning, shattering in a green splash
+  on landing. Same damage, radius and Plagued.
+- `envenomBurst`: own look: green threads torn out of every Poisoned enemy
+  in reach and pulled into the burst. Text gives the real growth (13.3% a
+  rank) or the ladder is set to 13%.
+- `deathLotus`: own spin: two full turns, blades held out low, one cut
+  every quarter turn, spaced so each of the eight cuts reads (on
+  skillcore's multi-hit timing). Own ring of blade petals on the floor.
+- `viperGod` (Call the Viper): rebuild. A real serpent body (the
+  `basilisk` monster has the `serpent` rig; tint it spectral green), melee
+  bites at 2.6 m, follows like other summons, cap of 1 (+1 at rank 12)
+  works, it can be hit and falls. Each bite 140% (+22%) as the text says
+  (`minionScale: 1`), 5 Poisoned stacks.
+
+Shadowcraft:
+- `shadowStep`: its gesture becomes a weapon blow (`hit: true`): the stab
+  lands on the downstroke, not at the press.
+- `veil`: own gesture (cloak drawn round, body sinks and fades) instead of
+  the shared `blink`.
+- `smokeBomb`: no hidden damage (the field only blinds and veils). Shared
+  `ground` branch gets a small flag, Rogue skills only.
+- `shadowClone`: a clone hits for `damagePct`% of your hit (45%, +5% a
+  rank), as the text says, so the Shadow Mirror unique's "+30% damagePct"
+  works (today it lowers the rank ratio and does nothing).
+- `umbralAmbush`: own weapon blow: both blades raised from a crouch and
+  plunged down together, heavy.
+- `darkPact`: text tells the truth (4.5% at rank 1, toward 45%).
+- `vanish`: make it the escape, unlike Veil (the opener): a back-flip
+  blink 5 m away from where you face, a smoke puff left where you stood
+  that Blinds for 2 s (+0.1 s a rank), then Veiled. Keeps cleanse and the
+  Shadow Step reset.
+- `shadowLegion`: text tells the truth (+4% clone damage a rank, no "35%").
+- `nightfall`: no hidden damage; own dark look (a falling curtain of
+  shadow that settles as a pool).
+- `mirrorGambit`: from "+40% clone damage" to: when one of your skills
+  lands a melee blow, each clone within 12 m blinks to that enemy and
+  strikes it for 40% (+4% a rank) of the blow (at most once a second per
+  clone, so it costs no frames). Same params (`mimicPct`, `perRank`).
+- `voidWalk`: its gesture becomes a weapon blow; each hop's cut lands on
+  its hit frame.
+- `gloomShroud`: "within your own darkness" works: standing in your
+  Smoke Bomb or Nightfall counts, as well as being Veiled.
+- `assassinate`: own weapon blow: a long wind up, both blades driven in
+  together; a slower time factor than a normal stab (an execute has
+  weight). Damage per hit unchanged.
+
+Bladework:
+- `preciseCut` (the Rogue's default right click): speed first (remove
+  `speedBonus`, time from skillcore's dagger speed), then its own weapon
+  blow: a clear wind up, a flat draw-cut across, follow through. Text loses
+  "no wind-up". Keeps 120% and the crit bonus.
+- `crippleTendon`: own weapon blow: a low sweeping cut at the back of the
+  legs.
+- `doubleStrike`: rename to **Scissor Cut** (Double Strike is a PoE skill).
+  Two crossing cuts you can see: right then left with two blades,
+  forehand then backhand with one, about 0.15 to 0.2 s apart (skillcore's
+  multi-hit timing). Second still inherits the first's crit.
+- `exploitWeakness`: text tells the truth: crits apply Vulnerable for 8 s,
+  and you deal +5% damage a rank to debuffed enemies (that is what the
+  code does; the text promised a defense cut that never existed).
+- `whirlingBlades`: rename to **Razor Dash** (Whirling Blades is a PoE
+  skill). Enemies are cut as the hero reaches them, not at the press. Own
+  spinning dash (blades out, one turn) instead of the basic `attack2`.
+- `throwingSpree`: the six knives leave hand by hand, timed to the
+  gesture's throws, on attack speed. Drop the unused `duration`.
+- `bleedingEdge`: code does what the text says: +6% a rank to bleeds only
+  (`bleedDamagePct`, which Butchery already uses), not all damage over time.
+- `phantomBlades`: the spectral blade's hit lands when it arrives; the blade
+  gets its own look (pale steel ghost knife with a green edge).
+- `riposteBlade`: rename to **Counter-Cut** (the Knight's Riposte has the
+  same name). Same mechanics.
+
+#### Replace (new ids; the old ids refund on load through
+`repairCharacter` in `src/sim/Character.ts`, which already deletes ranks in
+unknown skills and gives the points back)
+
+- `momentum` (T4, column 2) becomes **Knife Halo** `knifeHalo`: six knives
+  circle you for 8 s (+0.25 s a rank), cutting everything within 2.6 m
+  every 0.5 s for 30% weapon damage (+5% a rank); you keep fighting while
+  they turn. Self, `aura` family with a damage ladder (the zone follows the
+  hero, as Bone Storm does), own orbiting-knives effect (`fx/rogue/`), own
+  motif (`knives` + `orbit` is free). Requires Razor Dash (as Momentum
+  did). Mana about 14, cooldown about 14 s. Finisher's prerequisite
+  becomes `knifeHalo`. Synergies: `syn('knifeHalo', 'fanOfKnives', 8)`,
+  `syn('knifeHalo', 'bladeMastery', 5)`; Razor Dash's
+  `syn('whirlingBlades', 'momentum', 6)` becomes
+  `syn('whirlingBlades', 'knifeHalo', 6)`. Remove `momentum` from
+  `Passives.ts` with the fields only it feeds (`crowdDamagePct`,
+  `crowdDamageCap`, `crowdWindow`, checked 2026-10-20) and their readers
+  (`damageMultiplier` in `Passives.ts`, `hitAt` / `nearbyCount` in
+  `SkillRunner.ts`; grep again before deleting).
+- `perfectForm` (T6, column 1) becomes **Steel Waltz** `steelWaltz`: a
+  dance of five cuts around one enemy, 110% weapon damage each (+16% a
+  rank), stepping a quarter turn round it with each cut; the fifth always
+  crits. One target, own five-blow gesture (`hit: true` keys), cuts spaced
+  on skillcore's multi-hit timing so each is seen, faster with Flurry
+  stacks. Requires Flurry (as Perfect Form did). Mana about 24, cooldown
+  about 10 s. Synergies: `syn('steelWaltz', 'doubleStrike', 8)`,
+  `syn('steelWaltz', 'preciseCut', 6)`. Remove the `perfectForm` handler
+  from `Passives.ts`; `guaranteedCritEvery` stays (the Paladin's
+  `sim/passives/paladin.ts` uses it).
+
+#### Add
+
+Nothing beyond the two replacements: every tree is full, and the gap
+(Bladework's empty upper tiers) is filled by them.
+
+#### Check list for the build (milestone 4)
+
+- Bends that name Rogue skills (all keep their ids): `shadowStep` (batchA),
+  `fanOfKnives` (batchA), `deathLotus` (batchA, `hits` +3), `shadowClone`
+  (batchD, `damagePct`, `lifePct`, `baseCap`), `venomDart` (batchD,
+  `poisonStacks`, `pierce`), `noxiousCloud` (batchE), `voidWalk` (batchE,
+  `hops`, `window`, `range`), `assassinate` (batchE, `threshold`). None
+  names `momentum` or `perfectForm`. `node tools/check-uniques.mjs` after.
+- Other places naming Rogue ids: `STARTING_SKILL` (`preciseCut`) and
+  `STARTING_SKILL_HINTS` (`viperStrike`, `shadowStep`, `preciseCut`,
+  `coatBlades`), `Player.ts` (`skill.coatBlades`), `DungeonScene.ts`
+  (`shadowClone` stand-ins), `SkillRunner.ts` (`COAT`, `SUMMON_HARD_CAP`,
+  `MINION_NAME`, `MINION_MONSTER`, Vanish's `resetCooldown('shadowStep')`),
+  `MiniBoss.ts` (its own `shadowStep`, a monster move, unrelated),
+  `tools/check-summon.mjs`, `tools/summon-entry.ts`, `tools/hits-entry.ts`,
+  `tools/audio/ledger.json`, `tools/audio/recipe.mjs`.
+- Weapon-blow gestures: today a skill with its own gesture is not a
+  `weaponSwing` (only `PLAIN_MOVES` are), so `check-unique` would ask it
+  for a motif. Either count `strikesAt` gestures as blows in
+  `weaponSwing` (small shared edit in `SkillActions.ts`, explain in the
+  commit) or give each its own motif. Build the blows like `blow()` in
+  `Actions.ts` (reach places, weapon smear on contact), not casting poses:
+  the owner's earlier complaint was gestures that read as casting.
+- New sounds for Knife Halo and Steel Waltz: add takes in
+  `tools/audio/recipe.mjs` from the CC0 packs already used (see
+  `packs.mjs`), ledger and manifest; `check-skillsound` and the sounds
+  part of `check-unique`.
+- Icons (milestone 5): a painted Rogue set in `src/art/icons/` (like
+  `shifterIcons.ts`, but with own painters), one picture per skill, tree
+  accents: Venom acid green, Shadowcraft smoke violet-black with a pale
+  green edge, Bladework bright steel with the class green. Fourteen icons
+  share a picture today (see the audit).
 
 ## For the owner to test
 
