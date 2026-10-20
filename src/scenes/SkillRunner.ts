@@ -40,6 +40,7 @@ import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/R
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
 import { castRogue, clearRogue, mirrorStrike, ROGUE_MOVES, tickRogue, type CloneBody, type RogueHost } from './rogue/RogueMoves';
+import { KnightKit, knightBlow, knightUnlit, type KnightCast } from './knight/KnightKit';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 import { atRank, boostRank } from '../fx/kit/Boost';
 import { tr } from '../core/I18n';
@@ -71,7 +72,7 @@ export const MINION_MONSTER: Readonly<Record<string, string>> = {
   skeletalMage: 'skeleton_archer',
   grandOssuary: 'skeleton_warden',
   claySentinel: 'animated_armor',
-  swornBrother: 'bandit_cutthroat',
+  swornBrother: 'animated_armor',
   shadowClone: 'bandit_cutthroat',
   viperGod: 'basilisk',
 };
@@ -82,6 +83,8 @@ export const MINION_MONSTER: Readonly<Record<string, string>> = {
  */
 const MINION_LOOK: Readonly<Record<string, Partial<MonsterVisual>>> = {
   viperGod: { palette: 'crystal.void|0x2f8a5c', glow: 0x8affc0, ornate: 0.35 },
+  // A Knight's ghost: pale steel you can half see through, gold in the visor.
+  swornBrother: { palette: 'crystal.ice|0xb4c4d4', glow: 0xd8a640, ornate: 0.5, weapon: 'sword' },
 };
 
 /** The body a summoning skill raises, in its own colours (read by the scene's warm-up too). */
@@ -210,9 +213,9 @@ const SELF_BUFF_STATUS: Record<string, string> = {
   veil: 'veiled',
   camouflage: 'veiled',
   vanish: 'veiled',
-  shieldWall: 'stoneform',
-  fortressStance: 'stoneform',
-  guardStance: 'fortitude',
+  shieldWall: 'shieldWall',
+  fortressStance: 'fortress',
+  guardStance: 'guardStance',
   aegis: 'shielded',
   iceArmor: 'shielded',
   boneArmor: 'shielded',
@@ -379,7 +382,7 @@ const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink'
  * (`beginAction(..., { release: true })`, then `atRelease`) instead of on
  * the key press. A class joins once its spells are timed for it.
  */
-const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage']);
+const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage', 'warden']);
 /** Families that never wait for a release frame: a channel runs from the press, a move goes at once. */
 const PRESS_FAMILIES: ReadonlySet<string> = new Set(['channel', 'teleport', 'dash', 'leap', 'shift', 'rite', 'vigil']);
 
@@ -668,6 +671,22 @@ export class SkillRunner {
       clones: () => this.cloneBodies(),
       now: () => this.runTime,
     };
+    this.knight = new KnightKit({
+      ...this.vigilHost,
+      proc: (t, packet, ctx, fromX, fromZ) => this.strike(t, packet, ctx, 'proc', fromX, fromZ),
+      swing: (player, dir, arc, reach, packet, world, kind, hitSfx, now) => {
+        this.caster = player;
+        const prev = this.atContact;
+        if (now) this.atContact = true;
+        try {
+          this.meleeSwing(player, dir, arc, reach, packet, world.ctx, world.enemies, world.boss, 'physical', true, kind, hitSfx);
+        } finally {
+          this.atContact = prev;
+        }
+      },
+      buff: (player, def, rank, num, color) => this.applyBuff(player, def, rank, num, color),
+      raiseBrother: (player, at, ctx) => this.raiseSwornBrother(player, at, ctx),
+    });
   }
 
   /** The Mage's spells that are more than their effect family (`mage/Spells.ts`). */
@@ -714,6 +733,9 @@ export class SkillRunner {
       };
     }
   }
+
+  /** The Knight's own skill work (`knight/KnightKit.ts`). */
+  readonly knight: KnightKit;
 
   /** What the Paladin's Aura skills borrow from the runner (`paladin/Vigils.ts`). */
   private readonly vigilHost: VigilHost;
@@ -963,7 +985,7 @@ export class SkillRunner {
 
     // A Paladin skill wants its own weapon: a mace or a sword, or a shield.
     // In a beast form only that beast's skills work (ShifterRunner.ts).
-    const refusal = riteRefusal(def, player) ?? formRefusal(def, player);
+    const refusal = riteRefusal(def, player) ?? formRefusal(def, player) ?? this.knight.refusal(def, player);
     if (refusal) {
       events.emit('toast', { text: refusal, kind: 'bad' });
       audio.play('ui.error');
@@ -971,6 +993,8 @@ export class SkillRunner {
     }
     // A burning vigil pressed again is put out, free (paladin/Vigils.ts).
     if (snuffVigil(def, player)) return true;
+    // So is Guard Stance (knight/KnightKit.ts).
+    if (!held && this.knight.toggleOff(def, player)) return true;
 
     // Veteran's Resolve makes a shout cheaper, Dark Pact the Veil.
     const effect = def.effect ?? '';
@@ -1108,10 +1132,12 @@ export class SkillRunner {
     const swing = family === 'melee' || family === 'cleave' || family === 'whirlwind' || family === 'dash';
     // A weapon skill swinging the real weapon gathers nothing in the hands,
     // whatever its school: it is a blow, not a spell.
-    const blow = weaponSwing(def.id);
+    const blow = weaponSwing(def.id) || knightBlow(def.id);
+    // A Knight's cry, stance or standard is no spell either (`knightUnlit`).
+    const unlit = blow || knightUnlit(def.id);
     const released = RELEASE_CLIPS.has(clip) || releasesAt(clip);
-    this.releaseSchool = released && !blow && !(school === 'physical' && (holding === 'ranged' || swing)) ? school : null;
-    if (!released && !blow && family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
+    this.releaseSchool = released && !unlit && !(school === 'physical' && (holding === 'ranged' || swing)) ? school : null;
+    if (!released && !unlit && family !== 'projectile' && family !== 'bolt' && !(swing && school === 'physical')) {
       this.effects.castFlare(school, origin.x, selfCast ? 1.0 : origin.y, origin.z, {
         scale: selfCast ? 1.25 : 0.9,
         dir: selfCast ? undefined : dir,
@@ -1159,9 +1185,20 @@ export class SkillRunner {
 
     this.casting = true;
     this.effects.beginQuiet();
+    // A Knight skill the switch below cannot do runs whole in the Knight's kit.
+    const kc: KnightCast | null = classOfSkill(def.id) === 'warden'
+      ? {
+        def, rank, player, aim: target.clone().setY(0), dir: dir.clone(), ctx, enemies, boss,
+        packet: makePacket,
+        blowPacket: isDualWielding(player) ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket,
+        num, color, time: actTime, clip, hitSound: sound.hit,
+      }
+      : null;
     try {
-      // The Mage's spells that are more than their family (`mage/Spells.ts`).
-      if (MageSpells.casts(def.id)) {
+      if (kc && this.knight.cast(kc)) {
+        // The Knight's kit ran it whole (`knight/KnightKit.ts`).
+      } else if (MageSpells.casts(def.id)) {
+        // The Mage's spells that are more than their family (`mage/Spells.ts`).
         const sc: SpellCast = {
           def, rank, player, aim: target.clone().setY(0), origin, dir,
           world: { ctx, enemies, boss, player },
@@ -1578,8 +1615,10 @@ export class SkillRunner {
           const blood = num('lifeCostPct', 0);
           if (blood > 0) player.life = Math.max(1, player.life * (1 - blood / 100));
           // Commanding Presence and Standard Bearer widen and strengthen what an
-          // oath, aura or banner does. `applyBuff` reads the same numbers.
-          this.applyBuff(player, def, rank, num, color);
+          // oath, aura or banner does. `applyBuff` reads the same numbers. A
+          // shout that grants the hero nothing (a fear, a taunt, a blast) puts
+          // nothing on the hero.
+          if (family !== 'shout' || SELF_POWER[def.id] || SELF_BUFF_STATUS[def.id]) this.applyBuff(player, def, rank, num, color);
           if ((def.effect ?? '').includes('autoStrike')) startStorm(false);
           // Rallying Horn shakes off one hold or slow.
           if (num('cleanse', 0) > 0) {
@@ -2133,6 +2172,7 @@ export class SkillRunner {
           break;
         }
       }
+      if (kc) this.knight.after(kc);
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
       this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5));
     } finally {
@@ -2462,6 +2502,11 @@ export class SkillRunner {
     // What this rank buys (`data/skillPower.ts`): the stats, the ward, the time.
     const k = Math.max(0, rank - 1);
     const power = SELF_POWER[def.id]?.(k, num) ?? {};
+    // A heal and nothing else (Rallying Horn) heals: no status on the bar.
+    if (power.healPct && !power.status && !power.mods && power.absorb === undefined && power.absorbLifePct === undefined) {
+      this.healAll(player, power.healPct * auraScale);
+      return;
+    }
     const duration =
       (power.duration ?? num('duration', 10) + num('durationPerRank', 0) * k) * (1 + e.groundDurationPct / 100);
 
@@ -2848,6 +2893,7 @@ export class SkillRunner {
     // skipped it.)
     if (st.retribution > 0 && e.retributionPctPerBlock > 0) {
       amount *= 1 + st.retribution / 100;
+      this.knight.spendRetribution(p, t, st.retribution);
       st.retribution = 0;
     }
     if (crit === packet.crit && amount === packet.amount) return packet;
@@ -3546,6 +3592,7 @@ export class SkillRunner {
     this.spreadTick(dt, live.ctx, live.enemies, live.boss);
     const keeper = this.caster ?? this.keeper;
     if (keeper) tickVigils(this.vigilHost, keeper, dt, live);
+    this.knight.tick(dt);
     const { ctx, enemies, boss } = live;
 
     // How hot the fight is, for the score: monsters awake and near, weighted
@@ -4212,13 +4259,17 @@ export class SkillRunner {
       num('baseCap', 2) + Math.floor(rank / Math.max(1, num('maxPerRanks', 10))) + Math.floor(player.passives.minionCapBonus),
     );
     this.trimSummons(def.id, cap - 1);
-    // Beside the hero on the side of the banner, so it never rises in a wall.
+    // Beside the standard, on the hero's side of it, so it never rises in a wall.
     const dx = target.x - player.position.x;
     const dz = target.z - player.position.z;
     const len = Math.hypot(dx, dz) || 1;
-    const step = Math.min(1.6, len);
-    const x = player.position.x + (dx / len) * step + (-dz / len) * 0.9;
-    const z = player.position.z + (dz / len) * step + (dx / len) * 0.9;
+    const back = Math.min(0.9, len);
+    let x = target.x - (dx / len) * back + (-dz / len) * 0.9;
+    let z = target.z - (dz / len) * back + (dx / len) * 0.9;
+    if (!ctx.nav.lineOfSight(target.x, target.z, x, z)) {
+      x = target.x - (dx / len) * back;
+      z = target.z - (dz / len) * back;
+    }
     // "60% of your damage (+4% per rank)", "140% of your life". The passive's
     // minion bonus is that same 60%, so it is not applied a second time.
     const share = (num('damagePct', 60) + num('perRank', 4) * (rank - 1)) / 100;
@@ -4360,6 +4411,7 @@ export class SkillRunner {
     this.storms.length = 0;
     this.spells.clear();
     this.pendingSwings.length = 0;
+    this.knight.dispose();
     this.tickCtx = null;
     this.feel.clear();
   }

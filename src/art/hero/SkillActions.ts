@@ -192,9 +192,6 @@ export function defineGestures(table: Record<string, Spec>): void {
  * The Paladin's are the same clips its rites list in `scenes/paladin/Rites.ts`.
  */
 const PLAIN_MOVES: Readonly<Record<string, string>> = {
-  // Knight
-  shieldBash: 'thrust', shieldCharge: 'lunge', cleave: 'attack2', rend: 'attack1', gash: 'thrust',
-  overhead: 'slam', sunder: 'attack1', maim: 'lunge', whirlwind: 'attack2', massacre: 'attack1', ruin: 'slam',
   // Paladin
   tollingBlow: 'slam', shieldCrack: 'lunge', anvilfall: 'slam', doorbreaker: 'lunge', knell: 'slam',
   pilgrimsMaul: 'slam', relicBash: 'lunge', ironVerdict: 'slam', oathCut: 'thrust', twinVerse: 'attack2',

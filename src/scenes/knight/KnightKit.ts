@@ -37,7 +37,7 @@ import { skillRank } from '../../sim/Character';
 import { travelTime } from '../../sim/Speed';
 import { rollDamage } from '../../sim/Combat';
 import { SPAN_RATE } from '../../art/hero/Animator';
-import { MASSACRE_CUTS, MASSACRE_END } from '../../art/hero/gestures/knight';
+import { gestureCuts } from '../../art/hero/SkillActions';
 import { KNIGHT_GOLD, SteelArcs, Standard } from '../../fx/knight/KnightFX';
 import { tr } from '../../core/I18n';
 
@@ -115,6 +115,16 @@ const KNIGHT_BLOWS: ReadonlySet<string> = new Set([
 /** True for a Knight skill that is a blow of the weapon or the body. */
 export function knightBlow(skillId: string): boolean {
   return KNIGHT_BLOWS.has(skillId);
+}
+
+/** Knight skills that are not blows but raise no spell light either: cries, stances, the standard. */
+const KNIGHT_UNLIT: ReadonlySet<string> = new Set([
+  'shieldWall', 'guardStance', 'fortressStance', 'battleCry', 'rallyingHorn', 'intimidate', 'bannerOfTheGate', 'tauntingRoar',
+]);
+
+/** True for a Knight skill that shows no spell light in the hands, on the press or the release. */
+export function knightUnlit(skillId: string): boolean {
+  return KNIGHT_BLOWS.has(skillId) || KNIGHT_UNLIT.has(skillId);
 }
 
 /** The shouts The Last Order makes carry the oaths. */
@@ -477,14 +487,17 @@ export class KnightKit {
     // Real seconds to each cut: the animator plays the gesture up to its
     // contact in `contactIn`, and the rest at one rate (`Animator.play`).
     const pre = p.contactIn;
-    const first = MASSACRE_CUTS[0]!;
-    const rate = Math.min(SPAN_RATE[1], Math.max(SPAN_RATE[0], (MASSACRE_END - first) / Math.max(0.05, c.time - pre)));
-    const last = MASSACRE_CUTS.length - 1;
+    const timing = gestureCuts(c.def.id);
+    const first = timing?.contact ?? 0.22;
+    const cuts = timing?.cuts ?? [];
+    const rate = Math.min(SPAN_RATE[1], Math.max(SPAN_RATE[0], ((timing?.end ?? 1.05) - first) / Math.max(0.05, c.time - pre)));
     const id = p.actionId;
     this.host.swing(p, facing, arc, reach, c.blowPacket, w, 'melee', c.hitSound, false);
     this.onContact(p, () => this.cutLook(p, facing, reach, 0));
     for (let i = 1; i < hits; i++) {
-      const key = MASSACRE_CUTS[Math.min(i, last)]! + Math.max(0, i - last) * 0.1;
+      // A rank past the gesture's cuts keeps cutting a beat apart after the last.
+      const over = i - cuts.length;
+      const key = over <= 0 ? cuts[i - 1]! : (cuts[cuts.length - 1] ?? first) + over * 0.1;
       this.host.later(pre + (key - first) / rate, () => {
         if (p.actionId !== id || !p.alive) return;
         this.host.swing(p, facing, arc, reach, c.blowPacket, w, 'melee', c.hitSound, true);

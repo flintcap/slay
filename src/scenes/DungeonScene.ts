@@ -72,6 +72,7 @@ import { bossHitCap } from '../sim/FairFight';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 import { disposeAbilityWorld, getAbility, projectileStandIns } from '../entities/Abilities';
 import { vigilStandIn } from '../fx/paladin/VigilRing';
+import { knightStandIns } from '../fx/knight/KnightFX';
 import { disposeMonsterModels } from '../entities/MonsterModels';
 import { SUMMONED_BY } from '../entities/Abilities';
 import { lookFor } from '../art/creatures/Looks';
@@ -474,6 +475,8 @@ export class DungeonScene extends GameScene {
     const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, this.portalWarm.root, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
     // A paladin's Vigil ring, for the first one lit.
     if (this.player.character.classId === 'paladin') list.push(vigilStandIn());
+    // A Knight's steel arcs and standard, for the first cut and the first banner.
+    if (this.player.character.classId === 'warden') list.push(...knightStandIns());
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';
@@ -1208,6 +1211,7 @@ export class DungeonScene extends GameScene {
         const gap = this.tmpDir.subVectors(attacker.root.position, this.player.position).setY(0).length();
         if (gap <= reach + attacker.hitRadius) {
           this.skills.counterAttack(this.player, attacker, ctx, e.blockCounterPct / 100);
+          this.skills.knight.riposte(this.player, attacker);
         }
       }
       // Counter-Cut: any melee blow can be answered, with a critical.
@@ -1225,6 +1229,7 @@ export class DungeonScene extends GameScene {
     // Retribution builds a charge on every block and spends it on the next hit.
     if (blocked && e.retributionPctPerBlock > 0) {
       st.retribution = Math.min(300, st.retribution + e.retributionPctPerBlock);
+      this.skills.knight.storeRetribution(this.player, st.retribution);
     }
   }
 
@@ -1995,6 +2000,8 @@ export class DungeonScene extends GameScene {
         e.lootGranted = true;
         // A broken bell or portal is part of the room, not a kill.
         if (e.def.object) continue;
+        // Blood Tide: its bleeds leap on to the bodies around it.
+        this.skills.knight.onDeath(e, this.player, ctx, this.enemies, this.boss);
         this.lastOverkill = e.overkill;
         this.lastCurses = e.cursesCarried();
         this.lastCaged = e.hasStatus('grasped');
