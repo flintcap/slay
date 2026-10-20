@@ -363,6 +363,14 @@ export interface PassiveEffects {
   bloodTideAmplifyPct: number;
   bloodTideChains: number;
   bloodTideRadius: number;
+  /**
+   * Blood Tide (the Knight's): when a bleeding enemy dies, its stacks leap to
+   * up to `tideLeapMax` enemies within `tideLeapRadius` metres, each leap
+   * `tideLeapPct` percent stronger (`scenes/knight/KnightKit.ts`).
+   */
+  tideLeapPct: number;
+  tideLeapMax: number;
+  tideLeapRadius: number;
 
   /** The Paladin's own numbers (`passives/paladin.ts`). */
   pal: PaladinEffects;
@@ -538,6 +546,9 @@ function emptyEffects(): PassiveEffects {
     bloodTideAmplifyPct: 0,
     bloodTideChains: 0,
     bloodTideRadius: 0,
+    tideLeapPct: 0,
+    tideLeapMax: 0,
+    tideLeapRadius: 0,
     pal: emptyPaladinEffects(),
   };
 }
@@ -586,9 +597,6 @@ const RULES: Record<string, Contribution> = {
     e.ccFloorPct = floorOf(e.ccFloorPct, param(id, 'ccFloor', 70));
     e.shoutCostPct += param(id, 'shoutCostPerRank', 3) * r;
   },
-  phalanx: (e, r, id) => {
-    e.blockCapBonus = Math.max(e.blockCapBonus, param(id, 'capBonus', 10));
-  },
   bloodScent: (e, r, id) => {
     e.vsBleedingPct += param(id, 'pctPerRank', 7) * r;
   },
@@ -632,11 +640,13 @@ const RULES: Record<string, Contribution> = {
   },
   retribution: (e, r, id) => {
     e.retributionPctPerBlock += param(id, 'pctPerBlock', 3) + param(id, 'perRank', 1.5) * (r - 1);
+    // It took Phalanx's rule when Gatefall replaced it: the block cap rises.
+    e.blockCapBonus = Math.max(e.blockCapBonus, param(id, 'capBonus', 10));
   },
   bloodTide: (e, r, id) => {
-    e.bloodTideAmplifyPct += param(id, 'amplifyPct', 4) * r;
-    e.bloodTideChains = Math.max(e.bloodTideChains, param(id, 'maxChains', 8));
-    e.bloodTideRadius = Math.max(e.bloodTideRadius, param(id, 'radius', 6) + param(id, 'radiusPerRank', 0.3) * (r - 1));
+    e.tideLeapPct += param(id, 'amplifyPct', 4) * r;
+    e.tideLeapMax = Math.max(e.tideLeapMax, param(id, 'maxChains', 8));
+    e.tideLeapRadius = Math.max(e.tideLeapRadius, param(id, 'radius', 6) + param(id, 'radiusPerRank', 0.3) * (r - 1));
   },
   theLastOrder: (e, r, id) => {
     e.allOathsPct += param(id, 'strength', 45) + param(id, 'perRank', 2.5) * (r - 1);
@@ -1039,7 +1049,7 @@ export const IMPLEMENTED_PASSIVES: readonly string[] = Object.keys(RULES);
  */
 const SYNERGY_FIELDS: Partial<Record<string, Array<keyof PassiveEffects>>> = {
   retribution: ['retributionPctPerBlock'],
-  bloodTide: ['bloodTideAmplifyPct'],
+  bloodTide: ['tideLeapPct'],
   apexPredator: ['bloodTideAmplifyPct'],
   cataclysm: ['overkillCarryPct'],
   thousandCuts: ['cutPct'],

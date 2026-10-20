@@ -417,6 +417,8 @@ export function skillPassiveStats(
     const hard = skills[id] ?? 0;
     if (hard <= 0) continue;
     const def = SKILL_BY_ID[id];
+    // Hymn of Thorns is sworn like the oaths: it counts toward The Last Order's guard.
+    if (id === 'hymnOfThorns') oaths++;
     if (!def?.passive) continue;
     const isOath = id.startsWith('oathOf');
     if (isOath) oaths++;
