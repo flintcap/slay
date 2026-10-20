@@ -87,8 +87,21 @@ export interface Volley {
   heard: boolean;
 }
 
-/** Murmuration's scattered arrows in the air now. */
-let scattered = 0;
+/** What one runner's shots leave behind: the thickets standing, Murmuration's arrows in the air. */
+interface ShotField {
+  thickets: Thicket[];
+  scattered: number;
+}
+const SHOT_FIELDS = new WeakMap<RangerHost, ShotField>();
+
+function shotsOf(host: RangerHost): ShotField {
+  let f = SHOT_FIELDS.get(host);
+  if (!f) {
+    f = { thickets: [], scattered: 0 };
+    SHOT_FIELDS.set(host, f);
+  }
+  return f;
+}
 
 export interface HitOpts {
   kind?: HitKind;
@@ -182,18 +195,19 @@ function scatter(v: Volley, dead: Target, share: number, depth: number, chain: S
     .filter((t) => !chain.has(t) && flat(t.root.position, at) <= g.murmurReach + t.hitRadius)
     .sort((a, b) => flat(a.root.position, at) - flat(b.root.position, at));
   const n = Math.min(near.length, Math.max(0, Math.floor(g.murmurSplit)));
+  const field = shotsOf(v.host);
   for (let i = 0; i < n; i++) {
-    if (scattered >= g.murmurMost) return;
+    if (field.scattered >= g.murmurMost) return;
     const t = near[i]!;
     chain.add(t);
-    scattered++;
+    field.scattered++;
     const from = at.clone().setY(1.1);
     const to = t.root.position.clone().setY(1.0);
     quiet(v.host, () => v.host.effects.projectile(from, to, {
       element: v.school, color: v.color, shape: 'arrow', flare: false, speed: SCATTER_SPEED, size: 0.24, impact: false,
     }));
     v.host.later(flat(from, to) / SCATTER_SPEED, () => {
-      scattered = Math.max(0, scattered - 1);
+      field.scattered = Math.max(0, field.scattered - 1);
       if (t.life <= 0 || !v.player.alive) return;
       const before = t.life;
       const pk: DamagePacket = { amount: share, type: 'physical', crit: false, source: 'player', ability: tr('Murmuration') };
@@ -325,12 +339,29 @@ const GRAVE_RELEASE = 0.6;
 export function draw(r: RangerCast, host: RangerHost, fn: (first: number) => void, share?: number): void {
   r.player.beginAction(r.clip, r.actTime, undefined, { release: true, ...(share ? { releaseShare: share } : {}) });
   const first = r.player.releaseIn;
+  // A heavy draw's recording starts with the creak of the draw: begun early,
+  // its string goes with the release.
+  const lead = DRAW_LEAD[r.castSound ?? ''] ?? 0;
+  if (lead > 0) {
+    const id = r.player.actionId;
+    host.later(Math.max(0, first - lead), () => {
+      if (r.player.actionId !== id || !r.player.alive) return;
+      host.sound(r.castSound, r.player.position.x, r.player.position.z);
+    });
+  }
   host.atRelease(r.player, () => {
     const p = r.player.position;
-    host.sound(r.castSound, p.x, p.z);
+    if (lead <= 0) host.sound(r.castSound, p.x, p.z);
     quiet(host, () => fn(first));
   });
 }
+
+/** Seconds into each heavy draw's recording that its string goes (`tools/audio`). */
+const DRAW_LEAD: Readonly<Record<string, number>> = {
+  'skill.bow.heavy': 0.38,
+  'skill.bow.grave': 0.42,
+  'skill.bow.quarry': 0.38,
+};
 
 /** Pierce Shot and One Shot, One Grave: one shaft through the whole line. */
 function lineShot(v: Volley, r: RangerCast, share?: number): void {
@@ -485,18 +516,15 @@ export function nearestTo(world: RangerWorld, at: { x: number; z: number }, radi
 /** How many arrows a volley looses: its own, Volley Mastery's and Open Quiver's. */
 export function arrowsOf(r: RangerCast, base: number): number {
   if (!EXTRA.has(r.def.id)) return base;
-  const quiver = r.player.status.has('skill.openQuiver') ? openQuiverArrows(r) : 0;
+  const quiver = r.player.status.has('skill.openQuiver') ? (quiverArrows.get(r.player) ?? 0) : 0;
   const extra = Math.floor(r.player.passives.extraArrows) + quiver;
   return Math.min(base + extra, base + 6, 24);
 }
 
-/** Open Quiver's extra arrows, read from the skill itself. */
-let quiverArrows = 2;
-export function setQuiverArrows(n: number): void {
-  quiverArrows = n;
-}
-function openQuiverArrows(_r: RangerCast): number {
-  return quiverArrows;
+/** Open Quiver's extra arrows on each hero, read from the skill when cast. */
+const quiverArrows = new WeakMap<Player, number>();
+export function setQuiverArrows(player: Player, n: number): void {
+  quiverArrows.set(player, n);
 }
 
 /** Twin Shot: arrows a breath apart, side by side. */
@@ -506,8 +534,9 @@ function twinShot(v: Volley, r: RangerCast): void {
   const spread = r.num('spread', 0.14);
   const range = r.num('range', 20);
   const speed = r.num('speed', 36);
-  const id = r.player.actionId;
   draw(r, v.host, (first) => {
+    // The draw's own action: a new one (a roll, another skill) stops the rest.
+    const id = r.player.actionId;
     const cuts = v.host.cutTimes(r.def.id, r.actTime, first) ?? [0.12];
     for (let i = 0; i < n; i++) {
       // Half on the first loose, half on the second, each pair a touch apart.
@@ -560,8 +589,8 @@ function suppressing(v: Volley, r: RangerCast): void {
   const dir = r.dir.clone();
   const n = arrowsOf(r, Math.max(1, Math.floor(r.num('arrows', 3))));
   const range = r.num('range', 18);
-  const id = r.player.actionId;
   draw(r, v.host, (first) => {
+    const id = r.player.actionId;
     const cuts = v.host.cutTimes(r.def.id, r.actTime, first) ?? [0.08, 0.16, 0.24];
     const gap = cuts.length ? cuts[0]! : 0.08;
     for (let i = 0; i < n; i++) {
@@ -621,11 +650,11 @@ interface Thicket {
   acc: number;
   slow: number;
 }
-const thickets: Thicket[] = [];
 
 function thicket(v: Volley, x: number, z: number, radius: number): void {
   const g = v.player.passives.rgr;
   if (g.thicketSec <= 0) return;
+  const thickets = shotsOf(v.host).thickets;
   if (thickets.length >= 8) thickets.shift();
   thickets.push({ x, z, radius, left: g.thicketSec, acc: 1, slow: g.thicketSlow });
   thicketStand(v.host.effects, x, z, radius, g.thicketSec);
@@ -725,9 +754,12 @@ function carom(v: Volley, r: RangerCast): void {
       const a = prev.clone();
       t0 += leg / speed;
       prev = to;
-      v.host.later(start, () => quiet(v.host, () => v.host.effects.projectile(a, to, {
+      const fly = (): void => void quiet(v.host, () => v.host.effects.projectile(a, to, {
         element: v.school, color: v.color, shape: 'arrow', shed: v.shed, flare: false, speed, size: 0.28,
-      })));
+      }));
+      // The first leg leaves with the string, the rest as the arrow glances on.
+      if (start <= 0) fly();
+      else v.host.later(start, fly);
       v.host.later(t0, () => {
         if (t.life <= 0 || !r.player.alive) return;
         quiet(v.host, () => arrowHit(v, t, v.packet(Math.pow(1 - falloff, i)), { fromX: a.x, fromZ: a.z, sure: true }));
@@ -745,7 +777,10 @@ export function disengageArrow(v: Volley, r: RangerCast, dir: THREE.Vector3): vo
 
 /** Runs one of the bow skills. False when `id` is not one. */
 export function castShot(v: Volley, r: RangerCast): boolean {
-  const lo = v.host.effects.fxScale;
+  // The quality ladder's share of effects; a stand-in effect system (the
+  // headless checkers) may not carry one.
+  const scale: unknown = v.host.effects.fxScale;
+  const lo = typeof scale === 'number' ? scale : 1;
   switch (r.def.id) {
     case 'pierceShot': lineShot(v, r); return true;
     case 'oneShot': lineShot(v, r, GRAVE_RELEASE); return true;
@@ -791,7 +826,7 @@ export function basicShot(host: RangerHost, player: Player, dir: THREE.Vector3, 
   player.beginAction('shoot', time, undefined, { release: true });
   const d = dir.clone();
   // Loosed from hiding: read on the press, as the veil may drop before the string goes.
-  const hidden = player.status.has('veiled') ? hiddenCrit(player) : 0;
+  const hidden = player.status.has('veiled') ? hiddenCrit(host, player) : 0;
   host.atRelease(player, () => {
     const v: Volley = {
       host, player, world, id: null, packet, critX: Math.max(100, player.stats.critDamage) / 100,
@@ -804,12 +839,12 @@ export function basicShot(host: RangerHost, player: Player, dir: THREE.Vector3, 
 }
 
 /** Camouflage's harder crit from hiding, for the hero now (0 without it). */
-let camoCrit: (player: Player) => number = () => 0;
-export function setHiddenCrit(fn: (player: Player) => number): void {
+let camoCrit: (host: RangerHost, player: Player) => number = () => 0;
+export function setHiddenCrit(fn: (host: RangerHost, player: Player) => number): void {
   camoCrit = fn;
 }
-export function hiddenCrit(player: Player): number {
-  return camoCrit(player);
+export function hiddenCrit(host: RangerHost, player: Player): number {
+  return camoCrit(host, player);
 }
 
 // ---------------------------------------------------------------------------
@@ -819,6 +854,7 @@ export function hiddenCrit(player: Player): number {
 /** The thickets slow what stands in them. */
 export function tickShots(host: RangerHost, dt: number): void {
   const live = host.live();
+  const thickets = shotsOf(host).thickets;
   for (let i = thickets.length - 1; i >= 0; i--) {
     const th = thickets[i]!;
     th.left -= dt;
@@ -835,8 +871,9 @@ export function tickShots(host: RangerHost, dt: number): void {
   }
 }
 
-export function clearShots(): void {
-  thickets.length = 0;
-  scattered = 0;
+export function clearShots(host: RangerHost): void {
+  const f = shotsOf(host);
+  f.thickets.length = 0;
+  f.scattered = 0;
   clearThickets();
 }

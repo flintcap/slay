@@ -79,7 +79,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. Build. ("sk-ranger: build") Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -115,14 +115,36 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 3 are done (audit, plan, speed table under "Notes for
-resume"). The Ranger's skills now live in `src/data/classSkills/ranger.ts`
-(spread into `skills.ts`, as the Paladin's are). On resume:
+Milestones 1 to 4 are done (audit, plan, speed table, build). The
+Ranger's skills live in `src/data/classSkills/ranger.ts`; what they do is
+in `src/scenes/ranger/` (`RangerMoves.ts` the switch, `Shots.ts` every bow
+shot, `Traps.ts` traps, brambles and the kestrel), their effects in
+`src/fx/ranger/`, their sounds in `src/audio/RangerSounds.ts` and
+`tools/audio/rangerTakes.mjs`. On resume:
 
 1. Setup as in `PROTOCOL.md`.
-2. Milestone 4: build from "Build order (milestone 4)" in the plan below,
-   broken skills first, then `ranger/Shots.ts`, the tier 6 moves, the nine
-   new actives, the twelve new passives, then text and `skillPower`.
+2. Milestone 5: icons, from "Icons (milestone 5)" in the build check list
+   below.
+
+### Milestone 4 notes (2026-10-20)
+
+- Bends checked against the code: Brace of Larks (`twinShot` `count`),
+  Skipping Stone (`ricochet` `bounces`, `range` = Carom's hop), The Long
+  Drizzle (`arrowRain` `radius`, chill rider), Quarrybreaker
+  (`explosiveTip` `radius`), Featherfall (`fanFire` `count`), The Overcast
+  (`darkenTheSky` `radius`, blind rider), The Trapper's Gauntlets
+  (`snareTrap` `radius`, `root`), The Trapper's Last Belt (`theWholeFloor`
+  `radius`, root rider). Every knob is read; riders ride every packet.
+- Nothing was removed, so nothing refunds. `STARTING_SKILL` (`pierceShot`)
+  and `STARTING_SKILL_HINTS` (all tier 1) still hold.
+- Checkers passing: rankpower, skillparams, stattext, i18n, skillsound,
+  iconmatch, skilldepth, passives, wiring, unique, uniques, hits, status,
+  save, starter, starter-power, feel, coverage, vfx, hotbar, legacy,
+  release, rules, threehooks. `beats` and `unfinished` fail only on other
+  classes' known lines (no Ranger skill in them).
+- `ASSETS.md`: the audio build rewrote six `player.female.hurt*` credit
+  rows from `tools/audio/ledger.json`; I put the old rows back. The ledger
+  and ASSETS.md disagree on those six files (not mine to settle).
 
 ## Notes for resume
 

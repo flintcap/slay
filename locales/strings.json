@@ -6060,7 +6060,8 @@
   {
    "key": "Bolt-Hole",
    "files": [
-    "data/classSkills/ranger.ts"
+    "data/classSkills/ranger.ts",
+    "scenes/ranger/RangerMoves.ts"
    ]
   },
   {
@@ -6308,7 +6309,8 @@
   {
    "key": "Murmuration",
    "files": [
-    "data/classSkills/ranger.ts"
+    "data/classSkills/ranger.ts",
+    "scenes/ranger/Shots.ts"
    ]
   },
   {
@@ -6570,7 +6572,7 @@
    ]
   },
   {
-   "key": "When more than one arrow of a single loose strikes the same enemy, each after the first deals +10% damage (+2% per rank).",
+   "key": "When more than one arrow from a single use of a skill strikes the same enemy, each after the first deals +10% damage (+2% per rank).",
    "files": [
     "data/classSkills/ranger.ts"
    ]
@@ -20475,7 +20477,7 @@
    ]
   },
   {
-   "key": "Hunted. Attackers gain +15% critical strike chance against this target.",
+   "key": "Hunted: every resistance is lowered while the mark lasts.",
    "files": [
     "data/statuses.ts"
    ]

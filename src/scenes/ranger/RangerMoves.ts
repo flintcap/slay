@@ -58,7 +58,6 @@ interface Camo {
   veiled: boolean;
   action: number;
 }
-const camos: Camo[] = [];
 
 /** A mark that jumps on when what it marks dies. */
 interface Mark {
@@ -68,18 +67,41 @@ interface Mark {
   riders: StatusApplication[];
   player: Player;
 }
-const marks: Mark[] = [];
 /** Most marks followed at once (Open Season's spread is small). */
 const MOST_MARKS = 12;
 
 /** Bolt-Hole: when it is ready again, and the life share last frame. */
-const bolt = { ready: 0, lastPct: 100, healLeft: 0, healPer: 0, acc: 0, player: null as Player | null };
+interface Bolt {
+  ready: number;
+  lastPct: number;
+  healLeft: number;
+  healPer: number;
+  acc: number;
+  player: Player | null;
+}
 const BOLT_STATUS = 'skill.boltHole';
 
+/** What lasts under one runner. Each keeps its own, so a test arena or an old floor never reaches into this one. */
+interface Lasting {
+  camos: Camo[];
+  marks: Mark[];
+  bolt: Bolt;
+}
+const LASTING = new WeakMap<RangerHost, Lasting>();
+
+function lastingOf(host: RangerHost): Lasting {
+  let l = LASTING.get(host);
+  if (!l) {
+    l = { camos: [], marks: [], bolt: { ready: 0, lastPct: 100, healLeft: 0, healPer: 0, acc: 0, player: null } };
+    LASTING.set(host, l);
+  }
+  return l;
+}
+
 // Camouflage's harder crit from hiding (`Shots.arrowHit` reads it).
-setHiddenCrit((player) => {
+setHiddenCrit((host, player) => {
   if (!player.status.has('veiled')) return 0;
-  const c = camos.find((x) => x.player === player);
+  const c = lastingOf(host).camos.find((x) => x.player === player);
   return c && player.status.has('skill.camouflage') ? c.critDamage : 0;
 });
 
@@ -99,7 +121,7 @@ export function castRanger(host: RangerHost, r: RangerCast): boolean {
     if (until > host.now()) nock = true;
     nocked.delete(r.player);
   }
-  const hidden = bow ? hiddenCrit(r.player) : 0;
+  const hidden = bow ? hiddenCrit(host, r.player) : 0;
   const v = volleyOf(host, r, { nocked: nock, hidden, bow, multi: MULTI.has(id), trap: TRAPPY.has(id) });
   if (castShot(v, r)) return true;
   switch (id) {
@@ -139,13 +161,14 @@ function huntersMark(host: RangerHost, r: RangerCast): void {
     for (const t of list) {
       t.applyStatuses(riders, r.world.ctx);
       markSpark(host.effects, t.root.position.x, 1.9, t.root.position.z);
-      follow(t, jump, riders, r.player);
+      follow(host, t, jump, riders, r.player);
     }
     host.sound(r.hitSound, first.root.position.x, first.root.position.z);
   });
 }
 
-function follow(t: Target, jump: number, riders: StatusApplication[], player: Player): void {
+function follow(host: RangerHost, t: Target, jump: number, riders: StatusApplication[], player: Player): void {
+  const marks = lastingOf(host).marks;
   const was = marks.findIndex((m) => m.t === t);
   if (was >= 0) marks.splice(was, 1);
   if (marks.length >= MOST_MARKS) marks.shift();
@@ -155,6 +178,7 @@ function follow(t: Target, jump: number, riders: StatusApplication[], player: Pl
 /** Marks that outlive what they marked jump to the nearest enemy unmarked. */
 function tickMarks(host: RangerHost, dt: number): void {
   const live = host.live();
+  const marks = lastingOf(host).marks;
   for (let i = marks.length - 1; i >= 0; i--) {
     const m = marks[i]!;
     if (m.t.life > 0) {
@@ -238,6 +262,7 @@ function selfBuff(host: RangerHost, r: RangerCast): void {
   host.sound(r.castSound, p.position.x, p.position.z);
   host.buff(p, r.def, r.rank, r.num, r.color);
   if (r.def.id === 'camouflage') {
+    const camos = lastingOf(host).camos;
     const was = camos.findIndex((c) => c.player === p);
     if (was >= 0) camos.splice(was, 1);
     camos.push({
@@ -246,13 +271,14 @@ function selfBuff(host: RangerHost, r: RangerCast): void {
     });
     leaves(host.effects, p.position.x, p.position.z);
   } else if (r.def.id === 'openQuiver') {
-    setQuiverArrows(Math.floor(r.num('arrows', 2)));
+    setQuiverArrows(p, Math.floor(r.num('arrows', 2)));
     feathers(host.effects, p.position.x, p.position.z);
   }
 }
 
 /** Camouflage: still a moment, you vanish; moving or acting brings you back. */
 function tickCamo(host: RangerHost, dt: number): void {
+  const camos = lastingOf(host).camos;
   for (let i = camos.length - 1; i >= 0; i--) {
     const c = camos[i]!;
     const p = c.player;
@@ -295,6 +321,7 @@ function unveil(p: Player): void {
 /** Bolt-Hole: a blow takes you below the line, and you heal and run. */
 function tickBolt(host: RangerHost, dt: number): void {
   const p = host.hero();
+  const bolt = lastingOf(host).bolt;
   if (bolt.healLeft > 0 && bolt.player) {
     bolt.acc += dt;
     while (bolt.acc >= 0.5 && bolt.healLeft > 0) {
@@ -335,14 +362,15 @@ export function tickRanger(host: RangerHost, dt: number): void {
 
 /** Ends everything running (a new floor). */
 export function clearRanger(host: RangerHost): void {
-  clearShots();
+  clearShots(host);
   clearTraps(host);
-  marks.length = 0;
-  camos.length = 0;
+  const l = lastingOf(host);
+  l.marks.length = 0;
+  l.camos.length = 0;
   nocked.clear();
-  bolt.healLeft = 0;
-  bolt.player = null;
-  bolt.lastPct = 100;
+  l.bolt.healLeft = 0;
+  l.bolt.player = null;
+  l.bolt.lastPct = 100;
   clearRangerFX(host.effects);
 }
 

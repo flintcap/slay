@@ -91,10 +91,23 @@ interface Bird {
   v: Volley;
 }
 
-const traps: Trap[] = [];
-const swarms: Swarm[] = [];
-const brambles: Bramble[] = [];
-let bird: Bird | null = null;
+/** What one runner has out on its floor. Each runner keeps its own, so a test arena or an old floor never reaches into this one. */
+interface Field {
+  traps: Trap[];
+  swarms: Swarm[];
+  brambles: Bramble[];
+  bird: Bird | null;
+}
+const FIELDS = new WeakMap<RangerHost, Field>();
+
+function fieldOf(host: RangerHost): Field {
+  let f = FIELDS.get(host);
+  if (!f) {
+    f = { traps: [], swarms: [], brambles: [], bird: null };
+    FIELDS.set(host, f);
+  }
+  return f;
+}
 
 /** Most of each thing out at once, whatever adds to it (fixed pools behind them). */
 const MOST_SWARMS = 6;
@@ -128,14 +141,16 @@ function addTrap(tr: Trap): void {
   const e = tr.player.passives.rgr;
   const def = SKILL_BY_ID[tr.skill];
   const most = Math.max(1, Math.floor(typeof def?.params?.most === 'number' ? def.params.most : 3)) + Math.floor(e.trapExtra);
-  const mine = traps.filter((o) => o.skill === tr.skill && o.player === tr.player);
+  const f = fieldOf(tr.v.host);
+  const mine = f.traps.filter((o) => o.skill === tr.skill && o.player === tr.player);
   for (let i = 0; i <= mine.length - most; i++) dropTrap(tr.v.host, mine[i]!);
-  traps.push(tr);
+  f.traps.push(tr);
 }
 
 function dropTrap(host: RangerHost, tr: Trap): void {
-  const i = traps.indexOf(tr);
-  if (i >= 0) traps.splice(i, 1);
+  const list = fieldOf(host).traps;
+  const i = list.indexOf(tr);
+  if (i >= 0) list.splice(i, 1);
   trapEnd(host.effects, tr.look);
 }
 
@@ -146,7 +161,8 @@ export function setTrap(host: RangerHost, r: RangerCast, v: Volley): void {
   const reach = 1 + e.trapReachPct / 100;
   const k = Math.max(0, r.rank - 1);
   const range = r.num('range', 12);
-  const arm = e.armNow > 0 ? 0 : r.num('arm', 0.5);
+  const armTime = r.num('arm', 0.5);
+  const arm = e.armNow > 0 ? 0 : armTime;
   const life = r.num('life', 25);
   const riders = [...r.riders()];
   let catchR = 2;
@@ -243,6 +259,7 @@ function spring(host: RangerHost, tr: Trap): void {
         arrowHit(v, t, pk, { kind: 'minion', fromX: tr.x, fromZ: tr.z, sure: true, arrow: false });
       }
     } else {
+      const swarms = fieldOf(host).swarms;
       if (swarms.length >= MOST_SWARMS) swarms.shift();
       swarms.push({ x: tr.x, z: tr.z, radius: tr.radius, left: tr.swarm, acc: tr.tick, tick: tr.tick, v });
     }
@@ -285,6 +302,7 @@ export function thornBarrier(host: RangerHost, r: RangerCast, v: Volley): void {
       ax: at.x - dx * len / 2, az: at.z - dz * len / 2, bx: at.x + dx * len / 2, bz: at.z + dz * len / 2,
       half: width / 2, left: sec, acc: tick, tick, v, slow, bleed, touched: new Set(),
     };
+    const brambles = fieldOf(host).brambles;
     if (brambles.length >= MOST_BRAMBLES) brambles.shift();
     brambles.push(b);
     brambleWall(host.effects, b.ax, b.az, b.bx, b.bz, width, sec);
@@ -323,7 +341,7 @@ export function kestrel(host: RangerHost, r: RangerCast, v: Volley): void {
   const reach = r.num('reach', 14);
   r.player.beginAction(r.clip, r.actTime);
   host.sound(r.castSound, r.player.position.x, r.player.position.z);
-  bird = { player: r.player, left: sec, acc: every * 0.5, every, reach, v };
+  fieldOf(host).bird = { player: r.player, left: sec, acc: every * 0.5, every, reach, v };
   kestrelUp(host.effects, r.player, sec);
 }
 
@@ -360,7 +378,7 @@ function stoop(host: RangerHost, b: Bird): void {
 export function wholeFloor(host: RangerHost, r: RangerCast, v: Volley): void {
   const radius = r.num('radius', 8);
   draw(r, host, () => {
-    for (const tr of traps.filter((o) => o.player === r.player)) spring(host, tr);
+    for (const tr of fieldOf(host).traps.filter((o) => o.player === r.player)) spring(host, tr);
     const p = r.player.position;
     trapSpring(host.effects, 'spike', p.x, p.z, 1, 0, radius * 0.6);
     host.sound(r.hitSound, p.x, p.z);
@@ -372,8 +390,12 @@ export function wholeFloor(host: RangerHost, r: RangerCast, v: Volley): void {
 /** The traps' waits, the swarms, the brambles and the bird. */
 export function tickTraps(host: RangerHost, dt: number): void {
   const live = host.live();
+  const f = fieldOf(host);
+  const { traps, swarms, brambles } = f;
   for (let i = traps.length - 1; i >= 0; i--) {
-    const tr = traps[i]!;
+    const tr = traps[i];
+    // Springing one can set off or drop others (The Whole Floor).
+    if (!tr) continue;
     tr.left -= dt;
     if (tr.left <= 0 || !tr.player.alive) {
       dropTrap(host, tr);
@@ -417,12 +439,12 @@ export function tickTraps(host: RangerHost, dt: number): void {
     }
     if (b.left <= 0) brambles.splice(i, 1);
   }
-  if (bird) {
-    const b = bird;
+  if (f.bird) {
+    const b = f.bird;
     b.left -= dt;
     b.acc += dt;
     if (b.left <= 0 || !b.player.alive) {
-      bird = null;
+      f.bird = null;
       kestrelDown(host.effects);
     } else if (b.acc >= b.every) {
       b.acc -= b.every;
@@ -433,9 +455,10 @@ export function tickTraps(host: RangerHost, dt: number): void {
 
 /** Ends everything on the floor (a new floor). */
 export function clearTraps(host: RangerHost): void {
-  for (const tr of traps) trapEnd(host.effects, tr.look);
-  traps.length = 0;
-  swarms.length = 0;
-  brambles.length = 0;
-  bird = null;
+  const f = fieldOf(host);
+  for (const tr of f.traps) trapEnd(host.effects, tr.look);
+  f.traps.length = 0;
+  f.swarms.length = 0;
+  f.brambles.length = 0;
+  f.bird = null;
 }
