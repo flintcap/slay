@@ -1104,6 +1104,12 @@ export class Enemy implements Combatant {
     return out;
   }
 
+  /** Seconds left on a status, or 0 when it is not running. */
+  statusLeft(id: string): number {
+    for (const s of this.statuses) if (s.id === id) return s.time;
+    return 0;
+  }
+
   /** How many of the named statuses are running, each counted once. Hex Upon Hex. */
   countStatuses(ids: ReadonlySet<string>): number {
     let n = 0;

@@ -39,6 +39,7 @@ import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './Shifter
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
+import { RevenantKit } from './revenant/RevenantKit';
 import { castRogue, clearRogue, mirrorStrike, rogueLook, ROGUE_MOVES, tickRogue, type CloneBody, type RogueHost } from './rogue/RogueMoves';
 import { KnightKit, knightBlow, knightUnlit, type KnightCast } from './knight/KnightKit';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
@@ -248,6 +249,9 @@ const CORPSE_LIFE = 30;
 const RAISE_REACH = 12;
 /** The Revenant's curses, as the statuses they leave. Hex Upon Hex counts these. */
 const HEXES: ReadonlySet<string> = new Set(['weakened', 'vulnerable', 'feared', 'doomed', 'confused', 'unmade', 'grasped', 'lifelink']);
+/** Plagued hops every this many seconds, to an enemy at most this far away. */
+const PLAGUE_EVERY = 2;
+const PLAGUE_REACH = 4;
 
 /** What a cleanse takes off the hero first: holds, then slows. */
 const CLEANSE = ['stunned', 'frozen', 'knockedDown', 'rooted', 'feared', 'grasped', 'entangled', 'crippled', 'chilled', 'slowed'];
@@ -665,6 +669,10 @@ export class SkillRunner {
       clear: (from, dir, max, ctx, radius) => this.wallStop(from, dir, max, ctx, radius),
       live: () => this.tickCtx,
     });
+    this.revenant = new RevenantKit({
+      ...this.spells.host,
+      stand: (x, z) => !this.walk || canStandAt(this.walk, x, z, 0.5),
+    }, this.spells);
     this.rogueHost = {
       effects,
       land: (t, packet, kind, fromX, fromZ, world) => this.landRite(t, packet, kind, fromX, fromZ, world),
@@ -718,6 +726,8 @@ export class SkillRunner {
 
   /** The Mage's spells that are more than their effect family (`mage/Spells.ts`). */
   private readonly spells: MageSpells;
+  /** The Revenant's skills that are more than their effect family (`revenant/RevenantKit.ts`). */
+  private readonly revenant: RevenantKit;
 
   /** One Mage spell's blow on one target, through the whole hit pipeline. */
   private landSpell(t: Target, packet: DamagePacket, kind: HitKind, fromX: number, fromZ: number, world: SpellWorld): DamagePacket | null {
@@ -1224,15 +1234,17 @@ export class SkillRunner {
     try {
       if (kc && this.knight.cast(kc)) {
         // The Knight's kit ran it whole (`knight/KnightKit.ts`).
-      } else if (MageSpells.casts(def.id)) {
-        // The Mage's spells that are more than their family (`mage/Spells.ts`).
+      } else if (MageSpells.casts(def.id) || RevenantKit.casts(def.id)) {
+        // The Mage's spells and the Revenant's skills that are more than their
+        // family (`mage/Spells.ts`, `revenant/RevenantKit.ts`).
         const sc: SpellCast = {
           def, rank, player, aim: target.clone().setY(0), origin, dir,
           world: { ctx, enemies, boss, player },
           packet: makePacket, riders: rider, num, type, school, color, clip, own,
           actTime, released, hitSound: sound.hit, sig,
         };
-        this.spells.cast(sc);
+        if (RevenantKit.casts(def.id)) this.revenant.cast(sc);
+        else this.spells.cast(sc);
         if (sc.landAt) target = sc.landAt;
       } else if (ROGUE_MOVES.has(def.id)) {
         // The Rogue's throws, dash, escape, halo and waltz (rogue/RogueMoves.ts).
@@ -3645,6 +3657,7 @@ export class SkillRunner {
     }
 
     this.spells.update(dt);
+    this.revenant.update(dt);
     this.stormTick(dt, live.ctx, live.enemies, live.boss);
     tickRogue(this.rogueHost, dt);
     this.markCorpses(live.enemies);
@@ -4123,9 +4136,14 @@ export class SkillRunner {
   ): void {
     // A cap, because a build that stacks ten fields should cost frames, not
     // the whole run.
+    // A field on the floor goes first, oldest first: an aura that walks with
+    // the hero (Bone Storm, Pestilence) is the skill itself, not litter, so a
+    // few minions dying into Bone Choir pools never switch it off.
     if (this.zones.length >= 12) {
-      this.zones[0]!.fx?.stop();
-      this.zones.shift();
+      let out = this.zones.findIndex((zn) => !zn.follow);
+      if (out < 0) out = 0;
+      this.zones[out]!.fx?.stop();
+      this.zones.splice(out, 1);
     }
     // The field draws as what it is: burning ground, a blizzard, a cloud.
     const fx = this.effects.field(x, z, radius, duration, { school: school ?? (type as School), color, skill, rank });
@@ -4257,6 +4275,40 @@ export class SkillRunner {
     this.turrets.push(t);
   }
 
+  /** Seconds to the next Plagued hop. */
+  private plagueIn = PLAGUE_EVERY;
+
+  /**
+   * Plagued spreads on its own, whoever laid it (Pestilence, Plague Vial):
+   * every 2 s each plagued enemy hands it to the nearest clean enemy within
+   * 4 m, with the time it has left, so a plague burns out instead of living
+   * for ever.
+   */
+  private plagueTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    this.plagueIn -= dt;
+    if (this.plagueIn > 0) return;
+    this.plagueIn = PLAGUE_EVERY;
+    const pool = this.allTargets(enemies, boss);
+    const hops: Array<{ to: Target; left: number }> = [];
+    for (const src of pool) {
+      const left = src.life > 0 ? src.statusLeft('plagued') : 0;
+      if (left <= 0.5) continue;
+      let best: Target | null = null;
+      let bestD = PLAGUE_REACH;
+      for (const t of pool) {
+        if (t === src || t.life <= 0 || t.hasStatus('plagued') || hops.some((h) => h.to === t)) continue;
+        const d = this.groundDistance(t.root.position, src.root.position) - t.hitRadius;
+        if (d <= bestD) {
+          bestD = d;
+          best = t;
+        }
+      }
+      if (best) hops.push({ to: best, left });
+    }
+    // Laid after the scan, so one tick moves the plague one step, not across the room.
+    for (const h of hops) h.to.applyStatuses([{ id: 'plagued', duration: h.left, magnitude: 1, stacks: 1 }], ctx);
+  }
+
   /**
    * Afflictions that travel between monsters.
    *
@@ -4267,6 +4319,7 @@ export class SkillRunner {
    * clean one nearby — so they share one tick rather than three.
    */
   private spreadTick(dt: number, ctx: CombatContext, enemies: Enemy[], boss: Boss | null): void {
+    this.plagueTick(dt, ctx, enemies, boss);
     const p = this.caster;
     if (!p) return;
     const e = p.passives;
@@ -4497,6 +4550,7 @@ export class SkillRunner {
     this.turrets.length = 0;
     this.storms.length = 0;
     this.spells.clear();
+    this.revenant.clear();
     this.pendingSwings.length = 0;
     this.knight.dispose();
     this.tickCtx = null;
