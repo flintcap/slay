@@ -45,7 +45,9 @@ for (const u of UNIQUES) {
     if (!s) { problems.push(`${where}: bends ${u.bend.skill}, which is not a skill`); continue; }
     const params = (s as { params?: Record<string, unknown> }).params ?? {};
     for (const k of [...Object.keys(u.bend.grow ?? {}), ...Object.keys(u.bend.add ?? {})]) {
-      if (!(k in params)) problems.push(`${where}: ${u.bend.skill} has no knob "${k}" (it has ${Object.keys(params).join(', ') || 'none'})`);
+      // `attackTime` and `castTime` are knobs every skill has: `skillPace` in
+      // sim/Speed.ts bends the skill's timing fields through them.
+      if (!(k in params) && k !== 'attackTime' && k !== 'castTime') problems.push(`${where}: ${u.bend.skill} has no knob "${k}" (it has ${Object.keys(params).join(', ') || 'none'})`);
     }
     if (u.bend.applies && !getStatus(u.bend.applies.status)) problems.push(`${where}: leaves status ${u.bend.applies.status}, which does not exist`);
     if (!u.classId) problems.push(`${where}: a skill bender must be class-only`);

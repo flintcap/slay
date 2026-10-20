@@ -91,7 +91,7 @@ to paste.
   most). Every place from the audit uses that one function; delete the old
   sums and constants (grep shows zero hits). Caster weapons still have no
   basic attack.
-- [ ] 3. Item speed. Retune every speed line to sizes like the reference
+- [x] 3. Item speed. ("skillcore: item speed on the new scale, save v3") Retune every speed line to sizes like the reference
   (about 5 to 20% on gear, up to about 30% on weapons, smaller on charms),
   including uniques, sets, runes, runewords, gems and charms (numbers only;
   do not change what an item is). Stacking passives and buffs (Flurry, Storm
@@ -135,14 +135,11 @@ to paste.
 
 ## Next up
 
-Milestone 3: add `speedLineSize(v)` to `src/sim/Speed.ts` (sign(v) x
-round(40|v| / (|v| + 40))), apply it to every item speed literal (affix
-ladders, base implicits, uniques, extraLines, sets, setsDepth, batch
-tuples, kit.ts CURVE, gems, runes, runewords, ItemPowers), then a
-SAVE_VERSION 3 step in `src/core/Save.ts` that maps stored speed mods and
-offers through it (charm lines at the 0.8 charm scale) before
-`refreshFixedLines` clamps. Checkers: items, uniques, setpower, charms,
-socket, stattext.
+Milestone 4: run `check-curve` after (default grid, about two minutes,
+log to the scratchpad), write the before/after table under "Notes for
+resume" (before: `curve-before.keep` in the scratchpad, 7 of 35 failed).
+Then milestone 5: `contactDelay` / `CONTACT_CAP` and the Animator clip
+speed follow the action time, plus the three class-stream requests below.
 
 ## Notes for resume
 
@@ -230,11 +227,74 @@ ranger d5 and d12, paladin d5, shapeshifter d5 and d40. The log also prints
 1571 "[feel] hit report failed TypeError: Cannot convert object to primitive
 value" lines (CombatFeel.onKill, pre-existing, not speed).
 
+### Item speed (milestone 3)
+
+One curve shrinks every item speed line: f(v) = sign(v) x round(40|v| /
+(|v| + 40)). 3 stays 3, 6 -> 5, 10 -> 8, 15 -> 11, 20 -> 13, 25 -> 15,
+30 -> 17, 40 -> 20, 50 -> 22, 72 -> 26.
+
+| Source | Before | After |
+| --- | --- | --- |
+| `pre/suf.aspd`, `pre/suf.cspd` | 3-6 ... 34-40 | 3-5 ... 19-20 |
+| `.great` (rare only) | 42-72 | 21-26 |
+| `suf.gloves.grip` | 12-47 | 9-22 |
+| `pre.orb.conduit` | 14-54 | 10-23 |
+| Base implicits | up to 20-32 | f on both ends, up to 13-18 |
+| Uniques, extra lines, set pieces | up to 58 | f (Windforce 25-35 -> 15-19) |
+| Depth unique curve (`kit.ts`) | 8 + 0.25 x ilvl | 7 + 0.12 x ilvl |
+| Set bonuses | 10-30 | 8-17 (text too) |
+| Grand charm line | 2-32 | 1-8 (`CHARM_SPEED_SHARE` 0.5) |
+| Unique charms | up to 26 | half of f |
+| Garnet / opal in a weapon | 4/7/11/15/20/27 | 2/3/4/6/8/10 |
+| Runes | 3, 10, 12 / 5, 10, 14 | 2, 6, 7 / 3, 6, 8 |
+| Runewords | 5-10 + 2-3 a cut (max 25) | 4-8 + 1-1.4 a cut (max 15) |
+| Item powers | +12 to +25, costs -12 to -25 | f: +9 to +15, costs -9 to -15 |
+
+Item price per speed point went 16 -> 26 (`STAT_VALUE`), so speed items
+keep about their price. Power costs now read "you lose 13% cast speed"
+(points of the stat, like a gear line) instead of "you cast 20% slower",
+since the real rate comes out of the diminishing-returns curve and the
+character panel shows it. Skill passives, buffs, boons and statuses were
+not changed (class streams own the passives; all of it goes through the
+same curve and ceiling).
+
+What happens to old saves: `SAVE_VERSION` is now 3. The first load of an
+older save runs `rescaleOldSpeed` (`sim/Loot.ts`) on every item the
+account holds (worn, pack, vault, map loot, the Enchanter's waiting
+offers): each attack and cast speed line goes through f (halved on a
+charm), a rolled line is then held in its tier's range today (anvil
+bonus up to 12% over still allowed), and `refreshFixedLines` holds unique
+and set lines in theirs. f only rises, so the top of an old range lands at
+the top of the new one and the bottom at the bottom. The save is written
+back as version 3 and the step never runs twice. `check-save` has a case
+for it (old top 40 -> 20, old bottom 34 -> 19, grand charm 32 -> 8,
+Windforce 35 -> 19 and 25 -> 15, second load unchanged).
+
+### Requests from the class streams (coordinator, for milestone 5)
+
+Handle in milestone 5 or write the gap in the Handover:
+1. sk-paladin: every weapon blow connects within `CONTACT_CAP` 0.16 s
+   (`Player.ts`), so heavy blows land as fast as a jab. Contact should
+   follow the action's own time, on the clip's hit frame.
+2. sk-paladin: rushes (up to 9 m in about 0.13 s) read as a blink. Add a
+   travel time that follows distance and speed if the model has a place
+   for it, else note the gap.
+3. sk-paladin and sk-mage: spells and throws release on the key press, not
+   on the gesture's release frame. Add a shared release-frame hook if it
+   belongs in the model, else note it.
+Full notes: `docs/remake/sk-paladin.md`, `docs/remake/sk-mage.md`.
+
 ## For the owner to test
 
 (empty)
 
 ## For skillqa
+
+- `check-economy` fails once: "shapeshifter: no set or unique in a whole
+  descent at depth 30" (retried, same result; the sim is seeded). Drop
+  rates are untouched; narrow speed ranges (lo = hi) skip a random draw in
+  `rollValue`, so the seeded descent rolls different items. Luck, not a
+  rate change, but worth a look if it stays red.
 
 - `check-curve` prints "[feel] hit report failed TypeError: Cannot convert
   object to primitive value" from `CombatFeel.onKill` about 1500 times a run
