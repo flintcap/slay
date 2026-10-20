@@ -15,6 +15,11 @@ import { defineGestures, reach, type G, type Spec, step } from '../SkillActions'
 /** A step with its own lift, heads: a stamp lifts the knee high. */
 const lift = (side: Side, t: number, dz: number, dx: number, up: number, land: number): ActionStep => ({ t, side, dx, dz, lift: up, land });
 
+/** Natural times Massacre's five cuts land (the first is the gesture's contact). */
+export const MASSACRE_CUTS: readonly number[] = [0.22, 0.34, 0.46, 0.58, 0.72];
+/** Natural time Massacre is back at rest. */
+export const MASSACRE_END = 1.05;
+
 // Shield arm places (left arm, `Pose.arm` order).
 /** Shield held square in front of the chest. */
 const SHIELD_FRONT: G['L'] = [1.15, -0.15, 1.35, 1.55, 0.4];

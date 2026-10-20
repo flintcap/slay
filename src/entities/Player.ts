@@ -508,6 +508,14 @@ export class Player {
     this.spinLeft = turns !== 0 ? t : 0;
   }
 
+  /** Seconds nothing can hold or shove the hero (Gatefall in the air). */
+  steadyLeft = 0;
+
+  /** Lifts the body off the floor by `y` metres (a leap's arc); 0 sets it down. */
+  lift(y: number): void {
+    this.hero.root.position.y = y;
+  }
+
   /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */
   get actionId(): number {
     return this.actionSerial;
@@ -753,7 +761,7 @@ export class Player {
     // a monster can inflict was dead on arrival here.
     // Stoneform (Fortress Stance, Shield Wall) shrugs off holds and shoves;
     // Immovable and Veteran's Resolve shorten holds, to a floor.
-    const steady = this.status.has('stoneform') || this.status.has('fortress');
+    const steady = this.status.has('stoneform') || this.status.has('fortress') || this.steadyLeft > 0;
     const holdScale = Math.max(e.ccFloorPct > 0 ? e.ccFloorPct / 100 : 0, 1 - e.ccReductionPct / 100);
     if (packet.applies?.length) {
       for (const a of packet.applies) {
@@ -876,6 +884,7 @@ export class Player {
       this.invulnTimer -= dt;
       if (this.invulnTimer <= 0) this.invulnerable = false;
     }
+    if (this.steadyLeft > 0) this.steadyLeft = Math.max(0, this.steadyLeft - dt);
     // Passive cooldowns tick here too — a cheat death you cannot spend twice.
     if (this.passiveState.cheatDeathCd > 0) {
       this.passiveState.cheatDeathCd = Math.max(0, this.passiveState.cheatDeathCd - dt);
