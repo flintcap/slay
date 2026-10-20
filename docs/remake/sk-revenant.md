@@ -459,6 +459,27 @@ checkers pass.
 - `tools/rankpower-entry.ts`: Reassemble's test lets the raise land on its
   release frame before hurting the thralls (it read x1.00 since milestone 3).
 
+### Milestone 7: check
+
+- `check-curve --classes=revenant`, run once (2026-10-20, after the looks):
+  1 of 5 fails.
+  - depth 1 ok: packs 3/3 (low 38%), bosses 3/3, 5 potions.
+  - depth 5 ok: packs 3/3 (low 40%), bosses 1/3 (low 0%), 8 potions.
+  - depth 12 WALLED: packs 0/3 (7/10/6 s, low 0%), bosses 3/3 (low 4%),
+    17 potions, mods swarm 1, elites 2, frostbite 2, hardened 1, elites 1.
+  - depth 25 ok: packs 3/3 (low 98%), bosses 3/3 (low 37%), 2 potions.
+  - depth 40 ok: packs 3/3 (low 37%), bosses 2/3 (low 0%), 9 potions.
+  - Before (`qa-bugs.md`, the last full curve): nothing walled; the
+    Revenant's only mark was "untouched" at tier 5. So depth 12 is walled
+    now and was not before. Per the rule, no damage per hit was raised and
+    no monster was touched: the owner decides. Likely causes to look at:
+    the slower casts from the speed audit (milestone 3) at a depth where
+    the hero has few points, and that pack's heavy mods (two elite mods
+    and frostbite). It was run once only, so one seed set may be unlucky.
+  - The headless curve prints "[feel] hit report failed" on kills
+    (`CombatFeel.onKill` with the tool's stand-in effects); the Mage saw
+    the same. It is caught and does not change the fights.
+
 ### Milestone 6: looks and cost
 
 - New file `src/fx/revenant/RevenantFX.ts`, driven each frame by
