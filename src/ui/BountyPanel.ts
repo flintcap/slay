@@ -1,6 +1,7 @@
 /**
  * SLAY — the Bounty Board. Three contracts at a time; take up to two, finish
- * them below, and come back here to be paid in gold, Renown and an item.
+ * them below, and come back here to be paid in gold, Renown and an item. The
+ * pay is sealed until then. A new board costs gold, more each time.
  */
 
 import { save } from '../core/Save';
@@ -16,8 +17,10 @@ import {
   claimBounty,
   heldBounties,
   refreshBoard,
+  repostBoard,
+  repostCost,
 } from '../sim/TownServices';
-import { Panel, Button, div, span, clear, add, fmtInt, rarityHex } from './Widgets';
+import { Panel, Button, div, span, clear, add, fmtInt } from './Widgets';
 import { tr } from '../core/I18n';
 import { itemDisplayName } from '../sim/Loot';
 
@@ -61,11 +64,7 @@ export class BountyPanel {
     const card = div(`depth-card${b.state === 'done' ? ' is-done' : ''}`);
     const body = div('depth-card-body');
     body.appendChild(div('depth-card-title', bountyText(b)));
-    const reward = div('depth-card-sub');
-    const rarity = span('', tr('a {0} item', b.reward.rarity));
-    rarity.style.color = rarityHex(b.reward.rarity);
-    add(reward, span('depth-gold', `${fmtInt(b.reward.gold)}g`), span('', ' · '), span('depth-good', tr('{0} Renown', b.reward.renown)), span('', ' · '), rarity);
-    body.appendChild(reward);
+    body.appendChild(div('depth-card-sub', tr('Reward sealed until paid')));
     if (b.state !== 'open') {
       const track = div('depth-track');
       const fill = div('depth-fill');
@@ -141,7 +140,10 @@ export class BountyPanel {
     this.body.appendChild(
       div(
         'depth-note',
-        tr('Take up to {0}. They count on any descent at least as deep as they ask, and are paid here. They die with you.', MAX_ACTIVE_BOUNTIES),
+        tr(
+          'Take up to {0}. They count on any descent at least as deep as they ask, and are paid here in gold, Renown and an item. Nobody knows what a contract pays until it is paid. They die with you.',
+          MAX_ACTIVE_BOUNTIES,
+        ),
       ),
     );
     const yours = div('depth-list');
@@ -152,5 +154,29 @@ export class BountyPanel {
     board.appendChild(span('depth-dim', tr('On the board')));
     for (const b of open) board.appendChild(this.card(b));
     this.body.appendChild(board);
+
+    // A fresh board is free when a bounty is paid. Before that it costs gold,
+    // and the price climbs with each one bought.
+    const price = repostCost(c);
+    const foot = div('depth-row depth-foot');
+    const repost = new Button({
+      label: tr('Post new bounties · {0}g', fmtInt(price)),
+      small: true,
+      variant: 'gold',
+      onClick: () => {
+        const r = repostBoard(c);
+        if (!r.ok) {
+          toast(r.reason ?? tr('No.'), 'bad');
+          audio.play('ui.error');
+          return;
+        }
+        audio.play('ui.open');
+        save.touch();
+        events.emit('ui:refresh', {});
+      },
+    });
+    repost.setDisabled(c.gold < price);
+    add(foot, span('depth-dim', tr('You carry {0} gold. Each new board costs more until a bounty is paid.', fmtInt(c.gold))), repost.root);
+    this.body.appendChild(foot);
   }
 }

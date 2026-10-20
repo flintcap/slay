@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9218,
+ "count": 9219,
  "strings": [
   {
    "key": "Beating iron…",
@@ -48390,6 +48390,18 @@
    ]
   },
   {
+   "key": "Post new bounties · {0}g",
+   "files": [
+    "ui/BountyPanel.ts"
+   ]
+  },
+  {
+   "key": "Reward sealed until paid",
+   "files": [
+    "ui/BountyPanel.ts"
+   ]
+  },
+  {
    "key": "Take",
    "files": [
     "ui/BountyPanel.ts",
@@ -48397,13 +48409,19 @@
    ]
   },
   {
-   "key": "Take up to {0}. They count on any descent at least as deep as they ask, and are paid here. They die with you.",
+   "key": "Take up to {0}. They count on any descent at least as deep as they ask, and are paid here in gold, Renown and an item. Nobody knows what a contract pays until it is paid. They die with you.",
    "files": [
     "ui/BountyPanel.ts"
    ]
   },
   {
    "key": "That bounty is not yours.",
+   "files": [
+    "ui/BountyPanel.ts"
+   ]
+  },
+  {
+   "key": "You carry {0} gold. Each new board costs more until a bounty is paid.",
    "files": [
     "ui/BountyPanel.ts"
    ]
@@ -48416,18 +48434,6 @@
   },
   {
    "key": "Yours",
-   "files": [
-    "ui/BountyPanel.ts"
-   ]
-  },
-  {
-   "key": "a {0} item",
-   "files": [
-    "ui/BountyPanel.ts"
-   ]
-  },
-  {
-   "key": "{0} Renown",
    "files": [
     "ui/BountyPanel.ts"
    ]

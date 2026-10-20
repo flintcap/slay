@@ -508,6 +508,8 @@ export interface TownState {
   bounties: Bounty[];
   /** Bounties this character has been paid for. */
   claimed: number;
+  /** Paid reposts of the board since the last bounty was claimed. Each one costs more. */
+  reposts: number;
 }
 
 export type BountyKind = 'slay' | 'elites' | 'boss' | 'clear' | 'events';
@@ -521,7 +523,12 @@ export interface Bounty {
   progress: number;
   /** `open` on the board, `active` once taken, `done` when ready to claim. */
   state: 'open' | 'active' | 'done';
-  reward: { gold: number; renown: number; rarity: ItemRarity };
+  /**
+   * What the contract pays against a plain slay bounty at its depth. The board
+   * keeps the reward sealed: its gold, Renown and item are rolled when it is
+   * claimed, from a seed fixed when it was posted.
+   */
+  worth: number;
 }
 
 // ---------------------------------------------------------------------------

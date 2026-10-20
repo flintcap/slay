@@ -23,7 +23,7 @@
  *      The lectern once sat inside the broken cart, which only a render showed.
  */
 import './depth-catalog';
-import type { Character, Item, ItemRarity, MonsterRank } from '../src/types';
+import type { Bounty, Character, Item, MonsterRank } from '../src/types';
 import { Random } from '../src/core/RNG';
 import { save, migrateAccount } from '../src/core/Save';
 import { createCharacter, repairCharacter } from '../src/sim/Character';
@@ -45,6 +45,7 @@ import {
   GAMBLE_ODDS,
   GAMBLE_OFFERS,
   MAX_ACTIVE_BOUNTIES,
+  abandonBounty,
   acceptBounty,
   bountyText,
   canImbue,
@@ -56,6 +57,8 @@ import {
   imbuePower,
   makeBounty,
   refreshBoard,
+  repostBoard,
+  repostCost,
   reforgeCost,
   reforgeMod,
   reforgeableMods,
@@ -340,7 +343,27 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
   if (!acceptBounty(c, ids[0]!).ok || !acceptBounty(c, ids[1]!).ok) problems.push('could not take two bounties');
   const third = open()[0];
   if (third && acceptBounty(c, third.id).ok) problems.push(`took more than ${MAX_ACTIVE_BOUNTIES} bounties`);
-  if (open().length !== BOARD_SIZE) problems.push('the board did not refill after a bounty was taken');
+  // Taking a contract, or looking at the board again, posts nothing new.
+  if (open().length !== BOARD_SIZE - 2) problems.push(`the board refilled for free after bounties were taken (${open().length} open)`);
+  if (refreshBoard(c).bounties.filter((b) => b.state === 'open').length !== BOARD_SIZE - 2) problems.push('looking at the board again refilled it for free');
+  // Giving one up puts it back on the board as it was posted.
+  if (!abandonBounty(c, ids[0]!) || board.bounties.find((b) => b.id === ids[0])?.state !== 'open') problems.push('an abandoned bounty did not go back on the board');
+  if (open().length !== BOARD_SIZE - 1) problems.push(`take and abandon changed the board (${open().length} open)`);
+  // A new board costs gold, and more each time.
+  c.gold = 0;
+  const cost0 = repostCost(c);
+  if (repostBoard(c).ok) problems.push('a new board was posted with no gold');
+  c.gold = 1_000_000;
+  const before = open().map((b) => b.id).join();
+  const r1 = repostBoard(c);
+  const cost1 = repostCost(c);
+  const r2 = repostBoard(c);
+  if (!r1.ok || !r2.ok) problems.push('could not buy a new board');
+  if (r1.price !== cost0 || c.gold !== 1_000_000 - r1.price - r2.price) problems.push('a new board charged the wrong gold');
+  if (!(cost1 > cost0 && repostCost(c) > cost1)) problems.push(`a new board does not cost more each time (${cost0}, ${cost1}, ${repostCost(c)})`);
+  if (open().length !== BOARD_SIZE || open().map((b) => b.id).join() === before) problems.push('a bought board did not post three new contracts');
+  if (heldBounties(c).length !== 1) problems.push('a bought board took away a held bounty');
+  report.repostCost = [cost0, cost1, repostCost(c)];
 
   // Force one of each kind into the held list and drive them through a real director.
   board.bounties = board.bounties.filter((b) => b.state === 'open');
@@ -352,7 +375,7 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
     return b;
   });
   board.bounties.push(...held);
-  const shallow = new RunDirector(held[0]!.minDepth - 1);
+  const shallow = new RunDirector(Math.min(...held.map((b) => b.minDepth)) - 1);
   for (let i = 0; i < 10; i++) shallow.onKill('elite');
   if (held.some((b) => b.progress > 0)) problems.push('a descent shallower than the bounty still counted');
   const deep = Math.max(...held.map((b) => b.minDepth));
@@ -371,20 +394,38 @@ const groupOf = (id: string) => AFFIXES.find((a) => a.id === id)?.group;
   const renown0 = legacyOf(save.account).renown;
   const gold0 = c.gold;
   const b0 = held[0]!;
+  const boardBefore = open().map((b) => b.id).join();
   const r = claimBounty(c, b0.id);
   if (!r.ok || !r.payout?.item) problems.push(`claim failed: ${r.reason}`);
   else {
     grantRenown(save.account, r.payout.renown);
-    if (c.gold !== gold0 + b0.reward.gold) problems.push('claim paid the wrong gold');
+    if (!(r.payout.gold > 0) || c.gold !== gold0 + r.payout.gold) problems.push('claim paid the wrong gold');
     if (!c.inventory.some((i) => i?.uid === r.payout!.item!.uid)) problems.push('claim did not put the item in the pack');
-    const wanted: ItemRarity = b0.reward.rarity;
-    if (r.payout.item.rarity !== wanted && !(wanted !== 'rare' && r.payout.item.rarity === 'rare')) problems.push(`claim item was ${r.payout.item.rarity}, promised ${wanted}`);
+    if (!['rare', 'set', 'unique'].includes(r.payout.item.rarity)) problems.push(`claim item was ${r.payout.item.rarity}`);
     if (!(legacyOf(save.account).renown > renown0)) problems.push('claim gave no Renown');
     if (townOf(c).claimed !== 1) problems.push('claim was not tallied');
+    if (townOf(c).reposts !== 0) problems.push('being paid did not bring the price of a new board back down');
+    if (open().length !== BOARD_SIZE || open().map((b) => b.id).join() === boardBefore) problems.push('being paid did not post a fresh board');
   }
   if (claimBounty(c, b0.id).ok) problems.push('a bounty could be claimed twice');
   if (!hasUnlock(save.account, 'bounties')) problems.push('rank 2 does not unlock the bounty board');
-  report.bounties = held.map((b) => `${bountyText(b)} -> ${b.reward.gold}g, ${b.reward.renown} renown, ${b.reward.rarity}`);
+  // Sealed pay: rolled when claimed, the same on every try, and different from bounty to bounty.
+  {
+    const pay = (b: Bounty) => {
+      const t = new Random(11);
+      const who = createCharacter('Payee', 'ranger', t);
+      who.depthRecord = c.depthRecord;
+      const copy = { ...b, state: 'done' as const };
+      townOf(who).bounties = [copy];
+      const out = claimBounty(who, copy.id);
+      return out.payout ? out.payout.gold : -1;
+    };
+    const a = held[1]!;
+    if (pay(a) !== pay(a)) problems.push('the same bounty paid different gold on two tries');
+    const golds = held.map(pay);
+    if (new Set(golds).size < 2) problems.push(`sealed rewards are all the same (${golds.join(', ')})`);
+    report.bounties = held.map((b, i) => `${bountyText(b)} -> worth ${b.worth}, paid ${golds[i]}g`);
+  }
 
   // Reachable: what a real descent at the bounty's depth provides.
   const supply = { slay: 0, elites: 0, events: 0, runs: 0 };

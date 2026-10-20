@@ -10,7 +10,9 @@
  *     power with one.
  *   - **The Bounty Board** (unlock `bounties`). Three contracts at a time, each
  *     asking for something at a depth you have not yet passed. Take up to two,
- *     finish them below, claim gold, Renown and an item here.
+ *     finish them below, claim gold, Renown and an item here. What a contract
+ *     pays stays sealed until it is claimed. Being paid posts a fresh board;
+ *     posting one before that costs gold, more each time.
  *
  * State lives on the character (`Character.town`), so it dies with them like
  * the gold does. `townOf` builds or repairs it; `repairCharacter` calls
@@ -40,12 +42,11 @@ export const MAX_ACTIVE_BOUNTIES = 2;
 // ---------------------------------------------------------------------------
 
 function freshTown(): TownState {
-  return { v: TOWN_STATE_VERSION, rolls: 0, bounties: [], claimed: 0 };
+  return { v: TOWN_STATE_VERSION, rolls: 0, bounties: [], claimed: 0, reposts: 0 };
 }
 
 const KINDS: readonly BountyKind[] = ['slay', 'elites', 'boss', 'clear', 'events'];
 const STATES = ['open', 'active', 'done'] as const;
-const RARITIES: readonly ItemRarity[] = ['normal', 'magic', 'rare', 'set', 'unique', 'mythic', 'ancient'];
 
 const num = (v: unknown, d: number, min = 0): number =>
   typeof v === 'number' && Number.isFinite(v) ? Math.max(min, v) : d;
@@ -68,8 +69,9 @@ export function repairTownState(c: Character): boolean {
     rolls: Math.floor(num(t.rolls, 0)),
     claimed: Math.floor(num(t.claimed, 0)),
     bounties: [],
+    reposts: Math.floor(num(t.reposts, 0)),
   };
-  if (fixed.rolls !== t.rolls || fixed.claimed !== t.claimed || t.v !== TOWN_STATE_VERSION) changed = true;
+  if (fixed.rolls !== t.rolls || fixed.claimed !== t.claimed || fixed.reposts !== t.reposts || t.v !== TOWN_STATE_VERSION) changed = true;
   const list = Array.isArray(t.bounties) ? t.bounties : [];
   if (!Array.isArray(t.bounties)) changed = true;
   for (const b of list as Array<Partial<Bounty>>) {
@@ -77,19 +79,19 @@ export function repairTownState(c: Character): boolean {
       changed = true;
       continue;
     }
-    const r = (b.reward ?? {}) as Partial<Bounty['reward']>;
+    const minDepth = Math.max(1, Math.floor(num(b.minDepth, 1, 1)));
+    // Saves from before sealed rewards kept the gold instead: it was the
+    // worth times the slay rate at that depth.
+    const old = (b as { reward?: { gold?: unknown } }).reward;
+    const worth = num(b.worth, old ? num(old.gold, 0) / bountyGold(minDepth) || 1 : 1, 0.5);
     const fb: Bounty = {
       id: b.id,
       kind: b.kind as BountyKind,
-      minDepth: Math.max(1, Math.floor(num(b.minDepth, 1, 1))),
+      minDepth,
       target: Math.max(1, Math.floor(num(b.target, 1, 1))),
       progress: Math.floor(num(b.progress, 0)),
       state: STATES.includes(b.state as Bounty['state']) ? (b.state as Bounty['state']) : 'open',
-      reward: {
-        gold: Math.floor(num(r.gold, 0)),
-        renown: num(r.renown, 0),
-        rarity: RARITIES.includes(r.rarity as ItemRarity) ? (r.rarity as ItemRarity) : 'rare',
-      },
+      worth: Math.round(Math.max(0.5, Math.min(3, worth)) * 100) / 100,
     };
     if (fb.state === 'active' && fb.progress >= fb.target) fb.state = 'done';
     if (JSON.stringify(fb) !== JSON.stringify(b)) changed = true;
@@ -423,6 +425,11 @@ export function bountyText(b: Bounty): string {
   return BOUNTY_KINDS.find((k) => k.kind === b.kind)?.text(b) ?? tr('A bounty');
 }
 
+/** A plain slay bounty's gold at this depth, before its roll. */
+function bountyGold(minDepth: number): number {
+  return 250 + minDepth * 110;
+}
+
 /** One new bounty for the board, aimed a little past where the character has been. */
 export function makeBounty(c: Character, rng: Random): Bounty {
   const next = Math.max(1, c.depthRecord + 1);
@@ -430,8 +437,6 @@ export function makeBounty(c: Character, rng: Random): Bounty {
   const minDepth = next + stretch;
   const def = rng.weighted(BOUNTY_KINDS, (k) => k.weight);
   const t = townOf(c);
-  const mul = def.worth * (1 + stretch * 0.2);
-  const rarity: ItemRarity = rng.chance(0.08) ? 'unique' : rng.chance(0.14) ? 'set' : 'rare';
   return {
     id: `b${t.rolls}-${def.kind}`,
     kind: def.kind,
@@ -439,24 +444,50 @@ export function makeBounty(c: Character, rng: Random): Bounty {
     target: Math.max(1, def.target(minDepth, rng)),
     progress: 0,
     state: 'open',
-    reward: {
-      gold: Math.round((250 + minDepth * 110) * mul),
-      renown: Math.round((5 + minDepth * 1.2) * mul * 10) / 10,
-      rarity,
-    },
+    worth: Math.round(def.worth * (1 + stretch * 0.2) * 100) / 100,
   };
 }
 
+const openOnBoard = (t: TownState): number => t.bounties.filter((b) => b.state === 'open').length;
+
 /** Fills the board's open slots. Taken and finished bounties keep their place. */
-export function refreshBoard(c: Character): TownState {
+function fillBoard(c: Character): TownState {
   const t = townOf(c);
-  const open = () => t.bounties.filter((b) => b.state === 'open').length;
   let guard = 0;
-  while (open() < BOARD_SIZE && guard++ < 10) {
+  while (openOnBoard(t) < BOARD_SIZE && guard++ < 10) {
     const rng = rollRng(c, 'bounty');
     t.bounties.push(makeBounty(c, rng));
   }
   return t;
+}
+
+/**
+ * The board as the character finds it. The first visit posts it for free;
+ * after that it only changes when a bounty is paid or a new board is bought.
+ */
+export function refreshBoard(c: Character): TownState {
+  const t = townOf(c);
+  return openOnBoard(t) === 0 ? fillBoard(c) : t;
+}
+
+/** What posting a new board costs right now. Climbs with each one bought. */
+export function repostCost(c: Character): number {
+  const t = townOf(c);
+  const depth = Math.max(1, c.depthRecord + 1);
+  const base = (60 + depth * 25) * 1.5 ** Math.min(t.reposts, 30);
+  return Math.max(1, Math.round((base * legacyPriceMultiplier()) / 5) * 5);
+}
+
+/** Pays to take every open contract down and post new ones. */
+export function repostBoard(c: Character): { ok: boolean; reason?: string; price: number } {
+  const t = townOf(c);
+  const price = repostCost(c);
+  if (c.gold < price) return { ok: false, reason: tr('Not enough gold (need {0}).', price), price };
+  c.gold -= price;
+  t.reposts++;
+  t.bounties = t.bounties.filter((b) => b.state !== 'open');
+  fillBoard(c);
+  return { ok: true, price };
 }
 
 export function acceptBounty(c: Character, id: string): { ok: boolean; reason?: string } {
@@ -467,15 +498,19 @@ export function acceptBounty(c: Character, id: string): { ok: boolean; reason?: 
     return { ok: false, reason: tr('You can hold {0} bounties at once.', MAX_ACTIVE_BOUNTIES) };
   }
   b.state = 'active';
-  refreshBoard(c);
   return { ok: true };
 }
 
+/** Gives a taken bounty up. It goes back on the board as new, if there is room. */
 export function abandonBounty(c: Character, id: string): boolean {
   const t = townOf(c);
   const i = t.bounties.findIndex((x) => x.id === id && x.state === 'active');
   if (i < 0) return false;
-  t.bounties.splice(i, 1);
+  const b = t.bounties[i]!;
+  if (openOnBoard(t) < BOARD_SIZE) {
+    b.state = 'open';
+    b.progress = 0;
+  } else t.bounties.splice(i, 1);
   return true;
 }
 
@@ -515,22 +550,37 @@ export interface BountyPayout {
 }
 
 /**
+ * What a bounty pays. Seeded by the character and the bounty, so a reload or
+ * a claim refused for a full pack rolls the same reward again.
+ */
+function bountyPayout(c: Character, b: Bounty): BountyPayout {
+  const rng = new Random(hashString(`${c.id}:claim:${b.id}`));
+  const gold = Math.round(bountyGold(b.minDepth) * b.worth * rng.range(0.6, 1.5));
+  const renown = Math.round((5 + b.minDepth * 1.2) * b.worth * rng.range(0.7, 1.3) * 10) / 10;
+  const rarity: ItemRarity = rng.chance(0.08) ? 'unique' : rng.chance(0.14) ? 'set' : 'rare';
+  const item = rollItem(b.minDepth + 6, rng, { forceRarity: rarity, classId: c.classId });
+  return { gold, renown, item };
+}
+
+/**
  * Pays a finished bounty: gold now, the item into the pack (or the payout
- * fails if the pack is full), and the Renown for the caller to grant.
+ * fails if the pack is full), and the Renown for the caller to grant. Being
+ * paid posts a fresh board and brings the price of the next one back down.
  */
 export function claimBounty(c: Character, id: string): { ok: boolean; reason?: string; payout?: BountyPayout } {
   const t = townOf(c);
   const i = t.bounties.findIndex((x) => x.id === id);
   const b = t.bounties[i];
   if (!b || b.state !== 'done') return { ok: false, reason: tr('That bounty is not finished.') };
-  const rng = rollRng(c, 'claim');
-  const item = rollItem(b.minDepth + 6, rng, { forceRarity: b.reward.rarity, classId: c.classId });
-  if (!addItemToInventory(c, item)) return { ok: false, reason: tr('Make room in your pack first.') };
-  c.gold += b.reward.gold;
+  const payout = bountyPayout(c, b);
+  if (payout.item && !addItemToInventory(c, payout.item)) return { ok: false, reason: tr('Make room in your pack first.') };
+  c.gold += payout.gold;
   t.bounties.splice(i, 1);
   t.claimed++;
-  refreshBoard(c);
-  return { ok: true, payout: { gold: b.reward.gold, renown: b.reward.renown, item } };
+  t.reposts = 0;
+  t.bounties = t.bounties.filter((x) => x.state !== 'open');
+  fillBoard(c);
+  return { ok: true, payout };
 }
 
 // ---------------------------------------------------------------------------
