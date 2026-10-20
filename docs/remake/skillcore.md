@@ -1,6 +1,6 @@
 # Stream: skillcore (Wave 5: attack speed, cast rate, item speed)
 
-Status: waiting
+Status: in progress
 
 Goal (owner): nothing attacks or casts at warp speed. Basic attacks, attack
 skills, spells and the speed that items add should feel as close as we can
@@ -73,7 +73,7 @@ to paste.
 
 ## Milestones
 
-- [ ] 1. Audit (read code, no browser). Write a table under "Notes for
+- [x] 1. Audit (read code, no browser). ("skillcore: speed audit") Write a table under "Notes for
   resume": every weapon type's base speed, the real time of its basic attack
   today, the real cast time today, how attack skills and spells take their
   time (per skill `speedBonus`, dual wield, channel ticks), every source of
@@ -101,15 +101,18 @@ to paste.
   the new one), the way owned uniques and sets were updated before (find
   that code from `migrateAccount` in `src/core/Save.ts` and reuse it). Write what happens to old
   saves under "Notes for resume".
-- [ ] 4. Keep damage per second. At equal gear, a hero's average damage per
-  second should stay about where it is now (slower swings hit harder). Fix
-  weapon damage bands so every weapon type meets its design damage per
-  second under the new speeds, and adjust per-hit numbers in
-  `src/sim/HeroPower.ts` if needed. Run `check-curve` once before and once
-  after; no class may end up walled where it was not (the ranger at depth 12
-  was already borderline before you; note, do not chase). If
-  `tools/curve-entry.ts` hard-codes 0.42 or any old time, fix it. Never make
-  monsters weaker or fewer.
+- [ ] 4. Damage per hit unchanged (owner change). Damage per swing, per
+  shot and per cast must NOT change because of speed: per-hit damage stays
+  exactly what it is today. Do not touch weapon damage bands in
+  `src/data/itemBases.ts`, per-hit numbers in `src/sim/HeroPower.ts`, skill
+  damage numbers, or any blow scale tied to swing time (`DUAL_BLOW_SCALE`
+  and the dual skill blow scale keep today's value, frozen as a number,
+  never derived from the new speed). Only speeds change; damage per second
+  moves with speed and that is accepted. Run `check-curve` once before and
+  once after, for information only: if a class becomes walled where it was
+  not, do NOT change damage and do NOT touch monsters. Write the before and
+  after table under "Notes for resume" for the owner. If
+  `tools/curve-entry.ts` hard-codes 0.42 or any old time, fix it.
 - [ ] 5. Clips match the time. `src/art/hero/Animator.ts` and the swing
   code stretch each swing and cast clip to the new action time, the hit
   lands on the clip's hit frame, and no clip plays so fast it smears or so
@@ -132,11 +135,96 @@ to paste.
 
 ## Next up
 
-Start milestone 1.
+Milestone 2: new `src/sim/Speed.ts` (one speed function with diminishing
+returns and ceilings), `attackTime` / `castTime` / `timing` on `SkillDef`,
+switch SkillRunner, ShifterRunner hand-off, paladin hand-off, AttackEstimate,
+then delete `DUAL_SWING`, `DUAL_SKILL_TIME`, `speedBonus`, 0.42/0.46/0.5.
 
 ## Notes for resume
 
-(empty)
+### Audit (milestone 1, read from the code on 2026-10-20)
+
+How an action takes its time today. The next action waits for the whole
+action (`Player.isBusy` = `actionLock > 0`), so rate = 1 / time.
+
+| Action | Time today (no gear) | Where |
+| --- | --- | --- |
+| Melee basic, any weapon | 0.42 s (2.38/s), base speed ignored | `SkillRunner.basicAttack` |
+| Melee basic, two blades | 0.32 s per blade (3.13/s), blow x1.234 | `DUAL_SWING`, `DUAL_BLOW_SCALE` |
+| Bow or crossbow basic | 0.46 s (2.17/s) | `basicAttack` ranged branch |
+| Melee skill | 0.42 x dual 1.35 / (1 + speedBonus%) | `melee`/`cleave` branch, `DUAL_SKILL_TIME` |
+| Spin (melee.channel) | 0.42 x tickRate/0.42 (Whirlwind 0.35 s) | same branch |
+| whirlwind / slam / wave family | 0.59 / 0.63 / 0.42 s | family branches |
+| Bow skills (projectile etc.) | 0.5 s on CAST speed (bug: attack speed ignored) | `projectile`/`cone`/... branches |
+| Spells | 0.5 s (2.0/s); heal/buff 0.35 s; channel 0.8 s | `castTime` and x0.7 / x1.6 |
+| Paladin rites / vigils | 0.42 x rite.time (0.7-2.0) / 0.5 x act.time | `paladin/Rites.ts`, `Vigils.ts` |
+| Shifter skills | swing x0.85-1.7, cast x1.1-1.8, leaps by distance | `ShifterRunner.ts` |
+| Leap / blink / dash | 0.34 s / 0.26 s / 0.32-0.5 s fixed | movement, not speed-scaled |
+| Channel tether ticks | tickRate (0.25 s) fixed | `channel.tether` |
+
+Speed today: time / max(0.4, 1 + pct/100), linear, `attackSpeed` and
+`castSpeed` clamped to [-75, 200] in `computeStats`. Fastest possible: swing
+0.14 s (7.1/s), two blades 0.107 s (9.4/s), bow 0.15 s (6.5/s), cast 0.167 s
+(6/s). `Stats.attacksPerSecond` / `castTimeScale` were unused. `AttackEstimate`
+copies 0.42 / 0.46 / 0.5. The base speed only showed in tooltips.
+
+Weapon base speeds (`itemBases.ts`, attacks a second): dagger 1.5-1.75,
+sword 1h 1.2-1.55, axe 1h 1.1-1.25, mace 1h 1.05-1.2, scepter 1.05-1.35,
+wand 1.3-1.55, spear 0.85-1.15, sword 2h 0.85, axe 2h 0.65-0.8, mace 2h
+0.58-0.85, staff 0.9-1.1, bow 0.85-1.35, crossbow 0.7-1.2.
+
+Speed sources (positive unless marked):
+- Affixes: `pre/suf.aspd` and `pre/suf.cspd` 3-6 up to 34-40 (weapons,
+  gloves, rings, amulet / caster weapons, jewelry, gloves, helm);
+  `.great` 42-72 (rare only); `suf.gloves.grip` 12-47 (gloves, rings,
+  amulet); `pre.orb.conduit` 14-54 (orb, wand). One speed line per item.
+- Charms: grand charms only, 0.8 x the jewel ladder (2-5 up to 27-32), and
+  they stack in the pack. Unique charms up to 19.
+- Uniques: 110 lines on 415 uniques, up to 58 (staff cast), 52 (bow), 45
+  (axe); extra lines (`extraLines.ts`, 83 lines) up to 50; depth uniques by
+  curve `8 + 0.25 x ilvl` (30 at 90).
+- Sets: pieces 5-35, bonuses 10-30 per tier, up to 50 for a full set.
+- Gems: garnet (attack) and opal (cast) in weapons 4/7/11/15/20/27 per
+  socket, weapons hold up to 6 sockets (162% from one weapon).
+- Runes: 3-14. Runewords: 5-10 base, +2-3 per cut, up to 25.
+- Item powers (`ItemPowers.ts`): +12 to +25, costs -12 to -25.
+- Boons: Quicksilver +20/+20, Soul Well +15 cast. Statuses: haste +25/+25,
+  frenzy +6, fervent +8/+8; slows on the hero: chilled -15, entangled -20,
+  staggered -20, exhausted -25/-25.
+- Skill passives (rank 1 / 10 / 20): Quick Draw 3/21/28, Reaver 3/18/26,
+  Cold Focus 2/14/20, Corrosive Edge 2/14/20, Butchery 1/10/15, Volley
+  Mastery 1/7/11, Frenzy Mastery 1/10/20, Measured Step 2/11/16 (attack);
+  Heat Shimmer 4/26/35, Storm Fury 3/21/30, Liturgy 1/9/12 (cast).
+- Stacking: Flurry (10 + 1 per rank) per stack x 6 stacks = 60% at rank 1,
+  174% at rank 20. Storm Fury 1 per stack x 10. Pack Instinct (2 + 0.3 per
+  rank) x 5. Fervour aura 8 + 1.2 per rank. Cat form 10 + 1 per rank.
+- Precise Cut `speedBonus: 15` (0.37 s a cut alone, about 0.2 s with two
+  blades). Only skill with `speedBonus`.
+
+Target (from the reference, our own numbers), attacks a second with no gear
+and at the most gear can give:
+
+| Weapon | Base today in play | Target base | Target ceiling |
+| --- | --- | --- | --- |
+| Dagger | 2.38 (3.13 two blades) | 1.5-1.75 | 3.0 |
+| Sword 1h | 2.38 | 1.2-1.55 | 2.4-3.0 |
+| Axe / mace 1h, scepter | 2.38 | 1.05-1.35 | 2.1-2.7 |
+| Spear, 2h sword/axe/mace | 2.38 | 0.85-1.15 | 1.7-2.3 |
+| Bow | 2.17 | 1.15-1.5 | 2.3-3.0 |
+| Crossbow | 2.17 | 0.95-1.2 | 1.9-2.4 |
+| Spell | 2.0 | 2.0 (0.5 s) | 3.4 |
+
+Too fast today: every weapon's basic and attack skills run at 2.38/s, so
+daggers are about 1.4x their target and two-handers 2-2.8x; with gear the
+linear sum reaches 7/s melee (2.5x the target ceiling), 9.4/s with two
+blades (3x), 6/s casts (1.8x). Bow skills ignore attack speed entirely.
+
+### Curve before (check-curve, default grid, 2026-10-20, before any change)
+
+7 of 35 failed before skillcore touched anything: warden d5, revenant d5,
+ranger d5 and d12, paladin d5, shapeshifter d5 and d40. The log also prints
+1571 "[feel] hit report failed TypeError: Cannot convert object to primitive
+value" lines (CombatFeel.onKill, pre-existing, not speed).
 
 ## For the owner to test
 
@@ -144,7 +232,9 @@ Start milestone 1.
 
 ## For skillqa
 
-(empty)
+- `check-curve` prints "[feel] hit report failed TypeError: Cannot convert
+  object to primitive value" from `CombatFeel.onKill` about 1500 times a run
+  (seen before any skillcore change).
 
 ## Handover
 
