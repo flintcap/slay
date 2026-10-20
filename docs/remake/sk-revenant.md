@@ -109,16 +109,20 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 3 are done (skillcore is done; cast times are set in the
-skill data, the Revenant lets go on the release frame, minion swings go
-through the speed curve). Next is milestone 4 in this order: the broken
-ones first (Mass Confusion, Horrify flee, Attrition, Bone Chanter bolts,
-Grand Ossuary melee, Hunting Skull homing, Bone Cage, Soul Cage and Doom
-single target, Marrow Feast, Pestilence spread, zone cap eating auras,
-Femur Lance hits as it passes, Bone Thrall and Bone Chanter `damagePct`),
-then the two new skills (Gravewalk, Hex Upon Hex) and the refunds for
-`gravechill` and `wither`, then the renames, then looks (milestones 5 and
-6). The plan is under "Milestone 2" below, the speeds under "Milestone 3".
+Milestones 1 to 3 are done. Milestone 4 is half built and pushed: fear
+and confusion really work (`AI.ts`, `Enemy.ts`), Attrition has its own
+status, Marrow Feast heals the minions, Death Knight multiplies, Harvest is
+order proof, Hex Upon Hex works (`SkillRunner.hexMul`), every rename and
+tooltip is in, Gravewalk and Hex Upon Hex have their data, sound, motif,
+gesture; the Bone Chanter is ranged in a conjurer's body, the Colossus a
+bone titan, knights an armoured body; summons rise at the aim point, a
+thrall out of a corpse. Still to build in milestone 4, in a new module
+`src/scenes/revenant/RevenantKit.ts` (like `mage/Spells.ts`): Femur Lance
+striking as it passes, Hunting Skull homing, Bone Cage (one hit, root, no
+field), Doom and Soul Cage on one target, Gravewalk itself; then in the
+runner Plagued hopping (spread tick) and the zone cap keeping auras. Then
+milestones 5 (icons) and 6 (looks). The plan is under "Milestone 2" below,
+the speeds under "Milestone 3".
 
 ## Notes for resume
 
