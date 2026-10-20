@@ -151,6 +151,10 @@ convert object to primitive value" many times. It comes from the curve
 sim's stand-in for the combat feel (`CombatFeel.onKill`), is caught, and
 does not change damage; skillcore's curve log has it too.
 
+`check-skills --classes=shadowblade` (once, in the browser lock): 25 of
+25 actives cast and work; the tool's last step (writing
+`shots/skill-audit.json`) fails in a worktree with no `shots/` folder.
+
 Cheap checkers: i18n, iconmatch, names, passives, skilldepth, stattext,
 status, wiring pass (with unique, vfx, coverage, hits, rankpower,
 skillparams and skillsound from milestone 6). `unfinished` fails on two
@@ -580,12 +584,98 @@ Damage per hit is unchanged for every skill slowed above.
 
 ## For the owner to test
 
-(empty)
+Play a Rogue with two daggers, then with one.
+
+- Precise Cut (right click): one full swing you can see: wind-up, cut,
+  follow-through. It is no longer quicker than a basic swing.
+- Scissor Cut: two crossing cuts you can tell apart.
+- Death Lotus: two full turns, eight cuts, a green petal on the floor with
+  each cut.
+- Umbral Ambush and Assassinate: heavy blows with a long wind-up.
+- Steel Waltz (new, Bladework tier 6, needs Flurry): five cuts round one
+  enemy, the fifth always crits.
+- Knife Halo (new, Bladework tier 4, needs Razor Dash): six knives circle
+  you for 8 s and cut what comes near.
+- Coat Blades: green venom beads and drips off both blades while it lasts.
+- Envenom Burst: a green thread tears out of every Poisoned enemy and is
+  pulled into the burst.
+- Nightfall: a curtain of smoke falls round the field and settles on the
+  floor.
+- Phantom Blades: a pale ghost knife with green edges, cutting as it
+  arrives.
+- Vanish: you spring back and leave a blinding puff where you stood.
+- Call the Viper: a jade serpent that follows you, bites, and can be hit.
+- Throws (Fan of Knives, Throwing Spree, Venom Dart, Plague Vial): the
+  knives leave your hand on the throw. Plague Vial lands where you aim.
+- Razor Dash: each enemy is cut as you pass it.
+- Shadow Step and Void Walk: the stab lands on the downstroke.
+- New names: Adder's Kiss (was Viper Strike), Scissor Cut (Double
+  Strike), Razor Dash (Whirling Blades), Counter-Cut (Riposte Blade).
+- An old save with points in Momentum or Perfect Form gets them back to
+  spend.
+- Icons: every Rogue skill has its own picture.
+- Decide: depth 5 is newly walled in the curve (Milestone 7 table). No
+  damage was raised and no monster was touched.
 
 ## For skillqa
 
-(empty)
+- Looks in motion were never seen in a running game: the Coat Blades drip
+  (it finds each held blade's tip from its mesh), Envenom Burst threads,
+  Death Lotus petals, the Nightfall curtain, the phantom knife, the Venom
+  and Shadowcraft burst and wake pools, Knife Halo, Steel Waltz, and every
+  new blade gesture.
+- Frame time was not measured (no `check-perf`, no `check-skillcost`).
+  The costliest look is Nightfall's curtain: about 60 smoke sprites at
+  High, once a cast. Envenom Burst draws up to 8 threads from the beam
+  pool (32 beams shared).
+- `check-skills --classes=shadowblade` (once): all 25 actives cast and
+  work (refused 0, did nothing 0, threw 0); Coat Blades is a buff with no
+  damage of its own, as meant. The tool then stopped with exit 1 because it
+  could not write `shots/skill-audit.json`: a fresh worktree has no
+  `shots/` folder. That is the tool, not a skill; not retried.
+- The icon sheet was seen at 96 and 40 px. Night Eyes and Silhouette were
+  repainted after it (too close to Veil and Shadow Clone); the second
+  sheet is ICON_SHEET_LINE. Shadowcraft still has five hooded figures
+  (Veil, Shadow Clone, Shadow Legion, Mirror Gambit, The Unseen Blade);
+  each differs, but at 40 px they are the closest set.
+- `check-curve`: d5 newly walled, d40 still walled (table in Milestone 7).
+- The curve sim prints "[feel] hit report failed" many times: the sim's
+  stand-in for the combat feel, caught, no effect on damage.
+- `unfinished` fails on the `static` and `rent` statuses: older than this
+  stream, not the Rogue's.
 
 ## Handover
 
-(empty)
+What exists now:
+
+- `src/scenes/rogue/RogueMoves.ts`: the Rogue's own moves behind a small
+  host on `SkillRunner`: Venom Dart, Plague Vial, Fan of Knives, Throwing
+  Spree (each leaves on its release frame), Razor Dash (cuts as it
+  passes), Vanish, Knife Halo, Steel Waltz, Mirror Gambit, Envenom Burst
+  (threads, then the burst), and the Death Lotus and Nightfall looks
+  (`rogueLook`).
+- `src/art/hero/gestures/rogue.ts`: an own blow for every blade skill,
+  one blade and two, with wind-up, hit and follow-through; multi-cut
+  skills land each cut on its key.
+- `src/fx/rogue/RogueFX.ts`: the `rg.` emitters, the coat drip, venom
+  threads, lotus petals, the night curtain and the tree pools. The
+  `phantom` solid is in `src/fx/kit/Solids.ts`.
+- Icons: `src/art/RogueGlyphs.ts` (own painters) and
+  `src/art/icons/rogueIcons.ts`; 54 skills, 54 pictures.
+- Kept (23): Toxicology, Corrosive Edge, Noxious Cloud,
+  Paralytic Toxin, Cultivate, Blood Toxin, Miasma Trail, Hemotoxin,
+  Antivenom, Apex Predator, Toxic Mastery, Night Eyes, Fleetfoot,
+  Silhouette, The Unseen Blade, Shadow Mastery, Blade Mastery, Fan of
+  Knives, Deadly Aim, Flurry (ranks now grow damage), Lethality,
+  Finisher, A Thousand Cuts. Most got a new icon or tree look only; Fan
+  of Knives now throws on its release frame.
+- Changed (29): every other skill (milestone 2 "Change" list): own blows,
+  real timing, true texts, four renames, Call the Viper rebuilt, no hidden
+  damage in Smoke Bomb and Nightfall.
+- Replaced: Momentum -> Knife Halo, Perfect Form -> Steel Waltz (old ranks
+  refund on load).
+- Damage per hit unchanged everywhere. Slower skills are slower by the
+  speed audit (milestone 3).
+
+Left for `finish` (also under "For skillqa"): seeing the looks and
+gestures in motion, frame time, and the owner's call on the d5 wall.
