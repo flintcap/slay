@@ -75,6 +75,9 @@ import { powerHooks } from '../sim/ItemPowers';
 import { resolveCombo, type ComboHit } from './Combos';
 import { tr } from '../core/I18n';
 
+/** Holds the brain walks through (it runs, or turns on its own kind): they never pin the body. */
+const STEERED_HOLDS: ReadonlySet<string> = new Set(['feared', 'confused']);
+
 /** Fastest a monster may move while backing away from the hero (base hero speed is 5.4). */
 const RETREAT_SPEED_CAP = 3.4;
 
@@ -1198,6 +1201,9 @@ export class Enemy implements Combatant {
       const def = statusDef(raw.id);
       if (!def) continue;
       const hold = isHold(def);
+      // Fear and confusion are holds (they wear off by the hold rule) that the
+      // brain walks: the body runs or turns on its own, so they never pin it.
+      const pins = hold && !STEERED_HOLDS.has(def.id);
       if (this.isImmuneToControl && hold) continue;
       if (hold && this.absorbControl(raw, ctx)) continue;
       const duration = hold ? this.controlFor(durationOf(def, raw)) : durationOf(def, raw);
@@ -1223,7 +1229,7 @@ export class Enemy implements Combatant {
         }
         if (app.holdBelow) existing.holdBelow = Math.max(existing.holdBelow ?? 0, app.holdBelow);
         // A second hold keeps it held as long as the hero would be.
-        if (hold) this.rootTimer = Math.max(this.rootTimer, existing.time);
+        if (pins) this.rootTimer = Math.max(this.rootTimer, existing.time);
         continue;
       }
       const dotType = def.dot?.type ?? null;
@@ -1239,7 +1245,7 @@ export class Enemy implements Combatant {
         ...(app.holdBelow ? { holdBelow: app.holdBelow } : {}),
       });
       if (hold) {
-        this.rootTimer = Math.max(this.rootTimer, app.duration);
+        if (pins) this.rootTimer = Math.max(this.rootTimer, app.duration);
         this.interrupt(ctx);
       }
     }
