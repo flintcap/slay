@@ -89,7 +89,7 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons (sk-paladin: icons). Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
 - [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
@@ -109,19 +109,40 @@ the first browser check.
 
 ## Next up
 
-1. Milestone 5 (icons): the 7 copied icons get their own picture
-   (doorbreaker, weight-stone, answer-steel, whetted-faith, confession,
-   red-psalm, measured-step) and the 4 off-theme ones are redrawn
-   (crosswise, sevenfold, mercy-stroke, saints-reach), each tree with its
-   own accent. Then `iconmatch` and `skillicons` if it exists.
-2. Milestone 6: effects polish and cost (the looks in `fx/paladin/`
+1. Milestone 6: effects polish and cost (the looks in `fx/paladin/`
    already exist and are warmed; check per-frame code for allocation).
-3. Milestone 7: `check-skills --classes=paladin` once (get-chrome first,
+2. Milestone 7: `check-skills --classes=paladin` once (get-chrome first,
    `mkdir -p shots`, flock, timeout 3500), `check-curve --classes=paladin`
    once.
-4. Milestone 8: handover.
+3. Milestone 8: handover.
 
 ## Notes for resume
+
+### Milestone 5: icons
+
+- The Paladin has his own icon set, `art/icons/paladinIcons.ts`: every key
+  is `pl-<name>` and is spread into `ICON_MAP`, so no other class's name can
+  be picked up. No two skills in the game share a picture (checked across
+  every class's icon keys; Vespers was the last one, a copy of the
+  Shapeshifter's Night Hunt, now a rosary under the aura ring).
+- New glyphs in `art/PaladinGlyphs.ts`: `plsword` (the Blade tree's arming
+  sword in nine poses), `pldoor` (a chapel door, barred or broken in),
+  `plstone` (a hewn church step, cracked, or two steps) and `plboot` (an
+  armoured foot on a measured line, or a step aside). `scroll` v3 is the
+  Red Psalm, written in blood.
+- The 7 copies have their own picture: Doorbreaker (door broken in), Weight
+  of Stone (two steps), Answer in Steel (crossed swords, sparks), Whetted Faith
+  (sword on a whetstone), Confession Thrust (a level thrust), Red Psalm (the blood
+  scroll), Measured Step (the foot on its rule). The 5 off-theme ones were
+  redrawn: Feint (a ghost step aside), Crosswise (crossing cuts), Sevenfold
+  (seven thrusts), Mercy Stroke (point down over a drop), Saint's Reach (the
+  long reach). Oath Cut, Turn the Blade, Twin Verse and Last Rites now use
+  the same sword so the tree reads as one.
+- Each tree has its own light (`CLASS_LOOK.paladin.trees`): Mace bell
+  bronze, Blade whitened steel, Aura candle gold.
+- Looked at all three trees on a contact sheet (`check-skillicons`): every
+  icon reads at hotbar size. i18n, iconmatch, passives, rankpower,
+  skilldepth and stattext pass.
 
 ### Milestone 4: what was built
 

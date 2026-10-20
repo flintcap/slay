@@ -14,6 +14,11 @@
  *   candle  a tallow candle on a pricket. v1 two (twin wick), v2 guttering.
  *   rood    a wooden rood on a cairn. v1 smouldering, v2 iron-bound in a ring of nails.
  *   writ    a folded writ under a wax seal. v1 burning from the corner.
+ *   scroll  v3: its lines written in blood, a drop falling from the last.
+ *   plsword the Blade tree's arming sword, in nine poses (see `plsword`).
+ *   pldoor  a chapel door of oak and iron. v1 broken in.
+ *   plstone a hewn church step, cracked. v1 two steps.
+ *   plboot  an armoured foot on a measured line. v1 a step aside.
  */
 import type { Glyph, Tone } from './Glyphs';
 import {
@@ -211,7 +216,7 @@ const censer: Glyph = (x, t, v) => {
 const PARCHMENT = mat([0x2a1a0c, 0x5c4024, 0x9a7a52, 0xcdb48a, 0xf2e2c0], 0, 'fine', 0.35);
 
 const scroll: Glyph = (x, t, v) => {
-  const k = v % 3;
+  const k = v % 4;
   if (k === 1) {
     // The blade behind the page, point down.
     x.save();
@@ -229,8 +234,9 @@ const scroll: Glyph = (x, t, v) => {
   obj(x, rrectP(28, 20, 72, 12, 6), PARCHMENT, t, [28, 20], [100, 32], 0.6);
   x.save();
   x.clip(sheet);
-  x.strokeStyle = 'rgba(40,20,10,.75)';
-  x.lineWidth = 2;
+  // The red psalm is written thick and bright enough to read at icon size.
+  x.strokeStyle = k === 3 ? css(0xd01c14, 0.95) : 'rgba(40,20,10,.75)';
+  x.lineWidth = k === 3 ? 3.6 : 2;
   for (let i = 0; i < 5; i++) {
     const y = 40 + i * 9;
     x.beginPath();
@@ -241,6 +247,10 @@ const scroll: Glyph = (x, t, v) => {
   // Char along the torn edge.
   glow(x, 64, 96, 30, sink(t.dark, 0.3), 0.8, 'multiply');
   x.restore();
+  if (k === 3) {
+    glow(x, 64, 56, 40, 0xc01810, 0.35);
+    dropAt(x, 70, 94, 8);
+  }
   if (k === 2) {
     for (const [fx, fy, r] of [[46, 92, 9], [64, 96, 12], [82, 90, 9]] as const) {
       const f = smoothP([[fx, fy - r * 2.2], [fx + r * 0.7, fy - r * 0.6], [fx + r * 0.5, fy + r * 0.4], [fx - r * 0.5, fy + r * 0.4], [fx - r * 0.7, fy - r * 0.6]], 0.45);
@@ -467,4 +477,311 @@ const writ: Glyph = (x, t, v) => {
   }
 };
 
-export const PALADIN_GLYPHS: Record<string, Glyph> = { mace, bell, censer, scroll, rosary, candle, rood, writ };
+// ---------------------------------------------------------------------------
+// Arming sword (the Blade tree's own steel)
+// ---------------------------------------------------------------------------
+
+const STEEL = mat([0x16181c, 0x3a3f46, 0x6c747e, 0xa8b2bc, 0xe8eef4], 0.9, 'brushed', 0.25);
+const WHETSTONE = mat([0x14130f, 0x34322c, 0x5a574e, 0x858175, 0xb4b0a2], 0, 'mottle', 0.45);
+const BLOOD = 0x9a1410;
+
+/**
+ * One arming sword, point up, centred on (64, 64) before it is turned
+ * `rot` and scaled `s` about (cx, cy): a fullered blade, a straight cross,
+ * a leather grip and a wheel pommel.
+ */
+function swordAt(x: Ctx, t: Tone, cx: number, cy: number, rot: number, s = 1): void {
+  x.save();
+  x.translate(cx, cy);
+  x.rotate(rot);
+  x.scale(s, s);
+  x.translate(-64, -64);
+  obj(x, polyP([[64, 8], [71, 22], [71, 82], [57, 82], [57, 22]]), STEEL, t, [57, 8], [71, 82], 1);
+  x.save();
+  x.strokeStyle = 'rgba(8,9,12,.6)';
+  x.lineWidth = 2;
+  x.beginPath();
+  x.moveTo(64, 26);
+  x.lineTo(64, 78);
+  x.stroke();
+  x.restore();
+  obj(x, rrectP(40, 82, 48, 7, 3), IRON, t, [40, 82], [88, 89], 0.5);
+  obj(x, rrectP(60, 89, 8, 20, 2), LEATHER, t, [60, 89], [68, 109], 0.3);
+  obj(x, circleP(64, 114, 6.5), BRONZE, t, [57, 107], [71, 121], 0.4);
+  spec(x, 61, 40, 1.6, 18, 0, 0.55);
+  x.restore();
+}
+
+/** A drop of blood hanging from (cx, cy), `r` across. */
+function dropAt(x: Ctx, cx: number, cy: number, r: number): void {
+  const d = smoothP([[cx, cy], [cx + r * 0.55, cy + r * 1.3], [cx, cy + r * 2], [cx - r * 0.55, cy + r * 1.3]], 0.5);
+  x.save();
+  x.fillStyle = css(BLOOD, 0.95);
+  x.fill(d);
+  x.fillStyle = 'rgba(255,220,210,.35)';
+  x.fill(circleP(cx - r * 0.18, cy + r * 1.2, r * 0.18));
+  x.restore();
+}
+
+/** Sparks thrown off one point, `n` short rays in a fan about `dir` radians. */
+function sparks(x: Ctx, t: Tone, cx: number, cy: number, n: number, dir: number, spread: number, r0: number, r1: number): void {
+  glow(x, cx, cy, r1 * 1.1, t.glow, 0.7);
+  for (let i = 0; i < n; i++) {
+    const a = dir + (n > 1 ? (i / (n - 1) - 0.5) * spread : 0);
+    const p = new Path2D();
+    p.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+    p.lineTo(cx + Math.cos(a) * (r1 - (i % 2) * r1 * 0.25), cy + Math.sin(a) * (r1 - (i % 2) * r1 * 0.25));
+    ray(x, p, t, 1.8);
+  }
+}
+
+/**
+ * The Paladin's arming sword.
+ *   v0 upright. v1 two crossed at the bind, sparks (an answer). v2 drawn
+ *   across a whetstone. v3 level, point forward, blood off the point (a
+ *   lunge). v4 two cuts scored across each other behind it. v5 seven
+ *   thrusts fanned from its point. v6 point down over a falling drop (the
+ *   kind cut). v7 a long reach, light running on past the point. v8 a thin
+ *   cut opened across it, one drop.
+ */
+const plsword: Glyph = (x, t, v) => {
+  const k = v % 9;
+  switch (k) {
+    case 1: {
+      swordAt(x, t, 64, 64, -0.62, 0.9);
+      swordAt(x, t, 64, 64, 0.62, 0.9);
+      sparks(x, t, 64, 40, 7, -Math.PI / 2, 2.4, 6, 24);
+      break;
+    }
+    case 2: {
+      obj(x, polyP([[18, 92], [92, 80], [110, 90], [36, 104]]), WHETSTONE, t, [18, 80], [110, 104], 1);
+      swordAt(x, t, 60, 58, 1.05, 0.88);
+      sparks(x, t, 66, 86, 6, -Math.PI * 0.62, 1.4, 4, 22);
+      break;
+    }
+    case 3: {
+      swordAt(x, t, 60, 64, Math.PI / 2, 0.92);
+      dropAt(x, 112, 70, 5);
+      dropAt(x, 104, 80, 4);
+      break;
+    }
+    case 4: {
+      for (const sg of [-1, 1]) {
+        const p = smoothP([[64 - sg * 46, 22], [64 - sg * 10, 58], [64 + sg * 44, 104]], 0.4, false);
+        ray(x, p, t, 3.2);
+      }
+      swordAt(x, t, 64, 64, 0, 0.62);
+      break;
+    }
+    case 5: {
+      for (let i = 0; i < 7; i++) {
+        const a = -Math.PI / 2 + (i / 6 - 0.5) * 1.5;
+        const p = new Path2D();
+        p.moveTo(64 + Math.cos(a) * 34, 48 + Math.sin(a) * 34);
+        p.lineTo(64 + Math.cos(a) * 48, 48 + Math.sin(a) * 48);
+        ray(x, p, t, i === 3 ? 3 : 2);
+      }
+      swordAt(x, t, 64, 74, 0, 0.72);
+      break;
+    }
+    case 6: {
+      swordAt(x, t, 64, 54, Math.PI, 0.82);
+      dropAt(x, 64, 104, 6);
+      x.save();
+      x.globalAlpha = 0.7;
+      ray(x, ellipseP(64, 118, 16, 4), t, 2);
+      x.restore();
+      break;
+    }
+    case 7: {
+      const reachP = new Path2D();
+      reachP.moveTo(84, 30);
+      reachP.lineTo(118, 2);
+      ray(x, reachP, t, 3.5);
+      glint(x, 104, 14, 6, lift(t.core, 0.5), 0.9);
+      swordAt(x, t, 56, 72, 0.7, 0.9);
+      break;
+    }
+    case 8: {
+      swordAt(x, t, 64, 64, -0.4, 0.92);
+      const cut = smoothP([[22, 50], [64, 62], [106, 58]], 0.4, false);
+      ray(x, cut, t, 2.4);
+      dropAt(x, 74, 64, 5);
+      break;
+    }
+    default:
+      swordAt(x, t, 64, 64, -0.35, 0.95);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Door
+// ---------------------------------------------------------------------------
+
+/** The door's arched outline. */
+function doorArch(): Path2D {
+  return smoothP([[34, 118], [34, 50], [40, 30], [52, 18], [64, 14], [76, 18], [88, 30], [94, 50], [94, 118]], 0.3);
+}
+
+/** Planks, iron bands and studs on whatever arch is drawn at the transform. */
+function doorFace(x: Ctx, t: Tone, arch: Path2D): void {
+  obj(x, arch, WOOD, t, [34, 14], [94, 118], 1.2);
+  x.save();
+  x.clip(arch);
+  x.strokeStyle = 'rgba(10,6,3,.8)';
+  x.lineWidth = 2.2;
+  for (const px of [49, 64, 79]) {
+    x.beginPath();
+    x.moveTo(px, 10);
+    x.lineTo(px, 120);
+    x.stroke();
+  }
+  x.restore();
+  for (const by of [42, 96]) {
+    obj(x, rrectP(32, by, 64, 7, 2), IRON, t, [32, by], [96, by + 7], 0.5);
+    for (const sx of [40, 56, 72, 88]) obj(x, circleP(sx, by + 3.5, 2), IRON, t, [sx - 2, by + 1], [sx + 2, by + 6], 0.2);
+  }
+}
+
+/**
+ * A chapel door of oak and iron.
+ *   v0 barred: a beam set across it in two brackets. v1 broken in: split
+ *   down the middle, the halves thrown apart, splinters flying.
+ */
+const pldoor: Glyph = (x, t, v) => {
+  const arch = doorArch();
+  if (v % 2 === 0) {
+    doorFace(x, t, arch);
+    for (const bx of [30, 88]) obj(x, rrectP(bx, 60, 10, 18, 2), IRON, t, [bx, 60], [bx + 10, 78], 0.4);
+    obj(x, rrectP(18, 64, 92, 11, 3), WOOD, t, [18, 64], [110, 75], 1);
+    glint(x, 92, 66, 4, lift(t.core, 0.4), 0.7);
+    return;
+  }
+  // Broken in: two halves, each turned out about its hinge, a ragged split between.
+  glow(x, 64, 64, 40, t.glow, 0.55);
+  for (const sg of [-1, 1]) {
+    x.save();
+    x.translate(64 + sg * 30, 118);
+    x.rotate(sg * 0.22);
+    x.translate(-(64 + sg * 30), -118);
+    x.translate(sg * 6, 0);
+    const jag: Pt[] = sg < 0
+      ? [[34, 118], [34, 50], [40, 30], [52, 18], [62, 15], [58, 34], [66, 52], [58, 70], [66, 90], [60, 118]]
+      : [[94, 118], [94, 50], [88, 30], [76, 18], [66, 15], [70, 34], [62, 52], [70, 70], [62, 90], [68, 118]];
+    doorFace(x, t, polyP(jag));
+    x.restore();
+  }
+  // Splinters thrown out of the break, and the blow that broke it.
+  for (const [sx, sy, a, l] of [[58, 40, -2.2, 16], [70, 56, -0.6, 18], [56, 78, 2.6, 14], [72, 92, 0.4, 15]] as const) {
+    const p = polyP([[sx, sy], [sx + Math.cos(a) * l, sy + Math.sin(a) * l], [sx + Math.cos(a + 0.3) * l * 0.6, sy + Math.sin(a + 0.3) * l * 0.6]]);
+    obj(x, p, WOOD, t, [sx - l, sy - l], [sx + l, sy + l], 0.3);
+  }
+  sparks(x, t, 64, 64, 6, 0, Math.PI * 2, 30, 50);
+};
+
+// ---------------------------------------------------------------------------
+// Hewn stone
+// ---------------------------------------------------------------------------
+
+const ASHLAR = mat([0x15130f, 0x37332b, 0x5f594d, 0x8c8576, 0xbdb5a2], 0, 'mottle', 0.4);
+
+/** One hewn block: front, top and side faces, a cross cut in the front. */
+function blockAt(x: Ctx, t: Tone, ox: number, oy: number, w: number, h: number, d: number): void {
+  const front = polyP([[ox, oy], [ox + w, oy], [ox + w, oy + h], [ox, oy + h]]);
+  const top = polyP([[ox, oy], [ox + d, oy - d * 0.8], [ox + w + d, oy - d * 0.8], [ox + w, oy]]);
+  const side = polyP([[ox + w, oy], [ox + w + d, oy - d * 0.8], [ox + w + d, oy + h - d * 0.8], [ox + w, oy + h]]);
+  obj(x, side, ASHLAR, t, [ox + w, oy - d], [ox + w + d, oy + h], 0.6);
+  obj(x, top, ASHLAR, t, [ox, oy - d], [ox + w + d, oy], 0.5);
+  obj(x, front, ASHLAR, t, [ox, oy], [ox + w, oy + h], 1);
+  const cx = ox + w / 2;
+  const cy = oy + h / 2;
+  const cross = new Path2D();
+  cross.addPath(rrectP(cx - 2.5, cy - h * 0.32, 5, h * 0.64, 1));
+  cross.addPath(rrectP(cx - w * 0.16, cy - h * 0.14, w * 0.32, 5, 1));
+  x.save();
+  x.fillStyle = 'rgba(8,6,4,.75)';
+  x.fill(cross);
+  x.restore();
+  innerEdge(x, cross, css(t.glow, 0.7), 2, 1, 1, 1);
+}
+
+/**
+ * A hewn church step.
+ *   v0 one block, cracked under a weight. v1 two steps, one set on the other.
+ */
+const plstone: Glyph = (x, t, v) => {
+  glow(x, 64, 76, 42, t.glow, 0.4);
+  if (v % 2 === 1) {
+    blockAt(x, t, 20, 78, 70, 30, 16);
+    blockAt(x, t, 32, 44, 50, 30, 14);
+    return;
+  }
+  blockAt(x, t, 22, 54, 66, 44, 18);
+  const crack = polyP([[40, 54], [46, 66], [40, 76], [50, 88], [46, 98]], false);
+  x.save();
+  x.strokeStyle = 'rgba(6,4,3,.95)';
+  x.lineWidth = 3;
+  x.stroke(crack);
+  x.restore();
+  ray(x, crack, t, 1.3);
+  // The weight bearing down on it.
+  for (const px of [44, 64, 84]) {
+    const p = new Path2D();
+    p.moveTo(px, 10);
+    p.lineTo(px, 34);
+    ray(x, p, t, 2.6);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Sabaton
+// ---------------------------------------------------------------------------
+
+/** One armoured foot, side on, toe to the right, standing on `floor`. */
+function sabatonAt(x: Ctx, t: Tone, ox: number, floor: number, a = 1): void {
+  x.save();
+  x.globalAlpha = a;
+  x.translate(ox, floor);
+  // Greave, the lames over the instep, the pointed toe.
+  obj(x, rrectP(-14, -82, 26, 46, 6), IRON, t, [-14, -82], [12, -36], 0.8);
+  obj(x, smoothP([[-16, -40], [12, -40], [22, -26], [44, -14], [50, -4], [-18, -4]], 0.25), IRON, t, [-18, -40], [50, -4], 1);
+  x.save();
+  x.strokeStyle = 'rgba(6,7,9,.85)';
+  x.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    x.beginPath();
+    x.arc(4 + i * 10, -6, 18 - i * 3, -Math.PI * 0.75, -Math.PI * 0.25);
+    x.stroke();
+  }
+  x.restore();
+  obj(x, rrectP(-20, -6, 72, 6, 2), LEATHER, t, [-20, -6], [52, 0], 0.3);
+  spec(x, -4, -64, 2, 12, 0, 0.5);
+  x.restore();
+}
+
+/**
+ * The Paladin's armoured foot.
+ *   v0 one step set on a measured line. v1 a step aside, the foot it left
+ *   still there as a ghost.
+ */
+const plboot: Glyph = (x, t, v) => {
+  if (v % 2 === 1) {
+    sabatonAt(x, t, 36, 104, 0.35);
+    const p = smoothP([[44, 30], [64, 22], [84, 30]], 0.4, false);
+    ray(x, p, t, 2.6);
+    sabatonAt(x, t, 70, 112);
+    return;
+  }
+  // The rule under it: a line marked off in even steps.
+  const rule = new Path2D();
+  rule.moveTo(14, 112);
+  rule.lineTo(114, 112);
+  for (const tx of [22, 54, 86]) {
+    rule.moveTo(tx, 104);
+    rule.lineTo(tx, 120);
+  }
+  ray(x, rule, t, 2);
+  sabatonAt(x, t, 52, 108);
+};
+
+export const PALADIN_GLYPHS: Record<string, Glyph> = { mace, bell, censer, scroll, rosary, candle, rood, writ, plsword, pldoor, plstone, plboot };

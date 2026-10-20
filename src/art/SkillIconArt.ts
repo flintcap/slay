@@ -22,6 +22,7 @@ import { ROGUE_ICONS } from './icons/rogueIcons';
 import { SHIFTER_ICONS } from './icons/shifterIcons';
 import { KNIGHT_ICONS } from './icons/knightIcons';
 import { REVENANT_ICONS } from './icons/revenantIcons';
+import { PALADIN_ICONS } from './icons/paladinIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
 import {
   type Ctx,
@@ -89,7 +90,8 @@ const CLASS_LOOK: Record<string, ClassLook> = {
   ranger: { ring: GLYPH_MATS.WOOD, tex: 'grain', light: 0xc8d890, ground: 0x1a2012 },
   // Raw hide on the ring and amber firelight: the woods, not the forge.
   shapeshifter: { ring: rampOf(0x6a4428, 0.05, 'pores', 0.4), tex: 'pores', light: 0xe09050, ground: 0x22140c },
-  paladin: { ring: rampOf(0x6a5638, 0.75, 'hammered', 0.35), tex: 'pores', light: 0xe8cf96, ground: 0x221a12 },
+  // Mace bell bronze, Blade whitened steel, Aura the class's candle gold.
+  paladin: { ring: rampOf(0x6a5638, 0.75, 'hammered', 0.35), tex: 'pores', light: 0xe8cf96, ground: 0x221a12, trees: [0xdca060, 0xd4dee8, 0xe8cf96] },
 };
 
 const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8, ground: 0x1c1c22 };
@@ -172,24 +174,6 @@ const ICON_MAP: Record<string, string> = {
   // Revenant — gravepact
   siphon: 'chalice^drip', 'ward-spirit': 'ghost^aura', 'wisp-soul': 'ghost', 'pact-blood': 'hand^drip', gravewalk: 'hand^rise',
   'fang-dark': 'fang', 'cage-soul': 'cage', 'drain-beam': 'beam', embrace: 'hand^aura', revenant: 'ghost^rise', harvest: 'scythe',
-  // Paladin: Mace.
-  'toll-blow': 'mace^impact', 'hallowed-iron': 'mace:2', 'shield-crack': 'shield^burst', anvilfall: 'anvil^impact',
-  'forged-faith': 'anvil^aura', doorbreaker: 'shield^impact', knell: 'bell:2', 'crushing-weight': 'boulder^impact',
-  bellguard: 'bell^aura', 'pilgrim-maul': 'mace:1^impact', 'iron-penance': 'crack^chain', 'bar-door': 'tower^field',
-  'hurl-censer': 'censer:1', 'weight-stone': 'boulder', 'relic-bash': 'chalice^impact', 'last-bell': 'bell:1^rise',
-  'iron-verdict': 'mace:2^burst', unbroken: 'helm^aura',
-  // Paladin: Blade.
-  'oath-cut': 'sword^impact', 'blade-catechism': 'scroll', 'turn-blade': 'sword^spin', 'twin-verse': 'sword^chain',
-  'red-psalm': 'drop^aura', feint: 'footprints^speed', litany: 'scroll:1', 'measured-step': 'footprints',
-  'answer-steel': 'sword^rise', confession: 'sword^speed', 'whetted-faith': 'sword^aura', crosswise: 'dagger:1^burst',
-  'mercy-stroke': 'hourglass^impact', 'fifth-verse': 'scroll^rise', sevenfold: 'dagger:2^speed', 'red-rosary': 'rosary:1',
-  'last-rites': 'sword^burst', 'saints-reach': 'lance^rise',
-  // Paladin: Aura.
-  'tallow-light': 'candle^aura', liturgy: 'scroll:2', 'iron-vigil': 'rood:2^wall', 'smouldering-rood': 'rood:1^aura',
-  anoint: 'chalice^rise', censure: 'writ', 'censer-smoke': 'censer^field', 'wide-wick': 'candle^nova',
-  fervour: 'candle:2^speed', 'tolling-bell': 'bell^nova', 'penitent-ground': 'rood^field', 'martyrs-vow': 'heart^wall',
-  'writ-of-ash': 'writ:1', vespers: 'moon^aura', 'consecrated-ground': 'candle^field', 'twin-wick': 'candle:1',
-  'last-hour': 'bell:1^rain', 'ember-saint': 'rood:1^rise',
   'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
   scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
   // Ranger
@@ -201,6 +185,7 @@ const ICON_MAP: Record<string, string> = {
   ...KNIGHT_ICONS,
   ...ROGUE_ICONS,
   ...REVENANT_ICONS,
+  ...PALADIN_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */
