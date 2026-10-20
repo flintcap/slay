@@ -12,7 +12,7 @@ import { audio } from './audio/Audio';
 import { mountKeyArt } from './art/KeyArt';
 import { bakeStats } from './world/BakePool';
 import { DEV_TOOLS } from './core/DevTools';
-import { RELEASE, versionLabel } from './core/Build';
+import { PACKED, RELEASE, versionLabel } from './core/Build';
 import { installLog, logInfo } from './core/Log';
 import { warmSpriteAtlas } from './fx/kit/Atlas';
 // The bundled typefaces (ui/Fonts.ts): one variable file per script.
@@ -111,11 +111,21 @@ async function main(): Promise<void> {
 
   boot(0.18, tr('Kindling the forge…'));
   await tick();
+  // Bodies meshed when the game was built (`tools/build-meshes.mjs`), read
+  // while the GPU starts; the town prewarm below skips them.
+  const shippedMeshes = PACKED
+    ? Promise.resolve(new Set<string>())
+    : import('./art/hero/MeshCache').then((m) => m.loadShippedMeshes(`${import.meta.env.BASE_URL ?? './'}meshes/heroes.bin`));
   const engine = new Engine(canvas);
   await engine.renderer.init();
   {
     const { gpuName } = await import('./core/Report');
     logInfo(`GPU: ${gpuName(engine) || 'unknown'}, screen ${window.innerWidth}x${window.innerHeight} at ${window.devicePixelRatio}x`);
+    // Scans packed for the GPU (`tools/pack-textures.mjs`), where it reads them.
+    const { usePackedTextures } = await import('./core/Assets');
+    const bc7 = engine.renderer.gl.hasFeature('texture-compression-bc');
+    const packed = await usePackedTextures(bc7);
+    logInfo(bc7 ? `packed textures: ${packed}` : 'packed textures: the GPU does not read BC7, so the plain files');
   }
   events.on('scene:change', (p) => logInfo(`scene ${p.from} -> ${p.to}`));
   {
@@ -154,7 +164,9 @@ async function main(): Promise<void> {
   // The first select-screen hero and the nine townsfolk mesh in a worker
   // while the rest of boot runs and the player is on the menus.
   const { prewarmTownsfolk } = await import('./art/npc/Prewarm');
-  prewarmTownsfolk();
+  const shipped = await shippedMeshes;
+  const left = prewarmTownsfolk(shipped);
+  logInfo(`shipped bodies: ${shipped.size}; ${left} left for the prewarm workers`);
   // Texture/material libraries build their atlases lazily on first scene entry;
   // touching them here front-loads the cost onto the boot bar instead of the
   // first frame of gameplay.
@@ -337,6 +349,16 @@ async function main(): Promise<void> {
     debug: installDebug(engine),
     // Bake workers' tally (`world/BakePool.ts`), for the load checker.
     bakes: bakeStats,
+    // What the session holds, for the soak test: asset textures, the kept
+    // shadow maps and the hero mesh cache.
+    memory: async () => {
+      const [{ assetStats }, { keptShadowMaps }, { meshCacheStats }] = await Promise.all([
+        import('./core/Assets'),
+        import('./core/ShadowCache'),
+        import('./art/hero/MeshCache'),
+      ]);
+      return { assets: assetStats(), keptShadows: keptShadowMaps(), meshes: meshCacheStats() };
+    },
     // The checkers that measure scenes (ghost colliders, probes) build boxes
     // and matrices in the page. Only the classes they use are named here.
     // Exposing the whole namespace (`await import('three')`) defeated tree

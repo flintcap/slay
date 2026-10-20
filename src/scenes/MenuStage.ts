@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import {
-  Discard, Fn, abs, atan, clamp, cos, exp, float, floor, fract, length, mix, pow, sin, smoothstep, uniform, uv, vec2, vec4,
+  Discard, Fn, abs, atan, clamp, cos, exp, float, floor, fract, length, mix, positionLocal, pow, sin, smoothstep, uniform, uv, vec2, vec3, vec4,
 } from 'three/tsl';
 import { hash2, type F, type V2, type V3, type V4 } from '../core/Tsl';
 import type { Rng } from '../types';
@@ -104,6 +104,21 @@ export function buildRift(width: number, height: number, spring: number, deep: n
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
   mesh.position.y = height * 0.5;
   mesh.renderOrder = 3;
+  // Night behind it, in the opening's own outline. The rift adds its light
+  // to whatever is behind the arch, and with no fog to darken it the lit
+  // ground past the gate showed through its lower half as a pale band.
+  const back = new THREE.MeshBasicNodeMaterial({ side: THREE.FrontSide });
+  back.fog = false;
+  back.colorNode = Fn(() => {
+    const st = uv();
+    const p = vec2(st.x.sub(0.5).mul(width), st.y.mul(height)).toVar();
+    const halfW = width * 0.5;
+    Discard(p.y.lessThan(spring).select(abs(p.x).sub(halfW), length(vec2(p.x, p.y.sub(spring))).sub(halfW)).greaterThan(0));
+    return vec3(0);
+  })() as unknown as V3;
+  const backing = new THREE.Mesh(mesh.geometry, back);
+  backing.position.z = -0.04;
+  mesh.add(backing);
   return {
     mesh,
     material,
@@ -114,6 +129,23 @@ export function buildRift(width: number, height: number, spring: number, deep: n
       uPulse.value = pulse;
     },
   };
+}
+
+/**
+ * Night closing in on a stage: a ring laid just over the ground that darkens
+ * it to `color` (the sky's) from `from` metres out to full dark at `to`, so
+ * the ground has no visible edge. Darkness only, nothing added to the air:
+ * the title has no fog or mist.
+ */
+export function buildNightfall(from: number, to: number, color: number): THREE.Mesh {
+  const geo = new THREE.RingGeometry(from * 0.9, to * 1.8, 96, 1);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicNodeMaterial({ color, transparent: true, depthWrite: false });
+  mat.fog = false;
+  mat.opacityNode = smoothstep(float(from), float(to), length(positionLocal.xz)) as unknown as F;
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 1;
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------

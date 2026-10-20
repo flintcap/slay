@@ -2,10 +2,11 @@
  * SLAY — weather: what falls and drifts round the hero (docs/remake/mapvariety.md).
  *
  * Snow over the tundra, rain on the swamp and the black wood, ash and
- * cinders over the wastes and the pit, sand on the desert wind, and low fog
- * in the crypts and drowned halls. Open sky gets what falls; under a roof
- * only fog, drips and the odd draught of rime. Each zone keeps its own
- * weather, and walking from one into the next eases between them.
+ * cinders over the wastes and the pit, sand on the desert wind, and drips in
+ * the crypts and drowned halls. Open sky gets what falls; under a roof only
+ * drips and the odd draught of rime. Each zone keeps its own weather, and
+ * walking from one into the next eases between them. No fog banks: the
+ * owner had the fog taken out, as far too much.
  *
  * Everything is drawn by the particle kit (`fx/kit`), through
  * `FXSystem.emit`, so it scales with the quality level (`fxScale`) and backs
@@ -22,7 +23,7 @@ import type { FXSystem } from '../fx/Particles';
 import type { BiomeId, DungeonLevel, MapZone, Rng } from '../types';
 import { runTheme, themeFits, type RunTheme } from './Themes';
 
-export type WeatherKind = 'snow' | 'rain' | 'ash' | 'cinders' | 'fog' | 'grit' | 'drip';
+export type WeatherKind = 'snow' | 'rain' | 'ash' | 'cinders' | 'grit' | 'drip';
 
 /** One thing falling or drifting, and how much of it per second at full quality. */
 export interface WeatherFall {
@@ -57,7 +58,6 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
     case 'tundra': {
       if (variant === 'squall') {
         add('snow', 380);
-        add('fog', 1.2);
         wind = rng.range(0.85, 1);
         break;
       }
@@ -73,7 +73,6 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
         add('snow', 340);
         wind = rng.range(0.7, 1);
       }
-      if (rng.chance(0.35)) add('fog', 0.6);
       break;
     }
     case 'frostvault':
@@ -82,29 +81,22 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
         wind = rng.range(0.5, 0.8);
       } else if (variant === 'thaw') add('drip', 9);
       else add('snow', 24);
-      add('fog', 0.7);
       break;
     case 'swamp':
       if (variant === 'dryseason') {
         add('grit', 40);
-        add('fog', 0.4);
         break;
       }
       if (rng.chance(0.6)) add('rain', rng.range(240, 360));
-      add('fog', variant === 'lanterns' ? 1.4 : 1.1);
       break;
     case 'darkForest':
-      if (variant === 'fogbound') {
-        add('fog', 1.6);
-        break;
-      }
+      // The Fogbound Wood is still: no rain.
+      if (variant === 'fogbound') break;
       if (variant === 'bonfire') {
         add('cinders', 26);
-        if (rng.chance(0.5)) add('fog', 0.5);
         break;
       }
       if (rng.chance(0.45)) add('rain', rng.range(180, 280));
-      if (rng.chance(0.55)) add('fog', 0.8);
       break;
     case 'ashwaste':
       add('ash', variant === 'grey' ? 170 : 90);
@@ -134,17 +126,12 @@ export function weatherFor(biome: BiomeId, outdoor: boolean, variant: string | u
       }
       break;
     case 'desertTomb':
-      if (variant === 'floodvault') {
-        add('drip', 8);
-        add('fog', 0.8);
-      }
+      if (variant === 'floodvault') add('drip', 8);
       break;
     case 'crypt':
-      if (rng.chance(0.7)) add('fog', 0.8);
       if (variant === 'flooded') add('drip', 7);
       break;
     case 'sunkenTemple':
-      add('fog', 0.9);
       add('drip', variant === 'tidal' ? 10 : 5);
       break;
     case 'caverns':
@@ -199,7 +186,7 @@ interface Look {
   lean: number;
   /** Disc radius round the hero batches land in. */
   reach: number;
-  /** Fly downward (rain, snow) or along the wind (fog, grit). */
+  /** Fly downward (rain, snow) or along the wind (grit). */
   down: boolean;
 }
 
@@ -219,10 +206,6 @@ const LOOKS: Record<WeatherKind, Look> = {
   cinders: {
     layer: lay({ sprite: SPRITE.ember, ramp: R_CINDER, speed: [0.8, 1.5], spread: 0.4, size: [0.025, 0.05], life: [3, 5], emit: 1.3, occl: 0, heat: [1, 0.3], gravity: -0.4, drag: 0.3, turb: 0.45, fade: 1.2 }),
     batch: 3, y: [5, 7], low: false, lean: 0.7, reach: 13, down: true,
-  },
-  fog: {
-    layer: lay({ sprite: SPRITE.gas, ramp: [0x6a7078, 0x484e54, 0x24282c], count: 3, radius: 3, speed: [0.15, 0.35], spread: 0.2, size: [2.6, 4.2], grow: 1.4, life: [10, 15], emit: 0.4, occl: 0.2, heat: [0.25, 0], drag: 0.05, turb: 0.12, fade: 1 }),
-    batch: 1, y: [0.4, 1.1], low: true, lean: 1, reach: 14, down: false,
   },
   grit: {
     layer: lay({ sprite: SPRITE.spark, ramp: R_GRIT, speed: [4, 7], spread: 0.15, up: 0.04, size: [0.02, 0.034], life: [1.2, 2], emit: 0.28, occl: 0.4, heat: [0.6, 0.3], gravity: -0.3, drag: 0.2, turb: 0.5, stretch: 15, fade: 1.5 }),
@@ -262,10 +245,7 @@ export class Weather {
   private wind = 0;
   private windWant = 0;
   private zone = -1;
-  /** Ramps that carry the level's own fog colour, built once. */
-  private fogLayer: Layer;
-
-  constructor(fx: WeatherFx, level: DungeonLevel, fogColor?: number) {
+  constructor(fx: WeatherFx, level: DungeonLevel) {
     this.fx = fx;
     this.level = level;
     const rng = streamFor(level.seed, `weather:${level.depth}:${level.entry.x},${level.entry.y}:${level.width}x${level.height}`);
@@ -277,16 +257,6 @@ export class Weather {
       return themeFits(theme, z.biome) ? withTheme(r, theme, z.outdoor) : r;
     });
     for (const k of Object.keys(LOOKS) as WeatherKind[]) this.mix.set(k, { rate: 0, now: 0, acc: 0, splash: 0 });
-    this.fogLayer = LOOKS.fog.layer;
-    if (fogColor !== undefined) {
-      // Lift the level's fog colour so the bank shows against it, and darken
-      // it towards the end of a puff's life.
-      const c = new THREE.Color(fogColor);
-      const hi = c.clone().lerp(new THREE.Color(0x8a9096), 0.55).getHex();
-      const mid = c.clone().lerp(new THREE.Color(0x5a6066), 0.45).getHex();
-      const lo = c.clone().multiplyScalar(0.6).getHex();
-      this.fogLayer = { ...LOOKS.fog.layer, ramp: [hi, mid, lo] as const };
-    }
   }
 
   /** Every kind this level can show anywhere (for warm-up and checks). */
@@ -328,7 +298,7 @@ export class Weather {
         continue;
       }
       const look = LOOKS[kind];
-      const layer = kind === 'fog' ? this.fogLayer : look.layer;
+      const layer = look.layer;
       // Batches this frame; each emit call draws `batch` particles (before
       // the kit's own quality and pressure scaling).
       m.acc += ((m.rate * m.now) / look.batch) * dt;

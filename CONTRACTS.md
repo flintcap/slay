@@ -452,17 +452,29 @@ export class Residents {                            // built by Town.ts, exposed
   `Clothes.ts`; NPC coat cuts are added to `CHEST_CUTS` under `npc.*` names.
 - Budgets (checked by `tools/check-npcdraws.mjs`): at most 16 meshes a
   resident, all nine within 240 draws with one shadow pass.
-- Meshing them is slow on a cold cache, so `main.ts` calls
-  `prewarmTownsfolk()` (`Prewarm.ts`) at boot: a module worker
-  (`FolkWorker.ts`) runs `buildFolk` for every id and posts each meshed part
-  back. Fire and forget; where workers fail the town meshes them itself.
+- Meshing them is slow on a cold cache, so they come with the game:
+  `tools/build-meshes.mjs` (run by `npm run build`) meshes, in Node with the
+  same code and keys, every class in its field kit and as a new character,
+  the shapeshifter's three beasts and the nine residents into
+  `public/meshes/heroes.bin` (gzip, not in git), and `main.ts` reads it with
+  `loadShippedMeshes` while the GPU starts. `prewarmTownsfolk(shipped)`
+  (`Prewarm.ts`) then hands module workers (`FolkWorker.ts`) only the jobs
+  the file did not cover (none, when it is current); each posts its meshed
+  parts back. Fire and forget; where the file or the workers fail, the town
+  meshes them itself. `tools/check-meshes.mjs` checks the file is current,
+  that nothing it covers is meshed on the page, and that the browser meshes
+  a hero and a resident bit for bit as shipped.
 
 ```ts
 // src/art/hero/MeshCache.ts (the shared cache the worker fills)
 export function loadMeshCache(): Promise<void>;     // reads IndexedDB once
-export function meshCached(key: string, build: () => THREE.BufferGeometry): THREE.BufferGeometry;
+export function loadShippedMeshes(url: string): Promise<ReadonlySet<string>>; // heroes.bin; the prewarm jobs it covers, empty on any failure
+export function meshCached(key: string, build: () => THREE.BufferGeometry): THREE.BufferGeometry; // memory, IndexedDB, shipped, then build
 export function onMeshed(fn: ((key: string, raw: RawGeo) => void) | null): void; // each fresh part (the worker)
 export function adoptMeshes(entries: ReadonlyArray<readonly [string, RawGeo]>): void; // parts meshed elsewhere
+export function meshCacheStats(): { shipped: number; fromShipped: number; fromStored: number; meshed: number };
+// src/art/npc/Prewarm.ts
+export function prewarmTownsfolk(shipped?: ReadonlySet<string>): number; // jobs left to the workers
 ```
 
 ## `src/entities/MonsterModels.ts` — owned by creatures
@@ -922,9 +934,10 @@ export class DungeonMesh {
 }
 /**
  * Applies a biome's light mood (src/world/Lighting.ts): tinted fill, key light
- * (a shadow-casting sun outdoors), optional light from below, fog and the clear
- * colour. Owns scene.fog and scene.background until disposed. `hero` is the
- * light the hero should carry on this level.
+ * (a shadow-casting sun outdoors), optional light from below and the clear
+ * colour. Owns scene.background until disposed. No fog (the owner had it
+ * taken out of the town and the maps). `hero` is the light the hero should
+ * carry on this level.
  */
 export function applyBiomeLighting(scene: THREE.Scene, biome: BiomeDef, variant?: string): BiomeLighting;
 interface BiomeLighting {
@@ -953,7 +966,7 @@ overcast tundra, red underglow in hell). Indoor moods come from the biome's own
 colours at about half the old fill, so torch pools and the hero's light carry
 the room.
 
-## `src/core/Renderer.ts` grade and fog — owned by WORLD
+## `src/core/Renderer.ts` grade — owned by WORLD
 
 ```ts
 /** A scene's colour grade. Fields left out take DEFAULT_GRADE. */
@@ -961,13 +974,13 @@ renderer.setGrade(profile?: Partial<GradeProfile>): void;   // no argument reset
 // GradeProfile.haze (0..1): heat shimmer over the top of the frame (desert, hell).
 /** Scene exposure trim, multiplied into the grade's exposure (town night uses 1.5). */
 renderer.setExposure(v: number): void;
-/**
- * Shapes every material's fog: it starts `start` metres from the camera, and
- * below `floorY` a height term (full at `fadeDepth` metres down, scaled by
- * `strength`) swallows pits. No arguments restores plain camera fog.
- */
-export function setFogShape(start?: number, floorY?: number, fadeDepth?: number, strength?: number): void;
 ```
+
+The town and the maps have no fog: the owner had it taken out, as far too
+much (with it went the height fog over pits, the ground mist and the sun's
+beams through the outdoor air). Only the menu stages (title, hero select,
+death) keep a `FogExp2` for their dark backdrop; the renderer's fog node
+draws it plainly from the camera, with the torches' glow in it.
 
 Biome grades live in `BiomeArt.grade` (`src/world/Biomes.ts`). DungeonScene sets
 the biome grade on level load and resets it in dispose; other scenes that want a
@@ -1353,7 +1366,54 @@ export function textureReady(tex: THREE.Texture): Promise<boolean>;
  * loading card show. Never rejects; missing files are returned in `missing`.
  */
 export function preloadAssets(rels: string[], label?: string, onProgress?: (p: number, label: string) => void): Promise<{ ok: number; missing: string[] }>;
+/**
+ * main.ts, once the renderer is open and before any texture is asked for:
+ * when the GPU reads BC7, reads ktx2/index.json and loads the scans it lists
+ * packed (a THREE.CompressedTexture, every mip level from the file) in place
+ * of their WebP. Returns how many files are packed; 0 on other GPUs and in
+ * the published page, which keep the WebP.
+ */
+export function usePackedTextures(bc7: boolean): Promise<number>;
+/** Counts; packed, videoMB (loaded scans on the GPU) and plainMB (the same as plain pixels); evicted (pixels let go). */
+export function assetStats(): { bytes; images; textures; loaded; packed; videoMB; plainMB; failed; evicted };
+/** Engine, at each scene change: frees the GPU copy of textures unused for 2 scenes, and the pixels of those unused for 4. */
+export function sweepAssetTextures(inUse: ReadonlySet<THREE.Texture>): number;
+/** Engine, before a scene's first frame: fetches again the pixels of every evicted texture it samples. */
+export function reviveAssetTextures(texes: Iterable<THREE.Texture>): number;
+/** Resolves once every texture still loading (with `only`, those alone) is in or failed, or at `ms`; `onLanded(n, of)` per arrival. */
+export function texturesSettled(ms: number, only?: Iterable<THREE.Texture>, onLanded?: (n: number, of: number) => void): Promise<void>;
 ```
+
+Memory over a long session: a texture swept off the GPU keeps its decoded
+image for 4 more scene changes, then gives that and its file bytes back (the
+published page keeps the bytes: they live in its packs). The Texture object
+stays, holding its flat fallback colour, so materials that kept it still work:
+it is fetched again on the next scene that samples it (`reviveAssetTextures`),
+on the next `loadTexture` of its file, or on its first upload (three's
+`onUpdate`), so at worst it draws flat for a moment.
+
+three.js keeps a record of every mesh it draws (shader, pipeline, bindings,
+and the mesh, camera and scene themselves) until the mesh or its material is
+disposed, and the shared materials never are. So `disposeObject` tells every
+object under it that it is gone (a `'dispose'` event; lights are disposed),
+and the engine, after tearing a scene down, calls `Renderer.forget(scene)`,
+which disposes every record still kept for that scene (stand-ins, shots and
+bodies dropped mid-scene). Without both, every map left behind stayed in
+memory, monsters and all. `ShadowCache`'s
+`keptShadowMaps()` counts the shadow maps kept for still lights; each is freed
+with its light. `window.SLAY.memory()` returns `{ assets: assetStats(),
+keptShadows, meshes: meshCacheStats() }`, and `tools/check-soak.mjs` fails when
+images, file bytes or kept shadow maps keep growing over its cycles.
+
+Packed textures: `node tools/pack-textures.mjs` (run by `npm run build` and
+`build:release` first) packs every WebP under `textures/` but `ui/` into BC7
+blocks with zstd, `public/ktx2/<path>.ktx2`, rows bottom first like the game's
+flipped WebP decode; colour and normal maps get their own mip filters. Not
+committed: `public/ktx2/index.json` keeps each source's hash, so only changed
+files are packed again. `tools/lib/bc7.mjs` is the encoder (modes 4, 5, 6) and
+the decoder that checks it. `tools/check-ktx2.mjs` (browser) checks the files
+against their scans, the GPU's decode against the packer's, load speed and
+video memory.
 
 Tools: `node tools/check-assets.mjs` (ledger, CC0, formats, budgets: textures
 70 MB, sounds 25 MB, music 35 MB, 4 MB per file). `node tools/bundle-artifact.mjs`
@@ -1373,7 +1433,7 @@ and the new `DungeonLevel` fields in `src/types.ts`.
   meet at a seamless edge; draw each tile in its zone's biome and blend across
   the seam. `zone.outdoor` means open sky: no roof lid, no ceiling.
 - A level with no `zones` is one zone of `level.biome` (previews, old tools).
-- `level.biome` is the area's first zone's biome. Lighting, fog and grade for
+- `level.biome` is the area's first zone's biome. Lighting and grade for
   a two-zone area may follow the zone the hero stands in (`zoneOf`).
 - Tile kinds added: `ruin` 10 (blocks), `deepWater` 11 (blocks), `bridge` 12
   (walkable), `ice` 13 (walkable). Collision and walkability come from
@@ -1438,11 +1498,12 @@ export function zoneAt(level: DungeonLevel, x: number, y: number): MapZone | nul
   rare chest (`interact: 'chest.rare'`) or a shrine within 4 tiles. A screen
   may label it by `name`; nothing reads it yet.
 - Weather (mapvariety): `src/world/Weather.ts`. `DungeonScene` builds
-  `new Weather(fx, level, biome.fogColor)` when a level loads and calls
+  `new Weather(fx, level)` when a level loads and calls
   `weather.update(dt, elapsed, x, y, z, tileX, tileY)` each frame with the
   hero's place. Each zone rolls its own weather (`weatherFor(biome,
   outdoor, variant, rng)`, seeded per level): snow, rain, ash, cinders,
-  sand, fog, drips; sky kinds only under open sky. It emits through
+  sand, drips (no fog banks since the fog was taken out); sky kinds only
+  under open sky. It emits through
   `FXSystem.emit`, so `fxScale` and the pressure throttle apply.
 - Run themes (mapvariety): `src/world/Themes.ts`. About one map in three
   from tier 3 rolls `run.runTheme` (also on every level): flooded,
@@ -1483,10 +1544,11 @@ curtain is about to lift. `total` may grow during a load (a boss floor adds
 a step), never shrink.
 
 - Map (`DungeonScene.enter`): `map`, `hero`, `world`, `monsters`, `boss`
-  (boss floors), `summons`, `icons`, `shaders`, `ready`.
+  (boss floors), `summons`, `icons`, `shaders`, `textures`, `ready`.
 - Next area of a map (stairs): `world`, `monsters`, `boss`, `summons`,
-  `shaders`, `ready`.
-- Town (`TownScene.enter`): `meshing`, `world`, `hero`, `shaders`, `ready`.
+  `shaders`, `textures`, `ready`.
+- Town (`TownScene.enter`): `meshing`, `world`, `hero`, `shaders`,
+  `textures`, `ready`.
 
 Drawn by `src/ui/Transitions.ts` (ui): each stage id has a plain-words
 label there (`STAGE_WORDS`); a new stage id shows "Making ready" until one
@@ -1494,11 +1556,19 @@ is added. A load whose first step (`done === 0`) arrives with no
 `scene:loading` before it (the stairs) brings the loading card up by
 itself. `'assets:progress'` drives the bar only for a load that sends no
 steps.
-- Every other scene: `shaders`, `ready`.
+- Every other scene: `shaders`, `textures`, `ready`.
 
 Steps are counted by `beginLoad(total)` / `loadStep(name)` / `endLoad()`
 (Engine wraps every scene's `enter` and `prime`). `loadStep` outside a load
-does nothing. `yieldIfLong(ms)` hands the page back when the work since the
+does nothing. `loadPart(f)` says how far into the current step a load is
+(0..1, on the event as `part`); the bar holds there instead of creeping.
+`Engine.prime` sends it for `shaders` (draws built of those left out,
+`Renderer.warm(scene, camera, elapsed, capMs, onPart?)`) and `textures`
+(the scene's own textures landed, `texturesSettled(ms, only?, onLanded?)`).
+The curtain lifts only once every one of the scene's textures is in and
+every mesh draws: 120 s and 180 s caps are a safety net, and the warm frames
+also stop after 15 s with nothing more drawn. The log says how it went
+(`ready in 4.2 s: every draw built, every texture in`). `yieldIfLong(ms)` hands the page back when the work since the
 last hand-back ran past `ms`; build code calls it between pieces.
 
 Builds that yield (generators; the caller hands the page back between
@@ -1743,3 +1813,30 @@ than `THREE_TESTED`, a hook whose words moved in node_modules/three, a
 `bootGame` (tools/lib/game.mjs) fails every browser check whose startup
 self-test found a hook missing. To update three.js: bump the pin, run the
 checker, mend what it names, then raise `THREE_TESTED`.
+
+## Lost GPU — `src/core/Engine.ts`, `src/ui/UIRoot.ts` — owned by Engine safety
+
+```ts
+// src/core/Engine.ts
+renderer: Renderer;                    // replaced by a Restart; read it fresh, never keep it
+contextLost: boolean;                  // true from a lost device until a Restart opens another
+restartRenderer(): Promise<boolean>;   // false if nothing is lost, or the new device will not open
+
+// src/core/Events.ts
+'gpu:lost': { message: string };       // the game is held (paused, saved); UI offers a Restart
+'gpu:restored': {};                    // a new renderer is open: set it up as at boot
+
+// src/core/Studio.ts
+setStudioHost(gl);                     // again on gpu:restored; every open studio is told (onLost)
+```
+
+A lost device pauses the game, flushes the save and asks: Restart or Not now
+(a click on the game asks again). Restart disposes the old renderer, opens a
+new one on the same canvas and emits `gpu:restored` (main.ts sets the studio
+host, quality, scale, video settings and auto quality on it). From a map the
+run is forfeited as if left from the menu (`RunLedger`), so the hero lands in
+town with what they brought down; from the death screen or boot it goes to
+the title, anywhere else back to the same scene. A Restart that fails reloads
+the page. Anything that kept `engine.renderer` (or its `gl`) must take the new
+one on `gpu:restored`. `tools/check-gpulost.mjs` (browser) kills the device
+in a map and twice checks the way back.

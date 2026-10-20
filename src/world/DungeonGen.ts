@@ -530,7 +530,7 @@ function buildQuest(
 }
 
 /**
- * Holds a rolled quest's counts to what the generated map really carries, so
+ * Holds a catalogue quest's counts to what the generated map really carries, so
  * it can always be finished: kills to a share of the matching monsters, stairs
  * to the ones there are. The map boss counts as an elite, so an elite count
  * never needs more than one when the floors hold none.
@@ -739,7 +739,9 @@ export function generateRun(depth: number, seed: number, classId: CharClassId): 
     levels.push(level);
   }
 
-  if (quest === rolledQuest) fitQuestToMap(quest, levels, depth);
+  // Every catalogue quest, rolled or handed in: a contract's own counts
+  // (not in the catalogue) are the ones its board promised.
+  if (questById(quest.defId)) fitQuestToMap(quest, levels, depth);
 
   return { seed, depth, biome, variant, runTheme: theme, levels, quest, modifiers, bossId, bossMood, map: map.info };
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {
-  Fn, clamp, dot, emissive, float, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView, positionWorld,
-  pow, reference, renderGroup, renderOutput, rtt, screenCoordinate, screenSize, sin, smoothstep, texture3D, uniform, uv, vec2, vec3, vec4, velocity,
+  Fn, dot, emissive, float, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView,
+  pow, reference, renderGroup, renderOutput, screenCoordinate, screenSize, sin, smoothstep, texture3D, uniform, uv, vec2, vec3, vec4, velocity,
 } from 'three/tsl';
 import { lut3D } from 'three/addons/tsl/display/Lut3DNode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -9,13 +9,14 @@ import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { smaa } from 'three/addons/tsl/display/SMAANode.js';
 import { sss } from 'three/addons/tsl/display/SSSNode.js';
 import { taau } from 'three/addons/tsl/display/TAAUNode.js';
+import { traa } from 'three/addons/tsl/display/TRAANode.js';
+import { sharpen } from 'three/addons/tsl/display/SharpenNode.js';
 import './NodeNames';
 import './ShadowNodes';
 import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
 import { ShaderGate } from './ShaderGate';
 import { airLight, makeLighting, setScatterLimit } from './Lighting';
 import { Motes } from './Motes';
-import { air } from './Air';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { installShadowCache } from './ShadowCache';
 import { hookSeen, selfTest, type HookReport } from './ThreeHooks';
@@ -24,7 +25,6 @@ import type { GameSettings, VideoEffect } from '../types';
 import type { SkyPaint } from '../world/Sky';
 import { setAssetAnisotropy } from './Assets';
 import { LUT_SIZE, lookOf, lookTable, type Look } from './Lut';
-import { setShaftSun, shaftNode, shaftStrength } from './Shafts';
 import { events } from './Events';
 import { rippleOffset, setRippleScale, writeRipples } from './Ripples';
 import { onScreenRatio } from './Screen';
@@ -40,9 +40,10 @@ type V4 = THREE.Node<'vec4'>;
  *
  * The grade runs in linear HDR *before* tone mapping so it behaves like a
  * real film pipeline: exposure and contrast act on light values, not on
- * already crushed sRGB. It bundles vignette, chromatic aberration, film
- * grain, a subtle lift/gamma/gain and a screen-space distortion used for
- * damage feedback: one fullscreen pass instead of five.
+ * already crushed sRGB. It bundles vignette, chromatic aberration, a subtle
+ * lift/gamma/gain and a screen-space distortion used for damage feedback:
+ * one fullscreen pass instead of five. Film grain goes on last, over the
+ * finished picture (`withGrain`).
  */
 const G = {
   time: uniform(0),
@@ -100,7 +101,6 @@ function withoutEffects(q: QualityProfile, off: ReadonlySet<EffectId>): QualityP
   }
   if (off.has('contactShadows')) out.contactShadows = false;
   if (off.has('airLight')) {
-    out.shafts = false;
     out.motes = false;
     out.air = 0;
   }
@@ -192,17 +192,23 @@ function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
     // Drawn over the grade, so its colour is the one asked for (the outline).
     if (over) col = col.add(over(p));
 
-    // Grain, proportional to the light. A flat amount added in linear light
-    // is invisible in a torch pool and a snowstorm in the dark (the sRGB
-    // curve blows a 0.02 step at black up to a fifth of the range), which
-    // read as coloured static over every shadow. Interleaved-gradient noise:
-    // cheap, temporally stable enough for grain.
-    const gp = screenCoordinate.xy.add(fract(G.time).mul(137.0));
-    const g = fract(fract(dot(gp, vec2(0.06711056, 0.00583715))).mul(52.9829189)).sub(0.5);
-    col = col.mul(g.mul(G.grain).mul(3.0).add(1.0)).add(g.mul(0.0012));
-
     return vec4(max(col, vec3(0.0)), 1.0);
   })();
+}
+
+/**
+ * Film grain over the finished picture, after the edge smoothing and the
+ * sharpen: sharpened with the rest, the noise turned into a fine crosshatch
+ * over every floor. Proportional to the brightness, in screen colour: a flat
+ * amount reads as coloured static over every shadow. Interleaved-gradient
+ * noise: cheap, temporally stable enough for grain.
+ */
+function withGrain(c: V4): V4 {
+  return Fn(() => {
+    const gp = screenCoordinate.xy.add(fract(G.time).mul(137.0));
+    const g = fract(fract(dot(gp, vec2(0.06711056, 0.00583715))).mul(52.9829189)).sub(0.5);
+    return vec4(c.rgb.mul(g.mul(G.grain).mul(1.4).add(1.0)).add(g.mul(0.004)), c.a);
+  })() as unknown as V4;
 }
 
 /**
@@ -266,54 +272,6 @@ function tintVector(hex: number, amount: number, out: THREE.Vector3): THREE.Vect
 }
 
 
-/**
- * Shape of the scene fog, shared by every material in the game.
- *
- * Plain exponential fog is measured from the camera, and the camera here sits
- * twenty metres from the player, so a quarter of the fog was always lying over
- * the floor being fought on. That is backwards for an ARPG: the playable
- * floor should be the clearest thing in frame and the distance should fall
- * away. So fog starts `start` metres out, and below `floorY` a second, height
- * term thickens it so pits and chasms sink into the murk instead of showing
- * their bottoms.
- *
- *   x  distance from the camera where fog begins
- *   y  world height below which the height fog thickens
- *   z  1 / the depth over which it reaches full strength
- *   w  0..1 strength of the height fog
- *
- * One uniform drives every material at once (`fogNodeFor`).
- */
-export const fogShape = { x: 0, y: -1000, z: 0, w: 0 };
-const uFog = uniform(new THREE.Vector4(0, -1000, 0, 0));
-
-/**
- * Ground mist: a thin layer of the fog lying on the floor, thickening with
- * distance, so the far end of a hall or a field sinks into murk while the
- * fight stays clear. x: strength (from the fog's density, 0 when the scene
- * has no height fog), y: the hero's floor height (`Air.ts`).
- */
-const uMist = uniform(new THREE.Vector2(0, 0));
-/** How high the mist lies above the floor before it thins to nothing, metres. */
-const MIST_HEIGHT = 0.9;
-/** Mist strength per unit of fog density, and its ceiling. */
-const MIST_PER_DENSITY = 12;
-const MIST_MAX = 0.5;
-
-/** Sets the fog shape; with no argument restores plain camera fog. */
-export function setFogShape(start = 0, floorY = -1000, fadeDepth = 1, strength = 0): void {
-  fogShape.x = start;
-  fogShape.y = floorY;
-  fogShape.z = 1 / Math.max(0.01, fadeDepth);
-  fogShape.w = strength;
-  uFog.value.set(fogShape.x, fogShape.y, fogShape.z, fogShape.w);
-}
-
-/**
- * The game's fog for a scene's `Fog` or `FogExp2`: three's own fog measured
- * from `fogShape.x` out, plus the height term. Colour, density and range are
- * read from the fog object every frame, so scenes keep animating them.
- */
 /** A reference read once a frame rather than once per object drawn. */
 function perFrame<T extends string>(r: THREE.ReferenceNode<T, unknown>): THREE.Node<T> {
   return (r as unknown as { setGroup(g: unknown): THREE.Node<T> }).setGroup(renderGroup);
@@ -344,9 +302,16 @@ class AirLight extends THREE.Node {
   }
 }
 
+/**
+ * The fog for a scene's `Fog` or `FogExp2`: three's own, plus the glow it
+ * catches from the torches. Colour, density and range are read from the fog
+ * object every frame, so scenes keep animating them. Only the menu stages
+ * have fog now (their dark backdrop): the owner had it taken out of the town
+ * and the maps, as far too much.
+ */
 function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
   const color = perFrame(reference('color', 'color', f));
-  const d = max(positionView.z.negate().sub(uFog.x), 0.0);
+  const d = positionView.z.negate();
   let factor: F;
   let air: F = float(LINEAR_FOG_AIR * AIR_GAIN);
   if ((f as THREE.FogExp2).isFogExp2) {
@@ -358,13 +323,6 @@ function fogNodeFor(f: THREE.Fog | THREE.FogExp2): V4 {
     const far = perFrame(reference('far', 'float', f));
     factor = smoothstep(near, far, d);
   }
-  const low = clamp(uFog.y.sub(positionWorld.y).mul(uFog.z), 0.0, 1.0);
-  factor = max(factor, low.mul(low).mul(uFog.w));
-  // Ground mist, from just past the hero (the camera stands some twenty
-  // metres back) out, densest on the floor and thicker in any hollow.
-  const lying = clamp(uMist.y.sub(positionWorld.y).div(MIST_HEIGHT).exp(), 0.0, 1.0);
-  const mist = lying.mul(smoothstep(6.0, 28.0, d)).mul(uMist.x);
-  factor = factor.oneMinus().mul(mist.oneMinus()).oneMinus();
   // The glow sits in the air in front of the surface, so the fog beyond it
   // does not dim it the way it dims the surface.
   const glow = new AirLight(air) as unknown as V3;
@@ -434,8 +392,6 @@ export interface QualityProfile {
   air: number;
   /** Dust drifting in the light around the nearest torches (`Motes`). */
   motes: boolean;
-  /** The sun's beams through the outdoor fog (`Shafts`). */
-  shafts: boolean;
   /** The light world shader: one tap and one projection per surface (`worldLite`). */
   liteWorld: boolean;
   pixelRatioCap: number;
@@ -469,10 +425,10 @@ export interface QualityProfile {
 // ratio cap and a render scale). High is the intended look. The auto mode
 // (core/AutoQuality.ts) moves between these with the chosen one as its top.
 export const QUALITY: Record<GameSettings['quality'], QualityProfile> = {
-  low: { shadowScale: 0.5, pointShadows: false, lanternShadow: false, parallax: 0, cover: 0.35, waterReflect: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: true, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, fxLights: 6, shadowHz: 20 },
-  medium: { shadowScale: 0.75, pointShadows: true, lanternShadow: false, parallax: 0.035, cover: 0.65, waterReflect: true, viewScale: 1, renderScale: 0.9, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, shafts: false, liteWorld: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, fxLights: 10, shadowHz: 30 },
-  high: { shadowScale: 1, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, fxLights: 16, shadowHz: 40 },
-  ultra: { shadowScale: 2, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, shafts: true, liteWorld: false, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, fxLights: 24, shadowHz: 40 },
+  low: { shadowScale: 0.5, pointShadows: false, lanternShadow: false, parallax: 0, cover: 0.35, waterReflect: false, viewScale: 0.8, renderScale: 0.8, shadows: true, ao: false, bloom: false, smaa: false, taa: false, contactShadows: false, air: 0, motes: false, liteWorld: true, pixelRatioCap: 1, anisotropy: 2, fxScale: 0.35, fxLights: 6, shadowHz: 20 },
+  medium: { shadowScale: 0.75, pointShadows: true, lanternShadow: false, parallax: 0.035, cover: 0.65, waterReflect: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: true, taa: false, contactShadows: false, air: 0, motes: false, liteWorld: false, pixelRatioCap: 1.25, anisotropy: 4, fxScale: 0.6, fxLights: 10, shadowHz: 30 },
+  high: { shadowScale: 1, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1, renderScale: 1, shadows: true, ao: false, bloom: true, smaa: false, taa: true, contactShadows: true, air: 4, motes: true, liteWorld: false, pixelRatioCap: 1.5, anisotropy: 8, fxScale: 1.0, fxLights: 16, shadowHz: 40 },
+  ultra: { shadowScale: 2, pointShadows: true, lanternShadow: true, parallax: 0.05, cover: 1, waterReflect: true, viewScale: 1.2, renderScale: 1, shadows: true, ao: true, bloom: true, smaa: false, taa: true, contactShadows: true, air: 6, motes: true, liteWorld: false, pixelRatioCap: 2, anisotropy: 16, fxScale: 1.4, fxLights: 24, shadowHz: 40 },
 };
 
 /** The screen's own pixel ratio, up to what a profile allows. */
@@ -492,6 +448,14 @@ const POST_SCALE = 0.5;
  */
 const WARM_PIPES_MS = 250;
 
+/**
+ * Behind the load curtain, how long the warm frames go on with nothing more
+ * drawn before they give up on what is left (ms; `Renderer.warm`). A shader
+ * or pipeline still being made counts as going nowhere only if it takes this
+ * long: one pipeline, even a slow driver's, takes a second or two.
+ */
+const WARM_STALL_MS = 15000;
+
 interface ShadowBase {
   size: number;
   casts: boolean;
@@ -510,19 +474,29 @@ export class NoWebGPUError extends Error {
 
 type BloomNode = ReturnType<typeof bloom>;
 type AONode = ReturnType<typeof ao>;
-type TAAUNode = ReturnType<typeof taau>;
+type TAAUNode = ReturnType<typeof taau> | ReturnType<typeof traa>;
+
+/**
+ * How much of each new frame the upscaling blend (TAAU) takes, used only
+ * while the scene draws below full size. three's own 0.025 leans on about
+ * forty old frames, and with the camera always following the hero every one
+ * of them is resampled a little off its pixels: the whole picture went soft
+ * as soon as the hero walked. At full size the plain blend (TRAA) is used,
+ * which starts at 0.05 and adds more where the motion falls between pixels.
+ */
+const TAAU_FRAME_WEIGHT = 0.06;
+/**
+ * How hard the last pass sharpens the finished picture after the temporal
+ * blend (AMD's contrast-adaptive sharpening): 0 is the most, 2 none. It
+ * sharpens flat detail and backs off at hard edges, so it does not ring.
+ */
+const SHARPNESS = 0.35;
 type SSSNode = ReturnType<typeof sss>;
 
 /** How dark a contact shadow makes the pixel it falls on (0..1), while a sun is up. */
 const CONTACT_STRENGTH = 0.42;
 /** 0 while the scene has no sun or moon casting shadows: the pass is skipped. */
 const uContact = uniform(0);
-/** The beams' colour: the sun's, times its strength and how the fog throws it toward the eye. */
-const uShaftColor = uniform(new THREE.Color(0, 0, 0));
-/** How bright the beams are against the sun's own light. */
-const SHAFT_GAIN = 0.32;
-const _v1 = new THREE.Vector3();
-const _v2 = new THREE.Vector3();
 
 /**
  * 1 on the meshes of the outlined body (`Renderer.setOutline`), read per
@@ -595,8 +569,9 @@ export class Renderer {
   private aoNode: AONode | null = null;
   private bloomNode: BloomNode | null = null;
   private taaNode: TAAUNode | null = null;
+  /** The blend in the chain upscales (TAAU), drawn below full size; otherwise it is TRAA. */
+  private taaUpscales = false;
   private sssNode: SSSNode | null = null;
-  private shaftPass: ReturnType<typeof rtt> | null = null;
   /**
    * Stands in for the scene's sun or moon in the contact-shadow pass, so the
    * chain is not rebuilt for every new level's light: its matrices are
@@ -768,8 +743,22 @@ export class Renderer {
       // The resolve runs on the lit frame, before AO, bloom and the grade:
       // bloom then glows from a steady picture, and grain stays fresh.
       // The scene draws at the render scale; the resolve writes full size.
-      sp.setResolutionScale(this.drawScale());
-      const t = taau(color, sp.getTextureNode('depth'), sp.getTextureNode('velocity'), camera);
+      // Drawn at full size the plain blend is used: the upscaling one also
+      // softens each new frame and holds thin shapes from older frames
+      // (its "lock"), which smeared the hero's arms and legs as they moved.
+      const k = this.drawScale();
+      sp.setResolutionScale(k);
+      this.taaUpscales = k < 1;
+      const depth = sp.getTextureNode('depth');
+      const motion = sp.getTextureNode('velocity');
+      let t: TAAUNode;
+      if (this.taaUpscales) {
+        const u = taau(color, depth, motion, camera);
+        u.currentFrameWeight = TAAU_FRAME_WEIGHT;
+        t = u;
+      } else {
+        t = traa(color, depth, motion, camera);
+      }
       this.taaNode = t;
       color = (t as unknown as { getTextureNode(): THREE.TextureNode }).getTextureNode();
     }
@@ -809,17 +798,6 @@ export class Renderer {
       contactTex = s.getTextureNode();
     }
 
-    let shaftTex: THREE.TextureNode | null = null;
-    if (q.shafts) {
-      // A quarter of the pixels: the beams are soft, and the read below blurs them.
-      const r = rtt(shaftNode(sp.getTextureNode('depth')));
-      r.setResolutionScale(POST_SCALE);
-      const draw = r.updateBefore.bind(r);
-      r.updateBefore = (frame: THREE.NodeFrame) => (shaftStrength.value > 0 ? draw(frame) : undefined);
-      this.shaftPass = r;
-      shaftTex = r;
-    }
-
     let bloomTex: THREE.TextureNode | null = null;
     if (q.bloom) {
       // Glow from what glows (`Emission`), and only where it is bright: a
@@ -842,13 +820,6 @@ export class Renderer {
           .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
         c = c.mul(mix(float(1.0), lit, uContact));
       }
-      if (shaftTex) {
-        const h = vec2(1.0).div(screenSize).div(POST_SCALE);
-        const t = shaftTex;
-        const lit = t.sample(p.add(h)).r.add(t.sample(p.sub(h)).r)
-          .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
-        c = c.add(uShaftColor.mul(lit));
-      }
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
@@ -864,7 +835,10 @@ export class Renderer {
     // black and white stays white, the dark between them lifts or sinks.
     const shown = vec4(pow(max(looked.rgb, vec3(0.0)), vec3(uDisplayGamma)), looked.a);
     this.pipeline.outputColorTransform = false;
-    this.pipeline.outputNode = (q.smaa ? smaa(shown) : shown) as unknown as THREE.Node;
+    // The temporal blend leaves the picture a little soft; a light sharpen
+    // of the finished frame, in screen colour, gives the detail back.
+    const finished = (q.smaa ? smaa(shown) : q.taa ? sharpen(shown, float(SHARPNESS)) : shown) as unknown as V4;
+    this.pipeline.outputNode = withGrain(finished) as unknown as THREE.Node;
     this.pipeline.needsUpdate = true;
     this.chainDirty = false;
   }
@@ -876,8 +850,6 @@ export class Renderer {
     this.taaNode?.dispose();
     this.sssNode?.dispose();
     this.sssNode = null;
-    this.shaftPass?.dispose();
-    this.shaftPass = null;
     this.scenePass = null;
     this.aoNode = null;
     this.bloomNode = null;
@@ -953,7 +925,7 @@ export class Renderer {
     if (this.shadowScene) this.applyShadows(this.shadowScene);
     // Every asset texture, the world sets included, now and later.
     if (!step) setAssetAnisotropy(q.anisotropy);
-    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa || before.contactShadows !== q.contactShadows || before.shafts !== q.shafts) this.chainDirty = true;
+    if (before.ao !== q.ao || before.bloom !== q.bloom || before.smaa !== q.smaa || before.taa !== q.taa || before.contactShadows !== q.contactShadows) this.chainDirty = true;
     this.onResize();
     events.emit('quality:changed', { profile: q });
   }
@@ -1001,6 +973,8 @@ export class Renderer {
     if (q.taa) {
       this.gl.setPixelRatio(basePixelRatio(q));
       this.scenePass?.setResolutionScale(k);
+      // Across full size the chain swaps between its two blends.
+      if (this.taaNode && k < 1 !== this.taaUpscales) this.chainDirty = true;
     } else {
       this.gl.setPixelRatio(basePixelRatio(q) * k);
       this.scenePass?.setResolutionScale(1);
@@ -1284,7 +1258,6 @@ export class Renderer {
       on = o === scene;
     }
     uContact.value = on && this.sssNode ? CONTACT_STRENGTH : 0;
-    this.trackShafts(on ? s : null, scene);
     if (!on || !s || !this.sssNode) return;
     const p = this.sunProxy;
     p.matrixAutoUpdate = false;
@@ -1293,33 +1266,14 @@ export class Renderer {
     p.target.matrixWorld.copy(s.target.matrixWorld);
   }
 
-  /**
-   * Aims the beams through the fog at the sun, or turns them off. Fog
-   * throws more light forward than back (looking toward the sun the air
-   * glows more), so the strength leans on the angle between the view and the
-   * sun.
-   */
-  private trackShafts(s: THREE.DirectionalLight | null, scene: THREE.Scene): void {
-    const fog = scene.fog as THREE.FogExp2 | null;
-    const density = fog && (fog as THREE.FogExp2).isFogExp2 ? fog.density : 0;
-    setShaftSun(this.shaftPass ? s : null, this.view, fogShape.x, density);
-    if (shaftStrength.value === 0 || !s || !this.view) {
-      uShaftColor.value.setRGB(0, 0, 0);
-      return;
-    }
-    const toSun = _v1.setFromMatrixPosition(s.matrixWorld).sub(_v2.setFromMatrixPosition(s.target.matrixWorld)).normalize();
-    const look = _v2.set(0, 0, -1).transformDirection(this.view.matrixWorld);
-    const g = 0.4;
-    const cos = look.dot(toSun);
-    // Henyey-Greenstein, scaled to 1 side-on.
-    const phase = (1 + g * g) ** 1.5 / (1 + g * g - 2 * g * cos) ** 1.5;
-    uShaftColor.value.copy(s.color).multiplyScalar(s.intensity * SHAFT_GAIN * phase);
-  }
-
   /** Makes the temporal blend start over from the next frame (it starts over when its size changes). */
   private restartHistory(): void {
     const t = this.taaNode as unknown as { _historyRenderTarget?: THREE.RenderTarget } | null;
-    if (t && hookSeen('TAAUNode._historyRenderTarget', !!t._historyRenderTarget)) t._historyRenderTarget!.setSize(1, 1);
+    if (!t) return;
+    const seen = this.taaUpscales
+      ? hookSeen('TAAUNode._historyRenderTarget', !!t._historyRenderTarget)
+      : hookSeen('TRAANode._historyRenderTarget', !!t._historyRenderTarget);
+    if (seen) t._historyRenderTarget!.setSize(1, 1);
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, elapsed: number): void {
@@ -1334,10 +1288,6 @@ export class Renderer {
     G.lowLife.value = this.lowLife;
     G.time.value = elapsed;
     writeRipples(camera, (camera as THREE.PerspectiveCamera).aspect || 16 / 9, dt, elapsed);
-    uFog.value.set(fogShape.x, fogShape.y, fogShape.z, fogShape.w);
-    // Mist only where the scene asked for height fog (the levels, not the town).
-    const fd = (scene.fog as THREE.FogExp2 | null)?.density ?? 0;
-    uMist.value.set(fogShape.w > 0 ? Math.min(MIST_MAX, fd * MIST_PER_DENSITY) : 0, air.floor);
     this.trackSun(scene);
     if (this.quality.motes) (this.motes ??= new Motes()).update(scene, elapsed);
     else this.motes?.update(null, elapsed);
@@ -1377,12 +1327,24 @@ export class Renderer {
    * curtain. Each frame leaves out what is not built yet and starts building
    * it in the background (`ShaderGate`); between frames the page stays free,
    * so the browser and the loading screen keep moving. A shader takes three
-   * frames: one to ask for it, one to make its pipeline, one to draw. Gives
-   * up at `capMs`, and what is left comes in during play, a moment late.
+   * frames: one to ask for it, one to make its pipeline, one to draw.
+   *
+   * Waits as long as the building gets anywhere, so the curtain lifts on a
+   * whole scene: it used to give up at 20 s, and on a slow first launch the
+   * town and the maps came up with their people, monsters and walls still
+   * missing. Gives up only at `capMs`, or once `WARM_STALL_MS` go by with
+   * nothing more drawn (a shader that never comes). Returns how many draws
+   * the last frame still left out. `onPart(f)` hears how much of it is done
+   * (0..1), for the loading bar.
    */
-  async warm(scene: THREE.Scene, camera: THREE.Camera, elapsed: number, capMs: number): Promise<void> {
+  async warm(scene: THREE.Scene, camera: THREE.Camera, elapsed: number, capMs: number, onPart?: (f: number) => void): Promise<number> {
     const until = performance.now() + capMs;
     const gate = this.gate;
+    // The most draws one frame left out (how much there was to build), the
+    // fewest so far, and when that last went down.
+    let most = 0;
+    let least = Infinity;
+    let gained = performance.now();
     // Nothing on screen to keep moving but the loading bar: build in long turns.
     if (gate) gate.sliceMs = 40;
     try {
@@ -1391,14 +1353,47 @@ export class Renderer {
         // Every caster in this frame's shadow maps, built too.
         this.shadowAt = -Infinity;
         this.render(scene, camera, 0, elapsed);
-        if (!gate || gate.skipped === 0 || performance.now() >= until) return;
+        if (!gate) return 0;
+        const left = gate.skipped;
+        most = Math.max(most, left);
+        onPart?.(most > 0 ? 1 - left / most : 1);
+        const now = performance.now();
+        if (left < least) {
+          least = left;
+          gained = now;
+        }
+        if (left === 0 || now >= until || now - gained >= WARM_STALL_MS) return left;
         // Left out with nothing being made: a shader that failed. It never comes.
-        if (!gate.busy) return;
-        await gate.idle(until, WARM_PIPES_MS);
+        if (!gate.busy) return left;
+        await gate.idle(Math.min(until, gained + WARM_STALL_MS), WARM_PIPES_MS);
       }
     } finally {
       if (gate) gate.sliceMs = 6;
     }
+  }
+
+  /**
+   * Lets three.js go of everything it kept for drawing `scene`, once the
+   * scene is torn down. three keeps a record of each mesh it draws, with its
+   * material, lights and pass (the shader, pipeline and bindings it used), in
+   * a set of its own, until that mesh or its material is disposed. The
+   * game's shared materials never are, a mesh dropped mid-scene often is not,
+   * and every record holds its mesh, its camera and its whole scene: each
+   * map left behind stayed in memory, monsters and all, about 300 MB a visit
+   * in a long session. Returns how many records went.
+   */
+  forget(scene: THREE.Scene): number {
+    this.gate?.forget(scene);
+    const all = (this.gl as unknown as { _objects?: { _renderObjects?: Set<{ scene: unknown; dispose?: () => void }> } | null })._objects?._renderObjects;
+    if (!(all instanceof Set)) return 0;
+    let n = 0;
+    for (const ro of [...all]) {
+      if (ro.scene !== scene) continue;
+      if (!hookSeen('RenderObject.scene, dispose', typeof ro.dispose === 'function')) return n;
+      ro.dispose!();
+      n++;
+    }
+    return n;
   }
 
   /**

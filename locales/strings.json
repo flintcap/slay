@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9217,
+ "count": 9218,
  "strings": [
   {
    "key": "Beating iron…",
@@ -51907,6 +51907,12 @@
    ]
   },
   {
+   "key": "Dust drifting in the light round torches",
+   "files": [
+    "ui/SettingsPanel.ts"
+   ]
+  },
+  {
    "key": "Edge smoothing",
    "files": [
     "ui/SettingsPanel.ts"
@@ -52010,12 +52016,6 @@
   },
   {
    "key": "Glow",
-   "files": [
-    "ui/SettingsPanel.ts"
-   ]
-  },
-  {
-   "key": "Glow in the fog round torches, dust and sunbeams",
    "files": [
     "ui/SettingsPanel.ts"
    ]
@@ -54013,6 +54013,12 @@
   },
   {
    "key": "Painting the gear",
+   "files": [
+    "ui/Transitions.ts"
+   ]
+  },
+  {
+   "key": "Painting the halls",
    "files": [
     "ui/Transitions.ts"
    ]

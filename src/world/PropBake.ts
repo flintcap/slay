@@ -28,10 +28,10 @@ const FLOOR_VERTS = 640000;
 
 /**
  * Bakes what it can of `batches` (instanced props under `root`, already
- * placed) and takes the baked batches out of the scene. Returns how many
- * batches were baked.
+ * placed) and takes the baked batches out of the scene. Returns the baked
+ * geometries, which the caller owns and frees with the floor.
  */
-export function bakeProps(root: THREE.Object3D, batches: readonly THREE.InstancedMesh[]): number {
+export function bakeProps(root: THREE.Object3D, batches: readonly THREE.InstancedMesh[]): THREE.BufferGeometry[] {
   const buckets = new Map<string, THREE.InstancedMesh[]>();
   let budget = FLOOR_VERTS;
   // Smallest first, so the budget goes to the most draws saved.
@@ -52,16 +52,17 @@ export function bakeProps(root: THREE.Object3D, batches: readonly THREE.Instance
     if (!list) buckets.set(key, (list = []));
     list.push(b);
   }
-  let baked = 0;
+  const baked: THREE.BufferGeometry[] = [];
   for (const list of buckets.values()) {
     // One batch alone gains nothing from baking.
     if (list.length < 2) continue;
-    root.add(bake(list));
+    const mesh = bake(list);
+    root.add(mesh);
+    baked.push(mesh.geometry);
     for (const b of list) {
       b.removeFromParent();
       b.dispose();
     }
-    baked += list.length;
   }
   return baked;
 }

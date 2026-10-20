@@ -17,13 +17,16 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'dist-single', 'shots', '.claude', '.checks']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'dist-single', 'dist-release', 'dist-single-release', 'shots', '.claude', '.checks', '.meshbuild']);
+/** Built from the library by `npm run build` (packed textures, shipped bodies), never committed. */
+const BUILT = new Set([path.join('public', 'ktx2'), path.join('public', 'meshes')]);
 const ASSET = /\.(png|jpe?g|gif|webp|avif|bmp|ico|glb|gltf|fbx|obj|mtl|mp3|wav|ogg|flac|m4a|ttf|otf|woff2?|hdr|exr|ktx2?)$/i;
 
 const walk = (dir, out = []) => {
   for (const n of readdirSync(dir)) {
     if (SKIP_DIRS.has(n) || (n.startsWith('.') && n.endsWith('audit'))) continue;
     const p = path.join(dir, n);
+    if (BUILT.has(path.relative(ROOT, p))) continue;
     const st = statSync(p, { throwIfNoEntry: false });
     if (!st) continue;
     if (st.isDirectory()) walk(p, out);

@@ -6,11 +6,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node tools/pack-textures.mjs && node tools/build-meshes.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 4173 --strictPort",
     "shots": "node tools/screenshot.mjs",
     "build:single": "vite build --config vite.config.single.ts",
+    "prebuild:release": "node tools/pack-textures.mjs && node tools/build-meshes.mjs",
     "build:release": "vite build --mode release"
   },
   "repository": {
@@ -26,6 +28,7 @@
     "three": "0.186.1"
   },
   "devDependencies": {
+    "@jsquash/webp": "1.5.0",
     "@playwright/test": "^1.64.1",
     "@types/three": "0.186.0",
     "typescript": "^7.0.2",

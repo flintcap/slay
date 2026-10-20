@@ -71,14 +71,20 @@ function drop(w: Worker): void {
   }
 }
 
-export function prewarmTownsfolk(): void {
-  if (started || typeof Worker === 'undefined') return;
+/**
+ * Starts the workers on every job but those in `shipped` (bodies that came
+ * with the game, `loadShippedMeshes`). Returns how many jobs were left to them.
+ */
+export function prewarmTownsfolk(shipped: ReadonlySet<string> = new Set()): number {
+  if (started || typeof Worker === 'undefined') return 0;
   started = true;
   // The select screen comes before the town and shows every class in turn,
   // starting with the first: those heroes go first, in that order. Each one
   // used to be meshed on the main thread the moment its card was picked, a
   // freeze of seconds per class on a first visit.
-  queue = [...CLASSES.map((c) => `hero:${c.id}`), ...NPC_LOOK_IDS];
+  queue = [...CLASSES.map((c) => `hero:${c.id}`), ...NPC_LOOK_IDS].filter((id) => !shipped.has(id));
+  const jobs = queue.length;
+  if (jobs === 0) return 0;
   for (const id of queue) pending.set(id, []);
   const n = Math.max(1, Math.min(MAX_WORKERS, (navigator.hardwareConcurrency || 2) - 1));
   base = pageAssetBase();
@@ -101,9 +107,10 @@ export function prewarmTownsfolk(): void {
   if (workers.size === 0) {
     for (const id of queue) settle(id);
     queue = [];
-    return;
+    return 0;
   }
   handOut();
+  return jobs;
 }
 
 /** Moves a job not handed out yet to the front of the list. */

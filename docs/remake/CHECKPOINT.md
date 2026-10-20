@@ -453,6 +453,35 @@ Update this file and push it after every finished step.
   pinned exactly, `tools/check-threehooks.mjs` reads node_modules/three for
   every hook's words, and every browser check fails on a missing hook.
   Next: E2 GPU loss Restart.
+- #136 E2 done: GPU loss. A lost graphics device holds the game (paused,
+  nothing drawn) and offers Restart: a new renderer, and the hero lands in
+  town as if the map were left by the menu. "Not now" keeps it held.
+  `tools/check-gpulost.mjs` kills the device twice (in a map, then town).
+- #136 E4 done: packed textures. `tools/pack-textures.mjs` packs the world
+  WebPs into BC7 KTX2 with every mip level made ahead; `npm run build` runs
+  it. The game loads the packed file where the GPU reads BC7 and the WebP
+  elsewhere: a quarter of the GPU memory, about 3.4x the download.
+  `tools/check-ktx2.mjs` holds it.
+- #136 E5 done: shipped bodies. `tools/build-meshes.mjs` meshes the select
+  heroes, new characters, beasts and townsfolk ahead into
+  public/meshes/heroes.bin (10.3 MB), read at boot; anything missing is
+  meshed as before. `tools/check-meshes.mjs` holds it.
+- #136 E3 in progress: three keeps a render record per mesh until the mesh
+  or its material is disposed, and shared materials never are, so every map
+  stayed in memory (Enemy count 118 to 214, about 300 MB a visit). Teardown
+  now sends each mesh its dispose event and `Renderer.forget(scene)` drops
+  what is left. Next: heap probe and soak to confirm.
+- #150 Fog out of town and maps (owner: way too much): no fog, mist sheets
+  or light shafts; indoor and outdoor shots checked.
+- #151 The loading curtain holds until the scene's own textures are in and
+  every draw is built (120 s and 180 s caps, 15 s stall guard), with a
+  "Painting the halls" step on the bar and a "ready in" log line.
+- #152 Title fog out (owner: white haze): no fog, mist or shafts; a dark
+  ring fades the ground into the night and the rift has a black backing.
+- #153 Blur and hero smear (owner): at full size the temporal blend is
+  TRAA, TAAU only below full size (frame weight 0.06); a light RCAS sharpen
+  follows it and film grain goes on last. Medium draws at full size. The
+  same build measured about 2.8x sharper, average colour unchanged.
 
 ## Phase 0d log
 

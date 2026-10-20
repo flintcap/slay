@@ -330,6 +330,12 @@ export class DungeonScene extends GameScene {
   private packRoots: THREE.Object3D[] = [];
   /** The warm-up's item material stand-ins share this box (see `warmup`). */
   private lootWarmGeo: THREE.BufferGeometry[] = [];
+  /**
+   * The fallen-look stand-ins' still geometries (see `corpseStandIns`). They
+   * share their arrays with the living bodies, but three.js keeps each one
+   * drawn until it is freed: left alone, every area's stayed for good.
+   */
+  private fallenWarmGeo: THREE.BufferGeometry[] = [];
   /** A portal's look for the warm-up: the way home and a trinket's portal open mid-play. */
   private portalWarm: WayLook | null = null;
   /** Travels with the player so they are never standing in the dark. */
@@ -419,6 +425,8 @@ export class DungeonScene extends GameScene {
     // The last area's stand-ins were kept until now (see `warmupDone`).
     for (const g of this.lootWarmGeo) g.dispose();
     this.lootWarmGeo = [];
+    for (const g of this.fallenWarmGeo) g.dispose();
+    this.fallenWarmGeo = [];
     this.portalWarm?.dispose();
     this.portalWarm = buildPortal();
     this.portalWarm.root.getObjectByName('way:light')?.removeFromParent();
@@ -444,7 +452,9 @@ export class DungeonScene extends GameScene {
     }
     // And each body's fallen look, for the first kill of its kind, and a
     // gold coin, for the first pile dropped.
-    const fallen = [...corpseStandIns(roots), ...packStandIns(roots)];
+    const corpses = corpseStandIns(roots);
+    this.fallenWarmGeo = corpses.map((m) => (m as THREE.Mesh).geometry);
+    const fallen = [...corpses, ...packStandIns(roots)];
     const coin = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
     coin.frustumCulled = false;
     const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, this.portalWarm.root, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
@@ -467,12 +477,14 @@ export class DungeonScene extends GameScene {
    */
   override warmupDone(): void {}
 
-  /** Frees the warm-up's summoned bodies and item stand-in geometry. */
+  /** Frees the warm-up's summoned bodies and item and fallen-look stand-in geometry. */
   private releaseWarm(): void {
     for (const root of this.summonWarm) releaseCreature(root);
     this.summonWarm = [];
     for (const g of this.lootWarmGeo) g.dispose();
     this.lootWarmGeo = [];
+    for (const g of this.fallenWarmGeo) g.dispose();
+    this.fallenWarmGeo = [];
     this.portalWarm?.dispose();
     this.portalWarm = null;
   }
@@ -935,7 +947,7 @@ export class DungeonScene extends GameScene {
     this.mesh.useBounce();
     // The biome's colour grade (world stream). Reset in dispose().
     this.engine.renderer.setGrade(biomeArt(this.biome.id, this.level?.variant).grade);
-    // Fog and the clear colour belong to the light mood (applyBiomeLighting).
+    // The clear colour belongs to the light mood (applyBiomeLighting).
 
     // Place the player at the arrival point.
     const entry = this.mesh.tileToWorld(this.level.entry.x, this.level.entry.y);
@@ -1069,7 +1081,7 @@ export class DungeonScene extends GameScene {
     }
 
     this.fx.setAmbient(this.biome.particles ?? null, new THREE.Box3().setFromObject(this.mesh.root));
-    this.weather = new Weather(this.fx, this.level, this.biome.fogColor);
+    this.weather = new Weather(this.fx, this.level);
     // Only this floor's monsters and the hero's own skills stay in memory.
     audio.setLoadout(
       [...this.enemies.map((e) => e.family), ...(this.boss ? [this.boss.family] : [])],
@@ -2429,7 +2441,7 @@ export class DungeonScene extends GameScene {
       void (async () => {
         const { fadeTo } = await import('../core/Engine');
         await fadeTo(1, 320);
-        beginLoad(5);
+        beginLoad(6);
         await this.loadLevelPaced(this.levelIndex + 1);
         // The new area's shaders link behind the curtain, not during the fade-in.
         await this.bossPortraitReady();

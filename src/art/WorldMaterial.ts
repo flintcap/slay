@@ -36,7 +36,6 @@ import {
 } from 'three/tsl';
 import { andMask, asStandard, matColor, matFloat, noise2, setNodeTextures, pixelDither, viewEye, floorDepth, worldLite, type F, type V2, type V3, type V4 } from '../core/Tsl';
 import { resolveSurface } from './SurfaceLibrary';
-import { setMistFloor } from '../core/Air';
 import { setTextures, TEXTURE_SETS, type TextureSetInfo } from './TextureSets';
 
 /** The vertex attribute carrying world context. See the header. */
@@ -110,9 +109,6 @@ export const worldCutaway = { value: new THREE.Vector4(0, 0, 0, 0) };
 
 export function setWorldCutaway(x: number, y: number, z: number, radius: number): void {
   worldCutaway.value.set(x, y, z, radius);
-  // The level sets this every frame from the hero's chest: the ground mist
-  // lies on the floor under it.
-  setMistFloor(y - 1.1);
 }
 
 /**

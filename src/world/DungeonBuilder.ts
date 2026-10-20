@@ -46,7 +46,6 @@ import { STEP_HEIGHT, TILE_SIZE, levelExtras, propGroundHeight } from './Dungeon
 import { propDef, propTemplate, scaleFor, variantFor, type PropTemplate } from './Props';
 
 import { surface, surfaceVariant } from '../art/Materials';
-import { setFogShape, fogShape } from '../core/Renderer';
 import { STILL_LAYER } from '../core/Lighting';
 import { shadowBodyMaterial } from '../core/ShadowBodies';
 import { WorldMarks, planMarks } from './WorldMarks';
@@ -127,8 +126,9 @@ const NICHE_SLIT: Niche = { w: 0.42, sill: 0.5, head: 2.1, depth: 0.5 };
  * radians, so the readable floor runs about 26m ahead of the player, and an
  * opening smaller than that leaves a dark cap sitting in the middle of the
  * frame — which is exactly what the first render after the ceiling fix showed.
- * At 30m the biome fog is already carrying half the distant frame, so the point
- * where the rock closes over is hidden rather than seen.
+ * At 30m the edge lies out in the frame's dark corners, past the reach of the
+ * torches, so the point where the rock closes over is hidden rather than seen
+ * (there is no fog to hide it: the owner had it taken out).
  */
 const ROOF_OPEN = 30;
 
@@ -485,8 +485,9 @@ export interface BiomeLighting {
 /**
  * Lights a level from its biome's light mood (`Lighting.ts`): a low tinted
  * fill, a key light (the sun or moon outdoors, a dim wash indoors), an
- * optional red light from below, fog and the clear colour. Owns `scene.fog`
- * and `scene.background` until disposed.
+ * optional red light from below and the clear colour. Owns
+ * `scene.background` until disposed. No fog: the owner had it taken out, as
+ * far too much.
  */
 export function applyBiomeLighting(
   scene: THREE.Scene,
@@ -501,13 +502,6 @@ export function applyBiomeLighting(
   const mood = themedMood(lightMood(biome, art), themeFits(t, biome.id) ? t.light : null);
   const open = art.ceiling === 'open';
 
-  const fog = new THREE.FogExp2(mood.fog, mood.fogDensity);
-  scene.fog = fog;
-  // Keep the fight clear and let the distance go. Fog starts a little short
-  // of the player (the camera sits ~20m back), and below the floor a height
-  // term swallows pits and chasms so they read as bottomless. The height is
-  // set by `DungeonMesh.update`, which knows where the lowest floor is.
-  setFogShape(14, -1000, 4.5, 0.92);
   scene.background = new THREE.Color(mood.background);
 
   // Hemisphere fill: the colour of the dark. Kept low so the torch pools and
@@ -588,8 +582,6 @@ export function applyBiomeLighting(
         scene.remove(under.target);
         under.dispose();
       }
-      if (scene.fog === fog) scene.fog = null;
-      setFogShape();
       if (sun === key) sun = null;
     },
   };
@@ -736,8 +728,6 @@ export class DungeonMesh {
 
   private readonly halfW: number;
   private readonly halfH: number;
-  /** Height of the lowest floor in the level, for the height fog. */
-  private lowestFloor = 0;
   /** Per wall variant: does one tile span whole texture repeats? */
   private wallWhole: boolean[] = [];
 
@@ -797,12 +787,6 @@ export class DungeonMesh {
     this.roomOf = ex?.roomOf ?? new Int16Array(level.width * level.height).fill(-1);
 
     this.root.name = `dungeon:${biome.id}:${level.layout}`;
-    let low = 0;
-    for (let i = 0; i < level.tiles.length; i++) {
-      if (isWalkableValue(level.tiles[i]!)) low = Math.min(low, this.heights[i]! * STEP_HEIGHT);
-    }
-    this.lowestFloor = low;
-
     if (!paced) for (const _ of this.steps(rng));
   }
 
@@ -1076,7 +1060,7 @@ export class DungeonMesh {
     // Emissive on purpose. Torches sit below the rock and nothing else lights
     // it, so a lit-only material went fully black — which looks exactly like
     // the hole it was added to fill. A self-lit floor guarantees it always
-    // reads as a surface. Scene fog still fades it with distance.
+    // reads as a surface.
     //
     // Textured, too. A flat untextured slab the size of half the screen reads as
     // a hole whether or not there is one behind it, which is why "still holes in
@@ -1091,10 +1075,10 @@ export class DungeonMesh {
     // whatever the lid looks like is what the frame looks like.
     //
     // So it does not look like anything. A flat matte tone a shade off the
-    // biome's own fog, with no texture to catch the eye and a trace of emissive
-    // so it never goes absolutely black: at distance it dissolves into the fog
-    // and reads as unlit rock, which is what it is. The playable floor is then
-    // the only lit thing on screen, which is the whole point.
+    // biome's dark (its old fog colour), with no texture to catch the eye and
+    // a trace of emissive so it never goes absolutely black: it reads as unlit
+    // rock, which is what it is. The playable floor is then the only lit thing
+    // on screen, which is the whole point.
     const rockTone = new THREE.Color(this.biome.fogColor).lerp(new THREE.Color(0x2a2f3a), 0.5);
     const bedrockMat = new THREE.MeshStandardNodeMaterial({
       color: rockTone,
@@ -1121,7 +1105,7 @@ export class DungeonMesh {
     // the lid dissolves the caps carry straight on and the seam closes itself.
     //
     // They wear the wall's own stone, not the lid's tone. The lid is painted a
-    // flat matte colour with a trace of emissive so it sinks into the fog and
+    // flat matte colour with a trace of emissive so it sinks into the dark and
     // reads as nothing; a wall top is a real surface with a wall under it, and
     // in the lid's paint the first render came back with pale slabs glowing in
     // mid-air over a dark level, because the emissive lit them while their own
@@ -1327,9 +1311,8 @@ export class DungeonMesh {
             if (v === T_CHASM) {
               // A chasm is a hole: drop the walls of the pit and no floor at all.
               this.emitPitWalls(surfs, x, y, wx, wz, hy, WALL0);
-              // Molten biomes: the level's own lava, four metres down. The
-              // height fog swallows most of it, so what is left is an ember
-              // glow at the bottom rather than a flat black cut-out.
+              // Molten biomes: the level's own lava, four metres down: an
+              // ember glow at the bottom rather than a flat black cut-out.
               if (art.liquid === 'lava' || art.liquid === 'voidwater') {
                 surfs[LIQ].flat(wx, hy - 4.2, wz, HALF, true, x % 4, y % 4, 1, [0, 0, 0, 0]);
               }
@@ -2676,7 +2659,8 @@ export class DungeonMesh {
       yield;
     }
 
-    bakeProps(this.root, still);
+    // The baked meshes are the floor's own: left out, every floor's stayed on the GPU.
+    this.ownedGeo.push(...bakeProps(this.root, still));
     this.batchFlames();
     this.buildLightPools();
   }
@@ -2993,9 +2977,6 @@ export class DungeonMesh {
     setWorldRoof(focus.x, focus.z, ROOF_OPEN);
     // Walls between the camera and the hero open a small hole on the sightline.
     setWorldCutaway(focus.x, focus.y + 1.1, focus.z, 2.0);
-    // Height fog sits just under the lowest walkable floor: pits sink into it,
-    // nobody stands in it.
-    if (fogShape.w > 0) fogShape.y = this.lowestFloor - 0.9;
     if (sun) {
       // Whole-metre steps: a shadow map sliding by fractions of a texel
       // every frame shimmers along every edge.

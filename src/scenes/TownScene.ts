@@ -16,7 +16,6 @@ import { CameraRig } from '../fx/CameraRig';
 import { Player } from '../entities/Player';
 import { folkMeshed, heroMeshed } from '../art/npc/Prewarm';
 import { townSteps, type TownBuild } from '../world/Town';
-import { setFogShape } from '../core/Renderer';
 import { setActiveDifficulty } from '../data/difficulties';
 import { settleLevels } from '../sim/Character';
 import { dialogue, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
@@ -152,12 +151,7 @@ export class TownScene extends GameScene {
       saturation: 0.9,
       bloomStrength: 0.7,
     });
-    // Fog starts past the camp's near edge, so the stations stay crisp and
-    // only the tree line and the far palisade go soft.
-    setFogShape(18);
-    // Cold, damp night air. Denser than the old town fog so the tree line goes
-    // soft and the camp reads as a lit clearing rather than an object on a plane.
-    this.scene.fog = new THREE.FogExp2(0x131a26, 0.017);
+    // No fog: the owner had it taken out, as far too much.
     this.scene.background = new THREE.Color(0x080b12);
 
     // Building the camp and dressing the hero are each a second or more: the
@@ -496,7 +490,6 @@ export class TownScene extends GameScene {
     // Drop the proximity prompt so it does not follow the player downstairs.
     this.engine.renderer.setExposure(1.0);
     this.engine.renderer.setGrade();
-    setFogShape();
     this.nearby = null;
     this.smokeSpots = [];
     events.emit('toast', { text: '', kind: 'info' });

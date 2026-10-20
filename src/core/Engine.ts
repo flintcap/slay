@@ -4,10 +4,11 @@ import { Input } from './Input';
 import type { SceneId } from '../types';
 import { events } from './Events';
 import { save } from './Save';
-import { sweepAssetTextures, texturesSettled } from './Assets';
-import { beginLoad, endLoad, loadStep } from './LoadProgress';
+import { reviveAssetTextures, sweepAssetTextures, texturesSettled } from './Assets';
+import { beginLoad, endLoad, loadPart, loadStep } from './LoadProgress';
 import { tr } from './I18n';
 import { framePace } from './FramePace';
+import { logInfo } from './Log';
 
 /** One distinct error the engine caught, with how often it has happened. */
 export interface CaughtError {
@@ -27,6 +28,14 @@ const PAUSED_FRAME_MS = 100;
 
 /** Frames in a row a scene may fail before the engine pulls the player out. */
 const FAILS_BEFORE_RECOVERY = 30;
+
+/**
+ * Behind the load curtain, the most a scene's textures and its shaders may
+ * each hold it up (ms). Only a safety net, for a line that has dropped or a
+ * driver that never answers: the curtain lifts when everything is in.
+ */
+const TEXTURE_WAIT_MS = 120000;
+const WARM_WAIT_MS = 180000;
 
 let liveEngine: Engine | null = null;
 
@@ -103,6 +112,11 @@ export function disposeObject(root: THREE.Object3D): void {
     // A shadow-casting light owns its shadow map (and the kept copy in
     // `ShadowCache.ts`); a torn-down scene left those behind too.
     if ((obj as THREE.Light).isLight) (obj as THREE.Light).dispose();
+    // Anything else, only told it is gone: three keeps what it drew it with
+    // (shader, pipeline, bindings) until then, and the mesh and its scene
+    // with it. Not `dispose()`, which frees a batched mesh's own buffers,
+    // already freed by its owner.
+    else obj.dispatchEvent({ type: 'dispose' });
     const mat = (mesh as unknown as { material?: THREE.Material | THREE.Material[] }).material;
     if (!mat) return;
     const list = Array.isArray(mat) ? mat : [mat];
@@ -346,6 +360,11 @@ export class Engine {
         } catch (err) {
           this.report('dispose', err);
         }
+        try {
+          this.renderer.forget(this.active.scene);
+        } catch (err) {
+          this.report('dispose', err);
+        }
         this.active = null;
       }
 
@@ -389,13 +408,14 @@ export class Engine {
     // Steps each scene announces on the way (`'load:progress'`): the map's
     // generation, hero, floor, monsters, summons and icons, the town's
     // residents, camp and hero, and every scene's shaders.
-    beginLoad(id === 'dungeon' ? 7 : id === 'town' ? 4 : 1);
+    beginLoad(id === 'dungeon' ? 8 : id === 'town' ? 5 : 2);
     try {
       await next.enter(payload);
     } catch (err) {
       try {
         next.dispose();
         disposeObject(next.scene);
+        this.renderer.forget(next.scene);
       } catch {
         /* half-built; nothing more to do */
       }
@@ -419,6 +439,12 @@ export class Engine {
    * buffers and textures reach the GPU on the way. Before, one such frame
    * built them all on the spot: a task of seconds that froze the page, and
    * blocking pipelines that held up the whole browser.
+   *
+   * The curtain lifts only once every texture the scene samples is in and
+   * every mesh draws, however long that takes (`TEXTURE_WAIT_MS` and
+   * `WARM_WAIT_MS` are only a safety net). Before, it gave up at 2 s for the
+   * textures and 20 s for the shaders, and a slow first launch came up on a
+   * town or map still filling in. The bar follows both (`loadPart`).
    */
   async prime(next: GameScene): Promise<void> {
     loadStep('shaders');
@@ -459,8 +485,25 @@ export class Engine {
     } catch (err) {
       this.report('render', err);
     }
-    // Textures still decoding would otherwise upload on a frame in play.
-    const textures = texturesSettled(2000);
+    // Textures whose pixels a long absence let go (`sweepAssetTextures`)
+    // are fetched again now, and those still decoding would otherwise
+    // upload on a frame in play.
+    let own = new Set<THREE.Texture>();
+    try {
+      own = this.renderer.texturesUnder(next.scene);
+      reviveAssetTextures(own);
+    } catch (err) {
+      this.report('render', err);
+    }
+    // The scene's own textures, every one: the curtain used to wait 2 s at
+    // most, and on a slow line the walls and bodies came up flat, painted
+    // in a moment later.
+    let landed = 0;
+    let fetching = 0;
+    const textures = texturesSettled(TEXTURE_WAIT_MS, own, (n, of) => {
+      landed = n;
+      fetching = of;
+    });
     // The warm frames draw the whole scene, not just what the camera sees, so
     // every mesh's buffers and every texture reach the GPU now. Before, each
     // part of a map uploaded on the frame it first came into view: a hitch
@@ -474,11 +517,19 @@ export class Engine {
           culled.push(o);
         }
       });
-      await this.renderer.warm(next.scene, next.camera, this.elapsed, 20000);
-      await textures;
-      // What finished decoding meanwhile.
+      const t0 = performance.now();
+      let left = await this.renderer.warm(next.scene, next.camera, this.elapsed, WARM_WAIT_MS, loadPart);
+      loadStep('textures');
+      // Always waited on: it is already settled when every texture is in.
+      loadPart(fetching ? landed / fetching : 1);
+      const tick = setInterval(() => loadPart(fetching ? landed / fetching : 1), 200);
+      await textures.finally(() => clearInterval(tick));
+      // What finished decoding meanwhile, and anything a late texture still
+      // needs drawn: the last of these frames is the scene as it comes up.
       this.renderer.upload(next.scene);
-      this.renderer.render(next.scene, next.camera, 0, this.elapsed);
+      left = await this.renderer.warm(next.scene, next.camera, this.elapsed, WARM_WAIT_MS);
+      const missing = [...own].filter((t) => t.userData.asset && !t.userData.loaded).length;
+      logInfo(`ready in ${((performance.now() - t0) / 1000).toFixed(1)} s: ${left ? `${left} draws still building` : 'every draw built'}, ${missing ? `${missing} textures still out` : 'every texture in'}`);
     } catch (err) {
       this.report('render', err);
     } finally {

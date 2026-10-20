@@ -9,8 +9,8 @@
  *   - every layer scales with quality (more than two per emit: the kit never
  *     thins a one- or two-sprite layer);
  *   - what it asks for per second stays inside a fair share of the field;
- *   - the biomes meant to have weather get it: snow, rain, ash and fog all
- *     turn up somewhere.
+ *   - the biomes meant to have weather get it: snow, rain, ash and drips all
+ *     turn up somewhere (fog banks were taken out with the fog).
  */
 import './depth-catalog';
 import { generateRun } from '../src/world/DungeonGen';
@@ -37,7 +37,7 @@ for (const b of BIOMES) {
     }
   }
 }
-for (const k of ['snow', 'rain', 'ash', 'fog'] as WeatherKind[]) if (!seenKinds.has(k)) problems.push(`${k} never turns up`);
+for (const k of ['snow', 'rain', 'ash', 'drip'] as WeatherKind[]) if (!seenKinds.has(k)) problems.push(`${k} never turns up`);
 
 // Running: count what a level asks the particle system for.
 let peak = 0;
@@ -60,7 +60,7 @@ for (const depth of [1, 9, 30]) {
           asked += layer.count * mul;
         },
       };
-      const w = new Weather(fx, level, 0x303840);
+      const w = new Weather(fx, level);
       if (w.kinds().length > 0) withWeather++;
       // Walk the hero through every zone for 4 s each.
       const zones = level.zones && level.zones.length > 0 ? level.zones : null;

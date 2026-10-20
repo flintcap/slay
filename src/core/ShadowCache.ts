@@ -176,6 +176,13 @@ interface ShadowNodeLike {
 }
 
 const kept = new WeakMap<object, Kept>();
+/** Kept maps alive, for the soak test: one per caching light at most. */
+let keptAlive = 0;
+
+/** How many kept maps exist now. Each is freed with its light's own map. */
+export function keptShadowMaps(): number {
+  return keptAlive;
+}
 let base: RenderObjectFn | null = null;
 const stillOnly: RenderObjectFn = (o, s, c, g, m, gr, l, cc, p) => {
   if (o.userData.staticShadow) base!(o, s, c, g, m, gr, l, cc, p);
@@ -236,13 +243,17 @@ export function installShadowCache(gate: { skipped: number } | null): void {
           target.depthTexture = depth;
           k = { target, view: new THREE.Matrix4(), proj: new THREE.Matrix4(), valid: false, primed: false, size };
           kept.set(this, k);
+          keptAlive++;
           // The kept map lives as long as the light's own: freed with the
           // light, or when three swaps the map for another shadow type.
           const owner = this;
           const mine = k;
           shadowMap.addEventListener('dispose', () => {
             mine.target.dispose();
-            if (kept.get(owner) === mine) kept.delete(owner);
+            if (kept.get(owner) === mine) {
+              kept.delete(owner);
+              keptAlive--;
+            }
           });
         }
         k.primed = true;

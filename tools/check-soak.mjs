@@ -30,6 +30,8 @@
  *  - GPU geometries, textures and shader programs alive: must not keep climbing
  *  - event-bus subscriptions per event: must not grow between visits
  *  - objects in the town scene: must not grow between visits
+ *  - decoded asset images and fetched files held: must level off (a biome
+ *    left behind lets its own go), and kept shadow maps must not pile up
  *
  * And on every floor: the median cost of one simulation step, which must not
  * drift upward as the session goes on.
@@ -82,7 +84,13 @@ const snapshot = () =>
     const info = e.renderer.gl.info;
     let objects = 0;
     e.currentScene?.scene.traverse(() => objects++);
+    const mem = await window.SLAY.memory();
     return {
+      assetImages: mem.assets.images,
+      assetBytes: mem.assets.bytes,
+      assetVideoMB: mem.assets.videoMB,
+      evicted: mem.assets.evicted,
+      keptShadows: mem.keptShadows,
       heapMB: +((performance.memory?.usedJSHeapSize ?? 0) / 1048576).toFixed(1),
       geometries: info.memory.geometries,
       textures: info.memory.textures,
@@ -159,7 +167,9 @@ const town = [];
 const floors = [];
 await page.evaluate(() => window.SLAY.engine.goTo('town'));
 town.push(await snapshot());
-console.log(`town   heap ${town[0].heapMB}MB  geo ${town[0].geometries}  tex ${town[0].textures}  prog ${town[0].programs}  objects ${town[0].objects}  dom ${town[0].domNodes}`);
+const line = (s) =>
+  `town   heap ${s.heapMB}MB  geo ${s.geometries}  tex ${s.textures}  prog ${s.programs}  objects ${s.objects}  dom ${s.domNodes}  images ${s.assetImages} (${s.evicted} let go)  files ${s.assetBytes}  kept shadows ${s.keptShadows}`;
+console.log(line(town[0]));
 
 // A warm-up lap (parts only): one short floor at the first depth this part
 // plays, then town, so leaks are judged after caches meant to persist fill.
@@ -191,9 +201,7 @@ for (const { run, depth, floors: nFloors, frames } of schedule) {
   await page.evaluate(() => window.SLAY.engine.goTo('town'));
   const snap = await snapshot();
   town.push(snap);
-  console.log(
-    `town   heap ${snap.heapMB}MB  geo ${snap.geometries}  tex ${snap.textures}  prog ${snap.programs}  objects ${snap.objects}  dom ${snap.domNodes}  errors ${snap.errors}`,
-  );
+  console.log(`${line(snap)}  errors ${snap.errors}`);
 }
 
 const caught = await page.evaluate(() => [...window.SLAY.engine.errors.values()].map((e) => ({ ...e })));
@@ -222,6 +230,11 @@ if (town.length >= lapEnd + 2) {
   grow('programs', 6);
   grow('objects', 20);
   grow('domNodes', 60);
+  // A biome's decoded images and file bytes are let go once it is left
+  // behind (`Assets.sweepAssetTextures`), so they level off too.
+  grow('assetImages', 12);
+  grow('assetBytes', 12);
+  grow('keptShadows', 0);
   for (const [k, n] of Object.entries(b.listeners)) {
     const was = a.listeners[k] ?? 0;
     if (n > was) problems.push(`event "${k}" has ${n} subscribers in town, was ${was}: something subscribes and never unsubscribes`);

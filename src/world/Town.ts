@@ -12,8 +12,8 @@
  * The composition is a ring. The fire is the centre and the only thing lighting
  * the middle of the town; the services sit around it with their own smaller
  * warm lights; the palisade closes the ring; and the gate breaks it to the
- * north, where the ground drops away into the dark. Cold moonlight and cold fog
- * outside, warm firelight inside, so leaving reads as leaving somewhere safe.
+ * north, where the ground drops away into the dark. Cold moonlight outside,
+ * warm firelight inside, so leaving reads as leaving somewhere safe.
  */
 
 import * as THREE from 'three';

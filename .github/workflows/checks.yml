@@ -56,6 +56,18 @@ jobs:
       - run: npm ci
       - name: Release lock
         run: node tools/check-release.mjs
+      - name: Packed textures from the last run
+        uses: actions/cache@v5
+        with:
+          path: public/ktx2
+          key: ktx2-${{ hashFiles('public/assets/textures/**', 'tools/pack-textures.mjs', 'tools/lib/bc7.mjs') }}
+          restore-keys: ktx2-
+      - name: Bodies meshed by the last run
+        uses: actions/cache@v5
+        with:
+          path: public/meshes
+          key: meshes-${{ hashFiles('src/**', 'tools/meshes-entry.ts', 'tools/build-meshes.mjs', 'tools/dom-stub.ts') }}
+          restore-keys: meshes-
       - name: Build the game
         run: npm run build:release
       - name: Build the one-page artifact
@@ -83,6 +95,18 @@ jobs:
       - run: npm ci
       - name: Newest Chrome
         run: node tools/get-chrome.mjs
+      - name: Packed textures from the last run
+        uses: actions/cache@v5
+        with:
+          path: public/ktx2
+          key: ktx2-${{ hashFiles('public/assets/textures/**', 'tools/pack-textures.mjs', 'tools/lib/bc7.mjs') }}
+          restore-keys: ktx2-
+      - name: Bodies meshed by the last run
+        uses: actions/cache@v5
+        with:
+          path: public/meshes
+          key: meshes-${{ hashFiles('src/**', 'tools/meshes-entry.ts', 'tools/build-meshes.mjs', 'tools/dom-stub.ts') }}
+          restore-keys: meshes-
       - name: Build (release and test)
         run: |
           npm run build:release

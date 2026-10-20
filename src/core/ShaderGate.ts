@@ -42,6 +42,7 @@ interface LightsLike {
 }
 interface RenderObjectLike {
   object: THREE.Object3D & { isQuadMesh?: boolean };
+  scene: THREE.Object3D;
   lightsNode: LightsLike;
   /** Set the first time the object's shader is asked for; null until then. */
   _nodeBuilderState: unknown;
@@ -208,6 +209,20 @@ export class ShaderGate {
       };
       setTimeout(check, 0);
     });
+  }
+
+  /**
+   * Drops the shaders still waiting for a scene that is gone: built after
+   * three let go of the scene's draws (`Renderer.forget`), each would only
+   * have been kept again.
+   */
+  forget(scene: THREE.Object3D): void {
+    for (let i = this.queue.length - 1; i >= 0; i--) {
+      const ro = this.queue[i]![0];
+      if (ro.scene !== scene) continue;
+      this.queue.splice(i, 1);
+      this.queued.delete(ro);
+    }
   }
 
   /** Whether the shader for `ro` is built (for it, or for another just like it). */

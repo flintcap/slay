@@ -19,3 +19,10 @@ dist-single-release/
 .checks/
 # The worktrees symlink node_modules, and a trailing-slash pattern does not match a symlink.
 node_modules
+# BC7 textures packed from public/assets/textures by tools/pack-textures.mjs,
+# which `npm run build` runs first.
+public/ktx2/
+# Hero and townsfolk bodies meshed ahead by tools/build-meshes.mjs, which
+# `npm run build` runs first; .meshbuild is its scratch folder.
+public/meshes/
+.meshbuild/

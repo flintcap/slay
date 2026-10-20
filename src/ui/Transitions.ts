@@ -35,6 +35,7 @@ const STAGE_WORDS: Record<string, string> = {
   summons: tr('Calling your allies'),
   icons: tr('Painting the gear'),
   shaders: tr('Lighting the torches'),
+  textures: tr('Painting the halls'),
   meshing: tr('Gathering the townsfolk'),
   ready: tr('Ready'),
 };
@@ -206,6 +207,14 @@ export function mountTransitions(): void {
       // The curtain lifts next; the card fades with a full bar.
       hide();
       viaGoTo = false;
+      return;
+    }
+    if (p.part !== undefined) {
+      // A step that says how far it is: the bar holds there, creeping only
+      // a little past it, so it neither runs ahead nor looks stuck.
+      base = Math.min(1, Math.max(shown, (p.done + p.part * CREEP_CAP) / total));
+      cap = Math.min(1, Math.max(base, (p.done + Math.min(CREEP_CAP, p.part * CREEP_CAP + 0.15)) / total));
+      stepAt = performance.now();
       return;
     }
     base = Math.min(1, Math.max(shown, p.done / total));

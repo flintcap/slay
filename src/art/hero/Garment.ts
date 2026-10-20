@@ -37,6 +37,17 @@ export interface GarmentSpec {
  */
 const GARMENT_REV = 3;
 
+/**
+ * The spec as the mesher sees it: every number at the field's own 32-bit
+ * precision. The fittings are placed by ray marches whose last bits can
+ * differ between builds of the same body (the page against `tools/
+ * build-meshes.mjs`), which missed the shipped part for a difference the
+ * field never sees.
+ */
+function specKey(spec: GarmentSpec): string {
+  return JSON.stringify(spec, (_k, v: unknown) => (typeof v === 'number' ? Math.fround(v) : v));
+}
+
 /** The garment's skinned geometry for a body; cached per body and spec name. */
 export function garment(
   body: BodyMesh,
@@ -44,7 +55,7 @@ export function garment(
   spec: GarmentSpec,
 ): THREE.BufferGeometry {
   return meshCached(
-    `garment|${GARMENT_REV}|${body.hash}|${body.garmentScale}|${name}|${JSON.stringify(spec)}`,
+    `garment|${GARMENT_REV}|${body.hash}|${body.garmentScale}|${name}|${specKey(spec)}`,
     () => {
       const keep = new Set(spec.groups);
       const base = body.anatomy.field.select((p) => keep.has(p.group));

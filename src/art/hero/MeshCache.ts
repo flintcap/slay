@@ -5,6 +5,9 @@
  * kept in memory and mirrored to IndexedDB under a key that hashes the field
  * they came from, so a changed body never reads a stale mesh. Every failure
  * (no IndexedDB, private window, quota) just means meshing again.
+ *
+ * The bodies a first launch needs come with the game, meshed when it was
+ * built (`loadShippedMeshes`, `tools/build-meshes.mjs`).
  */
 import * as THREE from 'three';
 import { events } from '../../core/Events';
@@ -28,6 +31,10 @@ export interface RawGeo {
 
 const memory = new Map<string, THREE.BufferGeometry>();
 const stored = new Map<string, RawGeo>();
+/** Parts that came with the game: kept for the whole session, never swept. */
+const shipped = new Map<string, RawGeo>();
+/** Where each part asked for came from, for the load checks. */
+const tally = { shipped: 0, stored: 0, meshed: 0 };
 /** Scene count at each in-memory part's last use (`sweepMeshCache`). */
 const lastUse = new Map<string, number>();
 let scenes = 0;
@@ -45,7 +52,7 @@ export function onMeshed(fn: ((key: string, raw: RawGeo) => void) | null): void 
  * that needs one reads it instead of meshing. Parts already here are skipped.
  */
 export function adoptMeshes(entries: ReadonlyArray<readonly [string, RawGeo]>): void {
-  for (const [k, raw] of entries) if (!memory.has(k) && !stored.has(k)) stored.set(k, raw);
+  for (const [k, raw] of entries) if (!memory.has(k) && !stored.has(k) && !shipped.has(k)) stored.set(k, raw);
 }
 
 function toRaw(g: THREE.BufferGeometry): RawGeo {
@@ -85,8 +92,18 @@ export function meshCached(key: string, build: () => THREE.BufferGeometry): THRE
     const g = fromRaw(raw);
     g.userData.cached = true;
     memory.set(k, g);
+    tally.stored++;
     return g;
   }
+  const ship = shipped.get(k);
+  if (ship) {
+    const g = fromRaw(ship);
+    g.userData.cached = true;
+    memory.set(k, g);
+    tally.shipped++;
+    return g;
+  }
+  tally.meshed++;
   const g = build();
   // Shared by every hero that uses it: disposers leave it alone.
   g.userData.cached = true;
@@ -110,7 +127,8 @@ export function sweepMeshCache(): void {
     if ((lastUse.get(k) ?? 0) >= scenes - 2) continue;
     memory.delete(k);
     lastUse.delete(k);
-    stored.set(k, toRaw(g));
+    // A shipped part is still in its own list.
+    if (!shipped.has(k)) stored.set(k, toRaw(g));
     g.dispose();
   }
   for (const k of stored.keys()) {
@@ -171,4 +189,68 @@ export function loadMeshCache(): Promise<void> {
       done();
     }
   });
+}
+
+const ARRAYS = { Float32Array, Uint16Array, Uint32Array } as const;
+
+interface ShippedHeader {
+  version: number;
+  jobs: string[];
+  parts: Array<{
+    key: string;
+    attrs: Array<{ name: string; itemSize: number; type: string; offset: number; bytes: number }>;
+    index: { type: string; offset: number; bytes: number };
+  }>;
+}
+
+/**
+ * Reads the parts that come with the game (`url`, made by
+ * `tools/build-meshes.mjs`): the select-screen heroes, each class as a new
+ * character, the shapeshifter's beasts and the townsfolk, meshed when the
+ * game was built by this same code under the same keys. A first launch reads
+ * them instead of meshing them for tens of seconds.
+ *
+ * Resolves to the town prewarm jobs the file covers (`art/npc/Prewarm.ts`),
+ * empty when it is missing, from another mesh version or unreadable: then
+ * everything is meshed as before. Never rejects.
+ */
+export async function loadShippedMeshes(url: string): Promise<ReadonlySet<string>> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok || !res.body) return new Set();
+    const buf = await new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    if (new TextDecoder().decode(bytes.subarray(0, 8)) !== 'SLAYMESH') return new Set();
+    const len = new DataView(buf).getUint32(8, true);
+    const header = JSON.parse(new TextDecoder().decode(bytes.subarray(12, 12 + len))) as ShippedHeader;
+    if (header.version !== MESH_VERSION) return new Set();
+    const at = (12 + len + 3) & ~3;
+    // Each array gets its own buffer, as one read from IndexedDB has: a
+    // worker may be handed one, and handing over a shared one would empty
+    // every other part.
+    const array = (type: string, offset: number, n: number): RawAttr['array'] | null => {
+      const Ctor = ARRAYS[type as keyof typeof ARRAYS];
+      return Ctor ? new Ctor(buf.slice(at + offset, at + offset + n)) : null;
+    };
+    for (const p of header.parts) {
+      const index = array(p.index.type, p.index.offset, p.index.bytes);
+      if (!index || index instanceof Float32Array) continue;
+      const attrs: Record<string, RawAttr> = {};
+      let whole = true;
+      for (const a of p.attrs) {
+        const arr = array(a.type, a.offset, a.bytes);
+        if (!arr) whole = false;
+        else attrs[a.name] = { array: arr, itemSize: a.itemSize };
+      }
+      if (whole) shipped.set(p.key, { attrs, index });
+    }
+    return new Set(header.jobs);
+  } catch {
+    return new Set();
+  }
+}
+
+/** How many parts came with the game, and where every part asked for so far came from. */
+export function meshCacheStats(): { shipped: number; fromShipped: number; fromStored: number; meshed: number } {
+  return { shipped: shipped.size, fromShipped: tally.shipped, fromStored: tally.stored, meshed: tally.meshed };
 }

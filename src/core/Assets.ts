@@ -16,7 +16,8 @@
  * - `loadImage`: a decoded image (ImageBitmap where the browser has it), cached.
  * - `loadTexture`: a `THREE.Texture` handed back at once with a flat fallback
  *   pixel in it. The real image is swapped in when it decodes; if it never
- *   does, the fallback simply stays.
+ *   does, the fallback simply stays. Where the GPU reads BC7, a scan packed
+ *   ahead (`usePackedTextures`) is loaded in its place.
  *
  * `preloadAssets` fetches and decodes a list of files ahead of time and reports
  * progress on the `assets:progress` event, which the boot bar and the loading
@@ -183,6 +184,135 @@ export function loadImage(rel: string): Promise<DecodedImage | null> {
 }
 
 // ---------------------------------------------------------------------------
+// Packed textures
+// ---------------------------------------------------------------------------
+//
+// `tools/pack-textures.mjs` packs the scans into BC7 blocks, KTX2 files under
+// `ktx2/` beside `assets/`: a quarter of the video memory of the plain pixels
+// a WebP decodes to, with every mip level made ahead instead of drawn on the
+// GPU when the file lands. Used where the GPU reads BC7, for the files the
+// packer's index lists; every other file, and every other GPU, gets the WebP.
+
+/** One mip level of a packed texture: BC7 blocks. */
+interface PackedLevel {
+  data: Uint8Array;
+  width: number;
+  height: number;
+}
+
+interface PackedImage {
+  width: number;
+  height: number;
+  mipmaps: PackedLevel[];
+}
+
+/** Files packed for the GPU in use, or null to load every file as it is. */
+let packedFiles: ReadonlySet<string> | null = null;
+const packedImages = new Map<string, Promise<PackedImage | null>>();
+
+/**
+ * Called once the renderer is open, before any texture is asked for: reads
+ * the packer's index when the GPU reads BC7 (`texture-compression-bc`).
+ * Returns how many files are packed. The published page has none (its art
+ * travels in packs of the plain files, `tools/bundle-artifact.mjs`).
+ */
+export async function usePackedTextures(bc7: boolean): Promise<number> {
+  packedFiles = null;
+  if (!bc7 || PACKED) return 0;
+  try {
+    const r = await fetch(`${assetBase}ktx2/index.json`);
+    const index = r.ok ? ((await r.json()) as { files?: Record<string, unknown> }) : null;
+    if (index?.files && typeof index.files === 'object') packedFiles = new Set(Object.keys(index.files));
+  } catch {
+    /* no index: every file as it is */
+  }
+  return packedFiles?.size ?? 0;
+}
+
+const isPacked = (rel: string): boolean => !!packedFiles?.has(rel);
+
+const VK_FORMAT_BC7_UNORM = 145;
+const VK_FORMAT_BC7_SRGB = 146;
+const KHR_SUPERCOMPRESSION_ZSTD = 2;
+
+let zstd: Promise<{ decode(a: Uint8Array, size?: number): Uint8Array }> | null = null;
+
+/**
+ * Reads a KTX2 file of BC7 blocks, each level as written or squeezed with
+ * zstd (the packer's). Null for anything else, so the WebP is used instead.
+ */
+async function readKtx2(bytes: ArrayBuffer): Promise<PackedImage | null> {
+  const v = new DataView(bytes);
+  // «KTX 20», then the header (KTX2 specification, section 3).
+  if (bytes.byteLength < 80 || v.getUint32(0) !== 0xab4b5458 || v.getUint32(4) !== 0x203230bb) return null;
+  const vkFormat = v.getUint32(12, true);
+  const width = v.getUint32(20, true);
+  const height = v.getUint32(24, true);
+  const levelCount = Math.max(1, v.getUint32(40, true));
+  const scheme = v.getUint32(44, true);
+  if ((vkFormat !== VK_FORMAT_BC7_UNORM && vkFormat !== VK_FORMAT_BC7_SRGB) || (scheme !== 0 && scheme !== KHR_SUPERCOMPRESSION_ZSTD)) return null;
+  if (bytes.byteLength < 80 + levelCount * 24) return null;
+  if (scheme === KHR_SUPERCOMPRESSION_ZSTD && !zstd) {
+    zstd = import('three/examples/jsm/libs/zstddec.module.js').then(async ({ ZSTDDecoder }) => {
+      const d = new ZSTDDecoder();
+      await d.init();
+      return d;
+    });
+  }
+  const unzip = scheme === KHR_SUPERCOMPRESSION_ZSTD ? await zstd! : null;
+  const mipmaps: PackedLevel[] = [];
+  for (let i = 0; i < levelCount; i++) {
+    const at = 80 + i * 24;
+    const offset = Number(v.getBigUint64(at, true));
+    const length = Number(v.getBigUint64(at + 8, true));
+    const size = Number(v.getBigUint64(at + 16, true));
+    if (offset + length > bytes.byteLength) return null;
+    const raw = new Uint8Array(bytes, offset, length);
+    const w = Math.max(1, width >> i);
+    const h = Math.max(1, height >> i);
+    const data = unzip ? unzip.decode(raw, size) : raw.slice();
+    if (data.byteLength !== Math.ceil(w / 4) * Math.ceil(h / 4) * 16) return null;
+    mipmaps.push({ data, width: w, height: h });
+  }
+  return { width, height, mipmaps };
+}
+
+/** A packed file's levels, fetched and read once. Null if it is missing or unreadable. */
+function loadPacked(rel: string): Promise<PackedImage | null> {
+  let p = packedImages.get(rel);
+  if (!p) {
+    p = fetch(`${assetBase}ktx2/${rel.replace(/\.webp$/, '.ktx2')}`)
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((bytes) => (bytes ? readKtx2(bytes) : null))
+      .catch(() => null)
+      .then((img) => {
+        if (!img) failed.add(rel);
+        return img;
+      });
+    packedImages.set(rel, p);
+  }
+  return p;
+}
+
+/** One BC7 block (mode 6) of a flat colour, as a packed texture's stand-in. */
+function flatBlock(color: number, alpha: number): Uint8Array {
+  const out = new Uint8Array(16);
+  let pos = 0;
+  const put = (value: number, n: number): void => {
+    for (let i = 0; i < n; i++, pos++) if ((value >> i) & 1) out[pos >> 3]! |= 1 << (pos & 7);
+  };
+  put(1 << 6, 7);
+  const rgba = [(color >> 16) & 255, (color >> 8) & 255, color & 255, alpha];
+  // Both ends the colour (7 bits, the shared low bit 0); every step 0.
+  for (const c of rgba) {
+    const q = Math.min(127, Math.round(c / 2));
+    put(q, 7);
+    put(q, 7);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Textures
 // ---------------------------------------------------------------------------
 
@@ -204,11 +334,24 @@ interface TexEntry {
   used: number;
   /** False once a sweep freed its GPU copy, until a scene uses it again. */
   gpu: boolean;
+  /** Fetches the file and puts its pixels in the texture (what `loadTexture` started). */
+  fill: () => Promise<boolean>;
+  /** Puts the flat fallback back in place of the pixels. */
+  flat: () => void;
+  /** Its pixels were let go (`sweepAssetTextures`); the next use fetches them again. */
+  evicted: boolean;
 }
 
 let sweeps = 0;
+/**
+ * Sweeps a texture stays unused before its pixels are let go too. A sweep is
+ * a scene change, so four is two trips to the dungeon and back somewhere
+ * else: a biome left behind gives back its memory, the town's stays.
+ */
+const KEEP_PIXELS = 4;
 
 const textures = new Map<string, TexEntry>();
+const entryOf = new WeakMap<THREE.Texture, TexEntry>();
 let defaultAnisotropy = 4;
 
 /** Anisotropic filtering applied to every asset texture, now and later. */
@@ -245,10 +388,17 @@ function fallbackImage(color: number, alpha: number): HTMLCanvasElement | null {
 export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Texture {
   const key = `${rel}|${opts.srgb ? 's' : 'l'}`;
   const hit = textures.get(key);
-  if (hit) return hit.tex;
+  if (hit) {
+    revive(hit);
+    return hit.tex;
+  }
 
   const fb = opts.fallback ?? (opts.srgb ? 0x606060 : 0x8080ff);
-  const tex: THREE.Texture<TexImageSource> = new THREE.Texture<TexImageSource>(fallbackImage(fb, opts.fallbackAlpha ?? 255) ?? undefined);
+  const fbAlpha = opts.fallbackAlpha ?? 255;
+  const packed = isPacked(rel);
+  const tex: THREE.Texture = packed
+    ? new THREE.CompressedTexture([{ data: flatBlock(fb, fbAlpha), width: 4, height: 4 }] as never, 4, 4, THREE.RGBA_BPTC_Format)
+    : new THREE.Texture<TexImageSource>(fallbackImage(fb, fbAlpha) ?? undefined);
   tex.name = `asset:${rel}`;
   tex.wrapS = tex.wrapT = opts.wrap ?? THREE.RepeatWrapping;
   tex.colorSpace = opts.srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -264,26 +414,104 @@ export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Tex
   tex.userData.loaded = false;
   tex.needsUpdate = true;
 
-  const ready = loadImage(rel).then((img) => {
-    if (!img) return false;
-    // The renderer writes a new image into the texture's existing GPU
-    // storage, which is still the 2 px fallback's size. Releasing it first
-    // makes the next draw allocate storage at the real size, mips and all,
-    // and rebind every material that samples it.
-    tex.dispose();
-    tex.image = img;
-    // An HTMLImageElement was not pre-flipped; ask the upload to do it.
-    tex.flipY = !(typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap);
-    tex.generateMipmaps = true;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.userData.loaded = true;
+  // The fallback again, as made above, once the pixels are let go.
+  const flat = (): void => {
+    if (packed) {
+      tex.image = { width: 4, height: 4 } as never;
+      tex.mipmaps = [{ data: flatBlock(fb, fbAlpha), width: 4, height: 4 }] as never;
+    } else {
+      tex.image = fallbackImage(fb, fbAlpha) ?? undefined;
+      tex.flipY = false;
+      tex.generateMipmaps = false;
+    }
+    tex.minFilter = THREE.LinearFilter;
+    tex.userData.loaded = false;
     tex.needsUpdate = true;
-    tex.dispatchEvent({ type: 'loaded' } as never);
-    return true;
-  });
-  textures.set(key, { tex, ready, used: sweeps, gpu: true });
+  };
+  const fill = (): Promise<boolean> =>
+    packed
+      ? loadPacked(rel).then((img) => {
+          if (!img) return false;
+          // As below: storage at the real size, every level from the file.
+          tex.dispose();
+          tex.image = { width: img.width, height: img.height } as never;
+          tex.mipmaps = img.mipmaps as never;
+          tex.minFilter = THREE.LinearMipmapLinearFilter;
+          tex.magFilter = THREE.LinearFilter;
+          tex.userData.loaded = true;
+          tex.needsUpdate = true;
+          tex.dispatchEvent({ type: 'loaded' } as never);
+          return true;
+        })
+      : loadImage(rel).then((img) => {
+          if (!img) return false;
+          // The renderer writes a new image into the texture's existing GPU
+          // storage, which is still the 2 px fallback's size. Releasing it first
+          // makes the next draw allocate storage at the real size, mips and all,
+          // and rebind every material that samples it.
+          tex.dispose();
+          tex.image = img;
+          // An HTMLImageElement was not pre-flipped; ask the upload to do it.
+          tex.flipY = !(typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap);
+          tex.generateMipmaps = true;
+          tex.minFilter = THREE.LinearMipmapLinearFilter;
+          tex.magFilter = THREE.LinearFilter;
+          tex.userData.loaded = true;
+          tex.needsUpdate = true;
+          tex.dispatchEvent({ type: 'loaded' } as never);
+          return true;
+        });
+  const entry: TexEntry = { tex, ready: fill(), used: sweeps, gpu: true, fill, flat, evicted: false };
+  textures.set(key, entry);
+  entryOf.set(tex, entry);
   return tex;
+}
+
+/** Fetches an evicted texture's pixels again. */
+function revive(e: TexEntry): void {
+  if (!e.evicted) return;
+  e.evicted = false;
+  e.tex.onUpdate = null;
+  // Asked for again: it counts as used, and its next upload is swept as any other.
+  e.used = sweeps;
+  e.gpu = true;
+  e.ready = e.fill();
+}
+
+/**
+ * Lets go of a texture's pixels: the decoded image (or packed levels) and
+ * the file's bytes. The texture object stays, holding its flat fallback, as
+ * materials keep it. It loads again when asked for (`loadTexture`), when a
+ * scene that holds it is entered (`reviveAssetTextures`), or, failing both,
+ * the first time it is drawn: the fallback shows for that moment.
+ */
+function evict(e: TexEntry): void {
+  const rel = e.tex.userData.asset as string;
+  e.evicted = true;
+  e.flat();
+  e.ready = Promise.resolve(false);
+  e.tex.onUpdate = () => revive(e);
+  images.delete(rel);
+  packedImages.delete(rel);
+  // The published build's files come out of shared packs: those bytes stay.
+  if (!PACKED) cache.delete(rel);
+}
+
+/**
+ * Before a scene's first frame: every evicted texture among `texes` (what
+ * its materials sample) is fetched again, so the loading curtain waits for
+ * it (`texturesSettled`). Returns how many were.
+ */
+export function reviveAssetTextures(texes: Iterable<THREE.Texture>): number {
+  let n = 0;
+  for (const t of texes) {
+    const e = entryOf.get(t);
+    if (e?.evicted) {
+      revive(e);
+      n++;
+    }
+  }
+  return n;
 }
 
 /**
@@ -291,7 +519,10 @@ export function loadTexture(rel: string, opts: AssetTextureOpts = {}): THREE.Tex
  * new scene nor the one before it used. The texture and its decoded image
  * stay cached, so whatever still holds it draws it again after one upload.
  * A long session no longer keeps every biome's textures on the GPU (all of
- * them come to about 450 MB). Returns how many were freed.
+ * them come to about 450 MB). One unused for `KEEP_PIXELS` scenes gives
+ * back its pixels and file bytes too (`evict`): a biome left behind no
+ * longer holds its memory for the rest of the session. Returns how many
+ * gave back their GPU copy.
  */
 export function sweepAssetTextures(inUse: ReadonlySet<THREE.Texture>): number {
   sweeps++;
@@ -305,6 +536,8 @@ export function sweepAssetTextures(inUse: ReadonlySet<THREE.Texture>): number {
       e.tex.needsUpdate = true;
       e.gpu = false;
       freed++;
+    } else if (!e.gpu && !e.evicted && e.used < sweeps - KEEP_PIXELS && e.tex.userData.loaded) {
+      evict(e);
     }
   }
   return freed;
@@ -321,12 +554,23 @@ export function textureReady(tex: THREE.Texture): Promise<boolean> {
  * will), or after `ms`. A texture that lands after a scene's first frame is
  * uploaded, mipmaps and all, on whatever frame it is first drawn in; waiting
  * for them behind a loading curtain keeps those uploads off the play.
+ *
+ * With `only`, waits for those textures alone (a scene's own: one still
+ * fetched for another biome does not hold its curtain). `onLanded(n, of)`
+ * hears the count at the start (n = 0) and then each one arrive, for the loading bar.
  */
-export function texturesSettled(ms: number): Promise<void> {
+export function texturesSettled(ms: number, only?: Iterable<THREE.Texture>, onLanded?: (n: number, of: number) => void): Promise<void> {
   const waiting: Array<Promise<unknown>> = [];
-  for (const e of textures.values()) if (!e.tex.userData.loaded) waiting.push(e.ready);
+  const pick = (e: TexEntry | undefined): void => {
+    if (e && !e.tex.userData.loaded) waiting.push(e.ready);
+  };
+  if (only) for (const t of only) pick(entryOf.get(t));
+  else for (const e of textures.values()) pick(e);
   if (!waiting.length) return Promise.resolve();
-  return Promise.race([Promise.allSettled(waiting).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
+  onLanded?.(0, waiting.length);
+  let n = 0;
+  const all = Promise.allSettled(waiting.map((p) => p.finally(() => onLanded?.(++n, waiting.length)))).then(() => undefined);
+  return Promise.race([all, new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
 /** Evicts a file's textures and decoded image. Materials still holding it keep the GPU copy until disposed. */
@@ -339,6 +583,7 @@ export function releaseAssetTexture(rel: string): void {
   }
   const img = images.get(rel);
   images.delete(rel);
+  packedImages.delete(rel);
   cache.delete(rel);
   void img?.then((i) => {
     if (i && 'close' in i) i.close();
@@ -384,7 +629,7 @@ export async function preloadAssets(
       const rel = queue.shift();
       if (!rel) return;
       const isImage = /\.(webp|png|jpe?g)$/i.test(rel);
-      const ok = isImage ? !!(await loadImage(rel)) : !!(await fetchAsset(rel));
+      const ok = isImage ? !!(await (isPacked(rel) ? loadPacked(rel) : loadImage(rel))) : !!(await fetchAsset(rel));
       if (!ok) missing.push(rel);
       done++;
       mine++;
@@ -400,9 +645,56 @@ export async function preloadAssets(
   return { ok: list.length - missing.length, missing };
 }
 
-/** Counts for the debug overlay and checkers. */
-export function assetStats(): { bytes: number; images: number; textures: number; loaded: number; failed: string[] } {
+/**
+ * Counts for the debug overlay and checkers. `packed` textures are held as
+ * BC7; `videoMB` is what the loaded ones on the GPU take there, `plainMB`
+ * what they would take as plain pixels (four bytes each, mips and all).
+ * `evicted` ones hold their fallback until used again; `images` and `bytes`
+ * are the decoded images and fetched files still held.
+ */
+export function assetStats(): {
+  bytes: number;
+  images: number;
+  textures: number;
+  loaded: number;
+  evicted: number;
+  packed: number;
+  videoMB: number;
+  plainMB: number;
+  failed: string[];
+} {
   let loaded = 0;
-  for (const e of textures.values()) if (e.tex.userData.loaded) loaded++;
-  return { bytes: cache.size, images: images.size, textures: textures.size, loaded, failed: Array.from(failed) };
+  let packed = 0;
+  let video = 0;
+  let plain = 0;
+  let evicted = 0;
+  for (const e of textures.values()) {
+    if (e.evicted) evicted++;
+    if (!e.tex.userData.loaded) continue;
+    loaded++;
+    const isPacked = !!(e.tex as THREE.CompressedTexture).isCompressedTexture;
+    if (isPacked) packed++;
+    // Video memory: only what is on the GPU now (`sweepAssetTextures`).
+    if (!e.gpu) continue;
+    const { width, height } = e.tex.image as { width: number; height: number };
+    const full = (width * height * 4 * 4) / 3;
+    plain += full;
+    if (isPacked) {
+      for (const m of e.tex.mipmaps as PackedLevel[]) video += m.data.byteLength;
+    } else {
+      video += full;
+    }
+  }
+  const mb = (n: number): number => Math.round((n / 1048576) * 10) / 10;
+  return {
+    bytes: cache.size,
+    images: images.size + packedImages.size,
+    textures: textures.size,
+    loaded,
+    evicted,
+    packed,
+    videoMB: mb(video),
+    plainMB: mb(plain),
+    failed: Array.from(failed),
+  };
 }

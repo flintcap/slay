@@ -38,6 +38,8 @@ import {
 import { NavGrid } from '../src/world/Nav';
 import { BARGAINS } from '../src/data/boons';
 import { getStatus } from '../src/data/statuses';
+import { getMonster } from '../src/data/monsters';
+import { getBiome } from '../src/world/Biomes';
 import { createCharacter } from '../src/sim/Character';
 import { onBossKilled, onInteract, onKill, onSurviveTick, questState } from '../src/sim/Quests';
 import { Player } from '../src/entities/Player';
@@ -219,10 +221,15 @@ for (const def of QUESTS) {
   for (const depth of DEPTHS) {
     if (depth < def.minDepth) continue;
     for (const seed of SEEDS.slice(0, 3)) {
-      const quest = questOf(def, depth);
       setRunDirector(() => ({ quest: () => questOf(def, depth) }));
       const run = generateRun(depth, seed, 'warden');
       setRunDirector(null);
+      // The run's own, held to the map as the game holds it.
+      const quest = run.quest!;
+      // The game offers a quest for one kind of monster only on a map with a
+      // zone of that kind (`buildQuest`); forced on another, it is not ours.
+      const kinds = new Set((run.map?.zones ?? []).flatMap((z) => getBiome(z.biome).families as readonly string[]));
+      if (def.objectives.some((o) => o.filter?.startsWith('family:') && !kinds.has(o.filter.slice(7)))) continue;
       const wantsAltar = quest.objectives.some((o) => o.kind === 'collect');
       run.levels.forEach((level, li) => {
         floorsSeen++;
@@ -268,7 +275,9 @@ for (const def of QUESTS) {
           else onInteract(quest, p.kind);
         }
         for (const sp of level.spawns) {
-          onKill(quest, sp.monsterId, 'undead', sp.rank as MonsterRank);
+          // Each monster's own family: a quest that asks for one kind (the
+          // brood's insects) counts only those.
+          onKill(quest, sp.monsterId, getMonster(sp.monsterId)?.family ?? 'undead', sp.rank as MonsterRank);
           questTokens.kill(quest, sp.rank as MonsterRank);
         }
         if (li < run.levels.length - 1) questTokens.exit(quest);

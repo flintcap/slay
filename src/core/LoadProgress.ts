@@ -47,6 +47,16 @@ export function loadStep(name: string): void {
   events.emit('load:progress', { stage: name, done, total });
 }
 
+/**
+ * How far into the current step the load is (0..1), for a step that knows:
+ * the shaders built so far, the textures landed. The bar moves on that
+ * rather than creeping, so a long wait still shows it working.
+ */
+export function loadPart(part: number): void {
+  if (!active || !stage) return;
+  events.emit('load:progress', { stage, done, total, part: Math.min(1, Math.max(0, part)) });
+}
+
 /** The load is finished: the bar shows full. */
 export function endLoad(): void {
   if (!active) return;

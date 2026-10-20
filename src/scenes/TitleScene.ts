@@ -7,7 +7,7 @@ import { surface, emissiveMaterial } from '../art/Materials';
 import { stoneBlock, pillar, displace, archway, stairs } from '../art/Meshes';
 import { Random } from '../core/RNG';
 import { FXSystem } from '../fx/Particles';
-import { buildRift, buildAtmosphere, guardianStatue, type RiftHandle, type AtmosphereHandle } from './MenuStage';
+import { buildRift, buildNightfall, guardianStatue, type RiftHandle } from './MenuStage';
 
 /** Arch opening, in metres. The rift plane is sized from these. */
 const ARCH_W = 4.6;
@@ -20,7 +20,8 @@ const LOOK = new THREE.Vector3(-2.7, 3.9, 0);
 
 /**
  * The title screen: a ruined gate on a dais with a burning rift where the door
- * should be, two hooded guardians, braziers, and moonlit mist.
+ * should be, two hooded guardians and braziers under a cold moon. No fog or
+ * mist: the owner had the white haze taken out.
  *
  * The camera frames the gate right of centre because the menu lives on the
  * left; it pushes in over the first few seconds while the logo resolves, then
@@ -35,7 +36,6 @@ export class TitleScene extends GameScene {
   private engine: Engine;
   private rift!: RiftHandle;
   private riftLight!: THREE.PointLight;
-  private atmosphere!: AtmosphereHandle;
   private t = 0;
   private nextPulse = 4.5;
   private pulse = 0;
@@ -61,7 +61,6 @@ export class TitleScene extends GameScene {
     const scene = this.scene;
 
     this.engine.renderer.applyEnvironment(scene, 0.45);
-    scene.fog = new THREE.FogExp2(0x090a12, 0.036);
     scene.background = new THREE.Color(0x05060b);
 
     scene.add(new THREE.HemisphereLight(0x2a3550, 0x0a0808, 0.3));
@@ -88,6 +87,11 @@ export class TitleScene extends GameScene {
     const ground = new THREE.Mesh(groundGeo, surface('ground.cobble', { repeat: 14, roughness: 0.94 }));
     ground.receiveShadow = true;
     scene.add(ground);
+    // The ground darkens into the night well before it ends, so its far edge
+    // never shows as a line against the sky. Just over the ground's bumps.
+    const night = buildNightfall(18, 38, 0x05060b);
+    night.position.y = 0.32;
+    scene.add(night);
 
     const stoneMat = surface('stone.crypt', { repeat: 2.2 });
     const templeMat = surface('stone.temple', { repeat: 1.6 });
@@ -202,24 +206,6 @@ export class TitleScene extends GameScene {
       this.torches.push({ light, base: 8, seed: rng.range(0, 100) });
     }
 
-    // Mist that the rift light glows through, and shafts of moonlight cutting
-    // down past the gate.
-    this.atmosphere = buildAtmosphere({
-      mistColor: 0x3c4660,
-      mistOpacity: 0.5,
-      extent: 70,
-      layers: 4,
-      shafts: [
-        { x: -2.2, z: -2.4, height: 15, width: 2.6, tilt: -0.42, yaw: 0.1 },
-        { x: 1.6, z: -3.2, height: 16, width: 1.6, tilt: -0.38, yaw: -0.1 },
-        { x: -6.5, z: -4.5, height: 14, width: 2.0, tilt: -0.46 },
-      ],
-      shaftColor: 0x9fb6e8,
-      shaftOpacity: 0.09,
-      seed: 0x7171,
-    });
-    scene.add(this.atmosphere.root);
-
     this.fx.setAmbient('embers', new THREE.Box3(new THREE.Vector3(-18, 0, -14), new THREE.Vector3(18, 10, 16)));
 
     // Start wide and high; update() eases in to REST.
@@ -293,13 +279,11 @@ export class TitleScene extends GameScene {
     this.rift.update(elapsed, p);
     this.riftLight.intensity = 14 + Math.sin(elapsed * 1.7) * 2 + p * 18;
 
-    this.atmosphere.update(dt);
     this.fx.update(dt, elapsed);
   }
 
   override dispose(): void {
     window.removeEventListener('pointermove', this.onMove);
-    this.atmosphere.dispose();
     this.fx.dispose();
     events.emit('ui:close', { panel: 'title' });
   }

@@ -146,7 +146,8 @@ export interface GameEvents {
    * 'monsters', 'shaders', ...), `done` of `total` steps are finished. Fires
    * at least at the start of each step; `done === total` means ready.
    */
-  'load:progress': { stage: string; done: number; total: number };
+  /** `part`: how far into the step (0..1), from a step that knows (`loadPart`). */
+  'load:progress': { stage: string; done: number; total: number; part?: number };
 }
 
 type Handler<K extends keyof GameEvents> = (payload: GameEvents[K]) => void;
