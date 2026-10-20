@@ -388,6 +388,24 @@ export class StatusContainer {
     this.modCache = out;
     return out;
   }
+
+  /**
+   * The slows in `statMods()` for one stat: the sum of every active effect's
+   * negative modifier, zero or less. `sim/Speed.ts` applies these at full
+   * strength after speed gear's diminishing returns, so a chill bites a fast
+   * hero as hard as a slow one.
+   */
+  slowOf(key: StatKey): number {
+    let out = 0;
+    for (const st of this.active.values()) {
+      const m = st.mods ?? st.def.mods;
+      const v = m?.[key];
+      if (v === undefined) continue;
+      const s = v * modScale(!!st.mods, st.magnitude, st.stacks);
+      if (s < 0) out += s;
+    }
+    return out;
+  }
 }
 
 // ---------------------------------------------------------------------------

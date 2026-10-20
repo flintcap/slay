@@ -10,6 +10,7 @@ import { skillSound } from '../audio/SkillSounds';
 import { SKILLS, SKILL_BY_ID, synergyPct } from '../data/skills';
 import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
+import { basicTime, handsOf, skillPace } from '../sim/Speed';
 
 /** A summon's hits and life at a skill rank, in any unit: only the ratio between ranks is used. */
 export type SummonGrowth = (rank: number) => { damage: number; life: number };
@@ -118,25 +119,21 @@ export type WeaponStyle = 'melee' | 'ranged' | 'caster' | 'unarmed';
 const MELEE_CATEGORIES: ItemCategory[] = ['sword', 'axe', 'mace', 'dagger', 'spear'];
 const RANGED_CATEGORIES: ItemCategory[] = ['bow', 'crossbow'];
 
-/** Resolves the style of whatever is in the character's main hand. */
 /**
- * Two blades: the hands take turns, one blow per swing, every DUAL_SWING
- * seconds (one blade swings every 0.42 s). At 0.21 s, twice a single weapon's
- * rate, the hero flailed at five swings a second; slower swings that each hit
- * harder keep the same damage per second: both weapons' worth (main hand
- * 100%, off hand 62%) every 0.42 s, as a share of the sheet, which carries
- * both weapons.
+ * Two blades: the hands take turns, one blow per swing, at the pace
+ * `sim/Speed.ts` sets (`DUAL_SWING_RATE`). Each blow is this share of the
+ * sheet, which carries both weapons. A fixed number: damage per hit never
+ * follows swing speed (owner's rule).
  */
-const DUAL_SWING = 0.32;
-const DUAL_BLOW_SCALE = ((1 + 0.62) * DUAL_SWING) / 0.42;
+const DUAL_BLOW_DAMAGE = 1.2343;
 /** With two blades, the main hand's share of a one-blow melee skill; the off hand lands the rest. */
 const DUAL_SKILL_MAIN = 0.6;
 /**
- * A melee skill with two blades takes this much longer than with one, so the
- * left blade's swing finishes before the next cast; its blows hit harder by
- * the same factor, so damage per second is unchanged.
+ * With two blades a melee skill's blows hit this much harder than with one
+ * (it also takes longer, `DUAL_SKILL_STRETCH` in `sim/Speed.ts`). A fixed
+ * number, never derived from the skill's time.
  */
-const DUAL_SKILL_TIME = 1.35;
+const DUAL_SKILL_DAMAGE = 1.35;
 
 /**
  * True when both hands hold a melee weapon.
@@ -451,6 +448,7 @@ export function clipFor(effect: string | undefined, holding: WeaponStyle, skillI
   }
 }
 
+/** Resolves the style of whatever is in the character's main hand. */
 export function weaponStyle(player: Player): WeaponStyle {
   // A beast fights with what it grew, whatever is in the pack.
   if (player.shape?.form) return 'melee';
@@ -913,8 +911,15 @@ export class SkillRunner {
       return p;
     };
 
-    const attackTime = 0.42 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
-    const castTime = 0.5 / Math.max(0.4, 1 + player.castSpeedPct / 100);
+    // How long this use takes (`sim/Speed.ts`): an attack at the weapon's
+    // pace, a spell on its cast time. `attackTime` and `castTime` already
+    // carry the skill's own `attackTime` / `castTime`; runners that time a
+    // skill themselves (shift, rite, vigil) multiply nothing more onto them
+    // once the skill's own field is set.
+    const pace = skillPace(def, handsOf(player.character.equipment), player.attackMult, player.castMult, (k, v) => bentKnob(bend, k, v));
+    const attackTime = pace.attack;
+    const castTime = pace.cast;
+    const actTime = pace.time;
 
     // Whatever this skill inflicts rides on every packet it produces, so a
     // maiming strike maims whether the runner delivered it as a swing, a
@@ -993,15 +998,12 @@ export class SkillRunner {
         case 'melee':
         case 'cleave': {
           const dual = isDualWielding(player);
-          const k = dual ? DUAL_SKILL_TIME : 1;
-          // A spin held down (Whirlwind) goes round once every `tickRate`
-          // seconds at the weapon's pace; a fast strike ("no wind-up") swings
-          // quicker than the weapon's own.
+          // A spin held down (Whirlwind) goes round once a use; a fast strike
+          // ("no wind-up") takes less than a swing. Both are the skill's own
+          // `attackTime`, two blades stretched, in `actTime`.
           const spin = (def.effect ?? '').includes('channel');
-          const skillTime = spin
-            ? (num('tickRate', 0.42) / 0.42) * attackTime * k
-            : (attackTime * k) / (1 + num('speedBonus', 0) / 100);
-          const blowPacket = dual ? (m = 1): DamagePacket => makePacket(m * k) : makePacket;
+          const skillTime = actTime;
+          const blowPacket = dual ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket;
           player.beginAction(clip, skillTime);
           const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
           // A committed single-target skill lands like one: heavier stop, harder
@@ -1110,14 +1112,14 @@ export class SkillRunner {
         }
 
         case 'whirlwind': {
-          player.beginAction(own ?? 'attack2', attackTime * 1.4);
+          player.beginAction(own ?? 'attack2', actTime);
           this.meleeSwing(player, dir, Math.PI * 2, num('reach', 2.8), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
           break;
         }
 
         case 'projectile':
         case 'bolt': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           const range = num('range', 18);
           // "Five blades (+1 per 7 ranks)", fanned across the skill's arc.
           const many = Math.max(1, Math.floor(perRanks(num('count', 1), num('countPerRanks', 0), rank)));
@@ -1187,7 +1189,7 @@ export class SkillRunner {
         }
 
         case 'nova': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           const radius = num('radius', 5.2) + num('radiusPerRank', 0) * (rank - 1);
           this.effects.nova(player.position.x, player.position.z, radius, {
             element: school,
@@ -1221,7 +1223,7 @@ export class SkillRunner {
         }
 
         case 'slam': {
-          player.beginAction(own ?? 'attack2', attackTime * 1.5);
+          player.beginAction(own ?? 'attack2', actTime);
           const radius = num('radius', 4.0);
           const at = target.clone().setY(0);
           // The wind-up is what gives a slam weight; damage lands on the beat.
@@ -1240,7 +1242,7 @@ export class SkillRunner {
         }
 
         case 'meteor': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           const radius = num('radius', 3.4);
           const at = target.clone().setY(0);
           // The cast sound is the call going up (an archer looses skyward, a
@@ -1260,7 +1262,7 @@ export class SkillRunner {
         }
 
         case 'beam': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           // "A 22m beam": skills say how long as `range` or `length`.
           const length = num('length', num('range', 12));
           const to = origin.clone().addScaledVector(dir, length);
@@ -1288,7 +1290,7 @@ export class SkillRunner {
         }
 
         case 'cone': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           // "A 10m cone" is written as `reach`, `range` or `length`; a 60-degree
           // arc in degrees.
           const reach = num('reach', num('range', num('length', 6.5)));
@@ -1304,7 +1306,7 @@ export class SkillRunner {
         }
 
         case 'chain': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           // "Arcs between 4 targets (+1 per 3 ranks)"; Ricochet's arrow bounces
           // on to 2 more (+1 per 4 ranks).
           const jumps = num('bounces', 0) > 0
@@ -1351,7 +1353,7 @@ export class SkillRunner {
         }
 
         case 'heal': {
-          player.beginAction(clip, castTime * 0.7);
+          player.beginAction(clip, actTime);
           player.heal(num('amount', 30) * (1 + rank * 0.15));
           this.effects.impact('arcane', player.position.x, 1.0, player.position.z, {
             color: 0x7dffb0,
@@ -1369,7 +1371,7 @@ export class SkillRunner {
         case 'banner':
         case 'self':
         case 'absorb': {
-          player.beginAction(clip, castTime * 0.7);
+          player.beginAction(clip, actTime);
           // Blood Pact is bought with a share of the life you have.
           const blood = num('lifeCostPct', 0);
           if (blood > 0) player.life = Math.max(1, player.life * (1 - blood / 100));
@@ -1442,7 +1444,7 @@ export class SkillRunner {
         case 'ground':
         case 'trap':
         case 'ward': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           // Scorched Earth and Standard Bearer both make what you leave on the
           // floor last longer and hit harder.
           const groundLife = 1 + player.passives.groundDurationPct / 100;
@@ -1493,7 +1495,7 @@ export class SkillRunner {
         // lifetime, without a full pet AI it would have to path and follow.
         case 'summon':
         case 'minion': {
-          player.beginAction(own ?? 'point', castTime);
+          player.beginAction(own ?? 'point', actTime);
           // Reassemble mends the host rather than adding to it.
           if (def.effect === 'minion.heal') {
             this.healAll(player, num('healPct', 40) + num('perRank', 3) * Math.max(0, rank - 1), true);
@@ -1586,7 +1588,7 @@ export class SkillRunner {
         case 'curse':
         case 'debuff':
         case 'apply': {
-          player.beginAction(own ?? 'point', castTime);
+          player.beginAction(own ?? 'point', actTime);
           const radius = num('radius', family === 'apply' ? 0.9 : 4.5);
           const at = target.clone().setY(0);
           const applies = this.statusFor(def, num, color);
@@ -1649,7 +1651,7 @@ export class SkillRunner {
 
         // -- channelled tethers -------------------------------------------------
         case 'channel': {
-          player.beginAction(own ?? 'channel', castTime * 1.6);
+          player.beginAction(own ?? 'channel', actTime);
           const range = num('range', 12);
           const stop = this.firstHitAlong(origin, dir, range, enemies, boss, 0.5, ctx);
           const end = origin.clone().addScaledVector(dir, stop);
@@ -1687,7 +1689,7 @@ export class SkillRunner {
 
         // -- strike from above --------------------------------------------------
         case 'sky': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           const at = target.clone().setY(0);
           const radius = num('radius', 2.6);
           this.effects.meteor(at.x, at.z, {
@@ -1702,7 +1704,7 @@ export class SkillRunner {
 
         // -- a line of broken ground --------------------------------------------
         case 'wave': {
-          player.beginAction(own ?? 'slam', attackTime);
+          player.beginAction(own ?? 'slam', actTime);
           const range = num('range', 9);
           const width = num('width', 2.2);
           this.effects.cone(origin, dir, 0.22, range, {
@@ -1789,7 +1791,7 @@ export class SkillRunner {
         case 'point':
         case 'aoe':
         case 'capstone': {
-          player.beginAction(clip, castTime);
+          player.beginAction(clip, actTime);
           if ((def.effect ?? '').includes('eyeOfStorm')) {
             startStorm(true);
             this.applyBuff(player, def, rank, num, color);
@@ -1895,7 +1897,7 @@ export class SkillRunner {
           // melee put every bow user through a sword animation, hitting nothing,
           // on every cast of anything the runner did not recognise.
           if (holding === 'ranged' || holding === 'caster') {
-            player.beginAction(clip, castTime);
+            player.beginAction(clip, actTime);
             const from = player.position.clone().setY(holding === 'ranged' ? 1.28 : 1.05);
             const stop = this.firstHitAlong(from, dir, 18, enemies, boss, 0.4, ctx);
             this.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
@@ -1910,7 +1912,7 @@ export class SkillRunner {
               },
             });
           } else {
-            player.beginAction(clip, attackTime);
+            player.beginAction(clip, actTime);
             this.meleeSwing(player, dir, 1.4, 2.3, makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit);
           }
           break;
@@ -1976,12 +1978,14 @@ export class SkillRunner {
         source: 'player',
       });
 
-    // The weapon decides what a basic attack even is.
+    // The weapon decides what a basic attack even is, and how long it takes:
+    // one swing or shot at the weapon's own pace (`sim/Speed.ts`).
+    const hands = handsOf(player.character.equipment);
+    const time = basicTime(hands, player.attackMult);
     if (style === 'ranged') {
-      const castTime = 0.46 / Math.max(0.4, 1 + player.attackSpeedPct / 100);
       // A bow is drawn and loosed. Sharing the casting animation put archers
       // through a two-handed overhead gesture with a bow in their hands.
-      player.beginAction('shoot', castTime);
+      player.beginAction('shoot', time);
       this.releaseSchool = null;
       // Arrows leave the bow hand, offset to the bow side so the shot lines up
       // with the weapon.
@@ -2003,16 +2007,15 @@ export class SkillRunner {
     }
 
     const dual = isDualWielding(player);
-    // Two blades take turns, right then left, each swing half as long as a
-    // single weapon's (see DUAL_BLOW_SCALE).
-    const attackTime = (dual ? DUAL_SWING : 0.42) / Math.max(0.4, 1 + player.attackSpeedPct / 100);
+    // Two blades take turns, right then left, one blade a swing
+    // (`DUAL_SWING_RATE`; each blow is `DUAL_BLOW_DAMAGE` of the sheet).
     // Basic melee alternates its two swings, so holding the button reads as a
     // combo rather than one animation stuttering. With two blades the right
     // blade opens and the left answers.
     this.swingParity = (this.swingParity + 1) % 2;
     const side = dual ? (this.swingParity === 0 ? 'R' : 'L') : undefined;
-    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', attackTime, side);
-    const blow = dual ? (mult = 1): DamagePacket => packet(mult * DUAL_BLOW_SCALE) : packet;
+    player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', time, side);
+    const blow = dual ? (mult = 1): DamagePacket => packet(mult * DUAL_BLOW_DAMAGE) : packet;
     this.meleeSwing(player, dir, 1.5, 2.4, blow, ctx, enemies, boss, 'physical');
     return true;
   }

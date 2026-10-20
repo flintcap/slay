@@ -515,7 +515,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'whirlwind',
     name: tr('Whirlwind'),
-    desc: tr('Spin through the pack, hitting everything within 3m for 65% weapon damage (+11% per rank) every 0.35s while held.'),
+    desc: tr('Spin through the pack, hitting everything within 3m for 65% weapon damage (+11% per rank) with every spin while held. A spin takes a little less than a swing of your weapon.'),
     tier: 4,
     col: 0,
     icon: 'whirl',
@@ -525,7 +525,8 @@ const CARNAGE = build('carnage', [
     dmg: [0.65, 0.11],
     type: 'physical',
     fx: 'melee.channel',
-    p: { radius: 3, tickRate: 0.35 },
+    attackTime: 0.83,
+    p: { radius: 3 },
   },
   {
     id: 'arterialStrike',
@@ -1652,7 +1653,8 @@ const BLADEWORK = build('bladework', [
     dmg: [1.2, 0.2],
     type: 'physical',
     fx: 'melee.strike',
-    p: { critBonus: 15, critPerRank: 1.5, speedBonus: 15, single: 1 },
+    attackTime: 0.87,
+    p: { critBonus: 15, critPerRank: 1.5, single: 1 },
   },
   {
     id: 'bladeMastery',

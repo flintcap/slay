@@ -4,7 +4,7 @@
  * What a hit does, through the real skill runner, player and monster:
  *
  *  - Two blades: the hands take turns, right then left, one blow per swing
- *    faster than a single weapon (0.32 s a swing against 0.42 s); the left arm really swings, and
+ *    faster than a single weapon (`DUAL_SWING_RATE` in sim/Speed.ts); the left arm really swings, and
  *    the off-hand weapon's damage counts.
  *  - Venom: Coat Blades poisons on hit while it is up, its poison shows as
  *    its own number, Poisoned ticks, and the Venom skills leave the stacks

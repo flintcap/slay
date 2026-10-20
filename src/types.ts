@@ -382,6 +382,24 @@ export interface SkillDef {
   damageScale?: (rank: number) => number;
   damageType?: DamageType;
   icon: string;
+  /**
+   * How the skill takes its time (`sim/Speed.ts`): `'attack'` at the weapon's
+   * pace and attack speed, `'spell'` on its cast time and cast speed. Left
+   * out, the effect family and what is in hand decide (`skillTiming`).
+   */
+  timing?: 'attack' | 'spell';
+  /**
+   * Attack skills: one use takes this many swings (or shots) of the weapon in
+   * hand. 1 is one swing; 1.5 a heavy blow; 0.85 a quick cut. Left out, the
+   * family's (`ATTACK_FACTOR`, else 1). Never changes damage per hit.
+   */
+  attackTime?: number;
+  /**
+   * Spells: seconds one cast takes before cast speed. Left out, the family's
+   * (`CAST_BASE`: 0.35 for buffs, 0.8 for channels) else 0.5. Never changes
+   * damage per hit.
+   */
+  castTime?: number;
 }
 
 export interface SkillTreeDef {

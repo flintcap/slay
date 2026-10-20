@@ -593,16 +593,6 @@ export function moveSpeedOf(stats: Stats): number {
   return BASE_MOVE_SPEED * (1 + stats.moveSpeed / 100);
 }
 
-/** Attacks per second from the attack speed percentage. */
-export function attacksPerSecond(stats: Stats, weaponBase = 1.2): number {
-  return Math.max(0.2, weaponBase * (1 + stats.attackSpeed / 100));
-}
-
-/** Cast time multiplier, <1 is faster. */
-export function castTimeScale(stats: Stats): number {
-  return 1 / (1 + stats.castSpeed / 100);
-}
-
 /** Applies cooldown reduction to a raw cooldown. */
 export function reducedCooldown(seconds: number, stats: Stats): number {
   return Math.max(0.15, seconds * (1 - stats.cooldownReduction / 100));

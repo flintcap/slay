@@ -16,6 +16,7 @@ import { collidersNear } from '../world/BodyWalk';
 import { Random } from '../core/RNG';
 import type { Rng } from '../types';
 import { passiveEffects, newPassiveState, type PassiveEffects, type PassiveState } from '../sim/Passives';
+import { speedMultiplier } from '../sim/Speed';
 import { Shapeshift } from './Shapeshift';
 import { setHeroVoice } from '../audio/HeroVoice';
 import { tr } from '../core/I18n';
@@ -732,6 +733,22 @@ export class Player {
   /** Cast speed including Storm Fury's stacks, which build on lightning hits. */
   get castSpeedPct(): number {
     return this.stats.castSpeed + this.passives.castStackPct * this.passiveState.castStacks;
+  }
+
+  /**
+   * How much faster than the weapon's own pace the hero swings: every source
+   * of attack speed through `speedMultiplier` (diminishing returns), with
+   * slows on the hero applied at full strength on top.
+   */
+  get attackMult(): number {
+    const slow = this.status.slowOf('attackSpeed');
+    return speedMultiplier(this.attackSpeedPct - slow, slow);
+  }
+
+  /** The same for casting. */
+  get castMult(): number {
+    const slow = this.status.slowOf('castSpeed');
+    return speedMultiplier(this.castSpeedPct - slow, slow);
   }
 
   /**

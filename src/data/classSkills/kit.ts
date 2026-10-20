@@ -52,6 +52,12 @@ export interface Spec {
   fx?: string;
   p?: Record<string, number | number[]>;
   stat?: Partial<Record<StatKey, (r: number) => number>>;
+  /** `SkillDef.timing`: 'attack' or 'spell' (`sim/Speed.ts`). */
+  timing?: 'attack' | 'spell';
+  /** `SkillDef.attackTime`: swings of the weapon one use takes. */
+  attackTime?: number;
+  /** `SkillDef.castTime`: seconds one cast takes before cast speed. */
+  castTime?: number;
 }
 
 /** Turns a tree's specs into skill definitions. */
@@ -81,6 +87,9 @@ export function build(treeId: string, specs: Spec[]): SkillDef[] {
     if (s.fx) out.effect = s.fx;
     if (s.p) out.params = s.p;
     if (s.stat) out.passive = s.stat;
+    if (s.timing) out.timing = s.timing;
+    if (s.attackTime !== undefined) out.attackTime = s.attackTime;
+    if (s.castTime !== undefined) out.castTime = s.castTime;
     return out;
   });
 }

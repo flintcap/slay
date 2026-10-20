@@ -146,7 +146,7 @@ export const BATCH_A: UniqueDef[] = [
   U('uq.millwheel', tr('Millwheel'), 'axe.cleaver', 26,
     tr('The miller at the falls fought off the river men with it, turning, the way his wheel turned.'),
     [['enhancedDamage', 1], ['vitality', 0.8], ['attackSpeed', 0.6]],
-    { classId: 'warden', bend: { skill: 'whirlwind', more: 20, grow: { radius: 30, tickRate: -20 }, names: { tickRate: tr('time between spins') } },
+    { classId: 'warden', bend: { skill: 'whirlwind', more: 20, grow: { radius: 30, attackTime: -20 }, names: { attackTime: tr('time between spins') } },
       look: D('metal.steel', 'wood.oak|0x6a4a2a', 'metal.iron', ['rivets', 'tatters'], 0.55, { cut: { bit: 'fan', back: 'bit', wrap: 'leather', bands: 3 } }) }),
 
   U('uq.gutterchopper', tr('Gutterchopper'), 'axe.cleaver', 30,
