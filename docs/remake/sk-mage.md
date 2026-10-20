@@ -465,9 +465,10 @@ no damage per hit and no monster was touched.
 | 40 | ok: packs 3/3 (18/2/0 s), bosses 3/3 (47/25/20 s) | ok: packs 3/3 (11/3/1 s), bosses 3/3 (45/19/20 s) |
 
 - The d5 wall is gone: the curve says the Mage is challenged at every
-  depth and walled at none. Boss wins move both ways at d12 and d25; the
-  seeds and run modifiers differ between runs, so read it as noise unless
-  the owner sees it in play.
+  depth and walled at none.
+- Boss wins fell at d12 (3 to 1) and d25 (3 to 2), still not walled. The
+  bosses drawn differ between the two runs, so part of it may be the draw.
+  For the owner to watch, not to fix by raising damage.
 
 ## For the owner to test
 
