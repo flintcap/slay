@@ -32,6 +32,7 @@ import { SKILL_BY_ID, synergyPct } from '../data/skills';
 import { applyPowerPassives } from './ItemPowers';
 import { emptyPaladinEffects, PALADIN_RULES, type PaladinEffects } from './passives/paladin';
 import { SHIFTER_RULES } from './shifterPassives';
+import { RANGER_RULES } from './passives/ranger';
 
 /** A skill's rank, after +skills. Mirrors `Stats.effectiveRank`. */
 function rankOf(c: Character, id: string): number {
@@ -1035,12 +1036,6 @@ const RULES: Record<string, Contribution> = {
     e.lowLifeReductionPct += param(id, 'drPerRank', 4) * r;
     e.lowLifeLeechPct += param(id, 'leechPerRank', 2) * r;
   },
-  endlessQuiver: (e, _r, id) => {
-    e.freeShotEvery = Math.max(e.freeShotEvery, param(id, 'every', 3));
-  },
-  volleyMastery: (e, r, id) => {
-    e.extraArrows += Math.floor(r / Math.max(1, param(id, 'perRanks', 5)));
-  },
   soulCage: (e, _r, id) => {
     e.soulCageBonus = Math.max(e.soulCageBonus, param(id, 'bonusSouls', 2));
   },
@@ -1076,6 +1071,8 @@ const RULES: Record<string, Contribution> = {
   ...PALADIN_RULES,
   // The Shapeshifter's, kept in their own file.
   ...SHIFTER_RULES,
+  // The Ranger's, in their own file.
+  ...RANGER_RULES,
 };
 
 /** Every skill this engine knows how to run. */

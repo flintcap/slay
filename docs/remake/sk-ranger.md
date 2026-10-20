@@ -70,7 +70,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. Speed audit (owner: before any skill is changed). ("sk-ranger: speed audit, Ranger skills in their own file") Under skillcore's model, write a table
   under "Notes for resume": the Ranger's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -115,22 +115,12 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 and 2 are done (audit tables and plan under "Notes for
-resume"). Waiting for skillcore. On resume:
+Milestones 1 to 3 are done (audit, plan, speed table under "Notes for
+resume"). The Ranger's skills now live in `src/data/classSkills/ranger.ts`
+(spread into `skills.ts`, as the Paladin's are). On resume:
 
-1. Setup as in `PROTOCOL.md`, then fetch and read `docs/remake/skillcore.md`.
-   Go on only if it says `Status: done`; else push nothing new and end
-   with one line saying you are still waiting.
-2. Read skillcore's "Handover" and its part of `CONTRACTS.md`: the speed
-   function, the per-skill attack time and cast time fields, multi-hit
-   timing, bow and crossbow base speeds, the icon size.
-3. Milestone 3 (speed audit): re-read every timing in the audit against
-   the new code (the numbers here are pre-skillcore), write the speed
-   table (basic bow shot and every active, no speed gear and at the
-   ceiling), and set each skill's timing through skillcore's fields only.
-   Bow shots should run on attack speed, traps and buffs on cast speed.
-   Damage per hit never changes.
-4. Milestone 4: build from "Build order (milestone 4)" in the plan below,
+1. Setup as in `PROTOCOL.md`.
+2. Milestone 4: build from "Build order (milestone 4)" in the plan below,
    broken skills first, then `ranger/Shots.ts`, the tier 6 moves, the nine
    new actives, the twelve new passives, then text and `skillPower`.
 
@@ -574,6 +564,72 @@ Grounds" were avoided on purpose.
   moss green `0x7fc46a` everywhere, tree accents: Marksman bone white and
   hunter's red, Wildcraft bark brown and amber, Volley steel and sky grey.
   Thirteen icons share a picture today (see the audit).
+
+### Milestone 3: speed audit (skillcore's model, read 2026-10-20)
+
+Read from `src/sim/Speed.ts`, `SkillRunner.castNow` and `basicAttack`,
+`Player.beginAction` and `dodge`, and `data/itemBases.ts`.
+
+How a Ranger action is timed now (after skillcore, before this stream):
+
+- Basic bow shot: `basicTime` = 1 / (bow pace x attack speed). Short,
+  Hunter's and Spider Bow 1.48 a second, Long, Composite and Shadow 1.35,
+  War, Double and Diamond 1.25, Great, Rune and Hydra 1.15, Grand Matron
+  1.32. Gear goes through the curve (+300% is x1.75), never past 3.0 a
+  second. The arrow still leaves at the press.
+- Bow skills (`projectile`, `bolt`, `meteor`, `beam`, `cone`, `chain` with a
+  bow in hand) are attacks: `attackTime` shots of the bow, default 1. So
+  every one of them, Aimed Shot and One Shot too, takes exactly one plain
+  shot. Thorn Barrier (`cone`) and Hunter's Mark (`bolt`) are bow shots too.
+- Traps (`nova`) are spells: `BASE_CAST_TIME` 0.5 s on cast speed. Buffs
+  (`buff`) 0.35 s. Dashes are `Player.dodge` spans from distance: Roll Away
+  6 m in 0.48 s, Disengage 8 m in 0.5 s (16 m a second, a blink).
+- Every Ranger skill resolves at the press (the Ranger is not in
+  `RELEASE_CLASSES`); the gesture's release is squeezed to 0.1 s.
+
+The table: real seconds a use takes. "Short" is a short bow (1.48 a
+second, the fastest bow), "Great" a great bow (1.15, the slowest).
+"Ceiling" is a short bow or a cast at +300% speed gear (x1.75), under the
+3.0 attack and 3.4 cast caps. Reference feel (skillcore's notes, feel
+only): a bow shot about 1.1 to 1.6 a second with no gear and 2.3 to 3.0
+with heavy gear; heavy aimed shots about 1.4 to 2 plain shots; spells and
+traps 0.5 to 0.9 s with no gear, 0.3 s at the top.
+
+| Use | Today: field, Short | Now: field | Short | Ceiling | Great | Verdict today -> now |
+| --- | --- | --- | --- | --- | --- | --- |
+| Basic bow shot | 1 shot, 0.68 s | same | 0.68 | 0.39 | 0.87 | right (arrow moves to the draw's release) |
+| Pierce Shot, Bleeding Arrow, Crippling Shot, Explosive Tip, Carom Shot, Splinter Shot (new) | 1 shot, 0.68 s | `attackTime` 1 | 0.68 | 0.39 | 0.87 | right |
+| Aimed Shot | 1 shot, 0.68 s | 1.4 | 0.95 | 0.54 | 1.22 | too fast -> right (a real slow draw) |
+| One Shot, One Grave | 1 shot, 0.68 s | 1.8 | 1.22 | 0.69 | 1.57 | too fast -> right (the longest draw) |
+| Bank Shot (new) | - | 1.15 | 0.78 | 0.44 | 1.00 | right |
+| Quarry's End (new, up to 6 arrows) | - | 1.3 | 0.88 | 0.50 | 1.13 | right |
+| Twin Shot (two looses) | 1 shot, 0.68 s | 1.1 | 0.74 | 0.42 | 0.96 | a touch fast for two draws -> right |
+| Fan Fire (one flat sweep) | 1 shot, 0.68 s | 1.15 | 0.78 | 0.44 | 1.00 | a touch fast -> right |
+| Scattershot (short arrows, close) | 1 shot, 0.68 s | 0.9 | 0.61 | 0.35 | 0.78 | right (a snap from the hip) |
+| Suppressing Fire (three arrows) | 1 shot, 0.68 s | 1.2 | 0.81 | 0.46 | 1.04 | too fast for three looses -> right |
+| Arrow Rain | 1 shot, 0.68 s | 1.2 | 0.81 | 0.46 | 1.04 | a touch fast -> right |
+| Darken The Sky | 1 shot, 0.68 s | 1.6 | 1.08 | 0.62 | 1.39 | too fast for an ultimate -> right |
+| Creeping Barrage (new) | - | 1.3 | 0.88 | 0.50 | 1.13 | right |
+| Arrow Wheel (new, a full turn) | - | 1.3 | 0.88 | 0.50 | 1.13 | right |
+| Hunter's Mark (no arrow) | bow shot, 0.68 s | spell, `castTime` 0.35 | 0.35 | 0.29 | 0.35 | too slow for a point of the finger -> right |
+| Snare Trap, Spike Trap, Tripwire (new), Wasp Nest (new) | spell 0.5 s | `castTime` 0.55 | 0.55 | 0.31 | 0.55 | right (a trap set down, not thrown) |
+| Thorn Barrier | bow shot, 0.68 s | spell, `castTime` 0.6 | 0.60 | 0.34 | 0.60 | wrong clock (attack speed) -> right |
+| The Whole Floor Is A Trap | spell 0.5 s | `castTime` 0.7 | 0.70 | 0.40 | 0.70 | a touch fast for an ultimate -> right |
+| Kestrel (new) | - | `castTime` 0.5 | 0.50 | 0.29 | 0.50 | right |
+| Venom Coat | buff 0.35 s | `castTime` 0.5 | 0.50 | 0.29 | 0.50 | too fast for an arrow dipped and studied -> right |
+| Camouflage, Open Quiver (new) | buff 0.35 s | `castTime` 0.4 | 0.40 | 0.29 | 0.40 | right |
+| Roll Away (6 m) | dodge, 0.48 s | `travelTime` | 0.43 | 0.43 | 0.43 | right |
+| Disengage (8 m back) | dodge, 0.5 s | `travelTime` | 0.57 | 0.57 | 0.57 | too fast (a blink) -> right |
+
+Damage per hit is unchanged for every row (owner's rule): only the time
+fields move. A rush's time follows its distance, not speed gear.
+
+Release (how a shot leaves): every bow shot starts its action with
+`{ release: true }` and its arrow leaves inside `atRelease`, at a third of
+the action, at most 0.25 s. The heavy draws hold longer: Aimed Shot lets go
+at 55% of its action and One Shot at 60% (a small optional `releaseAt` on
+`Player.beginAction`). Twin Shot's second arrow and Suppressing Fire's
+second and third leave on their gesture's later looses (`cuts`).
 
 ## For the owner to test
 
