@@ -23,6 +23,7 @@ import { SHIFTER_ICONS } from './icons/shifterIcons';
 import { KNIGHT_ICONS } from './icons/knightIcons';
 import { REVENANT_ICONS } from './icons/revenantIcons';
 import { PALADIN_ICONS } from './icons/paladinIcons';
+import { RANGER_ICONS } from './icons/rangerIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
 import {
   type Ctx,
@@ -87,7 +88,8 @@ const CLASS_LOOK: Record<string, ClassLook> = {
   mage: { ring: rampOf(0x6a5aa0, 0.85, 'hammered', 0.3), tex: 'crack', light: 0x9a8aff, ground: 0x1a1430 },
   shadowblade: { ring: rampOf(0x2c3138, 0.9, 'brushed', 0.3), tex: 'mottle', light: 0x6ad8a0, ground: 0x0e1a16 },
   revenant: { ring: GLYPH_MATS.BONE, tex: 'crack', light: 0x9ae0c8, ground: 0x14201c },
-  ranger: { ring: GLYPH_MATS.WOOD, tex: 'grain', light: 0xc8d890, ground: 0x1a2012 },
+  // Moss-stained bow wood on the ring, lit in the class moss; each tree its own (`TREE_LOOK`).
+  ranger: { ring: rampOf(0x5a7a44, 0.1, 'grain', 0.45), tex: 'grain', light: 0x7fc46a, ground: 0x142012 },
   // Raw hide on the ring and amber firelight: the woods, not the forge.
   shapeshifter: { ring: rampOf(0x6a4428, 0.05, 'pores', 0.4), tex: 'pores', light: 0xe09050, ground: 0x22140c },
   // Mace bell bronze, Blade whitened steel, Aura the class's candle gold.
@@ -108,6 +110,13 @@ const TREE_LOOK: Record<string, readonly ClassLook[]> = {
     { ...CLASS_LOOK.revenant!, light: 0x9ae0c8, ground: 0x14201c, ownLight: ['arcane', 'poison'] },
     { ...CLASS_LOOK.revenant!, light: 0xb4d84a, ground: 0x161c0a, ownLight: ['arcane', 'poison'] },
     { ...CLASS_LOOK.revenant!, light: 0xe04a5e, ground: 0x200a10, ownLight: ['arcane', 'poison'] },
+  ],
+  // The Ranger: Marksman bone white on hunter's red, Wildcraft amber on
+  // bark brown, Volley sky grey on steel. His poison and cold keep their own.
+  ranger: [
+    { ...CLASS_LOOK.ranger!, light: 0xeadfc4, ground: 0x2a0e0c },
+    { ...CLASS_LOOK.ranger!, light: 0xe0a040, ground: 0x22160c },
+    { ...CLASS_LOOK.ranger!, light: 0xb8c8d8, ground: 0x141a22 },
   ],
   shadowblade: [
     { ...CLASS_LOOK.shadowblade!, light: 0x8fd84a, ground: 0x0e1a08 },
@@ -146,7 +155,7 @@ const ICON_MAP: Record<string, string> = {
   fireball: 'orb^speed', inferno: 'flame^burst', stream: 'beam', kindle: 'flame', blast: 'nova', eruption: 'flame^rise', burst: 'nova^burst',
   shimmer: 'wave', 'rain-fire': 'flame^rain', core: 'orb^aura', dragon: 'wing:1^burst', 'chain-fire': 'flame^chain', nuke: 'sun',
   'soul-fire': 'skull:2',
-  // The Rogue paints his own set (`icons/rogueIcons.ts`); these stay for the Ranger's skills that share the names.
+  // The Rogue paints his own set (`icons/rogueIcons.ts`); these stay for the statuses and panels that still name them.
   vial: 'vial', apex: 'star^mastery', eye: 'eye', fan: 'dagger:2',
   // Mage — lightning
   spark: 'bolt', 'mastery-lightning': 'bolt^mastery', 'nova-shock': 'bolt^nova', chain: 'bolt^chain', clap: 'hand^nova',
@@ -176,7 +185,8 @@ const ICON_MAP: Record<string, string> = {
   'fang-dark': 'fang', 'cage-soul': 'cage', 'drain-beam': 'beam', embrace: 'hand^aura', revenant: 'ghost^rise', harvest: 'scythe',
   'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
   scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
-  // Ranger
+  // First painted for the Ranger, whose skills now use `rn-` keys
+  // (`icons/rangerIcons.ts`); these stay for the statuses and panels that name them.
   arrow: 'arrow', target: 'target', crosshair: 'target:1', blood: 'drop', range: 'bow', pierce: 'arrow^impact', snare: 'trap',
   crit: 'target^impact', skull: 'skull', trap: 'trap^field', boots: 'boot', spikes: 'spikes', thorns: 'leaf^burst', heart: 'heart',
   stealth: 'figure^aura', gear: 'gear', arrows: 'arrow:2', speed: 'feather^speed', cone: 'arrow:2^burst', rain: 'arrow^rain',
@@ -186,6 +196,7 @@ const ICON_MAP: Record<string, string> = {
   ...ROGUE_ICONS,
   ...REVENANT_ICONS,
   ...PALADIN_ICONS,
+  ...RANGER_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */
