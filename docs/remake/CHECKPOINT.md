@@ -581,6 +581,14 @@ Update this file and push it after every finished step.
   Rules in `PROTOCOL.md` "Wave 5 rules". skillcore launched. Owner: damage
   per hit never changes because of speed (no making up for slower swings);
   only speeds change.
+- #169 Hurt cries (022b227): new CC0 female grunts, bank rules (max 1, gap),
+  cries spaced 1.1 s (heavy 2.2 s) and skipped under 3% of life. Male too.
+- #167 Maps (7ec33dd): deep water, lava and chasm are drawn as hazards with
+  a bank line, not as ground (`chartGround` in `ui/ZoneInk.ts`).
+- #168 Per hero (8434920): story (contracts, journal) and loot filter live on
+  `Character`; camp news stays on the account (`news`). Save v4 copies the
+  old shared block onto heroes that already existed. check-story and
+  check-save pass.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
