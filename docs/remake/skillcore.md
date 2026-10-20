@@ -113,7 +113,7 @@ to paste.
   not, do NOT change damage and do NOT touch monsters. Write the before and
   after table under "Notes for resume" for the owner. If
   `tools/curve-entry.ts` hard-codes 0.42 or any old time, fix it.
-- [ ] 5. Clips match the time. `src/art/hero/Animator.ts` and the swing
+- [x] 5. Clips match the time. ("skillcore: clips match the time") `src/art/hero/Animator.ts` and the swing
   code stretch each swing and cast clip to the new action time, the hit
   lands on the clip's hit frame, and no clip plays so fast it smears or so
   slow it floats. One small browser check (`check-clips` or `check-attack`)
@@ -317,9 +317,38 @@ back as version 3 and the step never runs twice. `check-save` has a case
 for it (old top 40 -> 20, old bottom 34 -> 19, grand charm 32 -> 8,
 Windforce 35 -> 19 and 25 -> 15, second load unchanged).
 
+### Clips (milestone 5)
+
+- Every action clip now spans its action: `Animator.play(..., { span })`
+  stretches the clip so its end meets the end of the action, inside
+  `SPAN_RATE` 0.55-2.6x its natural speed (slower would float, faster would
+  smear). Before the hit key the clock runs so the key lands at `contact`;
+  after it, at the span rate.
+- Contact follows the action: a blow lands at its clip's share of the
+  action (`CLIP_CONTACT` in `Player.ts`, 0.32-0.4; a skill's own blow
+  0.35), capped at `CONTACT_CAP` 0.5 s. A 1.0 s two-handed swing lands at
+  0.35 s, a 0.6 s dagger thrust at 0.19 s. Every share is under `RECOVERY_CANCEL_AT`, so a blow always
+  lands before the swing can be cancelled.
+- `check-attack` passed on the build with these changes (the swing
+  connects; holding the button closes in). `check-controls` now waits for
+  the real contact time instead of a fixed 0.2 s.
+
 ### Requests from the class streams (coordinator, for milestone 5)
 
-Handle in milestone 5 or write the gap in the Handover:
+All three handled in the shared model (details in the Handover):
+1. Contact follows the action's own time (above). Done.
+2. `travelTime(distance)` and `RUSH_SPEED` 14 m/s in `sim/Speed.ts`, at
+   least `RUSH_MIN_TIME` 0.15 s: a 9 m charge takes 0.64 s. The paladin's
+   `rushTo` still times its run with `contactIn * 0.9`; sk-paladin should
+   switch it to `travelTime`.
+3. Release-frame hook: `beginAction(clip, time, side, { release: true })`
+   holds the release to the gesture's release frame (a third of the
+   action, at most 0.25 s), and `SkillRunner.atRelease(player, fn)` runs
+   `fn` then (at once if the hero is not mid-gesture). Spells that do not
+   opt in still resolve on the press, with the visual release at 0.1 s at
+   most. sk-mage and sk-paladin opt their spells and throws in.
+
+The coordinator's original asks:
 1. sk-paladin: every weapon blow connects within `CONTACT_CAP` 0.16 s
    (`Player.ts`), so heavy blows land as fast as a jab. Contact should
    follow the action's own time, on the clip's hit frame.
