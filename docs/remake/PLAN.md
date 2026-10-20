@@ -311,9 +311,11 @@ accepted. If a class ends up walled, the numbers go to the owner.
    spells time off them, and how items add speed. Target feel: as close as
    we can to the similar classes and weapons in Diablo II and Path of Exile,
    in our own numbers, never their names. Nothing attacks at warp speed.
-2. **Seven class streams**, at most three at a time (4 cores): each audits
-   its own class's base attack and cast speed under skillcore's new model
-   first, then remakes its skills.
+2. **Seven class streams**, at most three at a time (4 cores). Each first
+   audits its skills and plans its new kit (keep, change, replace, add);
+   that reading may run while skillcore works. Once skillcore is done, it
+   audits its class's base attack and cast speed under the new model, then
+   changes, replaces and adds skills.
 3. **skillqa** runs last: AAA quality, every skill working, and frame rate
    not reduced (faster where it can be).
 
