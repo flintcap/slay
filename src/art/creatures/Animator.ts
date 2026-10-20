@@ -31,6 +31,7 @@ import type { WeaponGrip } from './Sculpt';
 import { PoseBuf, STYLE_DEFAULT, clamp01, type AttackKind, type MotionStyle } from './Motion';
 import { POSERS } from './Posers';
 import { heatCreature, leaveCorpse } from './Creature';
+import { tickCloths } from './CreatureCloth';
 
 export type RigAction = 'idle' | 'walk' | 'attack' | 'cast' | 'hit' | 'death' | 'spawn';
 
@@ -534,6 +535,7 @@ export class CreatureAnimator {
     poser(this);
     this.layGuard();
     this.solve();
+    tickCloths(this.root, step, o.deathT > 0);
     // Once the fall has landed, the body stays where it fell.
     if (o.deathT >= 1 && !this.corpseLeft) {
       this.corpseLeft = true;

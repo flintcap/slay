@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import type { CMat, RGB, Sculpt } from './Sculpt';
 import { boxGeo, ringGeo, spikeGeo, tubeGeo } from './Sculpt';
+import { capeCloth } from './ClothSheets';
 
 export const V = (x: number, y: number, z: number): THREE.Vector3 => new THREE.Vector3(x, y, z);
 
@@ -477,7 +478,8 @@ export function helm(s: Sculpt, o: { size?: number; mat?: CMat; crest?: number; 
 
 /**
  * A cape from the shoulders to the calves. The upper half rides the chest,
- * the lower half the hips, so a stride does not drag the whole cloak.
+ * the lower half the hips, so a stride does not drag the whole cloak. A
+ * boss wears it as cloth (`ClothSheets.ts`).
  */
 export function cape(s: Sculpt, o: { len?: number; w?: number; mat?: CMat; torn?: number } = {}): void {
   const H = s.rig.height;
@@ -488,13 +490,17 @@ export function cape(s: Sculpt, o: { len?: number; w?: number; mat?: CMat; torn?
   const top = ch.clone().add(V(0, 0.08 * H, -0.075 * H));
   const mid = V(0, hp.y + 0.02 * H, hp.z - 0.1 * H);
   const bot = V(0, Math.max(0.05 * H, hp.y * (1 - (o.len ?? 0.75))), hp.z - 0.16 * H);
+  // Collar.
+  s.ball('chest', s.j('neck').add(V(0, -0.02 * H, -0.03 * H)), V(0.11 * H, 0.03 * H, 0.06 * H), { mat, k: 0.02 * H });
+  if (s.clothOn) {
+    capeCloth(s, { top, mid, bot, w, mat, torn: o.torn ?? 0, rand: seq(Math.round(H * 977)) });
+    return;
+  }
   const th = 0.008 * H;
   const q1 = quatAlong(mid.clone().sub(top));
   const q2 = quatAlong(bot.clone().sub(mid));
   s.box('chest', lerpV(top, mid, 0.5), V(w, top.distanceTo(mid) * 0.5, th), { mat, q: q1, k: 0.02 * H, round: th });
   s.box('hips', lerpV(mid, bot, 0.5), V(w * 1.2, mid.distanceTo(bot) * 0.5, th), { mat, q: q2, k: 0.03 * H, round: th });
-  // Collar.
-  s.ball('chest', s.j('neck').add(V(0, -0.02 * H, -0.03 * H)), V(0.11 * H, 0.03 * H, 0.06 * H), { mat, k: 0.02 * H });
   if (o.torn) {
     const r = seq(Math.round(H * 977));
     for (let i = 0; i < 5; i++) {

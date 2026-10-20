@@ -218,7 +218,8 @@ export class HitFlash {
     const out: THREE.Mesh[] = [];
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh) return;
+      // Cloth draws from its own buffers: a flat flash material would draw its rest shape.
+      if (!mesh.isMesh || mesh.userData.cloth) return;
       const mat = mesh.material;
       if (!mat) return;
       const list = Array.isArray(mat) ? mat : [mat];
@@ -326,6 +327,9 @@ export class HitFlash {
   /** Stops drawing a body: its meshes still wearing the flash now wear nothing. */
   private hide(slot: FlashSlot): void {
     slot.hidden = true;
+    slot.root.traverse((o) => {
+      if (o.userData.cloth) o.visible = false;
+    });
     const gone = this.gone;
     for (const m of slot.meshes) {
       const cur = m.material;

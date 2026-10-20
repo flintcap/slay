@@ -232,18 +232,33 @@ function paint(
   return { col, glow };
 }
 
-function finish(pos: Float32Array, nor: Float32Array, idx: Uint32Array, col: Float32Array, glow: Float32Array, si: Uint16Array, sw: Float32Array): THREE.BufferGeometry {
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  // Paint at half value in rgb, glow in alpha: four bytes a vertex, the
-  // smallest vertex format the GPU reads without padding.
+/** Paint at half value in rgb, glow in alpha: four bytes a vertex, the smallest vertex format the GPU reads without padding. */
+function packPaint(col: Float32Array, glow: Float32Array): THREE.BufferAttribute {
   const c8 = new Uint8Array(glow.length * 4);
   for (let v = 0; v < glow.length; v++) {
     for (let k = 0; k < 3; k++) c8[v * 4 + k] = Math.round(clamp01(col[v * 3 + k]! * 0.5) * 255);
     c8[v * 4 + 3] = Math.round(clamp01(glow[v]!) * 255);
   }
-  g.setAttribute('color', new THREE.BufferAttribute(c8, 4, true));
+  return new THREE.BufferAttribute(c8, 4, true);
+}
+
+const SHEET_AO = 0.86;
+
+/** A cloth sheet's paint (`Sculpt.cloths`), as a hard part of its material is painted. */
+export function paintSheet(s: Sculpt, mat: CMat, geo: THREE.BufferGeometry, col?: [number, number, number]): void {
+  const pos = geo.getAttribute('position').array as Float32Array;
+  const nor = geo.getAttribute('normal').array as Float32Array;
+  // No occlusion probes (the sheet moves off the body): a flat share of it instead.
+  const c = col ?? [1, 1, 1];
+  const pc = paint(s, mat, null, pos, nor, { ...s.paint[mat], veins: undefined, mottle: undefined }, [c[0] * SHEET_AO, c[1] * SHEET_AO, c[2] * SHEET_AO], undefined);
+  geo.setAttribute('color', packPaint(pc.col, pc.glow));
+}
+
+function finish(pos: Float32Array, nor: Float32Array, idx: Uint32Array, col: Float32Array, glow: Float32Array, si: Uint16Array, sw: Float32Array): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setAttribute('color', packPaint(col, glow));
   g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
   g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
   g.setIndex(new THREE.BufferAttribute(idx, 1));

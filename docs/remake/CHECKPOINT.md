@@ -317,13 +317,14 @@ Update this file and push it after every finished step.
   tone mapping plus a colour lookup grade per biome (`Lut.ts`); a one-tap
   world shader for Low on the same render setup; render-scale slider with
   temporal upscaling on High and Ultra.
-- #130 done except GPU cloth: block, parry and dodge moves; creatures take
+- #130 done: block, parry and dodge moves; creatures take
   shadows; robes and long hair on spring chains (`Swing.ts`); forearm twist
   bones; corpses baked to still meshes; far monsters swap to a 40 % copy
   (`creatureDetail`, size on screen per preset); shadow bodies from thinned
   copies; the hero's face and hands thinned for play (`playSkin`); same-look
   monsters share one draw per pack (`Packs.ts`). GPU cloth for capes and
-  banners is "later" in the owner's list: it goes after #136.
+  banners came last, after #136 (log below: the hero's cape, then the
+  bosses' capes and banners).
 - Fixed on the way: water mirror loop built outside a shader function (the
   swamp would not load); the particle shader passed 17 values between its
   stages (limit 16), now packed.
@@ -504,8 +505,25 @@ Update this file and push it after every finished step.
   hero in play (`hero/CapeCloth.ts`): held at the shoulders, kept off the
   back, seat, legs and arms; a Shadow Clone still wears the boned cape. The
   pass keeps its loops as loops: written out it crashed software graphics.
-  Checked in a lab page and in town (stand, run, turn). Next: boss capes and
-  banners.
+  Checked in a lab page and in town (stand, run, turn).
+- #130 GPU cloth, part 2 (boss capes and banners): a boss's sculpt lays its
+  capes and banners out as cloth sheets (`ClothSheets.ts`: a cape, a flag on
+  a pole, a banner from a crossbar), with the points that are held, how far
+  each other point may swing, and what it falls against (back, legs, head,
+  the pole). Each boss wears them as cloth in its own paint and colours
+  (`CreatureCloth.ts`), moved by the animator once a frame. 17 sheets on 15
+  boss looks (14 capes, 3 banners); other monsters keep the baked cape, and
+  the boss looks rebake once. A dying boss lets its cloth go limp so it falls
+  to the floor; the body it leaves keeps the same cloth for 3 s more, then it
+  lies still. The hit flash skips cloth. Fixed on the way: the inside of a
+  two-sided sheet was lit as if it faced out (the creature shader now flips
+  the normal on back faces). New checker `check-cloth` (every boss sheet:
+  held points, reach, bodies on real bones, few points start inside a body).
+  Checked in a lab page with Malek (cape, two pole flags), Marshal Harrow
+  (crossbar banner) and Gharruth (cape): stand, walk, turn, attack, death,
+  corpse; no graphics errors.
+- The owner's Phase 2 and Phase 3 list is done (#126). Phase 4 (Steam) waits
+  for the owner.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

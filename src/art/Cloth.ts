@@ -78,6 +78,8 @@ export interface ClothSheet {
   pin: ArrayLike<number>;
   /** Per point: how far (in the sheet's own units) it may stray from its rest place. */
   reach: ArrayLike<number>;
+  /** More of the geometry's attributes the look reads (a creature's paint, `color`). */
+  keep?: readonly string[];
 }
 
 /** Where a cloth's sheet stands this frame; false skips the frame (nothing moves). */
@@ -134,6 +136,8 @@ export class Cloth {
   floor = -1e6;
   /** The air: its speed (xyz, m/s) and how much it gusts (w, share). */
   readonly wind = new THREE.Vector4(0.35, 0, 0.2, 0.7);
+  /** Scale on every point's reach (a body falling lets its cloth go wherever it falls). */
+  reachScale = 1;
   place: ClothPlacer | null = null;
   readonly id = ++clothIds;
 
@@ -156,6 +160,7 @@ export class Cloth {
   private readonly uDrag = uniform(1.5);
   private readonly uWind = uniform(new THREE.Vector4());
   private readonly uFloor = uniform(-1e6);
+  private readonly uReach = uniform(1);
   private readonly uBodies = uniformArray<'vec4'>(this.bodies, 'vec4');
   private readonly uBodyCount = uniform(0, 'int');
   /** Seconds of motion not yet run, and whether the owner moved on since the last pass. */
@@ -167,6 +172,9 @@ export class Cloth {
   /** The picture the last pass ran for (`drawnFrames`): one pass a picture, before its first draw of the cloth. */
   private seen = -1;
   private time = 0;
+  /** Seconds it goes on falling with nobody to tick it (`settle`), and the clock it keeps for that. */
+  private settleLeft = 0;
+  private settleAt = 0;
   private readonly was = new THREE.Matrix4();
   /** 1 when the sheet's triangles face along "across, then down", -1 against it. */
   private facing = 1;
@@ -183,6 +191,10 @@ export class Cloth {
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     geo.setIndex(Array.from(src.index!.array));
+    for (const name of sheet.keep ?? []) {
+      const a = src.getAttribute(name) as THREE.BufferAttribute | undefined;
+      if (a) geo.setAttribute(name, a.clone());
+    }
     this.pos = new THREE.StorageBufferAttribute(new Float32Array(n * 4), 4);
     this.prev = new THREE.StorageBufferAttribute(new Float32Array(n * 4), 4);
     this.last = new THREE.StorageBufferAttribute(new Float32Array(n * 4), 4);
@@ -232,6 +244,13 @@ export class Cloth {
       R[i * 4 + 3] = Math.min(1, Math.max(0, sheet.pin[i] ?? 0));
       A[i * 4] = Math.max(0, sheet.reach[i] ?? 0);
     }
+    for (const name of sheet.keep ?? []) {
+      const from = sheet.geometry.getAttribute(name) as THREE.BufferAttribute | undefined;
+      const to = this.geo.getAttribute(name) as THREE.BufferAttribute | undefined;
+      if (!from || !to || from === to) continue;
+      to.copy(from);
+      to.needsUpdate = true;
+    }
     gp.needsUpdate = true;
     gn.needsUpdate = true;
     this.geo.computeBoundingSphere();
@@ -247,6 +266,16 @@ export class Cloth {
     if (!old.userData.shared) old.dispose();
   }
 
+  /**
+   * Lets the cloth go on moving for `seconds` with nobody calling `tick`,
+   * on its own clock while it is drawn: a fallen body's cloth finishes its
+   * fall. The placer keeps being asked where it stands.
+   */
+  settle(seconds: number): void {
+    this.settleLeft = seconds;
+    this.settleAt = performance.now();
+  }
+
   /** The owner's clock: call once a frame the cloth's world moves on. */
   tick(dt: number): void {
     if (!(dt > 0)) return;
@@ -260,6 +289,13 @@ export class Cloth {
     // The shadow passes and the picture all draw the cloth; it moves once.
     if (drawnFrames.n === this.seen) return;
     this.seen = drawnFrames.n;
+    if (this.settleLeft > 0 && !this.due) {
+      const now = performance.now();
+      const dt = Math.min(MAX_FRAME, (now - this.settleAt) / 1000);
+      this.settleAt = now;
+      this.settleLeft -= dt;
+      this.tick(dt);
+    }
     if (!this.due) {
       // A still frame after a moving one: one pass with no steps copies the
       // points as they are into last frame's, so the cloth's motion reads zero.
@@ -292,6 +328,7 @@ export class Cloth {
     this.uDrag.value = this.feel.drag;
     this.uWind.value.copy(this.wind);
     this.uFloor.value = this.floor;
+    this.uReach.value = this.reachScale;
     this.uBodyCount.value = Math.min(MAX_BODIES, this.bodyCount);
     this.pending = 0;
     this.moved = true;
@@ -319,7 +356,7 @@ export class Cloth {
     const auxS = storage(this.aux, 'vec4', N).toReadOnly();
     const P = shared('vec3', NP);
     const R = shared('vec4', NP);
-    const { uA, uB, uScale, uH, uSteps, uReset, uTime, uDrag, uWind, uFloor, uBodies, uBodyCount } = this;
+    const { uA, uB, uScale, uH, uSteps, uReset, uTime, uDrag, uWind, uFloor, uReach, uBodies, uBodyCount } = this;
 
     return Fn(() => {
       const t = instanceIndex;
@@ -408,7 +445,7 @@ export class Cloth {
               const x = P.element(i).toVar() as unknown as V3;
               const d = x.sub(g).toVar();
               const dl = length(d).toVar();
-              const lim = auxS.element(i).x.mul(uScale).toVar();
+              const lim = auxS.element(i).x.mul(uScale).mul(uReach).toVar();
               x.assign(dl.greaterThan(lim).select(g.add(d.mul(lim.div(max(dl, 1e-6)))), x).uniformFlow());
               Loop(uBodyCount, ({ i: b }: { i: THREE.Node<'int'> }) => {
                 const a = uBodies.element(b.mul(2)).toVar();

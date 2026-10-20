@@ -97,6 +97,38 @@ export interface WeaponGrip {
   freeGrip: THREE.Vector3;
 }
 
+/** A capsule a cloth falls against: from one bind point to another, each carried by a bone. */
+export interface ClothBody {
+  a: string;
+  at: THREE.Vector3;
+  b: string;
+  bt: THREE.Vector3;
+  /** Radius, metres at scale 1. */
+  r: number;
+}
+
+/**
+ * A sheet worn as cloth (`ClothSheets.ts`): a cape or a banner the graphics
+ * card moves (`art/Cloth.ts`) instead of a part baked into the body.
+ */
+export interface ClothSpec {
+  /** The bone that carries the held points. */
+  bone: string;
+  feel: 'cape' | 'banner';
+  mat: CMat;
+  /** Paint over the material's own colour. */
+  col?: RGB;
+  cols: number;
+  rows: number;
+  /** The rest shape, bind pose, character space: positions, normals, triangles. */
+  geo: THREE.BufferGeometry;
+  /** Per point: 1 held, 0 free. */
+  pin: Float32Array;
+  /** Per point: how far it may swing from its rest place (metres at scale 1). */
+  reach: Float32Array;
+  bodies: ClothBody[];
+}
+
 export interface SculptQuality {
   /** Field cell size per material, metres at scale 1. */
   cell: number;
@@ -119,6 +151,10 @@ export class Sculpt {
   k = 0.02;
   /** Set by `weapon()` for bows and crossbows, so the animator can put the other hand on it. */
   grip?: WeaponGrip;
+  /** Capes and banners laid out as cloth (only while `clothOn`). */
+  readonly cloths: ClothSpec[] = [];
+  /** Wear capes and banners as cloth rather than baking them in: set for bosses. */
+  clothOn = false;
   private readonly index: Record<string, number>;
 
   constructor(readonly rig: CreatureRig) {

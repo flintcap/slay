@@ -25,6 +25,7 @@ import { manLook } from './LookHumanoid';
 import { crystals, facet, fire, prism, walkLook, wispLook } from './LookElemental';
 import { skeletonLook, specterLook } from './LookUndead';
 import { shield } from './LookConstruct';
+import { barBanner } from './ClothSheets';
 
 const FLAME: RGB = [1.45, 0.85, 0.35];
 const WICK: RGB = [0.12, 0.09, 0.07];
@@ -358,6 +359,13 @@ function champion(s: Sculpt, H: number): void {
   const b = ch.clone().add(V(-0.08 * H, 0.42 * H, -0.12 * H));
   s.hard('chest', tubeGeo([a, b], () => 0.01 * H, 5), 'metal', OAK);
   const top = lerpV(a, b, 0.92);
+  if (s.clothOn) {
+    // A boss's banner is cloth, hung from a crossbar near the pole's top.
+    const bar = lerpV(a, b, 0.97).add(V(0, 0, -0.012 * H));
+    s.hard('chest', tubeGeo([bar.clone().add(V(0.09 * H, 0, 0)), bar.clone().add(V(-0.23 * H, 0, 0))], () => 0.006 * H, 5, true), 'metal', OAK);
+    barBanner(s, { bone: 'chest', left: bar.clone().add(V(0.08 * H, 0, -0.004 * H)), across: V(-1, 0, 0), down: V(0, -1, 0), w: 0.3 * H, h: 0.28 * H, mat: 'alt', col: [0.4, 0.14, 0.12], torn: 0.8, rand: seq(Math.round(H * 613)), pole: [a, b, 0.014 * H] });
+    return;
+  }
   s.hard('chest', boxGeo(top.clone().add(V(-0.08 * H, -0.08 * H, -0.005 * H)), V(0.15 * H, 0.17 * H, 0.008 * H)), 'alt', [0.4, 0.14, 0.12]);
   s.hard('chest', spikeGeo(top.clone().add(V(-0.14 * H, -0.17 * H, -0.005 * H)), top.clone().add(V(-0.12 * H, -0.27 * H, -0.005 * H)), 0.03 * H, 3, undefined, 1), 'alt', [0.4, 0.14, 0.12]);
 }

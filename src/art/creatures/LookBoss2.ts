@@ -24,6 +24,7 @@ import { branch, leaf, mossBeard } from './LookPlant';
 import { featherWings } from './LookBeast';
 import { bubbles, drips, mass, skullAt } from './LookOoze';
 import { asBoss, chain, ring } from './LookBoss';
+import { poleBanner } from './ClothSheets';
 
 const BONE: RGB = [0.86, 0.8, 0.66];
 const IRON: RGB = [0.42, 0.42, 0.45];
@@ -170,7 +171,11 @@ const BOSS_B: Record<string, LookFactory> = {
             const t = bk.clone().add(V(x * 0.14 * H, 0.42 * H, -0.04 * H));
             s.hard('chest', tubeGeo([a, t], () => 0.008 * H, 5), 'metal', [0.3, 0.25, 0.2]);
             const fl = lerpV(a, t, 0.78);
-            s.hard('chest', boxGeo(fl.clone().add(V(x * 0.05 * H, -0.04 * H, -0.004 * H)), V(0.05 * H, 0.08 * H, 0.004 * H), quatAlong(t.clone().sub(a))), 'alt', [0.35, 0.4, 0.75]);
+            const d = t.clone().sub(a).normalize();
+            if (s.clothOn) {
+              const out = V(x, 0, 0).addScaledVector(d, -d.x * x).normalize();
+              poleBanner(s, { bone: 'chest', root: fl.clone().add(V(0, 0, -0.004 * H)), down: d.clone().negate(), out, w: 0.09 * H, h: 0.13 * H, mat: 'alt', col: [0.35, 0.4, 0.75], torn: 0.6, rand: seq(Math.round(H * 431) + x), pole: [a, t, 0.012 * H] });
+            } else s.hard('chest', boxGeo(fl.clone().add(V(x * 0.05 * H, -0.04 * H, -0.004 * H)), V(0.05 * H, 0.08 * H, 0.004 * H), quatAlong(t.clone().sub(a))), 'alt', [0.35, 0.4, 0.75]);
             s.hard('chest', spikeGeo(t, t.clone().add(t.clone().sub(a).normalize().multiplyScalar(0.05 * H)), 0.01 * H, 4, undefined, 1), 'metal', GOLD);
           });
           // Trophies: three helms hanging from his belt.

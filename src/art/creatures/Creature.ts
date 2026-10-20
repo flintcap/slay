@@ -12,8 +12,9 @@
  */
 import * as THREE from 'three';
 import { CREATURE_SOCKETS, type CreatureRig, type CreatureSocket } from './Rig';
-import { CMATS, Sculpt, type CMat, type SculptQuality } from './Sculpt';
-import { bakeSculpt, sculptKey } from './Bake';
+import { CMATS, Sculpt, type ClothSpec, type CMat, type SculptQuality } from './Sculpt';
+import { bakeSculpt, paintSheet, sculptKey } from './Bake';
+import { freeCloths, handClothsOn, wearCloths } from './CreatureCloth';
 import { bakedCached, releaseBakes } from './Store';
 import { cloneCreatureMaterial, creatureMaterial, disposeCreatureMaterials, scaleBucket, type CreatureMatDef } from './Materials';
 import type { CreatureInfo } from './Animator';
@@ -101,7 +102,17 @@ interface Prototype {
   shadowGeo: THREE.BufferGeometry | null;
   info: CreatureInfo;
   meshes: Array<{ mat: CMat; geo: THREE.BufferGeometry }>;
+  /** Capes and banners each spawn wears as cloth, painted. */
+  cloths: ClothSpec[];
   look: CreatureLook;
+}
+
+/** A sculpt as a look makes it: a boss wears its capes and banners as cloth. */
+function sculptOf(look: CreatureLook, rig: CreatureRig): Sculpt {
+  const s = new Sculpt(rig);
+  s.clothOn = look.tier === 'boss';
+  look.sculpt(s);
+  return s;
 }
 
 const prototypes = new Map<string, Prototype>();
@@ -114,8 +125,7 @@ const prototypes = new Map<string, Prototype>();
  */
 export function lookBake(look: CreatureLook): { key: string; bake: () => THREE.BufferGeometry[] } {
   const rig = look.rig();
-  const s = new Sculpt(rig);
-  look.sculpt(s);
+  const s = sculptOf(look, rig);
   const q = quality(rig, look.tier ?? 'normal');
   return {
     key: sculptKey(s, q),
@@ -132,9 +142,9 @@ function prototype(look: CreatureLook): Prototype {
   const hit = prototypes.get(look.key);
   if (hit) return hit;
   const rig = look.rig();
-  const s = new Sculpt(rig);
-  look.sculpt(s);
+  const s = sculptOf(look, rig);
   const q = quality(rig, look.tier ?? 'normal');
+  for (const c of s.cloths) paintSheet(s, c.mat, c.geo, c.col);
   const mats = CMATS.filter((m) => s.fields[m].prims.length > 0 || s.parts.some((p) => p.mat === m));
   const key = sculptKey(s, q);
   let baked: Array<{ mat: CMat; geo: THREE.BufferGeometry }> = [];
@@ -210,7 +220,7 @@ function prototype(look: CreatureLook): Prototype {
     root.add(body);
     body.bind(skeleton, new THREE.Matrix4());
   }
-  const proto: Prototype = { root, skeleton, shadowGeo, info, meshes, look };
+  const proto: Prototype = { root, skeleton, shadowGeo, info, meshes, cloths: s.cloths, look };
   prototypes.set(look.key, proto);
   return proto;
 }
@@ -312,6 +322,19 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
   const rr = RANK_RIM[opts.rank ?? 'normal'] ?? RANK_RIM.normal!;
   const sz = scale * (look.size ?? 1);
   const bucket = scaleBucket(sz);
+  const dress = (matName: CMat): THREE.Material => {
+    const def = proto.look.mats[matName] ?? proto.look.mats.skin!;
+    // Texel density follows the world size; rank adds its rim and a hotter glow.
+    return creatureMaterial({
+      ...def,
+      scale: bucket,
+      // Plain monsters get a faint cold edge so they still read as shapes
+      // out past the torchlight; ranked ones keep their coloured rims.
+      rim: tier ? rr.rim : def.rim ?? NORMAL_RIM.rim,
+      rimStrength: tier ? rr.strength : def.rim !== undefined ? def.rimStrength : NORMAL_RIM.strength,
+      glowIntensity: (def.glowIntensity ?? 2.4) * rr.glow,
+    });
+  };
   root.traverse((o) => {
     const sm = o as THREE.SkinnedMesh;
     if (!sm.isSkinnedMesh) return;
@@ -323,19 +346,9 @@ export function instanceCreature(look: CreatureLook, scale: number, opts: BuildO
     // pose's tight sphere for good, so a lunge could be culled half drawn.
     if (sm.geometry.boundingSphere) sm.boundingSphere = sm.geometry.boundingSphere.clone();
     if (sm.userData.shadowOnly) return;
-    const matName = sm.userData.mat as CMat;
-    const def = proto.look.mats[matName] ?? proto.look.mats.skin!;
-    // Texel density follows the world size; rank adds its rim and a hotter glow.
-    sm.material = creatureMaterial({
-      ...def,
-      scale: bucket,
-      // Plain monsters get a faint cold edge so they still read as shapes
-      // out past the torchlight; ranked ones keep their coloured rims.
-      rim: tier ? rr.rim : def.rim ?? NORMAL_RIM.rim,
-      rimStrength: tier ? rr.strength : def.rim !== undefined ? def.rimStrength : NORMAL_RIM.strength,
-      glowIntensity: (def.glowIntensity ?? 2.4) * rr.glow,
-    });
+    sm.material = dress(sm.userData.mat as CMat);
   });
+  if (proto.cloths.length) root.userData.cloths = wearCloths(root, own, proto.cloths, dress);
   root.userData.monsterSkeleton = own;
   root.userData.creature = proto.info;
   root.userData.creatureKey = proto.look.key;
@@ -422,6 +435,7 @@ const CORPSE_CAP = 36;
 
 function dropCorpse(c: THREE.Object3D): void {
   c.removeFromParent();
+  freeCloths(c);
   for (const g of (c.userData.baked as THREE.BufferGeometry[] | undefined) ?? []) g.dispose();
   c.userData.baked = undefined;
 }
@@ -584,12 +598,14 @@ export function leaveCorpse(root: THREE.Object3D): void {
     still.renderOrder = o.renderOrder;
     still.castShadow = false;
     still.receiveShadow = o.receiveShadow;
-    still.add(...o.children);
+    if (o.children.length) still.add(...o.children);
     o.parent?.add(still);
     o.removeFromParent();
   });
   root.matrixWorld.decompose(corpse.position, corpse.quaternion, corpse.scale);
   corpse.userData = { baked, corpse: true };
+  // Its cloth lies where it fell, still: the body's own, not the copies.
+  handClothsOn(root, corpse);
   corpse.name = 'corpse';
   corpse.visible = true;
   world.add(corpse);
@@ -617,6 +633,7 @@ export function releaseCreature(root: THREE.Object3D): void {
     skel.dispose();
     root.userData.monsterSkeleton = undefined;
   }
+  freeCloths(root);
   root.traverse((o) => {
     const m = (o as THREE.Mesh).material as THREE.Material | undefined;
     if (m && !Array.isArray(m) && m.userData?.private) m.dispose();

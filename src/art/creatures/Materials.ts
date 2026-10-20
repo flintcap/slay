@@ -21,7 +21,7 @@
  */
 import * as THREE from 'three/webgpu';
 import {
-  clamp, dot, float, min, mix, normalGeometry, normalView, positionGeometry, positionViewDirection, pow,
+  clamp, dot, float, min, mix, negateOnBackSide, normalGeometry, normalView, positionGeometry, positionViewDirection, pow,
   vec3, vertexColor,
 } from 'three/tsl';
 import { asStandard, bindToView, matColor, matFloat, matTexture, setNodeTextures, triSample, whiteout, type F, type V3 } from '../../core/Tsl';
@@ -305,7 +305,8 @@ function creatureGraph(u: CreatureShade): CreatureGraph {
     // Painted glow also brightens what it sits in, so an eye reads as lit, not as a dot.
     color: mix(color, glowC.mul(0.35), clamp(glow.sub(0.3).mul(1.8), 0.0, 1.0)),
     roughness: clamp(matFloat('roughness').mul(mix(float(1.0), t.rough.mul(1.4), 0.75)), 0.04, 1.0),
-    normal: bindToView(whiteout(t, Nb, matFloat('slTriNormalScale')), Pb, Nb),
+    // A two-sided sheet (a boss's cape as cloth) turns its normal to the face shown.
+    normal: negateOnBackSide(bindToView(whiteout(t, Nb, matFloat('slTriNormalScale')), Pb, Nb)),
     emissive: emis,
   };
   graphs.set(key, graph);
