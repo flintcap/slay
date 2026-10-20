@@ -653,6 +653,13 @@ export class Player {
 
   /** Whether the last hit `takeDamage` took was blocked (not dodged, not soaked). */
   lastBlocked = false;
+  /** Seconds left standing in your own darkness (Smoke Bomb, Nightfall), for Gloom Shroud. */
+  shrouded = 0;
+
+  /** Veiled, or inside your own darkness: what Gloom Shroud asks for. */
+  get unseen(): boolean {
+    return this.shrouded > 0 || this.status.has('veiled');
+  }
   /** Deflect: a block makes you immune to the same damage type for a moment. */
   private graceType: DamageType | null = null;
   private graceLeft = 0;
@@ -698,7 +705,7 @@ export class Player {
     // rather than as armour, because both are written as "you take less".
     const e = this.passives;
     let cut = 0;
-    if (e.stealthReductionPct > 0 && this.status.has('veiled')) cut += e.stealthReductionPct;
+    if (e.stealthReductionPct > 0 && this.unseen) cut += e.stealthReductionPct;
     if (e.lowLifeReductionPct > 0 && (this.life / Math.max(1, this.stats.life)) * 100 <= e.lowLifeThreshold) {
       cut += e.lowLifeReductionPct;
     }
@@ -859,6 +866,7 @@ export class Player {
   update(dt: number, ctx: PlayerContext, keyboardDir: THREE.Vector3 | null): void {
     this.fair.tick(dt);
     if (this.graceLeft > 0) this.graceLeft = Math.max(0, this.graceLeft - dt);
+    if (this.shrouded > 0) this.shrouded = Math.max(0, this.shrouded - dt);
     const ps = this.passiveState;
     if (ps.castStackLeft > 0) {
       ps.castStackLeft -= dt;

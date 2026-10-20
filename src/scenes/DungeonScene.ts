@@ -49,7 +49,7 @@ import { PAYOUT, bossIlvl, findRates, payoutGold, payoutIlvl, sourceFind, type F
 import { addItemToInventory, removeItemFromInventory } from '../sim/Inventory';
 import { packChart, rollTrinket, spendTrinket, trinketOf, unpackChart } from '../sim/Trinkets';
 import { onKill, onBossKilled, onInteract, onSurviveTick, questRewards } from '../sim/Quests';
-import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER } from './SkillRunner';
+import { SkillRunner, weaponStyle, casterOffHand, MINION_MONSTER, minionVisual } from './SkillRunner';
 import { NameplateLayer, type PlateTarget } from '../ui/Nameplates';
 import { itemLookStandIns } from '../art/items/Mats';
 import { CombatTextLayer } from '../ui/CombatText';
@@ -513,12 +513,12 @@ export class DungeonScene extends GameScene {
    */
   private warmSummons(): void {
     this.releaseWarm();
-    const want = new Map<string, { def: (typeof MONSTERS)[number]; minion: boolean; rank: MonsterRank }>();
-    const ask = (id: string | undefined, minion: boolean, rank: MonsterRank = 'normal'): void => {
-      const key = `${id}|${minion}|${rank}`;
+    const want = new Map<string, { def: (typeof MONSTERS)[number]; minion: boolean; rank: MonsterRank; skill?: string }>();
+    const ask = (id: string | undefined, minion: boolean, rank: MonsterRank = 'normal', skill?: string): void => {
+      const key = `${id}|${minion}|${rank}|${skill ?? ''}`;
       if (!id || want.has(key)) return;
       const def = MONSTERS.find((m) => m.id === id);
-      if (def) want.set(key, { def, minion, rank });
+      if (def) want.set(key, { def, minion, rank, skill });
     };
     const casters: Enemy[] = this.boss ? [...this.enemies, this.boss] : this.enemies;
     for (const e of casters) for (const a of e.abilityIds) ask(SUMMONED_BY[a], false);
@@ -537,14 +537,14 @@ export class DungeonScene extends GameScene {
       ask('mirror_image', false);
     }
     const c = this.player.character;
-    for (const sk of [...c.hotbar, ...Object.keys(c.skills)]) ask(sk ? MINION_MONSTER[sk] : undefined, true);
-    for (const { def, minion, rank } of want.values()) {
+    for (const sk of [...c.hotbar, ...Object.keys(c.skills)]) ask(sk ? MINION_MONSTER[sk] : undefined, true, 'normal', sk ?? undefined);
+    for (const { def, minion, rank, skill } of want.values()) {
       try {
         // As the summon factory builds them: a monster of its family at the
         // rank it is called at, or a hero's minion at 0.92 of its size with
         // no family.
         const m = minion
-          ? instanceCreature(lookFor(def.visual), (def.scale ?? 1) * 0.92, {})
+          ? instanceCreature(lookFor(minionVisual(skill ?? '', def.visual)), (def.scale ?? 1) * 0.92, {})
           : instanceCreature(lookFor(def.visual, def.family, rank), def.scale, { rank });
         this.summonWarm.push(m.root);
       } catch {
@@ -1325,7 +1325,7 @@ export class DungeonScene extends GameScene {
         st.soulTimer = 0;
       }
     }
-    if (e.stealthRegenPct > 0 && this.player.status.has('veiled')) {
+    if (e.stealthRegenPct > 0 && this.player.unseen) {
       this.player.life = Math.min(
         this.player.stats.life,
         this.player.life + this.player.stats.life * (e.stealthRegenPct / 100) * dt,

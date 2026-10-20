@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { bendFor, bentKnob } from '../data/skillBends';
 import { FOE_POWER, SELF_POWER, burstGrowth, grownMods, minionLifeGrowth, scaleMods, scaleShred } from '../data/skillPower';
 import { reportError } from '../core/Engine';
-import type { DamagePacket, DamageType, StatusApplication } from '../types';
+import type { DamagePacket, DamageType, MonsterVisual, StatusApplication } from '../types';
 import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { heroBark } from '../audio/HeroVoice';
@@ -58,6 +58,7 @@ const MINION_NAME: Record<string, string> = {
   claySentinel: tr('Clay Sentinel'),
   swornBrother: tr('Sworn Brother'),
   shadowClone: tr('Shadow'),
+  viperGod: tr('Spectral Viper'),
 };
 
 /** The monster body each summoning skill raises (read by the scene's warm-up too). */
@@ -69,7 +70,22 @@ export const MINION_MONSTER: Readonly<Record<string, string>> = {
   claySentinel: 'animated_armor',
   swornBrother: 'bandit_cutthroat',
   shadowClone: 'bandit_cutthroat',
+  viperGod: 'basilisk',
 };
+
+/**
+ * A summon that borrows a monster's body but not its colours: Call the
+ * Viper's serpent is a basilisk's rig in spectral jade.
+ */
+const MINION_LOOK: Readonly<Record<string, Partial<MonsterVisual>>> = {
+  viperGod: { palette: 'crystal.void|0x2f8a5c', glow: 0x8affc0, ornate: 0.35 },
+};
+
+/** The body a summoning skill raises, in its own colours (read by the scene's warm-up too). */
+export function minionVisual(skillId: string, base: MonsterVisual): MonsterVisual {
+  const look = MINION_LOOK[skillId];
+  return look ? { ...base, ...look } : base;
+}
 
 /**
  * How many of each summon may stand at once, and the ceiling it grows toward.
@@ -93,6 +109,9 @@ const SUMMON_HARD_CAP: Record<string, number> = {
   viperGod: 2,
   grandOssuary: 16,
 };
+
+/** Phantom Blades: pale steel with the Rogue's green on the edge. */
+const PHANTOM_BLADE = 0xa8f0cc;
 
 /** Nothing may hold more than this many bodies at once, whatever the maths. */
 const SUMMON_ABSOLUTE_CAP = 20;
@@ -1505,7 +1524,10 @@ export class SkillRunner {
             }
             break;
           }
-          const duration = num('duration', 6) * groundLife;
+          // The Rogue's darkness lasts as long as what it does (Smoke Bomb grows a rank).
+          const dark = num('darkness', 0) > 0;
+          const grown = dark ? FOE_POWER[def.id]?.(Math.max(0, rank - 1), num).duration : undefined;
+          const duration = (grown ?? num('duration', 6)) * groundLife;
           // Firestorm says how many impacts a second.
           const tick = num('rate', 0) > 0 ? 1 / num('rate', 1) : num('tickRate', 0.5);
           this.addZone(
@@ -1520,6 +1542,9 @@ export class SkillRunner {
           );
           // Smoke Bomb hides the hero for as long as they stand in it.
           if (num('stealthInside', 0) > 0) this.zones[this.zones.length - 1]!.veils = true;
+          // The Rogue's darkness (Smoke Bomb, Nightfall) hurts nothing; it
+          // hides, and Gloom Shroud counts standing in it.
+          if (dark) this.zones[this.zones.length - 1]!.dark = true;
           this.effects.nova(at.x, at.z, radius, { element: school, color, emitter: sig.emitter, density: sig.density });
           break;
         }
@@ -1574,8 +1599,9 @@ export class SkillRunner {
           const elites = def.id === 'raiseSkeleton' ? Math.floor(mp.minionEliteCount) : 0;
           const elitePower = 1 + mp.minionElitePowerPct / 100;
           const swingRate = 1 / (1 + mp.minionAttackSpeedPct / 100);
-          // A Shadow Clone is you in shadow, so it fights with your blades.
-          const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel') || def.id === 'shadowClone';
+          // A Shadow Clone is you in shadow, so it fights with your blades;
+          // Call the Viper's serpent bites (`melee`).
+          const melee = (def.effect ?? '').includes('minion') || (def.effect ?? '').includes('sentinel') || def.id === 'shadowClone' || num('melee', 0) > 0;
           // Make room before raising anything. Oldest of this skill goes first, so
           // pressing the button at the cap always does something visible.
           if (!isTotem) this.trimSummons(def.id, Math.max(0, cap - count));
@@ -1597,7 +1623,9 @@ export class SkillRunner {
               life,
               num('attackRate', melee ? 1.1 : 1.6) * swingRate,
               num('range', melee ? 2.6 : 11),
-              (m = 1) => makePacket(m * num('minionScale', 0.5) * minionPower * (elite ? elitePower : 1)),
+              // A clone hits for its own share of your blow (`damagePct`, which
+              // its rank ladder grows); other summons for `minionScale`.
+              (m = 1) => makePacket(m * (isClone ? num('damagePct', 45) / 100 : num('minionScale', 0.5)) * minionPower * (elite ? elitePower : 1)),
               type, color, melee, def.id,
               // A share of your own pool, which is how the skill descriptions
               // read it — "40% of your life" and so on.
@@ -2770,15 +2798,23 @@ export class SkillRunner {
           }
           if (mark) {
             this.bladeTimes.push(this.runTime);
-            this.strike(
-              mark,
-              { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: tr('Phantom Blade') },
-              ctx, 'proc', t.root.position.x, t.root.position.z,
-            );
+            // A pale ghost of the knife flies to it, and cuts when it arrives.
+            const blade = { ...packet, amount: packet.amount * (e.critBladePct / 100), ability: tr('Phantom Blade') };
+            const fromX = t.root.position.x;
+            const fromZ = t.root.position.z;
+            const victim = mark;
+            const hero = p;
             this.effects.projectile(
               t.root.position.clone().setY(1.1),
               mark.root.position.clone().setY(1.1),
-              { element: 'physical', color: 0xbfc8e0, speed: 40, size: 0.16 },
+              {
+                element: 'physical', color: PHANTOM_BLADE, shape: 'knife', speed: 30, size: 0.3, trail: 'thrown',
+                onHit: () => {
+                  if (victim.life <= 0 || !hero.alive) return;
+                  this.caster = hero;
+                  this.strike(victim, blade, ctx, 'proc', fromX, fromZ);
+                },
+              },
             );
           }
         }
@@ -3092,6 +3128,8 @@ export class SkillRunner {
     skillId?: string;
     /** Smoke Bomb: the hero inside is Veiled. */
     veils?: boolean;
+    /** The Rogue's own darkness: deals no damage, shrouds the hero inside (Gloom Shroud). */
+    dark?: boolean;
     /** The Bone Choir: share (%) of what it deals that heals the hero and the pack. */
     healShare?: number;
   }> = [];
@@ -3395,8 +3433,11 @@ export class SkillRunner {
         const centre = this.tmp3.set(z.x, 0, z.z);
         // A field ticking is not a blow: no flash or stop, or a burning floor
         // would strobe everything standing in it.
-        const dealt = this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss, 'proc');
+        const dealt = z.dark ? 0 : this.areaDamage(centre, z.radius, z.packet, ctx, enemies, boss, 'proc');
         const hero = this.caster;
+        if (z.dark && hero && hero.alive && this.groundDistance(hero.position, centre) <= z.radius) {
+          hero.shrouded = Math.max(hero.shrouded, z.tick + 0.15);
+        }
         if (z.healShare && dealt > 0 && hero) {
           const mend = (dealt * z.healShare) / 100;
           hero.heal(mend);
@@ -3917,7 +3958,7 @@ export class SkillRunner {
       try {
         // Seeded from the summon count, not the wall clock: same run, same pack.
         const rng = new Random((0x5a11 + this.summonSerial * 7919) >>> 0);
-        const model = buildMonsterModel(mdef.visual, rng, (mdef.scale ?? 1) * 0.92);
+        const model = buildMonsterModel(minionVisual(skillId ?? '', mdef.visual), rng, (mdef.scale ?? 1) * 0.92);
         model.root.position.set(x, 0, z);
         this.effects.scene.add(model.root);
         anim = new RigAnimator(model.root, model.bones, monsterArchetype(mdef.visual.body), rng);

@@ -799,14 +799,15 @@ const RULES: Record<string, Contribution> = {
   },
   exploitWeakness: (e, r, id) => {
     e.critVulnerableSec = Math.max(e.critVulnerableSec, param(id, 'vulnerable', 8));
-    e.vsDebuffedPct += param(id, 'defShredPerRank', 5) * r;
+    e.vsDebuffedPct += param(id, 'vsDebuffedPerRank', 5) * r;
   },
   bleedingEdge: (e, r, id) => {
     e.critBleedStacks = Math.max(
       e.critBleedStacks,
       param(id, 'bleedStacks', 2) + Math.floor(r / Math.max(1, param(id, 'stacksPerRanks', 5))),
     );
-    e.dotDamagePct += param(id, 'bleedDamagePerRank', 6) * r;
+    // Bleeds only, as the text says (Butchery's `bleedDamagePct`).
+    e.bleedDamagePct += param(id, 'bleedDamagePerRank', 6) * r;
   },
   phantomBlades: (e, r, id) => {
     e.critBladeChance = Math.max(e.critBladeChance, param(id, 'chance', 100));

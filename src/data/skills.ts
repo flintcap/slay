@@ -1397,7 +1397,7 @@ const VENOM = build('venom', [
   {
     id: 'viperGod',
     name: tr('Call the Viper'),
-    desc: tr('A spectral serpent hunts at your side with 90% of your life, striking for 140% weapon damage (+22% per rank) as poison and applying 5 stacks per bite. It stays until it falls.'),
+    desc: tr('A spectral serpent hunts at your side with 90% of your life, biting for 140% weapon damage (+22% per rank) as poison and applying 5 stacks of Poisoned per bite. It stays until it falls. A second serpent answers at rank 12.'),
     tier: 6,
     col: 1,
     max: 20,
@@ -1409,7 +1409,7 @@ const VENOM = build('venom', [
     dmg: [1.4, 0.22],
     type: 'poison',
     fx: 'summon.pet',
-    p: { baseCap: 1, maxPerRanks: 12, poisonStacks: 5, lifePct: 90, attackRate: 1.4 },
+    p: { baseCap: 1, maxPerRanks: 12, poisonStacks: 5, lifePct: 90, attackRate: 1.4, melee: 1, minionScale: 1 },
   },
   {
     id: 'toxicMastery',
@@ -1483,7 +1483,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [12, 0.6],
     cd: [18, 0.5, 8],
     fx: 'ground.cloud',
-    p: { radius: 5, duration: 6, stealthInside: 1 },
+    p: { radius: 5, duration: 6, stealthInside: 1, darkness: 1 },
   },
   {
     id: 'shadowClone',
@@ -1528,7 +1528,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'darkPact',
     name: tr('Dark Pact'),
-    desc: tr('-3% skill cooldowns per rank (to 45%) and Veil costs 5% less mana per rank (up to 90%).'),
+    desc: tr('-4.5% skill cooldowns per rank, with diminishing returns toward 45%, and Veil costs 5% less mana per rank (up to 90%).'),
     tier: 3,
     col: 1,
     icon: 'pact',
@@ -1554,7 +1554,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'shadowLegion',
     name: tr('Shadow Legion'),
-    desc: tr('Three clones instead of one (+1 per 6 ranks, to 6), each at 35% of your damage (+4% per rank).'),
+    desc: tr('Two more Shadow Clones may stand at once (+1 per 6 ranks, up to 6 in all), and every clone deals +4% damage per rank.'),
     tier: 4,
     col: 0,
     icon: 'legion',
@@ -1586,7 +1586,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     mana: [24, 1.2],
     cd: [26, 0.7, 12],
     fx: 'ground.debuffField',
-    p: { radius: 9, duration: 8, perRank: 2 },
+    p: { radius: 9, duration: 8, perRank: 2, darkness: 1 },
   },
   {
     id: 'mirrorGambit',
@@ -1620,7 +1620,7 @@ const SHADOWCRAFT = build('shadowcraft', [
   {
     id: 'gloomShroud',
     name: tr('Gloom Shroud'),
-    desc: tr('While unseen or within your own darkness you take 30% less damage (+2% per rank) and regain 2% life per second.'),
+    desc: tr('While Veiled, or standing in your own Smoke Bomb or Nightfall, you take 30% less damage (+2% per rank) and regain 2% life per second.'),
     tier: 5,
     col: 2,
     icon: 'gloom',
@@ -1763,13 +1763,13 @@ const BLADEWORK = build('bladework', [
   {
     id: 'exploitWeakness',
     name: tr('Exploit Weakness'),
-    desc: tr('Critical strikes apply Vulnerable for 8s (+25% damage taken) and reduce the target\'s defense by 5% per rank.'),
+    desc: tr('Critical strikes apply Vulnerable for 8s (+25% damage taken), and you deal +5% damage per rank to enemies under any debuff.'),
     tier: 3,
     col: 0,
     icon: 'chink',
     req: ['deadlyAim'],
     fx: 'passive.critOnHit',
-    p: { vulnerable: 8, defShredPerRank: 5 },
+    p: { vulnerable: 8, vsDebuffedPerRank: 5 },
   },
   {
     id: 'whirlingBlades',
