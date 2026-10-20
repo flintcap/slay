@@ -97,7 +97,10 @@ function needsReach(skillId: string | null): boolean {
   // A spin walks itself toward the aim (Whirlwind): no need to close first.
   if (def.effect === 'melee.channel') return false;
   const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
-  return family === 'melee' || family === 'cleave' || family === 'whirlwind' || (family === 'rite' && !def.params?.['range']);
+  // A Paladin rite closes first only when it is a blow at an enemy: Bar the
+  // Door and Turn the Blade are done where he stands, a rush or a throw
+  // carries its own reach (`range`).
+  return family === 'melee' || family === 'cleave' || family === 'whirlwind' || (family === 'rite' && def.targeting === 'enemy' && !def.params?.['range']);
 }
 
 export class CombatControls {

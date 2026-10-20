@@ -24,7 +24,7 @@ export interface PaladinEffects {
   tollRingSec: number;
   /** Bellguard: a blocked attacker is Staggered for this long. 0 = never. */
   blockStaggerSec: number;
-  /** Red Rosary: a critical rite leaves this many Opened stacks. */
+  /** Red Rosary: a critical blow leaves this many Opened stacks. */
   critOpens: number;
   /** Red Rosary: more damage against an Opened target. */
   vsOpenedPct: number;
@@ -42,12 +42,19 @@ export interface PaladinEffects {
   vespersDR: number;
   /** Ember Saint: life back, as a percentage of maximum, for a death in a vigil. */
   emberHealPct: number;
+  /** Saint's Reach: metres a Blade skill reaches further. */
+  reachBonus: number;
+  /** Saint's Reach: a Blade cut carries on into the next enemy behind its target for this share, percent. 0 = never. */
+  carryPct: number;
+  /** Saint's Reach: how far behind its target a cut carries, in metres. */
+  carryRange: number;
 }
 
 export function emptyPaladinEffects(): PaladinEffects {
   return {
     vsBrokenPct: 0, tollEvery: 0, tollPct: 0, tollRingSec: 0, blockStaggerSec: 0, critOpens: 0, vsOpenedPct: 0,
     vigilRadiusPct: 0, vigilSlots: 0, vigilPowerPct: 0, penitentShred: 0, vespersRegen: 0, vespersDR: 0, emberHealPct: 0,
+    reachBonus: 0, carryPct: 0, carryRange: 0,
   };
 }
 
@@ -99,6 +106,11 @@ export const PALADIN_RULES: Record<string, Rule> = {
     e.pal.critOpens = Math.max(e.pal.critOpens, Math.round(param(id, 'stacks', 1) + Math.floor((r - 1) / param(id, 'stackEvery', 6))));
     e.pal.vsOpenedPct += param(id, 'pct', 15) + param(id, 'pctPerRank', 2) * (r - 1);
     e.dotTickPct += param(id, 'tickPct', 20);
+  },
+  saintsReach: (e, r, id) => {
+    e.pal.reachBonus = Math.max(e.pal.reachBonus, param(id, 'reach', 0.4));
+    e.pal.carryPct += param(id, 'carryPct', 30) + param(id, 'carryPctPerRank', 2) * (r - 1);
+    e.pal.carryRange = Math.max(e.pal.carryRange, param(id, 'carry', 2));
   },
 
   // ------------------------------------------------------------------ Aura

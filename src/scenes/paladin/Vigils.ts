@@ -28,13 +28,16 @@ import type { CombatContext, Enemy } from '../../entities/Enemy';
 import type { Boss } from '../../entities/Boss';
 import type { Player } from '../../entities/Player';
 import type { HitKind } from '../../fx/CombatFeel';
+import type { BurstOpts } from '../../fx/Particles';
 import { FOE_POWER, SELF_POWER, scaleMods, scaleShred } from '../../data/skillPower';
 import { SKILL_BY_ID } from '../../data/skills';
+import { bendFor, bentKnob, type SkillBend } from '../../data/skillBends';
 import { rollDamage, skillDamageScale } from '../../sim/Combat';
 import { skillRank } from '../../sim/Character';
 import { skillSound } from '../../audio/SkillSounds';
 import { skillAction } from '../../art/hero/SkillActions';
 import { VigilRing, type RingLook } from '../../fx/paladin/VigilRing';
+import { BRONZE, paladinFX, tickPaladinFX } from '../../fx/paladin/RiteLooks';
 import { pickOne, type RiteCast, type RiteHost } from './Rites';
 
 type Target = Enemy | Boss;
@@ -42,8 +45,10 @@ type World = { ctx: CombatContext; enemies: Enemy[]; boss: Boss | null };
 
 /** What the runner lends a vigil: a rite's host, and blows on an area. */
 export interface VigilHost extends RiteHost {
-  /** Every target within `radius` of `centre` takes a fresh packet. Returns damage dealt. */
+  /** Every target within `radius` of `centre` takes a fresh packet, weaker toward the edge. Returns damage dealt. */
   area(centre: THREE.Vector3, radius: number, packet: () => DamagePacket, ctx: CombatContext, enemies: Enemy[], boss: Boss | null, kind: HitKind): number;
+  /** The same, but as hard at the edge as at the middle: a vigil's ring. */
+  flat(centre: THREE.Vector3, radius: number, packet: () => DamagePacket, ctx: CombatContext, enemies: Enemy[], boss: Boss | null, kind: HitKind): number;
 }
 
 /** One press of an Aura skill. */
@@ -60,6 +65,10 @@ const HOLD = 1.4;
 const SECOND_RING = 0.3;
 /** The ring drawn at his feet, in metres: a small circle, whatever the vigil reaches. */
 const DRAWN_RING = 1.1;
+/** Censure's leap, seen: a puff of ash every this many metres from the dead to the next. */
+const ASH_STEP = 0.7;
+const ASH_LINE: BurstOpts = { count: 4, scale: 0.8, color: 0x6a625a };
+const centre = new THREE.Vector3();
 
 interface Ring {
   kind: 'self' | 'foe' | 'burn' | 'toll';
@@ -114,12 +123,12 @@ function watchOf(c: Character): Watch {
   return w;
 }
 
-/** Reads a skill's own params, the runner's way. */
-function reader(def: SkillDef): (k: string, d: number) => number {
+/** Reads a skill's own params the runner's way, as a worn unique bends them. */
+function reader(def: SkillDef, bend: SkillBend | null): (k: string, d: number) => number {
   const params = def.params ?? {};
   return (k, d) => {
     const v = params[k];
-    return typeof v === 'number' ? v : d;
+    return bentKnob(bend, k, typeof v === 'number' ? v : d);
   };
 }
 
@@ -164,6 +173,8 @@ export function snuffVigil(def: SkillDef, player: Player): boolean {
 
 interface Act {
   clip: string;
+  /** Lets go on the gesture's own frame (`SkillRunner.atRelease`), not on the press. */
+  release?: boolean;
   run(r: VigilCast, host: VigilHost): void;
 }
 
@@ -182,14 +193,14 @@ const ACTS: Record<string, Act> = {
   },
   censure: {
     clip: 'point',
+    release: true,
     run(r, host) {
       const p = r.player;
       const t = pickOne(p, r.aim, r.enemies, r.boss, r.num('range', 14));
       if (t) p.faceTowards(t.root.position.x, t.root.position.z);
       if (t) r.landAt = t.root.position.clone().setY(0);
-      const id = p.actionId;
-      host.later(p.contactIn, () => {
-        if (p.actionId !== id || !t || t.life <= 0) return;
+      host.atRelease(p, () => {
+        if (!t || t.life <= 0) return;
         const k = Math.max(0, r.rank - 1);
         const pw = FOE_POWER.censure?.(k, r.num) ?? {};
         const app: StatusApplication = { id: 'censured', duration: pw.duration ?? 8, magnitude: 1, stacks: 1 };
@@ -205,19 +216,23 @@ const ACTS: Record<string, Act> = {
   },
   lastHour: {
     clip: 'point',
+    release: true,
     run(r, host) {
       const p = r.player;
       const t = pickOne(p, r.aim, r.enemies, r.boss, r.num('range', 12));
       if (t) p.faceTowards(t.root.position.x, t.root.position.z);
       if (t) r.landAt = t.root.position.clone().setY(0);
-      // The bell is called at the release and takes its time to fall; once
-      // called it comes down whatever he does next.
-      host.later(p.contactIn + r.num('fall', 0.7), () => {
-        if (!p.alive || !t || t.life <= 0) return;
-        const pk = r.packet(1);
-        pk.applies = [...(pk.applies ?? []), { id: 'rung', duration: r.num('ring', 1.5), magnitude: 1, stacks: 1 }];
-        host.land(t, pk, 'heavy', t.root.position.x, t.root.position.z, r);
-        host.sound(r.hitSound, t.root.position.x, t.root.position.z);
+      // The great bell is called on the release, over the one it names, and
+      // takes its time to fall; once called it comes down whatever he does next.
+      host.atRelease(p, () => {
+        if (!t || t.life <= 0) return;
+        paladinFX(host.effects).bell.call(host.effects, t.root.position.x, t.root.position.z, r.num('fall', 0.7), 1, () => {
+          if (!p.alive || t.life <= 0) return;
+          const pk = r.packet(1);
+          pk.applies = [...(pk.applies ?? []), { id: 'rung', duration: r.num('ring', 1.5), magnitude: 1, stacks: 1 }];
+          host.land(t, pk, 'heavy', t.root.position.x, t.root.position.z, r);
+          host.sound(r.hitSound, t.root.position.x, t.root.position.z);
+        }, t.root);
       });
     },
   },
@@ -240,7 +255,7 @@ export function castVigil(host: VigilHost, r: VigilCast): void {
   const p = r.player;
   const act = ACTS[r.def.id];
   if (act) {
-    p.beginAction(skillAction(r.def.id) ?? act.clip, r.castTime);
+    p.beginAction(skillAction(r.def.id) ?? act.clip, r.castTime, undefined, { release: act.release ?? false });
     act.run(r, host);
     return;
   }
@@ -258,14 +273,14 @@ export function castVigil(host: VigilHost, r: VigilCast): void {
 
 // --- the burning -----------------------------------------------------------------
 
-/** How far a vigil reaches for this hero. */
-function reachOf(player: Player, ctx: CombatContext): number {
-  return 5 * (1 + player.passives.pal.vigilRadiusPct / 100) + (ctx.auraRadiusBonus ?? 0);
+/** How far a vigil reaches for this hero: its own `radius` (as bent), then Wide Wick and aura reach on top. */
+function reachOf(player: Player, ctx: CombatContext, num: (k: string, d: number) => number): number {
+  return num('radius', 5) * (1 + player.passives.pal.vigilRadiusPct / 100) + (ctx.auraRadiusBonus ?? 0);
 }
 
-/** A packet for a vigil's blows, rolled at the hero's numbers now. */
-function packetOf(player: Player, def: SkillDef, ctx: CombatContext, mult: number): DamagePacket {
-  const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) * mult;
+/** A packet for a vigil's blows, rolled at the hero's numbers now (a bend's more damage on top). */
+function packetOf(player: Player, def: SkillDef, ctx: CombatContext, mult: number, bend: SkillBend | null): DamagePacket {
+  const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) * mult * (1 + (bend?.more ?? 0) / 100);
   return rollDamage(player.stats, ctx.rng, { scale, type: def.damageType ?? 'physical', ability: def.name, source: 'player' });
 }
 
@@ -274,6 +289,8 @@ function packetOf(player: Player, def: SkillDef, ctx: CombatContext, mult: numbe
  * each burning vigil does what it does.
  */
 export function tickVigils(host: VigilHost, player: Player, dt: number, world: World): void {
+  // The censer and the great bell play out whatever burns.
+  tickPaladinFX(host.effects, dt);
   const w = WATCH.get(player.character);
   if (!w) return;
   for (let i = w.dying.length - 1; i >= 0; i--) {
@@ -287,7 +304,6 @@ export function tickVigils(host: VigilHost, player: Player, dt: number, world: W
     return;
   }
   if (!w.lit.length) return;
-  const radius = reachOf(player, world.ctx);
   const scene = host.effects.scene;
   w.lit.forEach((lit, slot) => {
     lit.pulse += dt;
@@ -304,22 +320,32 @@ export function tickVigils(host: VigilHost, player: Player, dt: number, world: W
   w.acc += dt;
   if (w.acc < TICK) return;
   w.acc = Math.min(w.acc - TICK, TICK);
-  pulse(host, player, w, radius, world);
+  pulse(host, player, w, world);
 }
 
-function pulse(host: VigilHost, player: Player, w: Watch, radius: number, world: World): void {
+/** True when `t` lives and stands within `radius` of `me`. */
+function within(t: Target, me: THREE.Vector3, radius: number): boolean {
+  return t.life > 0 && Math.hypot(t.root.position.x - me.x, t.root.position.z - me.z) <= radius + t.hitRadius;
+}
+
+function pulse(host: VigilHost, player: Player, w: Watch, world: World): void {
   const { ctx, enemies, boss } = world;
   const pal = player.passives.pal;
   const power = 1 + pal.vigilPowerPct / 100;
   const me = player.position;
+  // Each vigil reads its own knobs, as worn gear bends them, and reaches its own way.
+  const lits = w.lit.map((lit) => {
+    const def = SKILL_BY_ID[lit.id];
+    const bend = def ? bendFor(player.character, lit.id) : null;
+    const num = def ? reader(def, bend) : (_k: string, d: number) => d;
+    return { lit, def, bend, num, radius: reachOf(player, ctx, num) };
+  });
+  // Penitent Ground and Ember Saint ride on any vigil: as far as the widest reaches.
+  let widest = 0;
+  for (const l of lits) widest = Math.max(widest, l.radius);
   const inRing: Target[] = [];
-  const consider = (t: Target): void => {
-    if (t.life <= 0) return;
-    if (Math.hypot(t.root.position.x - me.x, t.root.position.z - me.z) > radius + t.hitRadius) return;
-    inRing.push(t);
-  };
-  for (const e of enemies) consider(e);
-  if (boss) consider(boss);
+  for (const e of enemies) if (within(e, me, widest)) inRing.push(e);
+  if (boss && within(boss, me, widest)) inRing.push(boss);
 
   // Ember Saint: what was kneeling in the ring last tick and is dead now.
   if (pal.emberHealPct > 0) {
@@ -329,19 +355,17 @@ function pulse(host: VigilHost, player: Player, w: Watch, radius: number, world:
   }
   w.inside = new Set(inRing);
 
-  const centre = new THREE.Vector3(me.x, 0, me.z);
-  for (let i = w.lit.length - 1; i >= 0; i--) {
-    const lit = w.lit[i]!;
-    const def = SKILL_BY_ID[lit.id];
+  centre.set(me.x, 0, me.z);
+  for (let i = lits.length - 1; i >= 0; i--) {
+    const { lit, def, bend, num, radius } = lits[i]!;
     const ring = RINGS[lit.id];
     const rank = skillRank(player.character, lit.id);
     // Points taken back out at the shrine put the candles out too.
     if (!def || !ring || rank <= 0) {
-      putOut(w, i, player);
+      putOut(w, w.lit.indexOf(lit), player);
       continue;
     }
     const k = rank - 1;
-    const num = reader(def);
     switch (ring.kind) {
       case 'self': {
         const raw = SELF_POWER[lit.id]?.(k, num).mods;
@@ -355,12 +379,12 @@ function pulse(host: VigilHost, player: Player, w: Watch, radius: number, world:
         const mods = raw && power !== 1 ? scaleShred(raw, power) : raw;
         const app: StatusApplication = { id: ring.status, duration: HOLD, magnitude: 1, stacks: 1 };
         if (mods) app.mods = mods;
-        for (const t of inRing) t.applyStatuses([app], ctx);
+        for (const t of inRing) if (within(t, me, radius)) t.applyStatuses([app], ctx);
         break;
       }
       case 'burn': {
         if (!inRing.length) break;
-        host.area(centre, radius, () => packetOf(player, def, ctx, power), ctx, enemies, boss, 'proc');
+        host.flat(centre, radius, () => packetOf(player, def, ctx, power, bend), ctx, enemies, boss, 'proc');
         break;
       }
       case 'toll': {
@@ -368,11 +392,13 @@ function pulse(host: VigilHost, player: Player, w: Watch, radius: number, world:
         if (lit.pulse < every) break;
         lit.pulse = 0;
         const ringSec = num('ring', 0.3) + num('ringPerRank', 0.02) * k;
-        host.area(centre, radius, () => {
-          const p = packetOf(player, def, ctx, power);
+        host.flat(centre, radius, () => {
+          const p = packetOf(player, def, ctx, power, bend);
           p.applies = [...(p.applies ?? []), { id: 'rung', duration: ringSec, magnitude: 1, stacks: 1 }];
           return p;
         }, ctx, enemies, boss, 'area');
+        // The toll is seen: a bronze ring of sound out to where it really reaches.
+        host.effects.nova(me.x, me.z, radius, { color: BRONZE, duration: 0.5, thickness: 0.08, particles: false });
         host.sound(skillSound(lit.id).hit, me.x, me.z);
         break;
       }
@@ -393,7 +419,6 @@ function pulse(host: VigilHost, player: Player, w: Watch, radius: number, world:
 
 /** A censure on a dead enemy finds the nearest live one within its leap. */
 function tickCensures(host: VigilHost, w: Watch, dt: number, world: World): void {
-  void host;
   for (let i = w.censures.length - 1; i >= 0; i--) {
     const c = w.censures[i]!;
     c.left -= dt;
@@ -422,6 +447,17 @@ function tickCensures(host: VigilHost, w: Watch, dt: number, world: World): void
     }
     c.app = { ...c.app, duration: c.left };
     next.applyStatuses([c.app], world.ctx);
+    ashLine(host, from.x, from.z, next.root.position.x, next.root.position.z);
     c.t = next;
+  }
+}
+
+/** The censure's leap, seen: a thin line of ash from the dead to the next. */
+function ashLine(host: VigilHost, ax: number, az: number, bx: number, bz: number): void {
+  const len = Math.hypot(bx - ax, bz - az);
+  const n = Math.min(12, Math.max(2, Math.ceil(len / ASH_STEP)));
+  for (let i = 0; i <= n; i++) {
+    const u = i / n;
+    host.effects.fx.burst('ash', ax + (bx - ax) * u, 0.9, az + (bz - az) * u, ASH_LINE);
   }
 }

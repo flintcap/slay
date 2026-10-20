@@ -652,10 +652,14 @@ export class SkillRunner {
       later: (seconds, fn) => this.pendingSwings.push({ rank: boostRank(), t: seconds, run: fn }),
       sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
       clear: (from, dir, max, ctx) => this.wallStop(from, dir, max, ctx, 0.5),
+      atRelease: (player, fn) => this.atRelease(player, fn),
+      cutTimes: (skillId, span, first) => cutTimes(skillId, span, first),
     };
     this.vigilHost = {
       ...this.riteHost,
       area: (centre, radius, packet, ctx, enemies, boss, kind) => this.areaDamage(centre, radius, packet, ctx, enemies, boss, kind),
+      // A vigil's ring is the same strength to its edge, as its tooltip says.
+      flat: (centre, radius, packet, ctx, enemies, boss, kind) => this.areaDamage(centre, radius, packet, ctx, enemies, boss, kind, false),
     };
     this.spells = new MageSpells({
       effects,
@@ -2904,6 +2908,12 @@ export class SkillRunner {
     );
     const st = p.passiveState;
     let amount = packet.amount * mul * this.hexMul(t);
+    let applies = packet.applies;
+    // The Paladin's Crushing Weight and Red Rosary: every blow of his, not
+    // only a rite's (`sim/passives/paladin.ts`).
+    const pal = e.pal;
+    if (pal.vsBrokenPct > 0 && (t.hasStatus('staggered') || t.hasStatus('rung') || t.stacksOf('dented') > 0)) amount *= 1 + pal.vsBrokenPct / 100;
+    if (pal.vsOpenedPct > 0 && t.hasStatus('opened')) amount *= 1 + pal.vsOpenedPct / 100;
 
     // The Fifth Verse: every Nth blow is a guaranteed critical, and hits harder
     // for being one. Counted per landed blow, not per press, so a whirlwind
@@ -2971,8 +2981,12 @@ export class SkillRunner {
       this.knight.spendRetribution(p, t, st.retribution);
       st.retribution = 0;
     }
-    if (crit === packet.crit && amount === packet.amount) return packet;
-    return { ...packet, amount, crit };
+    // Red Rosary: a critical blow of his opens the vein on its own.
+    if (crit && pal.critOpens > 0 && packet.source === 'player') {
+      applies = [...(applies ?? []), { id: 'opened', duration: 5, magnitude: 1, stacks: pal.critOpens, power: amount * 0.12 }];
+    }
+    if (crit === packet.crit && amount === packet.amount && applies === packet.applies) return packet;
+    return { ...packet, amount, crit, applies };
   }
 
   /**
@@ -3243,6 +3257,7 @@ export class SkillRunner {
     enemies: Enemy[],
     boss: Boss | null,
     kind: HitKind = 'area',
+    falloff = true,
   ): number {
     let dealt = 0;
     for (const t of this.allTargets(enemies, boss)) {
@@ -3252,7 +3267,7 @@ export class SkillRunner {
       if (d > radius + t.hitRadius) continue;
       // Falloff so the centre of a nova genuinely rewards positioning.
       const p = packet();
-      p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
+      if (falloff) p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
       const ap = this.tune(p, t);
       // Knocked away from the middle of the blast.
       if (!this.strike(t, ap, ctx, kind, center.x, center.z)) continue;
