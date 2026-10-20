@@ -143,6 +143,16 @@ export function basicRate(hands: Hands, attackMult: number): number {
   return 1 / basicTime(hands, attackMult);
 }
 
+/**
+ * A weapon's own attacks a second, for its tooltip: its base pace with its
+ * own speed lines (implicit, rolled, sockets) through the curve, under the
+ * ceiling. The hero's other gear adds to the same sum; the character panel
+ * shows that total.
+ */
+export function weaponRate(baseSpeed: number, ownPct: number): number {
+  return Math.min(ATTACK_RATE_CAP, baseSpeed * speedMultiplier(ownPct));
+}
+
 /** Seconds a cast of `base` seconds takes at this cast speed. */
 export function castSeconds(base: number, castMult: number): number {
   return Math.max(1 / CAST_RATE_CAP, base / Math.max(0.05, castMult));
@@ -207,6 +217,36 @@ export const RUSH_MIN_TIME = 0.15;
 /** Seconds a rush over `distance` metres takes at `RUSH_SPEED` (or `speed`). */
 export function travelTime(distance: number, speed = RUSH_SPEED): number {
   return Math.max(RUSH_MIN_TIME, Math.max(0, distance) / Math.max(1, speed));
+}
+
+/** What the character panel shows for speed: true rates and what the gear is worth. */
+export interface SpeedReadout {
+  /** Basic attacks a second with what is held, gear and buffs counted. */
+  attackRate: number;
+  /** The weapon's own pace (two blades: their average), attacks a second. */
+  weaponAps: number;
+  dual: boolean;
+  /** Real gain from attack speed after diminishing returns, percent. */
+  attackGain: number;
+  /** Casts a second of a usual spell (`BASE_CAST_TIME`). */
+  castRate: number;
+  /** Real gain from cast speed after diminishing returns, percent. */
+  castGain: number;
+}
+
+/** True speed for a hero holding `equipment` with `attackPct` and `castPct` summed speed. */
+export function speedReadout(equipment: Partial<Record<EquipSlot, Item>>, attackPct: number, castPct: number): SpeedReadout {
+  const hands = handsOf(equipment);
+  const am = speedMultiplier(attackPct);
+  const cm = speedMultiplier(castPct);
+  return {
+    attackRate: basicRate(hands, am),
+    weaponAps: hands.aps,
+    dual: hands.dual,
+    attackGain: (am - 1) * 100,
+    castRate: 1 / castSeconds(BASE_CAST_TIME, cm),
+    castGain: (cm - 1) * 100,
+  };
 }
 
 /** The effective speed bonus, in percent, that `pct` summed speed gives (for readouts). */

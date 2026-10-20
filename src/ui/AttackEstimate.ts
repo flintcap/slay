@@ -16,7 +16,8 @@ import { burstGrowth } from '../data/skillPower';
 import { castsOnly } from '../data/itemBases';
 import { damageRange, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
-import { basicTime, handsOf, skillPace, speedMultiplier } from '../sim/Speed';
+import { basicTime, handsOf, skillPace, speedMultiplier, type Pace } from '../sim/Speed';
+import { bendFor, bentKnob } from '../data/skillBends';
 
 /** Crit chance tops out here (Combat.rollDamage). */
 const CRIT_CHANCE_CAP = 95;
@@ -68,6 +69,16 @@ export function estimateAttack(c: Character, st: Stats): AttackEstimate | null {
   return { def: null, rank: 0, type: 'physical', scale: 1, min: r.min, max: r.max, period, dps: (((r.min + r.max) / 2) * critFactor(st)) / period };
 }
 
+/**
+ * One use of `def` with the gear worn now: its real time and whether it is an
+ * attack or a spell (`sim/Speed.ts`, skill-bending uniques counted). The skill
+ * board's Speed line and the estimates read this, as SkillRunner does.
+ */
+export function paceFor(c: Character, st: Stats, def: SkillDef): Pace {
+  const bend = bendFor(c, def.id);
+  return skillPace(def, handsOf(c.equipment), speedMultiplier(st.attackSpeed), speedMultiplier(st.castSpeed), (k, v) => bentKnob(bend, k, v));
+}
+
 function estimateDef(c: Character, st: Stats, def: SkillDef): AttackEstimate | null {
   const rank = skillRank(c, def.id);
   if (rank <= 0 || def.targeting === 'passive') return null;
@@ -81,7 +92,7 @@ function estimateDef(c: Character, st: Stats, def: SkillDef): AttackEstimate | n
   }
   const type: DamageType = def.damageType ?? 'physical';
   const r = damageRange(st, scale, type);
-  const action = skillPace(def, handsOf(c.equipment), speedMultiplier(st.attackSpeed), speedMultiplier(st.castSpeed)).time;
+  const action = paceFor(c, st, def).time;
   const cd = (def.cooldown ? def.cooldown(rank) : 0) * (1 - Math.min(CDR_CAP, st.cooldownReduction) / 100);
   const period = Math.max(action, cd);
   return { def, rank, type, scale, min: r.min, max: r.max, period, dps: (((r.min + r.max) / 2) * critFactor(st)) / period };

@@ -118,7 +118,7 @@ to paste.
   lands on the clip's hit frame, and no clip plays so fast it smears or so
   slow it floats. One small browser check (`check-clips` or `check-attack`)
   at the end.
-- [ ] 6. Readouts. The character panel shows true attacks a second and
+- [x] 6. Readouts. ("skillcore: readouts show true speed") The character panel shows true attacks a second and
   casts a second; item and skill tooltips show true speed numbers
   (`check-stattext`, `check-skillparams`).
 - [ ] 7. Icon pipeline. Class streams will paint richer icons. Raise the
@@ -135,11 +135,11 @@ to paste.
 
 ## Next up
 
-Milestone 5: `contactDelay` / `CONTACT_CAP` in `Player.ts` and the
-Animator clip speed follow the action time (hit on the clip's hit frame,
-no smear, no float), plus the three class-stream requests under "Notes for
-resume". Then one browser check (`check-attack` or `check-clips`) with
-`get-chrome` first, `flock`, `timeout`, `SLAY_PORT=4351`.
+Rerun `check-curve` (two-handed melee speeds moved after the "after" run)
+and refresh the before/after table. Then milestone 7: raise the skill icon
+bake size in `src/art/SkillIconArt.ts` / `src/art/Icons.ts` for the
+hotbar and skill board at UI scale 200% on a high density screen; measure
+memory and bake time before and after.
 
 ## Notes for resume
 
@@ -332,6 +332,25 @@ Windforce 35 -> 19 and 25 -> 15, second load unchanged).
 - `check-attack` passed on the build with these changes (the swing
   connects; holding the button closes in). `check-controls` now waits for
   the real contact time instead of a fixed 0.2 s.
+
+### Readouts (milestone 6)
+
+- Character panel: the Attack Speed and Cast Speed rows always show and
+  read the true rate ("1.42 a second"), from `speedReadout` in
+  `sim/Speed.ts`. The hover says the weapon's own pace (two blades: their
+  average and the 1.3x turn rate), the gear percent, what it is worth after
+  diminishing returns, and the ceiling. A caster with a caster's weapon is
+  told it has no basic attack and how fast attack skills swing.
+- Item tooltips (both the card and the text lines): "Per second" /
+  "Attacks per Second" and DPS use `weaponRate`: the base pace with the
+  weapon's own speed lines through the curve.
+- Skill board: a Speed section on every active skill: "An attack: one use
+  takes 0.71 s with what you hold now, 1.41 a second" or "A spell: one
+  cast takes 0.50 s, 2.00 a second". It reads `paceFor` in
+  `ui/AttackEstimate.ts`, which counts skill-bending uniques the way
+  SkillRunner does; the Character panel's skill estimates use it too.
+- Passed: `stattext`, `skillparams`, `i18n`, `controls`, `save`,
+  `uniques`.
 
 ### Requests from the class streams (coordinator, for milestone 5)
 

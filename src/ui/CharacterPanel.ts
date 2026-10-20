@@ -39,7 +39,9 @@ import {
 } from './Widgets';
 import { uiSfx } from './Sfx';
 import { estimateAttack, estimateSkill, type AttackEstimate } from './AttackEstimate';
-import { tr, trn } from '../core/I18n';
+import { tr, trn, numText } from '../core/I18n';
+import { ATTACK_RATE_CAP, BASE_CAST_TIME, CAST_RATE_CAP, DUAL_SWING_RATE, speedReadout } from '../sim/Speed';
+import { castsOnly } from '../data/itemBases';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
 
@@ -51,6 +53,31 @@ const ATTR_BLURB: Record<AttrKey, string> = {
   vitality: tr('The only attribute that keeps you alive. Each point adds life directly.'),
   energy: tr('Grows the mana pool and mana regeneration — the fuel for every skill you press.'),
 };
+
+/**
+ * The speed rows: the true rate as the value, and how it comes about. Gear and
+ * skill speed is summed, then counts for less the more there is
+ * (`sim/Speed.ts`), so the rate is what to read, not the percent.
+ */
+function speedRow(key: 'attackSpeed' | 'castSpeed', st: Stats): { text: string; hint: string } {
+  const c = save.account.current;
+  const r = speedReadout(c?.equipment ?? {}, st.attackSpeed, st.castSpeed);
+  const pct = (v: number): string => `${v >= 0 ? '+' : ''}${fmt(Math.round(v))}%`;
+  if (key === 'attackSpeed') {
+    const pace = r.dual
+      ? tr('Your two weapons swing {0} times a second on their own, and two blades take turns, {1} times as often.', numText(r.weaponAps, 2), numText(DUAL_SWING_RATE, 1))
+      : tr('Your weapon swings {0} times a second on its own.', numText(r.weaponAps, 2));
+    const none = !!c && castsOnly(c.classId, c.equipment.mainHand?.baseId, c.equipment.offHand?.baseId);
+    return {
+      text: tr('{0} a second', numText(r.attackRate, 2)),
+      hint: (none ? tr('<p>A caster\'s weapon makes no basic attack. Attack skills swing <b>{0}</b> times a second.</p>', numText(r.attackRate, 2)) : tr('<p>You make <b>{0}</b> basic attacks a second.</p>', numText(r.attackRate, 2))) + tr('<p class="tt-explain-how">{0} Attack speed from gear and skills: {1}, worth {2} after diminishing returns: each point counts for less the more you have. No one attacks more than {3} times a second. An attack skill takes its own share of a swing.</p>', pace, pct(st.attackSpeed), pct(r.attackGain), numText(ATTACK_RATE_CAP, 1)),
+    };
+  }
+  return {
+    text: tr('{0} a second', numText(r.castRate, 2)),
+    hint: tr('<p>You cast a usual spell <b>{0}</b> times a second.</p><p class="tt-explain-how">A usual spell takes {1} s before cast speed; some take longer. Cast speed from gear and skills: {2}, worth {3} after diminishing returns: each point counts for less the more you have. No one casts more than {4} times a second.</p>', numText(r.castRate, 2), numText(BASE_CAST_TIME, 2), pct(st.castSpeed), pct(r.castGain), numText(CAST_RATE_CAP, 1)),
+  };
+}
 
 /** A usual boss stands this much harder to hit than a usual monster of its level (its rank's armour, square-rooted). */
 const BOSS_GUARD = Math.sqrt(2.4);
@@ -70,8 +97,6 @@ const STAT_HOW: Partial<Record<StatKey, string>> = {
   attackRating: tr('Blows from your weapon (swings, slams, arrows) can miss. The more attack rating you have against a monster\'s guard, the fewer misses; five times its guard never misses. Armoured monsters, elites and bosses guard more. Spells, minions and area blasts always hit. Grows with Dexterity and level.'),
   minDamage: tr('Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.'),
   maxDamage: tr('Weapon base damage, scaled by upgrade level, then multiplied by Enhanced Damage.'),
-  attackSpeed: tr('Percentage change to swing time. Additive across gear, then applied to the weapon base speed.'),
-  castSpeed: tr('Percentage change to cast time for spell skills.'),
   critChance: tr('Chance for a hit to roll critical damage instead of normal damage.'),
   critDamage: tr('Bonus damage on a critical hit, on top of the base 150%.'),
   lifeSteal: tr('Fraction of physical damage dealt returned as life.'),
@@ -327,14 +352,15 @@ export class CharacterPanel {
     let shown = 0;
     for (const key of keys) {
       const v = st[key];
-      if (!v && key !== 'defense' && key !== 'life' && key !== 'mana' && key !== 'minDamage' && key !== 'maxDamage') continue;
+      const speed = key === 'attackSpeed' || key === 'castSpeed' ? speedRow(key, st) : null;
+      if (!v && !speed && key !== 'defense' && key !== 'life' && key !== 'mana' && key !== 'minDamage' && key !== 'maxDamage') continue;
       const isPct = /Pct$|Speed$|Chance$|Damage$|Reduction$|Find$|Steal$/.test(key) && key !== 'minDamage' && key !== 'maxDamage' && key !== 'fireDamage' && key !== 'coldDamage' && key !== 'lightningDamage' && key !== 'poisonDamage' && key !== 'arcaneDamage';
-      const text = isPct ? `${fmt(v)}%` : fmt(v);
+      const text = speed ? speed.text : isPct ? `${fmt(v)}%` : fmt(v);
       // Below the right-click attack, the weapon's own roll is named as the weapon's.
       const label = key === 'minDamage' ? tr('Weapon Min Damage') : key === 'maxDamage' ? tr('Weapon Max Damage') : STAT_LABEL[key];
       const line = statLine(label, text, {
         icon: STAT_ICON[key],
-        hint: (STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : tr('<p>Current value: <b>{0}</b></p>', text)) + (key === 'attackRating' ? hitHint(v) : ''),
+        hint: speed ? speed.hint : (STAT_HOW[key] ? `<p>${STAT_HOW[key]}</p>` : tr('<p>Current value: <b>{0}</b></p>', text)) + (key === 'attackRating' ? hitHint(v) : ''),
         title: label,
       });
       s.body.appendChild(line);

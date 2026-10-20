@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9219,
+ "count": 9226,
  "strings": [
   {
    "key": "Beating iron…",
@@ -48793,6 +48793,18 @@
    ]
   },
   {
+   "key": "<p class=\"tt-explain-how\">{0} Attack speed from gear and skills: {1}, worth {2} after diminishing returns: each point counts for less the more you have. No one attacks more than {3} times a second. An attack skill takes its own share of a swing.</p>",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "<p>A caster's weapon makes no basic attack. Attack skills swing <b>{0}</b> times a second.</p>",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
    "key": "<p>About <b>{0}</b> ordinary {1} blows of Tier {2} take you from full life to nothing.</p><p class=\"tt-explain-how\">Your life with armour, block, resistance and damage reduction counted. Elites and bosses hit harder.</p>",
    "files": [
     "ui/CharacterPanel.ts"
@@ -48818,6 +48830,18 @@
   },
   {
    "key": "<p>Reduces incoming {0} damage by <b>{1}%</b>.</p><p class=\"tt-explain-how\">Each point counts in full up to {2}%. Past that, each point counts for less, and the cut never reaches {3}%. Curses and carried quest relics lower it, so going past {4}% is not wasted.</p>",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "<p>You cast a usual spell <b>{0}</b> times a second.</p><p class=\"tt-explain-how\">A usual spell takes {1} s before cast speed; some take longer. Cast speed from gear and skills: {2}, worth {3} after diminishing returns: each point counts for less the more you have. No one casts more than {4} times a second.</p>",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "<p>You make <b>{0}</b> basic attacks a second.</p>",
    "files": [
     "ui/CharacterPanel.ts"
    ]
@@ -49034,19 +49058,7 @@
    ]
   },
   {
-   "key": "Percentage change to cast time for spell skills.",
-   "files": [
-    "ui/CharacterPanel.ts"
-   ]
-  },
-  {
    "key": "Percentage change to run speed. The most under-rated defensive stat in the game.",
-   "files": [
-    "ui/CharacterPanel.ts"
-   ]
-  },
-  {
-   "key": "Percentage change to swing time. Additive across gear, then applied to the weapon base speed.",
    "files": [
     "ui/CharacterPanel.ts"
    ]
@@ -49163,6 +49175,18 @@
   },
   {
    "key": "Your build",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "Your two weapons swing {0} times a second on their own, and two blades take turns, {1} times as often.",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "Your weapon swings {0} times a second on its own.",
    "files": [
     "ui/CharacterPanel.ts"
    ]
@@ -52666,6 +52690,12 @@
    ]
   },
   {
+   "key": "A spell: one cast takes {0} s, {1} a second. Cast speed makes it quicker.",
+   "files": [
+    "ui/SkillTreePanel.ts"
+   ]
+  },
+  {
    "key": "All <b>{0}</b> skill points come back to you to spend again, and your hotbar is cleared. {1}",
    "files": [
     "ui/SkillTreePanel.ts"
@@ -52673,6 +52703,12 @@
   },
   {
    "key": "All Resistances",
+   "files": [
+    "ui/SkillTreePanel.ts"
+   ]
+  },
+  {
+   "key": "An attack: one use takes {0} s with what you hold now, {1} a second. Attack speed makes it quicker.",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
@@ -52938,6 +52974,12 @@
   },
   {
    "key": "Single Target",
+   "files": [
+    "ui/SkillTreePanel.ts"
+   ]
+  },
+  {
+   "key": "Speed",
    "files": [
     "ui/SkillTreePanel.ts"
    ]

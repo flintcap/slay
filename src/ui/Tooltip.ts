@@ -46,6 +46,7 @@ import {
   type ItemHoverContext,
 } from './Widgets';
 import { tr, numText } from '../core/I18n';
+import { weaponRate } from '../sim/Speed';
 import { cssPx, uiHeight, uiWidth } from '../core/UiScale';
 
 /** Rarities grand enough to wear filigree on their tooltip frame. */
@@ -265,8 +266,10 @@ class TooltipManager {
         const hi = Math.round(stat.maxDamage ?? base.baseMaxDamage ?? 0);
         block.appendChild(this.bigStat(tr('Damage'), `${lo}–${hi}`, 'sword'));
         if (base.baseSpeed) {
-          block.appendChild(this.bigStat(tr('Per second'), numText(base.baseSpeed, 2), 'speed'));
-          block.appendChild(this.bigStat(tr('DPS'), fmt(((lo + hi) / 2) * base.baseSpeed), 'fire', 'is-dps'));
+          // Its own pace with its own speed lines (`sim/Speed.ts`).
+          const aps = weaponRate(base.baseSpeed, stat.attackSpeed ?? 0);
+          block.appendChild(this.bigStat(tr('Per second'), numText(aps, 2), 'speed'));
+          block.appendChild(this.bigStat(tr('DPS'), fmt(((lo + hi) / 2) * aps), 'fire', 'is-dps'));
         }
       }
       if (base.baseDefense !== undefined || stat.defense) {

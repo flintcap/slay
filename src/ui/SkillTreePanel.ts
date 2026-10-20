@@ -44,6 +44,8 @@ import {
   type DragPayload,
 } from './Widgets';
 import { skillIconUri } from '../art/Icons';
+import { computeStats } from '../sim/Stats';
+import { paceFor } from './AttackEstimate';
 import { SKILL_BY_ID, synergiesFor, synergiesFrom, synergyPct } from '../data/skills';
 import { COMBO_WINDOW, canCombo, comboBonusPct, comboForSkill } from '../entities/Combos';
 import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../data/skillPower';
@@ -731,6 +733,29 @@ export class SkillTreePanel {
       }
       sec.body.appendChild(table);
       this.detail.appendChild(sec.root);
+    }
+
+    // --- speed ---------------------------------------------------------------
+    // How long one use takes with what is held now (`sim/Speed.ts`): an attack
+    // at the weapon's pace, a spell on its cast time.
+    if (s.targeting !== 'passive') {
+      const def = skillDefFor(s.id);
+      const st = def ? attempt(() => computeStats(c), null) : null;
+      const pace = def && st ? attempt(() => paceFor(c, st, def), null) : null;
+      if (pace && pace.time > 0) {
+        const each = numText(pace.time, 2);
+        const rate = numText(1 / pace.time, 2);
+        const sec = section(tr('Speed'), 'speed');
+        sec.body.appendChild(
+          div(
+            'skdetail-note',
+            pace.timing === 'attack'
+              ? tr('An attack: one use takes {0} s with what you hold now, {1} a second. Attack speed makes it quicker.', each, rate)
+              : tr('A spell: one cast takes {0} s, {1} a second. Cast speed makes it quicker.', each, rate),
+          ),
+        );
+        this.detail.appendChild(sec.root);
+      }
     }
 
     // --- synergies ----------------------------------------------------------

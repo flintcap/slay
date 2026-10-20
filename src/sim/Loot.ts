@@ -80,6 +80,7 @@ import { getTrinket } from '../data/trinkets';
 import { NO_FIND, payoutGold, type Find } from './Payout';
 import { activeDifficulty } from '../data/difficulties';
 import { tr, trc, trk, numText, translating } from '../core/I18n';
+import { weaponRate } from './Speed';
 
 // ---------------------------------------------------------------------------
 // Contract exports
@@ -1895,7 +1896,7 @@ export function itemTooltipLines(item: Item, compareTo?: Item, ctx?: TooltipCont
       if (Math.abs(d) >= 0.5) push(tr('  {0}{1} average damage', d > 0 ? '+' : '', numText(d, 0)), d > 0 ? COLOR.good : COLOR.bad);
     }
   }
-  if (base.baseSpeed) push(tr('Attacks per Second: {0}', numText(base.baseSpeed, 2)), COLOR.body);
+  if (base.baseSpeed) push(tr('Attacks per Second: {0}', numText(weaponRate(base.baseSpeed, itemStats(item).attackSpeed ?? 0), 2)), COLOR.body);
   const def = itemDefense(item);
   if (def > 0) {
     const improved = item.upgrade > 0 || def > (base.baseDefense ?? 0);
