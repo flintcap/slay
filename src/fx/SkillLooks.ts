@@ -16,6 +16,7 @@ import type { MotifShape, MotifMotion } from './Motifs';
 import type { School } from './kit/Palette';
 import { SHIFTER_DRAWING, SHIFTER_MOTIFS } from './shifter/motifs';
 import { PALADIN_DRAWING, PALADIN_MOTIFS } from './paladin/motifs';
+import { mageParticles } from './mage/looks';
 
 /** What each effect family's handler draws, in plain words. Mirrors `SkillRunner.cast`. */
 export const FAMILY_DRAWING: Readonly<Record<string, string>> = {
@@ -275,9 +276,11 @@ function hashId(id: string): number {
 export function skillParticles(skillId: string, school: School): ParticleSig {
   const pool = PARTICLE_POOLS[school] ?? PARTICLE_POOLS.physical;
   const h = hashId(skillId);
+  // A Mage skill draws in its tree's own look (`fx/mage/looks.ts`).
+  const mage = mageParticles(skillId, h);
   return {
-    emitter: pool.burst[h % pool.burst.length]!,
-    trail: pool.trail[(h >>> 4) % pool.trail.length]!,
+    emitter: mage?.emitter ?? pool.burst[h % pool.burst.length]!,
+    trail: mage?.trail ?? pool.trail[(h >>> 4) % pool.trail.length]!,
     // Small, deliberate spread: enough to feel different, not enough to make
     // one skill read as twice the spell another is.
     density: 0.75 + ((h >>> 8) % 9) * 0.09,

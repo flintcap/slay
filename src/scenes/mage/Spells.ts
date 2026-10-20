@@ -106,6 +106,9 @@ interface Mover {
   jink: number;
   phase: number;
   body: EffectHandle;
+  /** The tree's wake (`fx/mage/looks.ts`), shed every `WAKE_STEP` metres. */
+  trail: string;
+  wakeAt: number;
   kind: HitKind;
   packet: () => DamagePacket;
   hitSound: string | null;
@@ -138,6 +141,9 @@ const MARK_EVERY = 0.5;
 const MARK_HOLD = 1.0;
 /** The longest step a mover takes between strike checks, so nothing slips between frames. */
 const SUBSTEP = 0.5;
+/** Metres between two puffs of a mover's wake, and how big they are. */
+const WAKE_STEP = 0.6;
+const WAKE = { count: 12, scale: 0.6 };
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -231,6 +237,8 @@ export class MageSpells {
       jink: o.jink ?? 0,
       phase: (this.launches++ * 2.39996) % (Math.PI * 2),
       body,
+      trail: s.sig.trail,
+      wakeAt: 0,
       kind: o.kind,
       packet: o.packet,
       hitSound: s.hitSound,
@@ -266,6 +274,7 @@ export class MageSpells {
     const name = SKILL_BY_ID.splinteringFrost?.name;
     const spot = new THREE.Vector3(at.x, 0, at.z);
     this.host.effects.explosion(spot.x, 0.8, spot.z, { radius, element: 'cold', color: 0xbfe8ff });
+    this.host.effects.fx.burst('mg.shatter', spot.x, 0.9, spot.z, { scale: Math.max(1, radius / 2.5) });
     this.host.area(spot, radius, () => ({
       amount, type: 'cold', crit: false, source: 'player', ability: name, ...(chill.length ? { applies: chill } : {}),
     }), world, 'proc');
@@ -295,6 +304,7 @@ export class MageSpells {
       m.world.enemies = live.enemies;
       m.world.boss = live.boss;
       let left = m.speed * dt;
+      const before = m.gone;
       let done = false;
       while (left > 0 && !done) {
         const step = Math.min(SUBSTEP, left, m.length - m.gone);
@@ -305,6 +315,11 @@ export class MageSpells {
         if (step <= 0) done = true;
       }
       m.body.setEndpoint?.(this.at);
+      m.wakeAt += m.gone - before;
+      if (m.wakeAt >= WAKE_STEP) {
+        m.wakeAt = 0;
+        this.host.effects.fx.burst(m.trail, this.at.x, this.at.y, this.at.z, WAKE);
+      }
       if (!done) continue;
       this.movers.splice(i, 1);
       m.body.stop();
@@ -466,6 +481,7 @@ const fireball: Spell = (s, m) => {
       m.quiet(() => {
         m.host.effects.explosion(land.x, 0.8, land.z, { radius, element: s.school, color: s.color });
         m.host.effects.nova(land.x, land.z, radius, { element: s.school, color: s.color, emitter: s.sig.emitter, density: s.sig.density });
+        m.host.effects.fx.burst(s.sig.emitter, land.x, 0.6, land.z, { scale: Math.max(1, radius / 2.5) });
       });
       m.host.area(land, radius, (k = 1) => s.packet(k), world);
       m.host.sound(s.hitSound, land.x, land.z);
@@ -520,6 +536,7 @@ const pyreBrand: Spell = (s, m) => {
     },
     onEnd: (x, z) => {
       m.host.effects.impact(s.school, x, 1.0, z, { scale: 0.7, color: s.color });
+      m.host.effects.fx.burst(s.sig.emitter, x, 1.0, z, { scale: 0.6 });
     },
   });
 };
@@ -561,6 +578,7 @@ const annihilate: Spell = (s, m) => {
     m.quiet(() => {
       m.host.effects.explosion(at.x, 0.8, at.z, { radius, element: s.school, color: s.color, shake: 0.4 });
       m.host.effects.nova(at.x, at.z, radius, { element: s.school, color: s.color, emitter: s.sig.emitter, density: s.sig.density });
+      m.host.effects.fx.burst(s.sig.emitter, at.x, 0.8, at.z, { count: 24, scale: Math.max(1.2, radius / 2.5) });
     });
     m.host.area(at, radius, (k = 1) => s.packet(k), world);
     m.host.sound(s.hitSound, at.x, at.z);
@@ -608,6 +626,7 @@ const chainLightning: Spell = (s, m) => {
     pk.amount *= Math.pow(keep, j);
     m.host.hit(t, pk, 'chain', from.x, from.z, s.world);
     m.host.sound(s.hitSound, to.x, to.z);
+    m.host.effects.fx.burst(s.sig.emitter, to.x, to.y, to.z, { scale: 0.6 });
     from = to;
     let next: Target | null = null;
     let near = Infinity;
@@ -654,6 +673,7 @@ const stormstride: Spell = (s, m) => {
   });
   s.player.position.set(land.x, 0, land.z);
   m.host.effects.teleportIn(land.x, 0.9, land.z, s.color);
+  m.host.effects.fx.burst(s.sig.emitter, land.x, 0.4, land.z, { scale: 1 });
   m.host.sound(s.hitSound, land.x, land.z);
   s.landAt = land;
 };
@@ -691,6 +711,7 @@ const iceLance: Spell = (s, m) => {
     packet: () => s.packet(),
     onEnd: (x, z) => {
       m.host.effects.impact(s.school, x, 1.0, z, { scale: 0.8, color: s.color });
+      m.host.effects.fx.burst(s.sig.emitter, x, 1.0, z, { scale: 0.8 });
     },
   });
 };
