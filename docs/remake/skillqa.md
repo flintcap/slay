@@ -104,6 +104,22 @@ Rogue (sk-rogue, done):
 - `check-unfinished` flags two statuses, `static` and `rent`, that no code
   applies (older than this wave). Wire them or remove them.
 
+Knight (sk-knight, done):
+- Gatefall was refused in `check-skills` only because the audit keeps
+  statuses between skills (Fortress Stance still had the Knight rooted).
+  Clear statuses between skills in the audit (`scenes/debug.ts`) and
+  check Gatefall fires.
+- Never seen in motion: every new Knight gesture, the Whirlwind walk, the
+  Shield Charge run, the Gatefall arc and landing, Massacre's five cuts,
+  the standard, the steel arcs, Sworn Brother's ghost look.
+- Retribution's stored charge shows only as gold glints at the shield.
+  Give it a clear look that reads at a glance.
+- Frame time not measured. Watch the standard (three see-through lit
+  materials that cast shadows) and Earthshatter (a crack decal and two
+  bursts every metre of its 12 m line).
+- sk-knight changed `tools/skillsound-entry.ts` and
+  `tools/rankpower-entry.ts`; check the changes are sound.
+
 ## Next up
 
 Wait for skillcore and the seven class streams. Then start milestone 1.
