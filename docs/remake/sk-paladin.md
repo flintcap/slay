@@ -1,6 +1,6 @@
 # Stream: sk-paladin (Wave 5: Paladin skills remake)
 
-Status: waiting
+Status: in progress
 
 Class: Paladin (code id `paladin`). Trees: Mace, Blade, Aura (`palMace`, `palBlade`, `palAura`). Port 4357.
 Fights with melee: maces, scepters, swords, shields (starts with a club and a buckler). Class color: candle gold (`0xe8cf96`).
