@@ -9,6 +9,7 @@
 
 import type { DungeonLevel } from '../types';
 import { BIOMES } from '../world/DungeonGen';
+import { isWalkableValue } from '../world/Layouts';
 
 export const T_RUIN = 10;
 export const T_DEEP_WATER = 11;
@@ -54,13 +55,22 @@ export function zoneInkAt(level: DungeonLevel, inks: string[], idx: number): str
   return inks[level.zoneOf[idx] ?? 0] ?? inks[0]!;
 }
 
+/**
+ * Ground the hero can stand on, for the charts' edge lines. Deep water, lava
+ * and chasms keep their colour but sit outside the line, so a river through
+ * rock reads as a river and not as a hallway.
+ */
+export function chartGround(t: number): boolean {
+  return isWalkableValue(t);
+}
+
 /** Colours for the remake's tile kinds, or null for the older ones. */
 export function newKindInk(t: number): string | null {
   switch (t) {
     case T_RUIN:
       return 'rgba(74,62,50,0.92)';
     case T_DEEP_WATER:
-      return 'rgba(26,52,86,0.85)';
+      return 'rgba(14,28,50,0.92)';
     case T_BRIDGE:
       return 'rgba(132,96,58,0.85)';
     case T_ICE:

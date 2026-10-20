@@ -9,7 +9,7 @@
 import type { DungeonLevel, DungeonRoom } from '../types';
 import { events } from '../core/Events';
 import { runtime, Panel, add, clear, div, span, icon, emptyState } from './Widgets';
-import { zoneInks, zoneInkAt, newKindInk, wayMarks, T_RUIN } from './ZoneInk';
+import { zoneInks, zoneInkAt, newKindInk, wayMarks, chartGround, T_RUIN } from './ZoneInk';
 import { FONT_DISPLAY } from './Fonts';
 import { onScreenRatio, uiRatio } from '../core/Screen';
 import { tr } from '../core/I18n';
@@ -290,12 +290,12 @@ export class MapPanel {
 
     // Tiles. Walkable ground is a muted wash; walls are not filled at all but
     // inked as a bright edge wherever ground meets them, the way a drawn chart
-    // reads. Water, lava and chasms keep their own colour.
+    // reads. Water, lava and chasms keep their own colour; the ones you cannot
+    // stand in (deep water, lava, chasms) sit outside the edge, like walls.
     const LW = level.width;
     const walk = (x: number, y: number): boolean => {
       if (x < 0 || y < 0 || x >= LW || y >= level.height) return false;
-      const t = level.tiles[y * LW + x];
-      return t !== T_VOID && t !== T_WALL && t !== T_RUIN;
+      return chartGround(level.tiles[y * LW + x]!);
     };
     const floorInks = zoneInks(level, [0x4f, 0x43, 0x2f], 1);
     for (let y = 0; y < level.height; y++) {

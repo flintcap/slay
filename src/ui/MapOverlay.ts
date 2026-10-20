@@ -18,11 +18,10 @@
 import type { DungeonLevel } from '../types';
 import { save } from '../core/Save';
 import { runtime, div } from './Widgets';
-import { wayMarks, T_RUIN } from './ZoneInk';
+import { wayMarks, chartGround, T_DEEP_WATER } from './ZoneInk';
 import { screenRatio } from '../core/Screen';
 
 const T_VOID = 0;
-const T_WALL = 2;
 const T_DOOR = 3;
 const T_WATER = 4;
 const T_LAVA = 5;
@@ -39,6 +38,25 @@ const REPAINT_EVERY = 0.2;
 
 const EDGE_INK = '#f0d9a0';
 const FLOOR_WASH = 'rgba(240, 217, 160, 0.10)';
+
+/** Wash for ground the hero can stand on. */
+function groundInk(t: number): string {
+  return t === T_WATER ? 'rgba(80, 150, 220, 0.30)' : t === T_DOOR ? 'rgba(230, 180, 90, 0.35)' : FLOOR_WASH;
+}
+
+/** Tint for open ground the hero cannot stand on, or null for rock. */
+function hazardInk(t: number): string | null {
+  switch (t) {
+    case T_DEEP_WATER:
+      return 'rgba(20, 60, 120, 0.32)';
+    case T_LAVA:
+      return 'rgba(230, 90, 30, 0.40)';
+    case T_CHASM:
+      return 'rgba(0, 0, 0, 0.35)';
+    default:
+      return null;
+  }
+}
 
 export class MapOverlay {
   readonly root: HTMLDivElement;
@@ -139,10 +157,11 @@ export class MapOverlay {
     const xb = Math.min(LW, x0 + bw);
     const yb = Math.min(LH, y0 + bh);
     if (xa >= xb || ya >= yb) return;
+    // Ground is what the hero can stand on. Deep water, lava and chasms are
+    // tinted but left outside the edge line, so a river reads as a river.
     const pass = (x: number, y: number): boolean => {
       if (x < 0 || y < 0 || x >= LW || y >= LH) return false;
-      const t = level.tiles[y * LW + x];
-      return t !== T_VOID && t !== T_WALL && t !== T_RUIN;
+      return chartGround(level.tiles[y * LW + x]!);
     };
     // A lone blocked tile in open ground (a tree, a pillar) is drawn as
     // ground: outlined, a field of them reads as noise over the room.
@@ -164,9 +183,11 @@ export class MapOverlay {
     for (let y = ys; y < ye; y++) {
       for (let x = xs; x < xe; x++) {
         const idx = y * LW + x;
-        if (!explored[idx] || !walk(x, y)) continue;
+        if (!explored[idx]) continue;
         const t = level.tiles[idx]!;
-        c.fillStyle = t === T_WATER ? 'rgba(80, 150, 220, 0.30)' : t === T_LAVA ? 'rgba(230, 90, 30, 0.40)' : t === T_CHASM ? 'rgba(0, 0, 0, 0.35)' : t === T_DOOR ? 'rgba(230, 180, 90, 0.35)' : FLOOR_WASH;
+        const ink = walk(x, y) ? groundInk(t) : hazardInk(t);
+        if (!ink) continue;
+        c.fillStyle = ink;
         c.fillRect(x * CELL, y * CELL, CELL, CELL);
       }
     }
