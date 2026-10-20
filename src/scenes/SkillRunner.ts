@@ -1233,6 +1233,11 @@ export class SkillRunner {
             }
             : blowPacket;
           this.meleeSwing(player, dir, arc, reach, mainPacket, ctx, enemies, boss, type, true, kind, sound.hit, most, focus);
+          // A skill's own gesture strikes with its own arms. One with cuts
+          // (`Spec.cuts`) lands its later blows, and with two blades the off
+          // blade's answer, on those keys as the animator plays them.
+          const gesture = own?.startsWith('skill.') ? own : null;
+          const cuts = gesture ? cutTimes(def.id, skillTime, player.contactIn) : null;
           if (dual) {
             const facing = dir.clone();
             // The left blade swings in what is left of the skill's time.
@@ -1242,11 +1247,13 @@ export class SkillRunner {
               run: () => {
                 if (!player.alive) return;
                 // A skill's own gesture strikes with both blades itself; the
-                // off hand's blow lands a beat after the main hand's. A real
-                // weapon swing (`plainMove`) moves one arm, so the left blade
-                // swings on its own, as it does in a basic attack.
-                const gesture = own?.startsWith('skill.') ? own : null;
-                const contact = gesture ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
+                // off hand's blow lands a beat after the main hand's (on its
+                // cut, when the gesture has one; a multi-cut gesture strikes
+                // with the left among its cuts below). A real weapon swing
+                // (`plainMove`) moves one arm, so the left blade swings on its
+                // own, as it does in a basic attack.
+                if (cuts && !split) return;
+                const contact = cuts ? cuts[0]! : gesture ? Math.min(0.12, leftTime * 0.4) : player.handBlow('L', leftTime);
                 if (gesture) {
                   this.pendingSwings.push({ rank: boostRank(),
                     t: contact,
@@ -1279,11 +1286,18 @@ export class SkillRunner {
             const first = player.contactIn;
             const gap = Math.min(0.08, (skillTime * 0.8) / hits);
             const facing = dir.clone();
+            // On the gesture's cuts; more blows than cuts (a bend) spread over the same span.
+            const at = (i: number): number => {
+              if (!cuts) return gap * i;
+              if (cuts.length === hits - 1) return cuts[i - 1]!;
+              return (cuts[cuts.length - 1]! * i) / (hits - 1);
+            };
             for (let i = 1; i < hits; i++) {
               this.pendingSwings.push({ rank: boostRank(),
-                t: first + gap * i,
+                t: first + at(i),
                 run: () => {
                   if (player.actionId !== id || !player.alive) return;
+                  if (cuts && gesture) player.animator.strike(gesture, dual && i % 2 === 1 ? 'L' : 'R');
                   this.atContact = true;
                   this.caster = player;
                   try {

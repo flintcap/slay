@@ -183,8 +183,8 @@ export function defineGestures(table: Record<string, Spec>): void {
 }
 
 /**
- * Skills that play a plain move from `Actions.ts` (a real weapon swing, or
- * Veil's old vanish) and no gesture.
+ * Skills that play a plain move from `Actions.ts` (a real weapon swing) and
+ * no gesture.
  *
  * The owner's call: hand-made poses on these read as casting and swung worse
  * than the plain attacks, so a blade skill swings the blade. Each one keeps
@@ -195,10 +195,6 @@ const PLAIN_MOVES: Readonly<Record<string, string>> = {
   // Knight
   shieldBash: 'thrust', shieldCharge: 'lunge', cleave: 'attack2', rend: 'attack1', gash: 'thrust',
   overhead: 'slam', sunder: 'attack1', maim: 'lunge', whirlwind: 'attack2', massacre: 'attack1', ruin: 'slam',
-  // Rogue
-  viperStrike: 'lunge', deathLotus: 'attack2', umbralAmbush: 'lunge', assassinate: 'thrust',
-  preciseCut: 'attack1', crippleTendon: 'attack1', doubleStrike: 'attack1', whirlingBlades: 'attack2',
-  veil: 'blink',
   // Paladin
   tollingBlow: 'slam', shieldCrack: 'lunge', anvilfall: 'slam', doorbreaker: 'lunge', knell: 'slam',
   pilgrimsMaul: 'slam', relicBash: 'lunge', ironVerdict: 'slam', oathCut: 'thrust', twinVerse: 'attack2',
