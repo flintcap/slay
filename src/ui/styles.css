@@ -6177,6 +6177,58 @@ input.slider::-moz-range-thumb {
   color: var(--ink-4);
 }
 
+/* Vault: buying and sorting tabs ride in the header by the search box, and
+   the tabs take the column's whole width, sliding sideways (wheel or drag
+   of the trackpad) once there are more than fit. An end with tabs slid out
+   past it fades. */
+.stash-tools {
+  display: flex;
+  flex: none;
+  gap: var(--s2);
+}
+.panel-stash .trade-colhd .trade-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.stash-tabbar {
+  position: relative;
+  min-width: 0;
+}
+.stash-tabbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(var(--line-rgb) / 0.5) 12%, rgb(var(--line-rgb) / 0.5) 88%, transparent);
+  pointer-events: none;
+}
+.stash-tabs {
+  --fade-l: 0px;
+  --fade-r: 0px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  /* Room for the open tab's lozenge, which the sliding strip would clip. */
+  padding-top: 6px;
+  mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+}
+/* Its baseline is the bar's: one drawn inside the strip would slide away with the tabs. */
+.stash-tabs::after {
+  content: none;
+}
+.stash-tabs .tab {
+  flex: none;
+}
+.stash-tabbar.more-left .stash-tabs {
+  --fade-l: 28px;
+}
+.stash-tabbar.more-right .stash-tabs {
+  --fade-r: 28px;
+}
+
 .goldbank {
   display: flex;
   flex-direction: column;

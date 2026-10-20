@@ -84,13 +84,28 @@ export class StashPanel {
     hd.appendChild(searchBox);
     left.appendChild(hd);
 
-    this.tabBar = div('');
+    this.tabBar = div('stash-tabbar');
     this.tabs = new Tabs([], 'tab0', (id) => {
       this.tabIndex = Number(id.replace('tab', '')) || 0;
       this.refresh();
     });
-    const tabRow = div('row');
-    tabRow.appendChild(this.tabs.root);
+    // The tabs get the column's whole width and slide sideways once they
+    // outgrow it. The buttons sit up by the search box, so a vault of ten
+    // tabs can never push them out of sight.
+    this.tabs.root.classList.add('stash-tabs');
+    this.tabs.root.addEventListener(
+      'wheel',
+      (e) => {
+        const strip = this.tabs.root;
+        if (strip.scrollWidth <= strip.clientWidth || e.deltaX !== 0) return;
+        strip.scrollLeft += e.deltaY;
+        e.preventDefault();
+      },
+      { passive: false },
+    );
+    this.tabs.root.addEventListener('scroll', () => this.markTabEdges(), { passive: true });
+    this.tabBar.appendChild(this.tabs.root);
+    const tools = div('stash-tools');
     // Tabs past the first four are bought (Save.STASH_TAB_PRICES), so the
     // Legacy reward tab is worth something.
     this.addTab = new Button({
@@ -99,7 +114,7 @@ export class StashPanel {
       small: true,
       onClick: () => this.buyTab(),
     });
-    tabRow.appendChild(this.addTab.root);
+    tools.appendChild(this.addTab.root);
 
     // Sorts the tab you are looking at, not the whole vault: a ten-tab vault
     // sorted as one blob would shuffle everything you had deliberately filed.
@@ -116,8 +131,8 @@ export class StashPanel {
         uiSfx('ui.click');
       },
     });
-    tabRow.appendChild(sortTab.root);
-    this.tabBar.appendChild(tabRow);
+    tools.appendChild(sortTab.root);
+    hd.appendChild(tools);
     left.appendChild(this.tabBar);
 
     this.stashGrid = new ItemGrid({
@@ -249,6 +264,27 @@ export class StashPanel {
     });
   }
 
+  /** Slides the tab strip so the open tab is in full view. */
+  private showActiveTab(): void {
+    const strip = this.tabs.root;
+    const on = strip.querySelector<HTMLElement>('.tab.on');
+    if (on && strip.scrollWidth > strip.clientWidth) {
+      // The strip is the tabs' offset parent (it is positioned).
+      const left = on.offsetLeft;
+      if (left < strip.scrollLeft) strip.scrollLeft = left - 12;
+      else if (left + on.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = left + on.offsetWidth - strip.clientWidth + 12;
+    }
+    this.markTabEdges();
+  }
+
+  /** Fades whichever end of the tab strip has tabs slid out past it. */
+  private markTabEdges(): void {
+    const strip = this.tabs.root;
+    const more = strip.scrollWidth - strip.clientWidth;
+    this.tabBar.classList.toggle('more-left', more > 1 && strip.scrollLeft > 1);
+    this.tabBar.classList.toggle('more-right', more > 1 && strip.scrollLeft < more - 1);
+  }
+
   refresh(): void {
     const acct = save.account;
     const defs = [];
@@ -263,6 +299,7 @@ export class StashPanel {
     const price = save.stashTabPrice();
     this.addTab.setLabel(price === null ? tr('Vault full') : tr('+ Tab · {0} gold', fmtInt(price)));
     this.addTab.setDisabled(price === null);
+    this.showActiveTab();
 
     // A tab switch or a sort replaces every cell; only a real arrival flashes.
     const offset = this.tabOffset();
