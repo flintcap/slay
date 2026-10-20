@@ -110,14 +110,40 @@ const SKILL_BLOW_CONTACT = 0.35;
 
 /** Buffs that keep some harm off you while they run: Revenant Form's dead neither fear nor bleed. */
 const WARDS: Record<string, readonly string[]> = { 'skill.revenantForm': ['feared', 'bleeding'] };
-/** No swing waits longer than this to connect, however slow the weapon. */
-export const CONTACT_CAP = 0.16;
+/**
+ * A blow connects at its clip's share of the action (`CLIP_CONTACT`), so a
+ * heavy, slow blow lands later than a quick jab, on the clip's hit frame.
+ * This only keeps a very long action (a two-second rite) from holding its
+ * blow back more than half a second. Every share is at most 0.4, so every
+ * blow lands before `Player.RECOVERY_CANCEL_AT`.
+ */
+export const CONTACT_CAP = 0.5;
 
 /** Seconds from the start of an action to its contact frame. */
 export function contactDelay(clip: string, duration: number): number {
   // A skill's own weapon blow lands where a plain swing would.
   const f = CLIP_CONTACT[clip] ?? (strikesAt(clip) ? SKILL_BLOW_CONTACT : undefined);
   return f === undefined ? 0 : Math.min(CONTACT_CAP, f * Math.max(0, duration));
+}
+
+/**
+ * Where a cast or throw gesture lets go, as a share of the action (the cast,
+ * hurl, point and shoot clips all release about a third in), and the most it
+ * waits. Used when an action asks to release on its frame
+ * (`beginAction(..., { release: true })`, then `SkillRunner.atRelease`).
+ */
+export const RELEASE_SHARE = 0.33;
+export const RELEASE_CAP = 0.25;
+/**
+ * A cast that resolves on the press (every spell today) still shows its
+ * release, a beat in, before the eye can tell: at most this long.
+ */
+const PRESS_RELEASE = 0.1;
+
+/** Seconds from the start of an action to its release frame (0 for a weapon blow). */
+export function releaseDelay(duration: number, onFrame: boolean): number {
+  const d = Math.max(0, duration);
+  return onFrame ? Math.min(RELEASE_CAP, RELEASE_SHARE * d) : Math.min(PRESS_RELEASE, d * 0.3);
 }
 
 /**
@@ -174,6 +200,8 @@ export class Player {
   private actionSerial = 0;
   /** Seconds into the current action at which its blow connects. */
   private contactAt = 0;
+  /** Seconds into the current action at which its cast or throw lets go (0 for a blow). */
+  private releaseAt = 0;
   private dodgeTime = 0;
   private dodgeDir = new THREE.Vector3();
   /** How long this dash lasts, and how far a dash skill carries (0: the dodge's own pace). */
@@ -405,20 +433,26 @@ export class Player {
     this.targetFacing = Math.atan2(x - this.root.position.x, z - this.root.position.z);
   }
 
-  /** Lock out movement for an attack/cast and play the matching clip. */
-  beginAction(clip: string, duration: number, side?: 'L' | 'R'): void {
+  /**
+   * Lock out movement for an attack/cast and play the matching clip, stretched
+   * to the action's time (`sim/Speed.ts` gives the time). A weapon blow lands
+   * on its contact frame (`contactDelay`). A cast or throw shows its release
+   * a beat in, because the game resolves it on the press; with
+   * `opts.release` it releases on the gesture's own frame instead
+   * (`releaseDelay`), and the caller waits for it (`SkillRunner.atRelease`).
+   */
+  beginAction(clip: string, duration: number, side?: 'L' | 'R', opts: { release?: boolean } = {}): void {
     this.actionLock = duration;
     this.actionTotal = duration;
     this.actionSerial++;
     this.contactAt = contactDelay(clip, duration);
+    this.releaseAt = this.contactAt > 0 ? 0 : releaseDelay(duration, opts.release ?? false);
     this.moveTarget = null;
-    // The clip is bent so its blow lands on the contact frame above; anything
-    // that resolves on the click releases a beat in, before the eye can tell.
     this.animator.play(clip, {
       fade: 0.08,
-      speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
+      span: duration,
       restart: true,
-      contact: this.contactAt > 0 ? this.contactAt : Math.min(0.1, duration * 0.3),
+      contact: this.contactAt > 0 ? this.contactAt : this.releaseAt,
       side,
     });
   }
@@ -432,7 +466,7 @@ export class Player {
     const contact = Math.max(0.05, Math.min(CONTACT_CAP, CLIP_CONTACT.attack2! * duration));
     this.animator.play('attack2', {
       fade: 0.06,
-      speed: Math.max(0.5, 0.45 / Math.max(duration, 0.15)),
+      span: duration,
       restart: true,
       contact,
       side,
@@ -449,6 +483,12 @@ export class Player {
   get contactIn(): number {
     if (this.actionLock <= 0 || this.actionTotal <= 0) return 0;
     return Math.max(0, this.contactAt - (this.actionTotal - this.actionLock));
+  }
+
+  /** Seconds until the current cast or throw lets go. 0 with none, or once it has. */
+  get releaseIn(): number {
+    if (this.actionLock <= 0 || this.actionTotal <= 0) return 0;
+    return Math.max(0, this.releaseAt - (this.actionTotal - this.actionLock));
   }
 
   /** 0 when the dash is ready, 1 the instant it is spent. */
@@ -540,6 +580,7 @@ export class Player {
     // A swing dodged out of before it connects never lands.
     this.actionSerial++;
     this.contactAt = 0;
+    this.releaseAt = 0;
     const len = Math.hypot(dirX, dirZ) || 1;
     this.dodgeDir.set(dirX / len, 0, dirZ / len);
     const span = opts.distance ? Math.min(0.5, Math.max(0.32, (0.32 * opts.distance) / 4)) : 0.32;

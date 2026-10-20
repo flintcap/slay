@@ -195,6 +195,20 @@ export function skillPace(
   return { swing, attack, cast, timing, time: timing === 'attack' ? attack : cast };
 }
 
+/**
+ * How fast a rush, charge or leap carries the hero, in metres a second. A
+ * class stream times a move that covers ground with `travelTime`, so a 9 m
+ * charge reads as a run, not a blink.
+ */
+export const RUSH_SPEED = 14;
+/** The shortest a rush may take, however short the distance. */
+export const RUSH_MIN_TIME = 0.15;
+
+/** Seconds a rush over `distance` metres takes at `RUSH_SPEED` (or `speed`). */
+export function travelTime(distance: number, speed = RUSH_SPEED): number {
+  return Math.max(RUSH_MIN_TIME, Math.max(0, distance) / Math.max(1, speed));
+}
+
 /** The effective speed bonus, in percent, that `pct` summed speed gives (for readouts). */
 export function effectiveSpeedPct(pct: number, slowPct = 0): number {
   return (speedMultiplier(pct, slowPct) - 1) * 100;

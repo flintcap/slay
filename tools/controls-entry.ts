@@ -414,12 +414,14 @@ function casterOnBar() {
   const full = e.life;
   runner.basicAttack(player, new THREE.Vector3(0, 0, 1.6), a.ctx, a.enemies, null);
   const onClick = e.life;
-  tick(Math.ceil(0.2 / DT));
+  // Contact follows the swing's own time (a share of it, `contactDelay`).
+  const wait = player.contactIn;
+  tick(Math.ceil((wait + 0.05) / DT));
   const atContact = e.life;
   check(
     'a basic swing lands at contact, not on the click',
     onClick === full && atContact < full,
-    `life ${Math.round(full)} -> ${Math.round(onClick)} on the click -> ${Math.round(atContact)} at contact`,
+    `life ${Math.round(full)} -> ${Math.round(onClick)} on the click -> ${Math.round(atContact)} at contact (${wait.toFixed(2)} s in)`,
   );
   tick(Math.ceil(0.6 / DT));
   const before = e.life;

@@ -3282,6 +3282,32 @@ export class SkillRunner {
     this.tickCtx = { ctx, enemies, boss };
   }
 
+  /**
+   * Runs `run` on the release frame of the action `player` is playing: the
+   * shared hook for a spell or throw that lets go with its gesture instead of
+   * on the press. Start the action with `beginAction(clip, time, side,
+   * { release: true })`, then spawn inside `atRelease`. A dodge or a new
+   * action before the release cancels it, as it does a swing before contact.
+   * With no release pending it runs at once.
+   */
+  atRelease(player: Player, run: () => void): void {
+    const wait = player.releaseIn;
+    if (wait <= 0) {
+      run();
+      return;
+    }
+    const id = player.actionId;
+    this.pendingSwings.push({
+      rank: boostRank(),
+      t: wait,
+      run: () => {
+        if (player.actionId !== id || !player.alive) return;
+        this.caster = player;
+        run();
+      },
+    });
+  }
+
   update(dt: number): void {
     const live = this.tickCtx;
     if (!live) return;

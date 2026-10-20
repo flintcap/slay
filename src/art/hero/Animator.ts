@@ -56,6 +56,14 @@ export interface PlayOpts {
   restart?: boolean;
   /** Seconds from now to the hit or release key; the run-up is time-warped to land it. */
   contact?: number;
+  /**
+   * Seconds the whole action takes (`Player.beginAction`). The clip is
+   * stretched to fill it: the run-up lands the key at `contact`, the rest
+   * plays so the clip ends with the action. `speed` is then ignored. The rate
+   * stays inside `SPAN_RATE`, so a very fast action never smears and a very
+   * slow one finishes its clip and holds the stance instead of floating.
+   */
+  span?: number;
   /** Fired when a one-shot finishes. */
   onEnd?: () => void;
   /** Plays even while a condition (stunned, knocked down) holds the body. */
@@ -65,6 +73,8 @@ export interface PlayOpts {
 }
 
 const LOCO = new Set(['idle', 'walk', 'run']);
+/** Slowest and fastest a clip plays when stretched to an action's span (1 = as authored). */
+export const SPAN_RATE: readonly [number, number] = [0.55, 2.6];
 const TAU = Math.PI * 2;
 const UPPER = mask([...TRUNK, ...ARM_L, ...ARM_R], [CH.offGrip, CH.gripGap, ...REACH_CHANNELS]);
 const FULL = mask([...TRUNK, ...ARM_L, ...ARM_R, 'pelvis'], [CH.offGrip, CH.gripGap, CH.pelvisX, CH.pelvisY, CH.pelvisZ, CH.legIk, ...REACH_CHANNELS]);
@@ -513,9 +523,17 @@ export class HeroAnimator {
     }
     const def = actionFor(resolved, this.kind, this.combo, opts.side);
     const { keys, times, holds } = this.bake(def, attack ? (this.combo % 2 ? -1 : 1) : this.flinchSide);
-    const speed = opts.speed ?? 1;
+    let speed = opts.speed ?? 1;
+    const keyed = def.contact !== undefined && opts.contact !== undefined;
+    if (opts.span !== undefined && opts.span > 0) {
+      // Natural time left after the key, over the real time left after it.
+      const end = times[times.length - 1]!;
+      const pre = keyed ? Math.min(opts.contact!, opts.span) : 0;
+      const natural = keyed ? end - def.contact! : end;
+      speed = clamp(natural / Math.max(0.05, opts.span - pre), SPAN_RATE[0], SPAN_RATE[1]);
+    }
     let warp = speed;
-    if (def.contact !== undefined && opts.contact !== undefined) warp = def.contact / Math.max(0.03, opts.contact);
+    if (keyed) warp = def.contact! / Math.max(0.03, opts.contact!);
     if (cur && !cur.done) {
       this.fading = cur;
       cur.fade = Math.max(0.001, opts.fade ?? 0.1);
