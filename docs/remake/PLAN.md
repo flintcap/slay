@@ -292,3 +292,78 @@ effects.
 - **ui → speed (UI cost)**: ui owns the cost of its own DOM work (no layout
   reads inside per-frame code, batched HUD updates). speed writes UI costs
   it finds as a request in `ui.md` "Notes for resume".
+
+## Wave 5: skills remake (owner)
+
+The owner asked for two things in order. The first (difficulty scaling) is
+done (#161 in `CHECKPOINT.md`). The second is this wave: fix the skills of
+every class and remake each class's kit to a AAA standard. Same protocol,
+plus "Wave 5 rules" in `PROTOCOL.md`, which override anything looser.
+
+Order (owner): speed first, then skills, then a quality pass.
+
+1. **skillcore** runs alone first. It audits and remakes the speed of the
+   whole game: basic attack speed and cast rate, how attack skills and
+   spells time off them, and how items add speed. Target feel: as close as
+   we can to the similar classes and weapons in Diablo II and Path of Exile,
+   in our own numbers, never their names. Nothing attacks at warp speed.
+2. **Seven class streams**, at most three at a time (4 cores): each audits
+   its own class's base attack and cast speed under skillcore's new model
+   first, then remakes its skills.
+3. **skillqa** runs last: AAA quality, every skill working, and frame rate
+   not reduced (faster where it can be).
+
+| Stream | Progress file | Area | Port |
+| --- | --- | --- | --- |
+| skillcore | `skillcore.md` | Attack speed, cast rate, item speed, shared skill plumbing | 4351 |
+| sk-knight | `sk-knight.md` | Knight (`warden`): Bulwark, Carnage, Oaths | 4352 |
+| sk-mage | `sk-mage.md` | Mage: Fire, Lightning, Cold | 4353 |
+| sk-rogue | `sk-rogue.md` | Rogue (`shadowblade`): Venom, Shadowcraft, Bladework | 4354 |
+| sk-revenant | `sk-revenant.md` | Revenant: Ossuary, Blight, Grave Pact | 4355 |
+| sk-ranger | `sk-ranger.md` | Ranger: Marksman, Wildcraft, Volley | 4356 |
+| sk-paladin | `sk-paladin.md` | Paladin: its three trees | 4357 |
+| sk-shifter | `sk-shifter.md` | Shapeshifter: Feral, Teeth, Claw | 4358 |
+| skillqa | `skillqa.md` | Quality, working, performance across all classes | 4359 |
+
+### Wave 5 file ownership
+
+- **skillcore**: the speed formulas in `src/sim/Stats.ts`, the attack and
+  cast timing in `src/scenes/SkillRunner.ts` (the `attackTime` /
+  `castTime` sums, the basic attack, `DUAL_*` constants) and in
+  `src/entities/Player.ts` (`attackSpeedPct`, `castSpeedPct`,
+  `beginAction`), weapon speeds in `src/data/itemBases.ts`, the speed
+  ladders in `src/data/affixes.ts`, speed lines on uniques, sets, gems,
+  runes, runewords and charms (numbers only), `src/sim/HeroPower.ts` (to
+  keep damage per second where it was), `tools/curve-entry.ts`, clip
+  playback in `src/art/hero/Animator.ts`, the speed readout in
+  `src/ui/CharacterPanel.ts` and tooltips, and the icon render size in
+  `src/art/Icons.ts` / `src/art/SkillIconArt.ts` (the pipeline, not
+  single icons). New shared fields a class stream will need (a per-skill
+  cast time, a per-skill attack speed factor) are added by skillcore.
+- **each class stream**: its own class's section of `src/data/skills.ts`
+  (or `src/data/classSkills/paladin*.ts`, `shapeshifter*.ts`), its own
+  branches and helpers in `src/scenes/SkillRunner.ts`, `ShifterRunner.ts`,
+  `src/scenes/paladin/*`, its own entries in `src/art/hero/SkillActions.ts`,
+  `Swing.ts`, `Actions.ts`, `src/fx/SkillLooks.ts` and `src/fx/*` (new
+  effect files are best), its own icon entries in `src/art/SkillIconArt.ts`,
+  `src/art/Glyphs.ts`, `src/art/icons/*`, its own lines in
+  `src/data/skillPower.ts`, `src/data/shifterPower.ts`,
+  `src/audio/SkillSounds.ts`, `src/data/skillBends.ts`, and the unique and
+  set lines that name its skills (only to keep them pointing at real
+  skills and settings).
+- **skillqa**: any file, for fixes it finds; it does not redesign kits.
+- **shared** (small additive edits only, rebase often): `src/types.ts`,
+  `src/core/Events.ts`, `CONTRACTS.md`, `ASSETS.md`, `warmup()` in
+  `src/scenes/DungeonScene.ts`, the shared parts of the files above. Never
+  reformat or reorder another class's part of a shared file.
+
+### Wave 5 contracts
+
+- **skillcore → class streams**: skillcore writes its final speed model,
+  the target speed table and the new per-skill fields into `skillcore.md`
+  "Handover" and `CONTRACTS.md`. Class streams start only after it is
+  pushed, and time every skill through those fields, never through new
+  hard-coded seconds.
+- **class streams → skillqa**: each class stream lists, under "For
+  skillqa", what it could not check (looks in motion, real frame time) and
+  any effect it fears is costly.

@@ -176,6 +176,39 @@ Testing costs the owner's usage. Spend it only where it buys certainty.
   reading it, then add a line to "For the owner to test" in your progress
   file: what to try and what should happen.
 
+## Wave 5 rules (owner, these override anything looser above)
+
+Everything in "Wave 4 rules" still holds. On top of it:
+
+- **Work from exactly what the code says.** Not from old notes, not from
+  other progress files, not from memory. Before you write down how a skill,
+  a speed or an item line works, read the code that does it. Old notes may
+  be stale; the code is the truth.
+- **A failed test is retried once, then you move on and note it.** Write
+  the check, the reason and what you think is wrong under "Notes for
+  resume" and "For skillqa". Never a third run of the same check.
+- **Minimal testing: only what is critical.** Typecheck always. Then only
+  the cheapest check that can answer a real question. Never a check "to be
+  sure". Browser runs only for what nothing headless can see, batched once
+  per milestone.
+- **Newest Chrome.** Run `node tools/get-chrome.mjs` once before your first
+  browser check.
+- **One browser at a time on the machine.** Every browser run is wrapped in
+  `flock /tmp/slay-browser.lock timeout <secs> ...`.
+- **No helper agents.** Do not spawn sub-agents.
+- **Our own game.** Diablo II and Path of Exile are a speed and feel
+  reference only. Match how fast things feel, in our own numbers. Never
+  copy their names, items, skills or art.
+- **Owner rules that bind every skill:** every skill gets stronger with each
+  rank (damage, strength, time, size), not only cheaper or faster, through
+  `src/data/skillPower.ts` (`shifterPower.ts` for the shapeshifter) and
+  `node tools/check-rankpower.mjs`. Caster weapons (wands, staffs, orbs)
+  have no basic attack. Every class uses mana; no new resources. Mouse and
+  keyboard only. Never make monsters weaker or fewer.
+- **No frame rate cost.** No allocation in per-frame code you touch. Every
+  new effect pipeline gets a stand-in in `warmup()` so nothing compiles on
+  first cast. Particle counts follow the quality ladder.
+
 ## Pause
 
 The owner pauses by saying so. Claude sends every running agent a message

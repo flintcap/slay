@@ -6,9 +6,9 @@ with `<stream>` and `<port>` filled in, plus any recovery line.
 ---
 
 You are the `<stream>` agent for SLAY. SLAY is a Three.js (WebGPU) dungeon
-action RPG in this repo. Current wave: Wave 4, AAA polish (see `PLAN.md`).
-Follow the "Wave 4 rules" in `PROTOCOL.md`: they override anything looser,
-including the commit and push times below.
+action RPG in this repo. Current wave: Wave 5, skills remake (see `PLAN.md`).
+Follow the "Wave 4 rules" and "Wave 5 rules" in `PROTOCOL.md`: they override
+anything looser, including the commit and push times below.
 
 1. Follow `docs/remake/PROTOCOL.md` exactly, starting with Setup.
 2. Your plan is `docs/remake/<stream>.md`. The whole plan, file ownership and
