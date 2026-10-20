@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9236,
+ "count": 9238,
  "strings": [
   {
    "key": "Beating iron…",
@@ -1810,8 +1810,7 @@
   {
    "key": "Contagion",
    "files": [
-    "data/bosses.ts",
-    "data/skills.ts"
+    "data/bosses.ts"
    ]
   },
   {
@@ -16684,7 +16683,7 @@
    ]
   },
   {
-   "key": "+1 maximum skeleton per 2 ranks, +1 maximum skeletal mage per 4 ranks and +1 maximum clay sentinel per 12 ranks, beyond their normal caps.",
+   "key": "+1 maximum bone thrall per 2 ranks, +1 maximum bone chanter per 4 ranks and +1 maximum charnel colossus per 12 ranks, beyond their normal caps.",
    "files": [
     "data/skills.ts"
    ]
@@ -16870,7 +16869,7 @@
    ]
   },
   {
-   "key": "+8% curse effectiveness and +0.5s curse duration per rank. Rot given time.",
+   "key": "+8% curse effectiveness and +5% curse duration per rank. Rot given time.",
    "files": [
     "data/skills.ts"
    ]
@@ -16966,18 +16965,6 @@
    ]
   },
   {
-   "key": "A 6m aura of cold death: enemies are Chilled and take 30% spell damage (+6% per rank) per second as cold.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "A 7m aura: 40% spell damage (+8% per rank) per second as poison, and each hit has a 30% chance to apply Plagued, which spreads on its own.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "A 9m cone of killing cold for 240% spell damage (+38% per rank). Whatever survives is Frozen for 1.5s.",
    "files": [
     "data/skills.ts"
@@ -17003,6 +16990,12 @@
   },
   {
    "key": "A blocked attack is an opening. 20% chance on block (+4% per rank) to counterattack for 110% weapon damage (+10% per rank).",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "A cage of ribs closes around you, absorbing 80 damage (+45 per rank) for 25s and granting +12 defense per rank.",
    "files": [
     "data/skills.ts"
    ]
@@ -17080,19 +17073,13 @@
    ]
   },
   {
-   "key": "A homing skull that never misses: 190% spell damage (+30% per rank) to a single target, +50% if it is cursed.",
+   "key": "A lance of femur flies 16m, striking everything it passes for 110% spell damage (+18% per rank) as physical.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
    "key": "A lance of ice flies 14m and pierces every enemy in its path for 130% spell damage (+22% per rank), leaving them Brittle for 6s.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "A lattice of bone absorbs 80 damage (+45 per rank) for 25s and grants +12 defense per rank.",
    "files": [
     "data/skills.ts"
    ]
@@ -17152,12 +17139,6 @@
    ]
   },
   {
-   "key": "A shard of femur travels 16m, piercing everything for 110% spell damage (+18% per rank) as physical.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "A shockwave travels 12m, dealing 220% weapon damage (+35% per rank) and applying Sundered to everything it crosses.",
    "files": [
     "data/skills.ts"
@@ -17188,7 +17169,7 @@
    ]
   },
   {
-   "key": "A single heavy construct with 200% of your life (+15% per rank) that taunts and cannot be knocked back.",
+   "key": "A skull that hunts its mark and never misses: 190% spell damage (+30% per rank) as arcane to one enemy, +50% if it is cursed. If its mark dies first, it turns on the nearest enemy.",
    "files": [
     "data/skills.ts"
    ]
@@ -17290,12 +17271,6 @@
    ]
   },
   {
-   "key": "Afflicted enemies (any curse, poison or other harmful effect) lose 2% of maximum life per second per 4 ranks. Bosses are spared.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Aim for the eye. +1% critical chance and +8% critical damage per rank.",
    "files": [
     "data/skills.ts"
@@ -17303,12 +17278,6 @@
   },
   {
    "key": "Aimed Shot",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Amplify Damage",
    "files": [
     "data/skills.ts"
    ]
@@ -17382,7 +17351,8 @@
   {
    "key": "Attrition",
    "files": [
-    "data/skills.ts"
+    "data/skills.ts",
+    "data/statuses.ts"
    ]
   },
   {
@@ -17411,6 +17381,12 @@
    ]
   },
   {
+   "key": "Bile Ring",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Bind the 4 nearest enemies within 10m (+1 per 5 ranks) for 10s: 35% of each blow you land on one (+3% per rank) also lands on all the others.",
    "files": [
     "data/skills.ts"
@@ -17430,6 +17406,12 @@
   },
   {
    "key": "Blast Wave",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Bleed Dry",
    "files": [
     "data/skills.ts"
    ]
@@ -17527,9 +17509,10 @@
    ]
   },
   {
-   "key": "Bone Armor",
+   "key": "Bone Chanter",
    "files": [
-    "data/skills.ts"
+    "data/skills.ts",
+    "scenes/SkillRunner.ts"
    ]
   },
   {
@@ -17545,21 +17528,16 @@
    ]
   },
   {
-   "key": "Bone Spear",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Bone Spirit",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Bone Storm",
    "files": [
     "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Bone Thrall",
+   "files": [
+    "data/skills.ts",
+    "scenes/SkillRunner.ts"
    ]
   },
   {
@@ -17727,6 +17705,12 @@
    ]
   },
   {
+   "key": "Catching Rot",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Chain Lightning",
    "files": [
     "data/skills.ts",
@@ -17734,16 +17718,22 @@
    ]
   },
   {
-   "key": "Chill, freeze and shatter. Nothing that cannot move can hurt you.",
+   "key": "Charnel Burst",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Clay Sentinel",
+   "key": "Charnel Colossus",
    "files": [
     "data/skills.ts",
     "scenes/SkillRunner.ts"
+   ]
+  },
+  {
+   "key": "Chill, freeze and shatter. Nothing that cannot move can hurt you.",
+   "files": [
+    "data/skills.ts"
    ]
   },
   {
@@ -17812,12 +17802,6 @@
   },
   {
    "key": "Convert 10% of your maximum mana into maximum life per 2 ranks, and gain +1% damage per 400 maximum life.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Corpse Explosion",
    "files": [
     "data/skills.ts"
    ]
@@ -17896,6 +17880,12 @@
    ]
   },
   {
+   "key": "Curse one enemy: after 6s it takes 350% spell damage (+55% per rank) as arcane. If it dies first, the brand jumps to the nearest enemy within 8m, keeping its time.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Curse: -25% physical resistance and +25% damage taken (+2% per rank) for 12s within 8m.",
    "files": [
     "data/skills.ts"
@@ -17908,19 +17898,13 @@
    ]
   },
   {
-   "key": "Curse: after 6s the target takes 350% spell damage (+55% per rank) as arcane. If it dies first, the brand jumps to the nearest enemy within 8m and goes off there.",
+   "key": "Curse: everything within 8m runs from you in fear for 4s (+0.2s per rank), starting no attacks, and takes +15% damage while it flees. Bosses stand firm.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Curse: everything within 8m is Feared for 4s (+0.2s per rank) and takes +15% damage while fleeing.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Curse: everything within 9m attacks its own for 5s (+0.25s per rank) and takes +20% damage from allies.",
+   "key": "Curse: everything within 9m turns on its own kind for 5s (+0.25s per rank), striking the nearest other monster instead of you, and takes +20% damage from allies. Bosses keep their wits.",
    "files": [
     "data/skills.ts"
    ]
@@ -18112,6 +18096,12 @@
    ]
   },
   {
+   "key": "Every curse of yours on an enemy past the first makes it take 6% more damage (+0.6% per rank) from you and your minions. Wilt, Flay, Horrify, Doom, Mass Confusion, Fray, Soul Cage and Soul Tether each count once.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Every minion is healed for 40% of maximum life (+3% per rank), and any that died in the last 5s rise again where they fell.",
    "files": [
     "data/skills.ts"
@@ -18161,12 +18151,6 @@
    ]
   },
   {
-   "key": "Exsanguinate",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Fan Fire",
    "files": [
     "data/skills.ts"
@@ -18174,6 +18158,12 @@
   },
   {
    "key": "Fan of Knives",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Femur Lance",
    "files": [
     "data/skills.ts"
    ]
@@ -18248,6 +18238,12 @@
    ]
   },
   {
+   "key": "Flay",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Fleetfoot",
    "files": [
     "data/skills.ts"
@@ -18266,6 +18262,12 @@
    ]
   },
   {
+   "key": "For 30s, a 7m aura: 40% spell damage (+8% per rank) per second as poison, and each hit has a 30% chance to apply Plagued, which hops every 2s to the nearest clean enemy within 4m.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "For 30s, a bolt strikes a random enemy within 14m every 1.4s for 180% spell damage (+28% per rank), leaving 2 stacks of Shocked. While it rages you are Overcharged: +25% elemental damage and +12 lightning damage.",
    "files": [
     "data/skills.ts"
@@ -18279,6 +18281,12 @@
   },
   {
    "key": "Fortress Stance",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Fray",
    "files": [
     "data/skills.ts"
    ]
@@ -18358,7 +18366,7 @@
    ]
   },
   {
-   "key": "Gravechill",
+   "key": "Gravewalk",
    "files": [
     "data/skills.ts"
    ]
@@ -18401,6 +18409,24 @@
   },
   {
    "key": "Herald of Ruin",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Hex Upon Hex",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Horrify",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Hunting Skull",
    "files": [
     "data/skills.ts"
    ]
@@ -18566,12 +18592,6 @@
   },
   {
    "key": "Loose high. One heavy volley lands across a 4.5m circle.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Lower Resist",
    "files": [
     "data/skills.ts"
    ]
@@ -18796,12 +18816,6 @@
    ]
   },
   {
-   "key": "Poison Nova",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Poison damage rises by 1.5% per rank for every 10% of life the target is missing. Poison finishes what the blade started.",
    "files": [
     "data/skills.ts"
@@ -18856,25 +18870,25 @@
    ]
   },
   {
-   "key": "Raise Skeleton",
+   "key": "Raise a host of bone wardens in a ring at a point up to 14m away, 6 per cast, each with 75% of your life and 70% of your damage, fighting up close. +1 to the host cap every 3 ranks, up to 16. They stay until they fall.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Raise a bone caster. 1 per 3 ranks (max 4), hurling arcane bolts for 60% of your spell damage (+7% per rank).",
+   "key": "Raise a hulking construct of fused bone with 260% of your life (+15% per rank) and 70% of your damage. It draws the attention of what is near it. +1 per 8 ranks, up to 3.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Raise a host of bone wardens at once, 6 per cast, each with 75% of your life. +1 to the host cap every 3 ranks, up to 16. They stay until they fall.",
+   "key": "Raise bone chanters at a point: 4 at first (+1 per 3 ranks, up to 8), each with 45% of your life. They keep their distance and throw bolts of witchlight for 60% of your damage (+7% per rank) as arcane.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Raise a skeletal warrior from a corpse. 1 skeleton per 2 ranks (max 5 here), each with 75% of your life and 55% of your damage. They stay until they fall.",
+   "key": "Raise bone thralls at a point: 5 at first (+1 per 2 ranks, up to 12), each with 75% of your life and 55% of your damage (+6% per rank). Cast near a corpse, a thrall claws up out of it. They stay until they fall.",
    "files": [
     "data/skills.ts"
    ]
@@ -18929,7 +18943,13 @@
    ]
   },
   {
-   "key": "Ribs erupt around a point: everything in 4m is Rooted for 3s (+0.15s per rank) and takes 120% spell damage.",
+   "key": "Rib Ward",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Ribs burst up in a 4m ring around a point: everything inside takes 120% spell damage (+19% per rank) once and is Rooted for 3s (+0.15s per rank) while the ribs stand.",
    "files": [
     "data/skills.ts"
    ]
@@ -19070,7 +19090,7 @@
    ]
   },
   {
-   "key": "Shatter your Bone Armor outward: 220% spell damage (+34% per rank) in 7m plus 100% of the armour remaining, leaving 3 stacks of Bleeding.",
+   "key": "Shatter your Rib Ward outward: 220% spell damage (+34% per rank) in 7m plus 100% of the armour remaining, leaving 3 stacks of Bleeding.",
    "files": [
     "data/skills.ts"
    ]
@@ -19125,6 +19145,12 @@
    ]
   },
   {
+   "key": "Sink into the floor and claw back up at a point up to 8m away (+0.2m per rank). Grave-hands burst up where you rise: enemies within 3m are Grasped for 1s (+0.05s per rank) and take 90% spell damage (+14% per rank) as arcane, and you heal 3% of your life for each one held.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Siphon Life",
    "files": [
     "data/skills.ts"
@@ -19152,13 +19178,6 @@
    "key": "Skeletal Knight",
    "files": [
     "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Skeletal Mage",
-   "files": [
-    "data/skills.ts",
-    "scenes/SkillRunner.ts"
    ]
   },
   {
@@ -19369,12 +19388,6 @@
    ]
   },
   {
-   "key": "Terror",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Tether an enemy for 3s: it takes 70% spell damage (+12% per rank) per second as arcane, and you heal for 40% of the damage dealt (+1.5% per rank). Casting again moves the tether.",
    "files": [
     "data/skills.ts"
@@ -19409,7 +19422,8 @@
   {
    "key": "The Long Decline",
    "files": [
-    "data/skills.ts"
+    "data/skills.ts",
+    "scenes/DungeonScene.ts"
    ]
   },
   {
@@ -19479,7 +19493,7 @@
    ]
   },
   {
-   "key": "Trap a soul for 12s: the target is rooted and torn by grave-hands, cannot heal, has 25% lower resistances (+2% per rank), and gives up 2 extra Souls when it dies.",
+   "key": "Trap one soul for 12s: the target is rooted and torn by grave-hands, cannot heal, has 25% lower resistances (+2% per rank), and gives up 2 extra Souls when it dies.",
    "files": [
     "data/skills.ts"
    ]
@@ -19533,7 +19547,7 @@
    ]
   },
   {
-   "key": "Two of your skeletons (+1 per 8 ranks) become knights: +120% life, +80% damage (+6% per rank), and their blows cleave into enemies beside the target.",
+   "key": "Two of your bone thralls (+1 per 8 ranks) rise as knights in armour: +120% life, +80% damage (+6% per rank), and their blows cleave into enemies beside the target.",
    "files": [
     "data/skills.ts"
    ]
@@ -19642,12 +19656,6 @@
    ]
   },
   {
-   "key": "Weaken",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Weight on the back foot. +4% block chance per rank, with diminishing returns toward 32%.",
    "files": [
     "data/skills.ts"
@@ -19691,6 +19699,12 @@
    ]
   },
   {
+   "key": "Wilt",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Winter's Breath",
    "files": [
     "data/skills.ts"
@@ -19700,14 +19714,6 @@
    "key": "Winter's Edge",
    "files": [
     "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Wither",
-   "files": [
-    "data/skills.ts",
-    "scenes/DungeonScene.ts",
-    "sim/Loot.ts"
    ]
   },
   {
@@ -19759,13 +19765,13 @@
    ]
   },
   {
-   "key": "Your knights become Death Knights: +40% more damage (+4% per rank). If you have no knights, one skeleton becomes one.",
+   "key": "Your knights become Death Knights: 40% more damage (+4% per rank), on top of their knight bonus. If you have no knights, one thrall becomes one.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Your minions gain +6% attack speed and +0.8% life steal per rank, and heal 15% of their maximum life on a kill.",
+   "key": "Your minions gain +6% attack speed and +0.8% life steal per rank, healing themselves with what they steal, and heal 15% of their maximum life on a kill.",
    "files": [
     "data/skills.ts"
    ]
@@ -19995,7 +20001,8 @@
   {
    "key": "Confused",
    "files": [
-    "data/statuses.ts"
+    "data/statuses.ts",
+    "entities/Enemy.ts"
    ]
   },
   {
@@ -20556,6 +20563,12 @@
   },
   {
    "key": "Weapon knocked wide: -70% weapon damage.",
+   "files": [
+    "data/statuses.ts"
+   ]
+  },
+  {
+   "key": "Worn down by the grave: lower resistances and slower attacks.",
    "files": [
     "data/statuses.ts"
    ]
@@ -42996,12 +43009,6 @@
    ]
   },
   {
-   "key": "Skeleton",
-   "files": [
-    "scenes/SkillRunner.ts"
-   ]
-  },
-  {
    "key": "Spectral Viper",
    "files": [
     "scenes/SkillRunner.ts"
@@ -47007,6 +47014,12 @@
   },
   {
    "key": "Wish",
+   "files": [
+    "sim/Loot.ts"
+   ]
+  },
+  {
+   "key": "Wither",
    "files": [
     "sim/Loot.ts"
    ]

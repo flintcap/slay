@@ -1840,7 +1840,9 @@ export class SkillRunner {
           let cx = player.position.x;
           let cz = player.position.z;
           if (def.targeting === 'point' && classOfSkill(def.id) === 'revenant') {
-            const reach = Math.min(RAISE_REACH, this.groundDistance(target, player.position));
+            // Grand Ossuary names its own reach (`radius`, 14 m).
+            const most = fx.includes('mass') ? num('radius', RAISE_REACH) : RAISE_REACH;
+            const reach = Math.min(most, this.groundDistance(target, player.position));
             const lane = this.wallStop(player.position, dir, reach, ctx, MINION_RADIUS);
             cx = player.position.x + dir.x * lane;
             cz = player.position.z + dir.z * lane;
