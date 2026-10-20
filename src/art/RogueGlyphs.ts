@@ -26,10 +26,11 @@
  *   rgrupture  a burst of venom flinging its drops.
  *   rgmiasma   v0 a cloud with a skull's face, v1 poisoned footprints, v2 a
  *              heart in a ring of smoke.
- *   rghood     the hood, face on. v0 eyes lit, v1 the cloak drawn across,
- *              v2 dissolving, v3 eyes shut behind a raised blade.
+ *   rghood     the hood, face on. v0 no hood, only a hunter's eyes in the
+ *              dark; v1 the cloak drawn across, v2 dissolving, v3 eyes shut
+ *              behind a raised blade.
  *   rgtwin     hooded figures. v0 one and its shadow, v1 three, v2 two facing
- *              across a crack, v3 one stepping out of its afterimages.
+ *              across a crack, v3 a knife passing clean through his shadow.
  *   rgbomb     a smoke bomb with its fuse lit.
  *   rgeclipse  v0 a black sun whose light falls like a curtain, v1 a crescent
  *              round an hourglass, v2 a crescent crossed by a dagger.
@@ -1158,11 +1159,33 @@ const rghood: Glyph = (x, t, v) => {
       return;
     }
     default: {
-      // Night Eyes: nothing in the hood but the eyes.
-      hoodBust(x, t);
-      hoodEyes(x, t, 56, 10, 1.4);
-      for (const sg of [-1, 1]) spec(x, 64 + sg * 10, 56, 16, 1.4, 0, 0.9, t.core);
-      glint(x, 74, 55, 9, t.core, 1);
+      // Night Eyes: no hood at all, a hunter's eyes opening in the dark,
+      // slit pupils, under a brow of smoke and over a bank of it.
+      smoke(x, t, [[18, 30, 18], [44, 22, 18], [70, 20, 16], [96, 24, 18], [114, 36, 14]], SMOKE, 0.9);
+      smoke(x, t, [[22, 102, 20], [52, 110, 22], [84, 108, 22], [110, 98, 18]], SMOKE, 0.8);
+      glow(x, 64, 64, 56, t.glow, 0.32);
+      for (const sg of [-1, 1]) {
+        const ex = 64 + sg * 26;
+        const ey = 64;
+        // Inner corner low, outer corner swept up: a hunter's look.
+        const eye = new Path2D();
+        eye.moveTo(ex - sg * 19, ey + 5);
+        eye.quadraticCurveTo(ex - sg * 2, ey - 17, ex + sg * 19, ey - 7);
+        eye.quadraticCurveTo(ex + sg * 4, ey + 15, ex - sg * 19, ey + 5);
+        eye.closePath();
+        glow(x, ex, ey, 30, t.glow, 0.85);
+        energy(x, eye, t, ex, ey - 1, 19, 0.5);
+        x.fillStyle = '#020104';
+        x.fill(ellipseP(ex + sg * 1, ey - 1, 3, 11, sg * 0.14));
+        glint(x, ex - sg * 6, ey - 6, 5, 0xffffff, 0.95);
+      }
+      // The keen sight: a faint line of light out from each outer corner.
+      for (const sg of [-1, 1]) {
+        const p = new Path2D();
+        p.moveTo(64 + sg * 46, 56);
+        p.quadraticCurveTo(64 + sg * 54, 52, 64 + sg * 60, 46);
+        ray(x, p, t, 1.6);
+      }
     }
   }
 };
@@ -1250,19 +1273,22 @@ const rgtwin: Glyph = (x, t, v) => {
       return;
     }
     case 3: {
-      // Silhouette: he steps clear of where he was.
-      figure(x, t, 36, 116, 86, { ghost: true, a: 0.35, eyes: false });
-      figure(x, t, 54, 116, 86, { ghost: true, a: 0.6, eyes: false });
-      for (let i = 0; i < 3; i++) {
-        const p = new Path2D();
-        p.moveTo(20, 50 + i * 18);
-        p.lineTo(44, 50 + i * 18);
-        x.save();
-        x.globalAlpha = 0.5;
-        ray(x, p, t, 1.6);
-        x.restore();
-      }
-      figure(x, t, 76, 118, 92, {});
+      // Silhouette: a thrown knife goes clean through him; there was only
+      // shadow where it passed, the shadow parting round it in a ring.
+      figure(x, t, 64, 122, 104, { ghost: true, eyes: false });
+      const streak = new Path2D();
+      streak.moveTo(124, 60);
+      streak.lineTo(70, 64);
+      x.save();
+      x.globalAlpha = 0.55;
+      ray(x, streak, t, 2.2);
+      x.restore();
+      x.save();
+      x.globalAlpha = 0.9;
+      ray(x, ellipseP(62, 64, 7, 15), t, 1.8);
+      x.restore();
+      smoke(x, t, [[54, 56, 6], [52, 72, 6], [46, 64, 5]], SMOKE, 0.7);
+      knifeAt(x, t, 7, 67, -Math.PI / 2 - 0.06, 32);
       return;
     }
     default: {
