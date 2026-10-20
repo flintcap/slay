@@ -23,6 +23,7 @@
 
 import type { StatusEffectDef, StatKey, DamageType } from '../types';
 import { PALADIN_STATUSES } from './classSkills/paladinStatuses';
+import { KNIGHT_STATUSES } from './classSkills/knightStatuses';
 import { tr } from '../core/I18n';
 
 export type StatusTag =
@@ -762,6 +763,7 @@ export const STATUSES: StatusDef[] = [
     tags: ['buff', 'drain'],
   }),
   ...PALADIN_STATUSES,
+  ...KNIGHT_STATUSES,
 ];
 
 export const STATUS_BY_ID: Record<string, StatusDef> = Object.create(null);

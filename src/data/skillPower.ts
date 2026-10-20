@@ -68,9 +68,13 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
 
   // Knight
   shieldWall: (k, n) => ({
+    status: 'shieldWall',
     mods: { blockChance: r1(n('blockPct', 12) + n('blockPerRank', 1.5) * k), damageReduction: r1(8 + n('drPerRank', 2) * k) },
   }),
+  // A stance: on until pressed again (`scenes/knight/KnightKit.ts`).
   guardStance: (k, n) => ({
+    status: 'guardStance',
+    duration: 1e5,
     mods: {
       enhancedDefense: n('defPct', 45) + n('defPerRank', 4) * k,
       damageReduction: r1(n('dr', 12) + n('drPerRank', 1.5) * k),
@@ -78,17 +82,21 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
     },
   }),
   aegis: (k, n) => ({ absorb: n('absorb', 60) + n('absorbPerRank', 35) * k }),
+  // Rooted and steady (`fortress`): the time grows a tenth of a second a rank.
   fortressStance: (k, n) => ({
+    status: 'fortress',
+    duration: r1(n('duration', 6) + n('durationPerRank', 0.1) * k),
     mods: {
       enhancedDefense: n('defPct', 120) + n('defPerRank', 8) * k,
       blockChance: r1(n('blockPct', 20) + 0.5 * k),
       damageReduction: r1(25 + 0.5 * k),
-      moveSpeed: -20,
     },
   }),
   battleCry: (k, n) => ({ mods: { enhancedDamage: n('damagePct', 20) + n('perRank', 3) * k } }),
   rallyingHorn: (k, n) => ({ healPct: n('healPct', 12) + n('perRank', 2) * k }),
+  // Held only inside the standard's ring (`scenes/knight/KnightKit.ts`).
   bannerOfTheGate: (k, n) => ({
+    status: 'standard',
     mods: {
       enhancedDefense: n('defPct', 25) + n('perRank', 2) * k,
       enhancedDamage: n('dmgPct', 15) + n('perRank', 2) * k,

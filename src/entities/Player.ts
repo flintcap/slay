@@ -213,6 +213,14 @@ export class Player {
   /** How long this dash lasts, and how far a dash skill carries (0: the dodge's own pace). */
   private dodgeSpan = 0.32;
   private dodgeReach = 0;
+  /** A skill carrying the body while it plays: metres a second, and seconds left (`carry`). */
+  private carryX = 0;
+  private carryZ = 0;
+  private carryLeft = 0;
+  /** A skill spinning the body: radians a second, seconds left, and the facing it ends on. */
+  private spinRate = 0;
+  private spinLeft = 0;
+  private spinEnd = 0;
   /** Seconds until the dash is available again, and the full period. */
   private dodgeCd = 0;
   readonly dodgeCdMax = 3.5;
@@ -449,6 +457,8 @@ export class Player {
    */
   beginAction(clip: string, duration: number, side?: 'L' | 'R', opts: { release?: boolean } = {}): void {
     if (this.keepAction && this.actionLock > 0) return;
+    this.carryLeft = 0;
+    this.spinLeft = 0;
     this.actionLock = duration;
     this.actionTotal = duration;
     this.actionSerial++;
@@ -479,6 +489,23 @@ export class Player {
       side,
     });
     return contact;
+  }
+
+  /**
+   * Moves the body while the current action plays: `speed` metres a second
+   * along (dirX, dirZ) for `time` seconds, walls respected, and `turns` full
+   * turns of the body over that time (Whirlwind travels as it spins). Ends
+   * early if the action does; a root or a stun stops it as it stops walking.
+   */
+  carry(dirX: number, dirZ: number, speed: number, time: number, turns = 0): void {
+    const len = Math.hypot(dirX, dirZ);
+    const t = Math.max(0, time);
+    this.carryX = len > 1e-6 ? (dirX / len) * speed : 0;
+    this.carryZ = len > 1e-6 ? (dirZ / len) * speed : 0;
+    this.carryLeft = this.immobilised ? 0 : t;
+    this.spinEnd = this.targetFacing;
+    this.spinRate = t > 0 ? (turns * Math.PI * 2) / t : 0;
+    this.spinLeft = turns !== 0 ? t : 0;
   }
 
   /** Identifies the current action. Changes when a new one starts or a dodge cuts it off. */
@@ -570,9 +597,10 @@ export class Player {
    * `opts.distance` is how far a dash skill says it goes (Roll Away 6m,
    * Shield Charge 9m); a long one takes a little longer. `opts.skill` is a
    * dash skill: it keeps its own cooldown, so the dodge's neither blocks it
-   * nor is spent by it.
+   * nor is spent by it. `opts.span` sets the seconds it takes (a rush timed
+   * by `sim/Speed.ts` `travelTime`).
    */
-  dodge(dirX: number, dirZ: number, quiet = false, clip = 'dodge', opts: { distance?: number; skill?: boolean } = {}): boolean {
+  dodge(dirX: number, dirZ: number, quiet = false, clip = 'dodge', opts: { distance?: number; skill?: boolean; span?: number } = {}): boolean {
     // A real cooldown. Without one the dash was limited only by its own 0.32s
     // animation, so holding the key was simply a faster way to move and there
     // was never a moment where committing to it cost anything.
@@ -584,13 +612,15 @@ export class Player {
     // A root holds the feet and a stun the whole body: no dash out of either.
     if (this.immobilised) return false;
     this.actionLock = 0;
+    this.carryLeft = 0;
+    this.spinLeft = 0;
     // A swing dodged out of before it connects never lands.
     this.actionSerial++;
     this.contactAt = 0;
     this.releaseAt = 0;
     const len = Math.hypot(dirX, dirZ) || 1;
     this.dodgeDir.set(dirX / len, 0, dirZ / len);
-    const span = opts.distance ? Math.min(0.5, Math.max(0.32, (0.32 * opts.distance) / 4)) : 0.32;
+    const span = opts.span ?? (opts.distance ? Math.min(0.5, Math.max(0.32, (0.32 * opts.distance) / 4)) : 0.32);
     this.dodgeSpan = span;
     this.dodgeReach = opts.distance ?? 0;
     this.dodgeTime = span;
@@ -716,7 +746,7 @@ export class Player {
     // a monster can inflict was dead on arrival here.
     // Stoneform (Fortress Stance, Shield Wall) shrugs off holds and shoves;
     // Immovable and Veteran's Resolve shorten holds, to a floor.
-    const steady = this.status.has('stoneform');
+    const steady = this.status.has('stoneform') || this.status.has('fortress');
     const holdScale = Math.max(e.ccFloorPct > 0 ? e.ccFloorPct / 100 : 0, 1 - e.ccReductionPct / 100);
     if (packet.applies?.length) {
       for (const a of packet.applies) {
@@ -910,6 +940,13 @@ export class Player {
       this.updateMovement(dt, ctx, keyboardDir);
     }
 
+    // A spinning skill turns the body itself, a full turn over its time.
+    if (this.spinLeft > 0) {
+      const turn = Math.min(this.spinLeft, dt);
+      this.spinLeft -= turn;
+      this.facing = (this.facing + this.spinRate * turn) % (Math.PI * 2);
+      this.targetFacing = this.spinLeft > 0 ? this.facing : this.spinEnd;
+    }
     // Smoothly rotate toward the desired facing — snapping reads as robotic.
     let delta = this.targetFacing - this.facing;
     while (delta > Math.PI) delta -= Math.PI * 2;
@@ -931,7 +968,8 @@ export class Player {
     if (st.has('frozen') || st.has('petrified')) return 'frozen';
     if (st.has('knockedDown')) return 'down';
     if (this.incapacitated) return 'stunned';
-    if (this.immobilised) return 'rooted';
+    // Fortress Stance roots by choice: the stance holds, the body does not struggle.
+    if (this.immobilised && !st.has('fortress')) return 'rooted';
     return 'none';
   }
 
@@ -1156,6 +1194,12 @@ export class Player {
     if (this.immobilised) {
       this.velocity.set(0, 0, 0);
       return;
+    }
+
+    // A skill that travels while it plays (Whirlwind's spin walks on).
+    if (this.carryLeft > 0) {
+      this.carryLeft -= dt;
+      if (this.actionLock > 0) this.tryMove(this.carryX * dt, this.carryZ * dt, ctx);
     }
 
     // Steering by hand walks out of an attack's follow-through.
