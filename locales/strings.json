@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9233,
+ "count": 9235,
  "strings": [
   {
    "key": "Beating iron…",
@@ -16786,12 +16786,6 @@
    ]
   },
   {
-   "key": "+2% damage per rank for each enemy you hit in the last 3 seconds, up to 8 enemies. Crowds are fuel.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "+2.8% to all resistances per rank with diminishing returns toward 35%, and +1.5 life regeneration per rank. The dead are hard to hurt twice.",
    "files": [
     "data/skills.ts"
@@ -17068,6 +17062,12 @@
    ]
   },
   {
+   "key": "A flask lobbed to the spot you aim, up to 14m away, shatters for 180% weapon damage (+29% per rank) as poison in 4m and applies Plagued, which spreads on its own.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "A gout of rot: 85% spell damage (+15% per rank) as poison, applying 3 stacks of Poisoned.",
    "files": [
     "data/skills.ts"
@@ -17098,6 +17098,12 @@
    ]
   },
   {
+   "key": "A low coated jab under the guard. 80% weapon damage (+13% per rank) plus 3 stacks of Poisoned for 8s.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "A pillar of lightning 4m across for 5s: 220% spell damage (+34% per rank) per second and Stunned every second.",
    "files": [
     "data/skills.ts"
@@ -17111,12 +17117,6 @@
   },
   {
    "key": "A pressure wave: 130% spell damage (+21% per rank) in 5m, Stunned for 1.5s (+0.05s per rank), which stops any cast.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "A quick coated jab. 80% weapon damage (+13% per rank) plus 3 stacks of Poisoned for 8s.",
    "files": [
     "data/skills.ts"
    ]
@@ -17254,13 +17254,7 @@
    ]
   },
   {
-   "key": "A thrown flask shatters for 180% weapon damage (+29% per rank) as poison in 4m and applies Plagued, which spreads on its own.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "A thrown needle: 95% weapon damage (+16% per rank) as poison at 16m, applying 4 stacks of Poisoned.",
+   "key": "A thrown needle out to 16m that passes through the first enemy and strikes the one behind it: 95% weapon damage (+16% per rank) as poison to each, applying 4 stacks of Poisoned.",
    "files": [
     "data/skills.ts"
    ]
@@ -17285,6 +17279,12 @@
   },
   {
    "key": "Absolute Zero",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Adder's Kiss",
    "files": [
     "data/skills.ts"
    ]
@@ -17835,6 +17835,13 @@
    ]
   },
   {
+   "key": "Counter-Cut",
+   "files": [
+    "data/skills.ts",
+    "scenes/DungeonScene.ts"
+   ]
+  },
+  {
    "key": "Crack the floor: 150% weapon damage (+24% per rank) within 6m, Stunned for 2s, Knocked Down for 1.2s.",
    "files": [
     "data/skills.ts"
@@ -17955,6 +17962,12 @@
    ]
   },
   {
+   "key": "Dance round one enemy in five cuts of 110% weapon damage (+16% per rank), stepping a quarter turn round it with each. The fifth cut, both blades driven in, is always a critical strike.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Dark Pact",
    "files": [
     "data/skills.ts"
@@ -17968,12 +17981,6 @@
   },
   {
    "key": "Darkness floods 9m for 8s: enemies inside are Blinded (-60 attack rating, -2 per rank, and -15% critical chance) and Slowed (-25% movement speed, -1% per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Dash 8m through a target, hitting everything on the way for 150% weapon damage (+25% per rank).",
    "files": [
     "data/skills.ts"
    ]
@@ -18028,12 +18035,6 @@
   },
   {
    "key": "Doom",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Double Strike",
    "files": [
     "data/skills.ts"
    ]
@@ -18106,12 +18107,6 @@
   },
   {
    "key": "Envenom Burst",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Every 12th attack (-0.4 per rank, to a floor of 5) is a guaranteed critical strike dealing +50% damage.",
    "files": [
     "data/skills.ts"
    ]
@@ -18484,6 +18479,12 @@
    ]
   },
   {
+   "key": "Knife Halo",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Last Oath",
    "files": [
     "data/skills.ts"
@@ -18609,14 +18610,8 @@
   {
    "key": "Mirror Gambit",
    "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Momentum",
-   "files": [
     "data/skills.ts",
-    "sim/ItemPowers.ts"
+    "scenes/rogue/RogueMoves.ts"
    ]
   },
   {
@@ -18748,12 +18743,6 @@
   },
   {
    "key": "Paralytic Toxin",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Perfect Form",
    "files": [
     "data/skills.ts"
    ]
@@ -18903,6 +18892,12 @@
    ]
   },
   {
+   "key": "Razor Dash",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Reap Soul",
    "files": [
     "data/skills.ts"
@@ -19003,6 +18998,12 @@
   },
   {
    "key": "Scattershot",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Scissor Cut",
    "files": [
     "data/skills.ts"
    ]
@@ -19130,13 +19131,19 @@
    ]
   },
   {
-   "key": "Six blades thrown at once in a tight fan: 90% weapon damage (+16% per rank) per knife. Up close, all six find the same mark.",
+   "key": "Six eruptions walk outward from the target point, one after another, each 170% spell damage (+28% per rank) in 2.5m with 2 stacks of Burning.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Six eruptions walk outward from the target point, one after another, each 170% spell damage (+28% per rank) in 2.5m with 2 stacks of Burning.",
+   "key": "Six knives circle you for 8s (+0.25s per rank), cutting everything within 2.6m every 0.5s for 30% weapon damage (+5% per rank). You keep fighting while they turn.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Six knives thrown hand by hand, right then left, in a tight fan: 90% weapon damage (+16% per rank) per knife. Up close, all six find the same mark.",
    "files": [
     "data/skills.ts"
    ]
@@ -19227,7 +19234,7 @@
    ]
   },
   {
-   "key": "Spin through a flurry of coated blades: 8 hits of 60% weapon damage (+10% per rank) as poison across 4m, each applying a stack.",
+   "key": "Spin 8m down a lane, blades out, untouchable for the first 0.25s, cutting each enemy as you pass it for 150% weapon damage (+25% per rank).",
    "files": [
     "data/skills.ts"
    ]
@@ -19257,6 +19264,12 @@
    ]
   },
   {
+   "key": "Spring 5m back and vanish into the veil. The smoke you leave Blinds enemies within 3m for 2s (+0.1s per rank). Clears one crowd-control effect and resets the cooldown of Shadow Step. Enemies lose you for 8s (+0.25s per rank), and you move 40% faster (+1.5% per rank).",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Stand still and disappear for 8s (+0.3s per rank) and move 15% faster (+0.5% per rank). Breaking it grants a guaranteed critical hit with +30% critical damage (+5% per rank).",
    "files": [
     "data/skills.ts"
@@ -19276,6 +19289,12 @@
   },
   {
    "key": "Stealth, displacement and duplicates — control the moment you are seen.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Steel Waltz",
    "files": [
     "data/skills.ts"
    ]
@@ -19495,7 +19514,13 @@
    ]
   },
   {
-   "key": "Two hits of 85% weapon damage (+15% per rank). The second inherits the first hit's critical result.",
+   "key": "Two crossing cuts of 85% weapon damage (+15% per rank). The second inherits the first cut's critical result.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Two full turns with coated blades held out low, one cut every quarter turn: 8 hits of 60% weapon damage (+10% per rank) as poison across 4m, each applying a stack.",
    "files": [
     "data/skills.ts"
    ]
@@ -19561,12 +19586,6 @@
    ]
   },
   {
-   "key": "Vanish into the veil, clear one crowd-control effect, and reset the cooldown of Shadow Step. Enemies lose you for 8s (+0.25s per rank), and you move 40% faster (+1.5% per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Veil",
    "files": [
     "data/skills.ts"
@@ -19593,12 +19612,6 @@
   },
   {
    "key": "Veteran's Resolve",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Viper Strike",
    "files": [
     "data/skills.ts"
    ]
@@ -19646,13 +19659,13 @@
    ]
   },
   {
-   "key": "While Veiled, or standing in your own Smoke Bomb or Nightfall, you take 30% less damage (+2% per rank) and regain 2% life per second.",
+   "key": "When one of your skills lands a melee blow, each Shadow Clone within 12m steps out of the dark beside that enemy and strikes it for 40% (+4% per rank) of the blow, at most once a second per clone.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "Whirling Blades",
+   "key": "While Veiled, or standing in your own Smoke Bomb or Nightfall, you take 30% less damage (+2% per rank) and regain 2% life per second.",
    "files": [
     "data/skills.ts"
    ]
@@ -19722,12 +19735,6 @@
   },
   {
    "key": "Your bolts split into 2 forks (+1 per 5 ranks) at 60% damage (+3% per rank), each able to shock.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Your clones deal 40% more damage (+4% per rank).",
    "files": [
     "data/skills.ts"
    ]
@@ -44307,6 +44314,12 @@
   },
   {
    "key": "Molten Slag",
+   "files": [
+    "sim/ItemPowers.ts"
+   ]
+  },
+  {
+   "key": "Momentum",
    "files": [
     "sim/ItemPowers.ts"
    ]

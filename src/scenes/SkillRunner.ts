@@ -1581,8 +1581,6 @@ export class SkillRunner {
           // oath, aura or banner does. `applyBuff` reads the same numbers.
           this.applyBuff(player, def, rank, num, color);
           if ((def.effect ?? '').includes('autoStrike')) startStorm(false);
-          // Vanish hands Shadow Step straight back.
-          if (num('resetSkills', 0) > 0) player.resetCooldown('shadowStep');
           // Rallying Horn shakes off one hold or slow.
           if (num('cleanse', 0) > 0) {
             const off = CLEANSE.find((id) => player.status.has(id));
@@ -2585,18 +2583,18 @@ export class SkillRunner {
   }
 
   /**
-   * One free swing at whatever just hit you. Riposte's counterattack.
+   * One free swing at whatever just hit you: Riposte's or Counter-Cut's counterattack.
    *
    * Lives here rather than in the scene because it is a player attack and has
    * to go through the same packet pipeline as every other one, conditional
    * passives included.
    */
-  counterAttack(player: Player, target: Target, ctx: CombatContext, scale: number, crit = false): void {
+  counterAttack(player: Player, target: Target, ctx: CombatContext, scale: number, crit = false, ability = tr('Riposte')): void {
     this.caster = player;
     const packet = rollDamage(player.stats, ctx.rng, {
       scale,
       type: 'physical',
-      ability: tr('Riposte'),
+      ability,
       source: 'player',
       forceCrit: crit || undefined,
     });

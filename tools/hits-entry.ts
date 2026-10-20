@@ -8,7 +8,7 @@
  *    the off-hand weapon's damage counts.
  *  - Venom: Coat Blades poisons on hit while it is up, its poison shows as
  *    its own number, Poisoned ticks, and the Venom skills leave the stacks
- *    they promise (Viper Strike, Venom Dart, Death Lotus, Plague Vial,
+ *    they promise (Adder's Kiss, Venom Dart, Death Lotus, Plague Vial,
  *    Corrosive Edge, Paralytic Toxin). A poisoned body wears the green look.
  *  - Numbers: each element is drawn in its own colour, physical is unchanged,
  *    and the damage type reaches the number from a real skill of each element.
@@ -210,7 +210,7 @@ check(
 
 // Skills strike with both blades too: the left arm swings after the right
 // lands, and a one-blow skill lands a blow from each.
-for (const [id, name, oneBlow] of [['viperStrike', 'Viper Strike', true], ['doubleStrike', 'Double Strike', false]] as const) {
+for (const [id, name, oneBlow] of [['viperStrike', 'Adder\'s Kiss', true], ['doubleStrike', 'Scissor Cut', false]] as const) {
   const s = scene('shadowblade', { [id]: 5 }, { mainHand: 'dagger.dagger', offHand: 'dagger.dagger' }, 41);
   const from = s.swings.length;
   const cast = s.cast(id);
@@ -269,19 +269,19 @@ const stacksAfter = (skills: Record<string, number>, cast: string[], status: str
 };
 {
   const r = stacksAfter({ viperStrike: 5 }, ['viperStrike'], 'poisoned');
-  check('Viper Strike leaves 3 stacks of Poisoned', r.n >= 3, r.all || 'nothing');
+  check('Adder\'s Kiss leaves 3 stacks of Poisoned', r.n >= 3, r.all || 'nothing');
 }
 {
   // The poison is worth having: its ticks carry a real share of the blow.
   const s = scene('shadowblade', { viperStrike: 5 }, DUAL, 37);
   s.cast('viperStrike');
   s.tick(0.6);
-  const hit = s.packets.filter((x) => x.p.ability === 'Viper Strike').reduce((n, x) => n + x.p.amount, 0);
+  const hit = s.packets.filter((x) => x.p.ability === 'Adder\'s Kiss').reduce((n, x) => n + x.p.amount, 0);
   const before = s.foe.life;
   s.tick(4);
   const ticked = before - s.foe.life;
   check(
-    'Viper Strike\'s poison ticks for a real share of the strike',
+    'Adder\'s Kiss poison ticks for a real share of the strike',
     hit > 0 && ticked >= hit * 0.3,
     `strike ${Math.round(hit)}, then ${Math.round(ticked)} from poison in 4s (${Math.round((ticked / Math.max(1, hit)) * 100)}%)`,
   );
@@ -390,7 +390,7 @@ for (const el of ELEMENTS) {
 
 // --- single target -----------------------------------------------------------------
 // Reported: "shadowblade's skills are single target but they hit several enemies".
-for (const id of ['viperStrike', 'preciseCut', 'crippleTendon', 'doubleStrike', 'assassinate']) {
+for (const id of ['viperStrike', 'preciseCut', 'crippleTendon', 'doubleStrike', 'assassinate', 'steelWaltz']) {
   const s = scene('shadowblade', { [id]: 5 }, DUAL, 41);
   const side = [s.bystander(-0.8, 1.6), s.bystander(0.8, 1.6)];
   s.cast(id);

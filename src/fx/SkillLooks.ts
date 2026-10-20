@@ -137,6 +137,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   // Shadowblade: Bladework.
   fanOfKnives: m('knives', 'burst'),
   throwingSpree: m('knives', 'fan'),
+  knifeHalo: m('knives', 'orbit'),
 
   // Revenant: Ossuary.
   boneSpear: m('bone spikes', 'line'),

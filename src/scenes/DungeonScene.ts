@@ -1210,11 +1210,11 @@ export class DungeonScene extends GameScene {
           this.skills.counterAttack(this.player, attacker, ctx, e.blockCounterPct / 100);
         }
       }
-      // Riposte Blade: any melee blow can be answered, with a critical.
+      // Counter-Cut: any melee blow can be answered, with a critical.
       if (melee && e.meleeCounterChance > 0 && this.rng.chance(Math.min(0.9, e.meleeCounterChance / 100))) {
         const gap = this.tmpDir.subVectors(attacker.root.position, this.player.position).setY(0).length();
         if (gap <= reach + attacker.hitRadius) {
-          this.skills.counterAttack(this.player, attacker, ctx, e.meleeCounterPct / 100, e.meleeCounterCrit);
+          this.skills.counterAttack(this.player, attacker, ctx, e.meleeCounterPct / 100, e.meleeCounterCrit, tr('Counter-Cut'));
         }
       }
     }

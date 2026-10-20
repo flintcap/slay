@@ -125,6 +125,8 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   doubleStrike: s('skill.swing.double', 'skill.hit.double'),
   whirlingBlades: s('skill.dash.blades', 'skill.hit.blades'),
   throwingSpree: s('skill.throw.knife', 'skill.knife.spree'),
+  knifeHalo: s('skill.knife.halo'),
+  steelWaltz: s('skill.swing.waltz', 'skill.hit.waltz'),
 
   // --- Mage, lightning: snaps and thunder ----------------------------------
   sparkbolt: s('skill.storm.spark', 'skill.storm.sparkHit'),

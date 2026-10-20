@@ -126,8 +126,8 @@ const ICON_MAP: Record<string, string> = {
   'mirror-dark': 'mirror', 'void-walk': 'rift', gloom: 'cloud', unseen: 'eye:2', execute: 'scythe', 'mastery-shadow': 'moon^mastery',
   // Rogue — bladework
   cut: 'sword^speed', 'mastery-blade': 'dagger^mastery', fan: 'dagger:2', tendon: 'boot^drip', aim: 'target:1', double: 'dagger:1',
-  chink: 'crack', 'whirl-dash': 'dagger^spin', knives: 'dagger:2^spin', edge: 'sword', momentum: 'swirl', lethal: 'skull',
-  phantom: 'ghost', finish: 'skull^impact', thousand: 'dagger:2^nova', form: 'figure^rise', parry: 'sword^cross',
+  chink: 'crack', 'whirl-dash': 'dagger^spin', knives: 'dagger:2^spin', edge: 'sword', 'knife-halo': 'dagger:2^aura', lethal: 'skull',
+  phantom: 'ghost', finish: 'skull^impact', thousand: 'dagger:2^nova', waltz: 'dagger:1^spin', parry: 'sword^cross',
   // Mage — lightning
   spark: 'bolt', 'mastery-lightning': 'bolt^mastery', 'nova-shock': 'bolt^nova', chain: 'bolt^chain', clap: 'hand^nova',
   conduct: 'coil', 'strike-down': 'cloud:1', fork: 'bolt^multi', orb: 'orb', storm: 'cloud:1^rain', fury: 'bolt^burst',

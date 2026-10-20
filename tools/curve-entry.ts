@@ -161,7 +161,7 @@ const isDamageActive = (s: SkillDef): boolean =>
 const OFFENCE_STATS = new Set(['critChance', 'critDamage', 'enhancedDamage', 'attackSpeed', 'castSpeed', 'elementalDamagePct', 'minDamage', 'maxDamage', 'fireDamage', 'lightningDamage', 'poisonDamage', 'coldDamage', 'arcaneDamage']);
 const offensive = (s: SkillDef): boolean =>
   Object.keys(s.passive ?? {}).some((k) => OFFENCE_STATS.has(k)) ||
-  /passive\.(execute|critPierce|guaranteedCrit|conditionalDamage|conditionalCrit|critOnHit|pierceResist|dotScale|missingLifeScale|crowdScale|onHitStack|minionScale)/.test(s.effect ?? '');
+  /passive\.(execute|critPierce|conditionalDamage|conditionalCrit|critOnHit|pierceResist|dotScale|missingLifeScale|onHitStack|minionScale)/.test(s.effect ?? '');
 
 /** Spends skill points the way a player building one tree would. */
 function spendSkills(c: Character, tree: string): void {

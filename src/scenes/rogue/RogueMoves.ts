@@ -185,7 +185,11 @@ const HALO_KNIVES = 6;
 // The moves
 // ---------------------------------------------------------------------------
 
-/** A thin venom needle, loosed with the flick: it pierces, hitting each enemy as it passes. */
+/**
+ * A thin venom needle, loosed with the flick. It passes through `pierce`
+ * enemies (nearest first) and stops in the next, striking each as it gets
+ * there; with nothing left to hit it flies on to the wall or its range.
+ */
 function venomDart(r: RogueCast, host: RogueHost): void {
   const { player, num } = r;
   const dir = r.dir.clone();
@@ -194,30 +198,32 @@ function venomDart(r: RogueCast, host: RogueHost): void {
     const from = hand(player);
     const range = num('range', 16);
     const speed = Math.max(1, num('speed', 30));
-    const pierce = Math.floor(num('pierce', 0)) > 0;
+    const most = 1 + Math.max(0, Math.floor(num('pierce', 0)));
     const width = 0.5;
-    const stop = pierce ? host.clear(from, dir, range, r.world.ctx, 0.3) : host.firstHit(from, dir, range, 0.3, r.world);
-    const to = from.clone().addScaledVector(dir, stop);
-    host.effects.projectile(from, to, {
-      element: r.school, color: r.color, shape: 'needle', shed: r.shed, flare: false, speed, size: 0.32,
-    });
-    // Each enemy in the lane is struck as the needle reaches it.
-    let first = true;
+    const lane = host.clear(from, dir, range, r.world.ctx, 0.3);
+    const struck: Array<{ t: Target; at: number }> = [];
     for (const t of targets(r.world)) {
       v1.copy(t.root.position).sub(from).setY(0);
       const along = v1.dot(dir);
-      if (along < 0 || along > stop + t.hitRadius) continue;
+      if (along < 0 || along > lane + t.hitRadius) continue;
       const perp = Math.sqrt(Math.max(0, v1.lengthSq() - along * along));
       if (perp > width * 0.5 + t.hitRadius) continue;
-      if (!pierce && !first) continue;
-      const loud = first;
-      first = false;
-      host.later(Math.max(0, along - t.hitRadius) / speed, () => {
+      struck.push({ t, at: Math.max(0, along - t.hitRadius) });
+    }
+    struck.sort((a, b) => a.at - b.at);
+    if (struck.length > most) struck.length = most;
+    const stop = struck.length === most ? Math.min(lane, struck[most - 1]!.at + 0.3) : lane;
+    host.effects.projectile(from, from.clone().addScaledVector(dir, stop), {
+      element: r.school, color: r.color, shape: 'needle', shed: r.shed, flare: false, speed, size: 0.32,
+    });
+    // Each enemy is struck as the needle reaches it.
+    struck.forEach(({ t, at }, i) => {
+      host.later(at / speed, () => {
         if (t.life <= 0) return;
         const landed = host.land(t, r.packet(), 'projectile', from.x, from.z, r.world);
-        if (loud && landed.amount > 0) host.sound(r.hitSound, t.root.position.x, t.root.position.z);
+        if (i === 0 && landed.amount > 0) host.sound(r.hitSound, t.root.position.x, t.root.position.z);
       });
-    }
+    });
   });
 }
 
@@ -334,8 +340,8 @@ function vanish(r: RogueCast, host: RogueHost): void {
     if (Math.hypot(t.root.position.x - start.x, t.root.position.z - start.z) > puff + t.hitRadius) continue;
     t.applyStatuses([blind], world.ctx);
   }
-  host.cleanse(player);
-  player.resetCooldown('shadowStep');
+  if (num('cleanse', 0) > 0) host.cleanse(player);
+  if (num('resetSkills', 0) > 0) player.resetCooldown('shadowStep');
   host.buff(player, r.def, rank, num, r.color);
 }
 

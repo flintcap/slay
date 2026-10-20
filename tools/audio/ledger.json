@@ -2796,9 +2796,17 @@
   "r80",
   "gbreath"
  ],
+ "sounds/skill.hit.waltz/01.ogg": [
+  "wpn",
+  "kr"
+ ],
  "sounds/skill.hit.whirl/01.ogg": [
   "r80",
   "ki"
+ ],
+ "sounds/skill.knife.halo/01.ogg": [
+  "wpn",
+  "swish"
  ],
  "sounds/skill.knife.hit/01.ogg": [
   "ki",
@@ -3444,6 +3452,10 @@
  "sounds/skill.swing.viper/01.ogg": [
   "swish",
   "water"
+ ],
+ "sounds/skill.swing.waltz/01.ogg": [
+  "swish",
+  "kr"
  ],
  "sounds/skill.swing.wide/01.ogg": [
   "battle",

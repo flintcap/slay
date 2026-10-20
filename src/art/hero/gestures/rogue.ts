@@ -422,6 +422,19 @@ const BLADEWORK: Record<string, Spec> = {
     free: true,
     end: 0.6,
   },
+  /** Knife Halo: the knives drawn in to the chest, then one turn with both hands flung wide, setting them circling. */
+  knifeHalo: {
+    keys: [
+      [0.12, { R: IN, L: IN, turn: -0.5, down: 0.25, lean: 0.15 }, true],
+      [0.22, { R: WIDE, L: WIDE, spin: Q, down: 0.2, lean: 0.1 }],
+      [0.32, { R: WIDE_HIGH, L: WIDE_HIGH, spin: Q * 2, down: 0.15, head: -0.1 }],
+      [0.42, { R: WIDE, L: WIDE_HIGH, spin: Q * 3, down: 0.15 }],
+      [0.52, { R: WIDE, L: WIDE, spin: Q * 4, down: 0.12 }],
+    ],
+    glow: 'both',
+    free: true,
+    end: 0.75,
+  },
   /**
    * Steel Waltz: five cuts round one enemy, right and left in turn (high,
    * high, low, rising), then both blades raised and driven in. The hero is

@@ -984,7 +984,9 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.hit.tendon/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) | CC0 |
 | sounds/skill.hit.viper/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.hit.void/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + qubodup (opengameart.org/content/ghost-breath) | CC0 |
+| sounds/skill.hit.waltz/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.hit.whirl/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.knife.halo/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/skill.knife.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.knife.spree/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Vehicle (opengameart.org/content/fantasy-weapons-and-apparel-sfx-library) | CC0 |
 | sounds/skill.leap.back/01.ogg | https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library | Vehicle + Kenney (kenney.nl/assets/rpg-audio) + rubberduck (opengameart.org/content/100-cc0-sfx-2) | CC0 |
@@ -1140,6 +1142,7 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.swing.sunder/01.ogg | https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes | StarNinjas + HaelDB (opengameart.org/content/male-gruntyelling-sounds) | CC0 |
 | sounds/skill.swing.tendon/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/skill.swing.viper/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
+| sounds/skill.swing.waltz/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.swing.wide/01.ogg | https://opengameart.org/content/battle-sound-effects | Ogrebane + artisticdude (opengameart.org/content/swishes-sound-pack) | CC0 |
 | sounds/skill.thorns/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.throw.dart/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |

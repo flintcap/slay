@@ -331,6 +331,11 @@ export const SKILL_TAKES = {
   'skill.hit.void': x('r80', 'blade_03.ogg', { rate: 0.8, lp: 3000, mix: [x('gbreath', 'ghostbreath.flac', { t: 0.4, rev: true, gain: -5 })] }),
   'skill.hit.double': x('wpn', 'sword-knife-clash-12.wav', { mix: [x('wpn', 'sword-knife-clash-19.wav', { delay: 110, rate: 1.05, gain: -2 })] }),
   'skill.knife.spree': x('ki', 'impactWood_light_003.ogg', { rate: 1.1, mix: [x('wpn', 'knife-sheathe-03.wav', { t: 0.25, gain: -6 })] }),
+  // Knife Halo: the knives drawn, then whirring up into their ring.
+  'skill.knife.halo': x('wpn', 'knife-unsheathe-03.wav', { t: 0.35, rate: 1.1, mix: [x('swish', 'swish-6.wav', { delay: 120, rate: 1.2, gain: -2 }), x('swish', 'swish-11.wav', { delay: 220, rate: 1.3, gain: -3 }), x('swish', 'swish-6.wav', { delay: 320, rate: 1.45, gain: -5 })] }),
+  // Steel Waltz: a light step and the first two cuts; the fifth bites deep.
+  'skill.swing.waltz': x('swish', 'swish-12.wav', { rate: 1.05, mix: [x('kr', 'cloth1.ogg', { gain: -7 }), x('swish', 'swish-5.wav', { delay: 150, rate: 1.1, gain: -1 })] }),
+  'skill.hit.waltz': x('wpn', 'sword-knife-clash-22.wav', { mix: [x('kr', 'knifeSlice2.ogg', { delay: 60, rate: 1.1, gain: -3 })] }),
   'skill.bone.hack': x('swish', 'swish-11.wav', { rate: 0.9, mix: [x('mw', 'wood_cracking_04.ogg', { rate: 1.3, hp: 400, gain: -4 }), x('r80', 'wood_03.ogg', { rate: 1.3, gain: -3 })] }),
   'skill.bone.horde': x('swish', 'swish-6.wav', { rate: 0.8, mix: [x('r80', 'stones_02.ogg', { rate: 1.4, gain: -5 }), x('ki', 'impactPunch_medium_003.ogg', { delay: 60, gain: -5 })] }),
   'skill.arrow.cripple': x('ki', 'impactWood_light_004.ogg', { rate: 0.8, mix: [x('mw', 'wood_cracking_01.ogg', { rate: 1.4, hp: 500, gain: -6 })] }),
