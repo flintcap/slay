@@ -114,7 +114,7 @@ const MACE = build('palMace', [
   {
     id: 'doorbreaker',
     name: tr('Doorbreaker'),
-    desc: tr('Shield first, at one enemy up to 9 metres off. 140% weapon damage (+20% per rank), a hard shove, and it is Staggered for 2s. Needs a shield.'),
+    desc: tr('Shield up, run at one enemy up to 9 metres off and hit it shield first. 140% weapon damage (+20% per rank), a hard shove, and it is Staggered for 2s. Anything in the way is knocked aside for 25% of that. Needs a shield.'),
     tier: 2,
     col: 2,
     icon: 'doorbreaker',
@@ -126,7 +126,7 @@ const MACE = build('palMace', [
     type: 'physical',
     fx: 'rite.door',
     attackTime: 0.7,
-    p: { range: 9, reach: 2.2, duration: 2, knockback: 3 },
+    p: { range: 9, reach: 2.2, duration: 2, knockback: 3, shove: 0.25 },
   },
   // --------------------------------------------------------------- tier 3
   {
@@ -172,7 +172,7 @@ const MACE = build('palMace', [
   {
     id: 'pilgrimsMaul',
     name: tr("Pilgrim's Maul"),
-    desc: tr('A long, slow blow that spends every Dent on the enemy. 300% weapon damage (+42% per rank), and +30% more for each Dent it beats flat.'),
+    desc: tr('A long, slow blow that spends every Dent on the enemy. 300% weapon damage (+42% per rank), and +30% more for each Dent it beats flat. The floor breaks round it: every other enemy within 3 metres (+0.05 per rank) takes a fifth of the blow, its own Dents beaten flat the same way.'),
     tier: 4,
     col: 0,
     icon: 'pilgrim-maul',
@@ -184,7 +184,7 @@ const MACE = build('palMace', [
     type: 'physical',
     fx: 'rite.maul',
     attackTime: 1.6,
-    p: { reach: 2.7, perDent: 0.3 },
+    p: { reach: 2.7, perDent: 0.3, shock: 0.2, shockRadius: 3, shockRadiusPerRank: 0.05 },
   },
   {
     id: 'ironPenance',
@@ -243,7 +243,7 @@ const MACE = build('palMace', [
   {
     id: 'relicBash',
     name: tr('Relic Bash'),
-    desc: tr('Strike with the reliquary set in the shield boss. 140% weapon damage (+18% per rank); it spends every Dent on the enemy, and each one heals you 3% of your life (+0.15% per rank). Needs a shield.'),
+    desc: tr('Strike with the reliquary set in the shield boss. 140% weapon damage (+18% per rank), and each Dent on the enemy heals you 3% of your life (+0.15% per rank). The Dents stay for the next blow. Needs a shield.'),
     tier: 5,
     col: 2,
     icon: 'relic-bash',
@@ -261,7 +261,7 @@ const MACE = build('palMace', [
   {
     id: 'theLastBell',
     name: tr('The Last Bell'),
-    desc: tr('Capstone. Every fourth Mace blow is a Toll: +60% damage (+4% per rank), and the enemy is Rung for 0.8s.'),
+    desc: tr('Capstone. Every fourth Mace skill blow is a Toll: +60% damage (+4% per rank), and the enemy is Rung for 0.8s.'),
     tier: 6,
     col: 0,
     icon: 'last-bell',
@@ -348,7 +348,7 @@ const BLADE = build('palBlade', [
   {
     id: 'turnTheBlade',
     name: tr('Turn the Blade'),
-    desc: tr('Blade up and turned for 1.2s: +50% block chance. Then the answer, at the nearest enemy in front: 200% weapon damage (+25% per rank), and it is Exposed for 3s. Needs a sword.'),
+    desc: tr('Blade up and turned for 1.2s (+0.03s per rank): +50% block chance. The first blow it turns is answered at once; with none, the answer comes as the guard drops, at the nearest enemy in front. The answer is 200% weapon damage (+25% per rank), and it is Exposed for 3s. Needs a sword.'),
     tier: 1,
     col: 2,
     icon: 'turn-blade',
@@ -359,7 +359,7 @@ const BLADE = build('palBlade', [
     type: 'physical',
     fx: 'rite.turn',
     attackTime: 0.6,
-    p: { window: 1.2, duration: 3 },
+    p: { window: 1.2, windowPerRank: 0.03, reach: 2.6, duration: 3 },
   },
   // --------------------------------------------------------------- tier 2
   {
@@ -376,7 +376,7 @@ const BLADE = build('palBlade', [
     type: 'physical',
     fx: 'rite.twin',
     attackTime: 1.2,
-    p: { reach: 2.5, gap: 0.16, bleedShare: 0.1, bleedTime: 5 },
+    p: { reach: 2.5, bleedShare: 0.1, bleedTime: 5 },
   },
   {
     id: 'redPsalm',
@@ -421,7 +421,7 @@ const BLADE = build('palBlade', [
     type: 'physical',
     fx: 'rite.litany',
     attackTime: 1.6,
-    p: { reach: 2.5, cuts: 5, gap: 0.12, bleedShare: 0.08, bleedTime: 5 },
+    p: { reach: 2.5, cuts: 5, bleedShare: 0.08, bleedTime: 5 },
   },
   {
     id: 'measuredStep',
@@ -475,7 +475,7 @@ const BLADE = build('palBlade', [
   {
     id: 'crosswise',
     name: tr('Crosswise'),
-    desc: tr('Two cuts that cross on one enemy, 130% weapon damage each (+18% per rank). The second leaves it Exposed for 5s. Needs a sword.'),
+    desc: tr('Two cuts that cross, 130% weapon damage each (+18% per rank). The first sweeps flat across 150 degrees and cuts every enemy within 3 metres; the second comes straight down through the one in the middle and leaves it Exposed for 5s. Needs a sword.'),
     tier: 4,
     col: 2,
     icon: 'crosswise',
@@ -487,7 +487,7 @@ const BLADE = build('palBlade', [
     type: 'physical',
     fx: 'rite.cross',
     attackTime: 1.3,
-    p: { reach: 2.5, gap: 0.2, duration: 5 },
+    p: { reach: 2.5, arc: 150, radius: 3, duration: 5 },
   },
   // --------------------------------------------------------------- tier 5
   {
@@ -533,13 +533,13 @@ const BLADE = build('palBlade', [
     type: 'physical',
     fx: 'rite.seven',
     attackTime: 1.8,
-    p: { reach: 2.5, cuts: 7, gap: 0.09, duration: 5, bleedShare: 0.12, bleedTime: 5 },
+    p: { reach: 2.5, cuts: 7, duration: 5, bleedShare: 0.12, bleedTime: 5 },
   },
   // --------------------------------------------------------------- tier 6
   {
     id: 'redRosary',
     name: tr('Red Rosary'),
-    desc: tr('Capstone. Each critical rite Opens the enemy (one more stack every sixth rank), Opened enemies take 15% more damage from you (+2% per rank), and your bleeds tick 20% faster.'),
+    desc: tr('Capstone. Each critical hit Opens the enemy (one more stack every sixth rank), Opened enemies take 15% more damage from you (+2% per rank), and your bleeds tick 20% faster.'),
     tier: 6,
     col: 0,
     icon: 'red-rosary',
@@ -567,12 +567,14 @@ const BLADE = build('palBlade', [
   {
     id: 'saintsReach',
     name: tr("Saint's Reach"),
-    desc: tr('The long arm of a patient man. +1% critical chance per rank (toward 10%), +18 attack rating and +2 dexterity per rank.'),
+    desc: tr('The long arm of a patient man. +1% critical chance per rank (toward 10%) and +18 attack rating per rank. Your Blade skills reach 0.4 metres further, and each Blade cut carries on into the nearest enemy behind its target, within 2 metres, for 30% of its damage (+2% per rank).'),
     tier: 6,
     col: 2,
     icon: 'saints-reach',
     req: ['sevenfold'],
-    stat: { critChance: dim(10, 0.06), attackRating: per(18), dexterity: per(2) },
+    stat: { critChance: dim(10, 0.06), attackRating: per(18) },
+    fx: 'passive.reach',
+    p: { reach: 0.4, carry: 2, carryPct: 30, carryPctPerRank: 2 },
   },
 ]);
 

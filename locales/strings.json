@@ -5034,7 +5034,7 @@
    ]
   },
   {
-   "key": "A long, slow blow that spends every Dent on the enemy. 300% weapon damage (+42% per rank), and +30% more for each Dent it beats flat.",
+   "key": "A long, slow blow that spends every Dent on the enemy. 300% weapon damage (+42% per rank), and +30% more for each Dent it beats flat. The floor breaks round it: every other enemy within 3 metres (+0.05 per rank) takes a fifth of the blow, its own Dents beaten flat the same way.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -5138,7 +5138,7 @@
    ]
   },
   {
-   "key": "Blade up and turned for 1.2s: +50% block chance. Then the answer, at the nearest enemy in front: 200% weapon damage (+25% per rank), and it is Exposed for 3s. Needs a sword.",
+   "key": "Blade up and turned for 1.2s (+0.03s per rank): +50% block chance. The first blow it turns is answered at once; with none, the answer comes as the guard drops, at the nearest enemy in front. The answer is 200% weapon damage (+25% per rank), and it is Exposed for 3s. Needs a sword.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -5162,13 +5162,13 @@
    ]
   },
   {
-   "key": "Capstone. Each critical rite Opens the enemy (one more stack every sixth rank), Opened enemies take 15% more damage from you (+2% per rank), and your bleeds tick 20% faster.",
+   "key": "Capstone. Each critical hit Opens the enemy (one more stack every sixth rank), Opened enemies take 15% more damage from you (+2% per rank), and your bleeds tick 20% faster.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
   },
   {
-   "key": "Capstone. Every fourth Mace blow is a Toll: +60% damage (+4% per rank), and the enemy is Rung for 0.8s.",
+   "key": "Capstone. Every fourth Mace skill blow is a Toll: +60% damage (+4% per rank), and the enemy is Rung for 0.8s.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -5486,7 +5486,7 @@
    ]
   },
   {
-   "key": "Shield first, at one enemy up to 9 metres off. 140% weapon damage (+20% per rank), a hard shove, and it is Staggered for 2s. Needs a shield.",
+   "key": "Shield up, run at one enemy up to 9 metres off and hit it shield first. 140% weapon damage (+20% per rank), a hard shove, and it is Staggered for 2s. Anything in the way is knocked aside for 25% of that. Needs a shield.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -5510,7 +5510,7 @@
    ]
   },
   {
-   "key": "Strike with the reliquary set in the shield boss. 140% weapon damage (+18% per rank); it spends every Dent on the enemy, and each one heals you 3% of your life (+0.15% per rank). Needs a shield.",
+   "key": "Strike with the reliquary set in the shield boss. 140% weapon damage (+18% per rank), and each Dent on the enemy heals you 3% of your life (+0.15% per rank). The Dents stay for the next blow. Needs a shield.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -5607,7 +5607,7 @@
    ]
   },
   {
-   "key": "The long arm of a patient man. +1% critical chance per rank (toward 10%), +18 attack rating and +2 dexterity per rank.",
+   "key": "The long arm of a patient man. +1% critical chance per rank (toward 10%) and +18 attack rating per rank. Your Blade skills reach 0.4 metres further, and each Blade cut carries on into the nearest enemy behind its target, within 2 metres, for 30% of its damage (+2% per rank).",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -5661,7 +5661,7 @@
    ]
   },
   {
-   "key": "Two cuts that cross on one enemy, 130% weapon damage each (+18% per rank). The second leaves it Exposed for 5s. Needs a sword.",
+   "key": "Two cuts that cross, 130% weapon damage each (+18% per rank). The first sweeps flat across 150 degrees and cuts every enemy within 3 metres; the second comes straight down through the one in the middle and leaves it Exposed for 5s. Needs a sword.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -43179,7 +43179,8 @@
   {
    "key": "Rooted: {0} cannot move you.",
    "files": [
-    "scenes/knight/KnightKit.ts"
+    "scenes/knight/KnightKit.ts",
+    "scenes/paladin/Rites.ts"
    ]
   },
   {

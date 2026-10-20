@@ -226,10 +226,11 @@ const ACTS: Record<string, Act> = {
       // takes its time to fall; once called it comes down whatever he does next.
       host.atRelease(p, () => {
         if (!t || t.life <= 0) return;
+        const ring = r.num('ring', 1.5);
         paladinFX(host.effects).bell.call(host.effects, t.root.position.x, t.root.position.z, r.num('fall', 0.7), 1, () => {
           if (!p.alive || t.life <= 0) return;
           const pk = r.packet(1);
-          pk.applies = [...(pk.applies ?? []), { id: 'rung', duration: r.num('ring', 1.5), magnitude: 1, stacks: 1 }];
+          pk.applies = [...(pk.applies ?? []), { id: 'rung', duration: ring, magnitude: 1, stacks: 1 }];
           host.land(t, pk, 'heavy', t.root.position.x, t.root.position.z, r);
           host.sound(r.hitSound, t.root.position.x, t.root.position.z);
         }, t.root);

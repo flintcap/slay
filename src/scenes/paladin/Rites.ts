@@ -363,6 +363,9 @@ interface Guard {
   /** The guard's own action: the answer may cut it short, never another skill. */
   guard: number;
   done: boolean;
+  /** The answer's reach and how long it leaves the target Exposed, read when the guard goes up. */
+  reach: number;
+  exposed: number;
 }
 
 const GUARDS = new WeakMap<Player, Guard>();
@@ -378,7 +381,7 @@ function answer(g: Guard, attacker: Target | null): void {
   if (!p.alive || p.incapacitated) return;
   // Already into another skill: the blade is busy elsewhere, and the answer goes.
   if (p.isBusy && p.actionId !== g.guard) return;
-  const reach = r.num('reach', 2.6) + p.passives.pal.reachBonus;
+  const reach = g.reach;
   let t = attacker && stillThere(p, attacker, reach) ? attacker : null;
   if (!t) {
     const rot = p.root.rotation.y;
@@ -394,7 +397,7 @@ function answer(g: Guard, attacker: Target | null): void {
   host.later(p.contactIn, () => {
     if (p.actionId !== id || !p.alive || !stillThere(p, target, reach)) return;
     p.faceTowards(target.root.position.x, target.root.position.z);
-    blow(r, host, target, { riders: [status('exposed', r.num('duration', 3))], kind: 'heavy', mark: 'thrust', k: 4 });
+    blow(r, host, target, { riders: [status('exposed', g.exposed)], kind: 'heavy', mark: 'thrust', k: 4 });
   });
 }
 
@@ -545,7 +548,11 @@ const RITES: Record<string, Rite> = {
       const p = r.player;
       const window = ranked(r, 'window', 1.2, 0.03);
       p.applyStatus('parrying', window);
-      const g: Guard = { r, host, guard: s.id, done: false };
+      const g: Guard = {
+        r, host, guard: s.id, done: false,
+        reach: r.num('reach', 2.6) + p.passives.pal.reachBonus,
+        exposed: r.num('duration', 3),
+      };
       GUARDS.set(p, g);
       host.later(window, () => {
         if (GUARDS.get(p) !== g) return;
