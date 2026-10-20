@@ -160,23 +160,28 @@ function heaterBody(x: Ctx, t: Tone, blaze = false): void {
 const heater: Glyph = (x, t, v) => {
   const k = v % 6;
   if (k === 1) {
-    // Deflect: the shield turned, an arrow snapping off its face.
-    placed(x, 56, 68, 0.88, -0.2, () => heaterBody(x, t));
-    placed(x, 92, 34, 1, -0.9, () => {
-      obj(x, rrectP(62, 30, 4, 34, 1.5), WOOD, t, [62, 40], [66, 40], 0.4);
-      obj(x, polyP([[64, 64], [59, 72], [64, 70], [69, 72]]), LEATHER, t, [59, 64], [69, 72], 0.3);
+    // Deflect: the shield turned, a whole arrow struck aside at its face.
+    placed(x, 52, 72, 0.74, -0.25, () => heaterBody(x, t));
+    placed(x, 86, 42, 0.8, Math.PI / 4, () => {
+      obj(x, rrectP(61, 24, 6, 52, 2), WOOD, t, [61, 40], [67, 40], 0.5);
+      for (const sg of [-1, 1]) {
+        obj(x, polyP([[64, 22], [64 + sg * 9, 14], [64 + sg * 9, 28], [64, 38]]), LEATHER, t, [55, 14], [73, 38], 0.4);
+      }
+      obj(x, polyP([[64, 94], [54, 74], [64, 79], [74, 74]]), STEEL, t, [54, 74], [74, 94], 0.6);
     });
-    placed(x, 78, 52, 1, 0.5, () => obj(x, polyP([[64, 50], [70, 64], [58, 64]]), STEEL, t, [58, 50], [70, 64], 0.4));
-    energy(x, starP(72, 46, 6, 3, 13, 0.3), t, 72, 46, 13, 0.5);
-    for (const [gx, gy, r] of [[86, 40, 5], [80, 30, 3.5], [92, 52, 3]] as const) glint(x, gx, gy, r * 2, t.core, 0.9);
+    energy(x, starP(66, 56, 8, 5, 18, 0.2), t, 66, 56, 18, 0.5);
+    for (const [gx, gy, r] of [[50, 44, 4], [80, 66, 4], [58, 40, 3]] as const) glint(x, gx, gy, r * 2, t.core, 0.9);
   } else if (k === 2) {
-    // Guard: a sword set behind the shield, hilt low, point high.
-    placed(x, 64, 64, 1.05, Math.PI / 4, () => {
-      obj(x, polyP([[64, 6], [71, 20], [71, 84], [57, 84], [57, 20]]), STEEL, t, [57, 30], [71, 30], 0.8);
-      obj(x, rrectP(42, 84, 44, 7, 3), GOLD, t, [42, 84], [86, 91], 0.5);
-      obj(x, rrectP(60, 91, 8, 20, 3), LEATHER, t, [60, 91], [68, 111], 0.4);
-    });
-    placed(x, 60, 68, 0.8, 0, () => heaterBody(x, t));
+    // Guard: two swords crossed behind the shield, points high.
+    for (const sg of [-1, 1]) {
+      placed(x, 64, 62, 1.02, sg * Math.PI / 4, () => {
+        obj(x, polyP([[64, 4], [73, 20], [73, 84], [55, 84], [55, 20]]), STEEL, t, [55, 30], [73, 30], 0.8);
+        obj(x, rrectP(40, 84, 48, 8, 3), GOLD, t, [40, 84], [88, 92], 0.5);
+        obj(x, rrectP(59, 92, 10, 20, 3), LEATHER, t, [59, 92], [69, 112], 0.4);
+        obj(x, circleP(64, 116, 5), GOLD, t, [59, 111], [69, 121], 0.3);
+      });
+    }
+    placed(x, 64, 70, 0.66, 0, () => heaterBody(x, t));
   } else if (k === 3) {
     // Gatefall: point first into the stone, the floor breaking under it.
     x.save();
@@ -197,8 +202,8 @@ const heater: Glyph = (x, t, v) => {
       p.moveTo(sx, 6 + (i % 2) * 6);
       p.lineTo(sx + 2, 30 + (i % 2) * 6);
       x.save();
-      x.globalAlpha = 0.6 + (i % 2) * 0.2;
-      ray(x, p, t, 3);
+      x.globalAlpha = 0.8 + (i % 2) * 0.2;
+      ray(x, p, t, 4);
       x.restore();
     }
     placed(x, 64, 62, 0.8, 0.12, () => heaterBody(x, t));
@@ -377,8 +382,8 @@ function greatswordBody(x: Ctx, t: Tone): void {
 const greatsword: Glyph = (x, t, v) => {
   if (v % 2 === 1) {
     // Overhead: the arc it fell along, then the blade near the end of it.
-    energy(x, crescent(64, 70, 48, -Math.PI * 0.95, -Math.PI * 0.2, 12), t, 50, 30, 60, 0.45);
-    placed(x, 70, 60, 0.82, 0.55, () => greatswordBody(x, t));
+    energy(x, crescent(64, 72, 52, -Math.PI * 0.98, -Math.PI * 0.3, 9), t, 44, 30, 60, 0.45);
+    placed(x, 68, 62, 0.96, 0.62, () => greatswordBody(x, t));
     return;
   }
   // Ruin: driven point first into a floor that breaks.

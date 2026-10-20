@@ -90,10 +90,10 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons. (sk-knight: Knight icons) Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost. (sk-knight: effects cost) Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
@@ -110,10 +110,8 @@ the first browser check.
 
 ## Next up
 
-Milestone 5, icons: look at every Knight icon in `src/art/SkillIconArt.ts`
-(`ICON_MAP` and the glyphs it names), and repaint the ones that are shared,
-blurry or off color. Then milestone 6 (effect cost), 7 (one check-skills,
-one check-curve) and 8 (handover).
+Milestone 7: one check-skills run (check-curve is done), then
+milestone 8 (handover).
 
 ## Notes for resume
 
@@ -434,6 +432,56 @@ depth 1 and 12; recorded for the owner).
 - Gatefall replaces Phalanx; old saves get Phalanx's points back.
 - New sounds: `skill.gatefall`, `skill.gatefall.land`,
   `skill.brother.strike` (built from CC0 packs, listed in `ASSETS.md`).
+
+### Milestone 5: icons
+
+- Seven new Knight glyphs in `src/art/KnightGlyphs.ts`: `heater` (a heater
+  shield, six forms: plain, an arrow glancing off, a sword behind it,
+  falling point first, a spiked rim, blazing), `buckler`, `cuirass` (whole
+  or cloven), `slash` (draw cut, rising cut, five cuts, wide sweep),
+  `greatsword` (driven into the floor, or coming down overhead),
+  `greathelm` (silent or roaring) and `gauntlet` (clenched or pulling).
+- Every Knight skill has its own `kn-` icon key, mapped in
+  `src/art/icons/knightIcons.ts`; all 54 resolve to 54 different
+  pictures. Gone: the beast claw, the bone, the arrow, the gear and the eye.
+- Each tree has its own light (`CLASS_LOOK.warden.trees`): Bulwark cold
+  steel, Carnage blood red, Oaths the class gold. The iron frame stays.
+- The Knight's statuses (Shield Wall, Guard Stance, Fortress, Retribution)
+  use the same new pictures.
+- One contact sheet was looked at, full size and hotbar size. After it,
+  Deflect's arrow, Guard Stance's crossed swords, Overhead's blade and
+  Gatefall's streaks were made bigger; that last change was not looked at.
+
+### Milestone 6: effects and cost
+
+- Per frame the kit allocates nothing: the rush, the leap, the wave, the
+  standard and the Retribution glints reuse their vectors and burst
+  options; the steel arc pool picks a slot without closures.
+- Every burst goes through the shared particle field, which scales by the
+  quality setting, the frame budget and the pressure throttle.
+- The two new meshes (steel arcs, the standard) have stand-ins in
+  `warmup()` (`knightStandIns`), so nothing compiles on the first cast.
+
+### Milestone 7: check
+
+check-curve, once, `--classes=warden` (three seeds a cell, so a cell can
+flip on luck). Before = skillcore's "after" column; after = this kit.
+
+| Depth | Before (skillcore after) | After (this kit) |
+| --- | --- | --- |
+| 1 | FAIL: packs 2/3 (14/8/5 s), bosses 0/3 (72/119/85 s) | ok: packs 2/3 (15/9/5 s), bosses 1/3 (56/122/83 s) |
+| 5 | FAIL: packs 3/3 (5/8/15 s), bosses 0/3 (43/62/43 s) | FAIL: packs 3/3 (4/8/9 s), bosses 0/3 (62/52/38 s) |
+| 12 | FAIL: packs 2/3 (67/93/42 s), bosses 0/3 (292/90/122 s) | FAIL: packs 2/3 (106/89/47 s), bosses 0/3 (294/71/114 s) |
+| 25 | ok: packs 3/3 (14/13/111 s), bosses 1/3 (57/60/42 s) | ok: packs 3/3 (21/12/92 s), bosses 1/3 (51/76/41 s) |
+| 40 | ok: packs 3/3 (41/34/53 s), bosses 1/3 (22/47/30 s) | FAIL: packs 2/3 (35/19/45 s), bosses 0/3 (25/38/44 s) |
+
+Passing now and not before: d1. Walled now and not before: d40. Still
+walled: d5 (walled before skillcore too) and d12. Likely causes at d40:
+the heavy blows are slower (Ruin, Massacre, Earthshatter, Overhead, the
+milestone 3 table), and the standard's bonus now holds only inside its
+ring. Per the owner's rule nothing was paid back in damage and no monster
+was touched; this is for the owner to decide. The log prints the old
+CombatFeel.onKill TypeError lines skillcore already noted.
 
 ## For the owner to test
 
