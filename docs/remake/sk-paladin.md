@@ -1,6 +1,6 @@
 # Stream: sk-paladin (Wave 5: Paladin skills remake)
 
-Status: in progress
+Status: done
 
 Class: Paladin (code id `paladin`). Trees: Mace, Blade, Aura (`palMace`, `palBlade`, `palAura`). Port 4357.
 Fights with melee: maces, scepters, swords, shields (starts with a club and a buckler). Class color: candle gold (`0xe8cf96`).
@@ -97,24 +97,50 @@ the first browser check.
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
-- [ ] 7. Check. `check-skills --classes=paladin` once (one retry if it fails,
+- [x] 7. Check (sk-paladin: check and handover). `check-skills --classes=paladin` once (one retry if it fails,
   then note it) and `check-curve --classes=paladin` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+- [x] 8. Handover (sk-paladin: check and handover). Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
 
 ## Next up
 
-1. Milestone 7: `check-skills --classes=paladin` once (get-chrome first,
-   `mkdir -p shots`, flock, timeout 3500), `check-curve --classes=paladin`
-   once.
-2. Milestone 8: handover.
+Nothing: every milestone is ticked. What is left is under "For skillqa"
+and "For the owner to test".
 
 ## Notes for resume
+
+### Milestone 7: check
+
+- `check-skills --classes=paladin` (once, first try): all 32 active skills
+  cast and work; none refused, none threw, none did nothing. 23 hit for
+  damage. The 9 that show no damage are meant not to: Bar the Door and Turn
+  the Blade (guards), Tallow Light, Iron Vigil, Censer Smoke, Fervour,
+  Martyr's Vow, Writ of Ash and Consecrated Ground (vigils that heal, guard,
+  hide, quicken, curse or slow). Report in `shots/skill-audit.json` (not
+  kept in git).
+- `check-curve --classes=paladin` (once). Before is skillcore's "after"
+  column in `skillcore.md` (after the speed change, before this stream):
+
+  | depth | before (after skillcore) | now (after sk-paladin) |
+  |---|---|---|
+  | 1 | FAIL: packs 2/3 (15/12/10 s), bosses 0/3 (80/177/80 s) | ok: packs 2/3 (21/11/7 s), bosses 1/3 (81/160/73 s) |
+  | 5 | FAIL: packs 3/3 (10/12/20 s), bosses 0/3 (52/43/46 s) | FAIL: packs 3/3 (9/11/24 s), bosses 0/3 (63/55/43 s) |
+  | 12 | FAIL: packs 2/3 (9/45/29 s), bosses 0/3 (81/25/56 s) | FAIL: packs 2/3 (9/41/24 s), bosses 0/3 (89/35/54 s) |
+  | 25 | FAIL: packs 3/3 (16/13/93 s), bosses 0/3 (49/63/62 s) | FAIL: packs 3/3 (19/13/76 s), bosses 0/3 (36/50/45 s) |
+  | 40 | ok: packs 3/3 (30/20/23 s), bosses 2/3 (55/40/31 s) | ok: packs 3/3 (20/13/23 s), bosses 2/3 (56/89/18 s) |
+
+  4 of 5 walled before, 3 of 5 now; no depth is walled that was not
+  before. d1 passes again. d5 was walled even before skillcore. d5, d12
+  and d25 lose to the boss every seed: the slower swings (owner rule:
+  damage per hit stays as it was) cost the Paladin most against bosses.
+  Damage was not raised and no monster was touched: the owner decides.
+  Log: scratchpad `curve.log`. The run prints the old game-wide
+  `CombatFeel.onKill` TypeError lines (caught; see "For skillqa").
 
 ### Milestone 6: effects and cost
 
@@ -587,7 +613,25 @@ follow the speed.
 
 ## For the owner to test
 
-(empty)
+- Doorbreaker: a real run at the enemy (14 m/s), the blow on arrival, and
+  anything in the lane knocked aside. Confession Thrust lunges, Feint steps
+  to the side, Last Rites steps round behind. Rooted, a rush is refused
+  with a line that says so.
+- Tolling Bell and Consecrated Ground with their uniques worn: the toll's
+  bronze ring and the holy ring should reach visibly further.
+- The Last Hour: the great bell hangs over its target and lands on it,
+  even if it walks.
+- Hurl the Censer: the censer flies out on its chain, smoking, and is
+  reeled back.
+- Turn the Blade: a blow it turns is answered at once with its own
+  riposte.
+- Saint's Reach: a Blade cut carries on into the enemy behind.
+- The icons in all three trees: each one its own, each tree in its own
+  light (Mace bronze, Blade steel, Aura candle gold).
+- Every swing in motion: mace blows should feel heavy, blade cuts quick.
+- Your call: the Paladin still loses to the boss at depths 5, 12 and 25 in
+  the curve check (numbers under "Milestone 7: check"). Damage per hit was
+  kept as it was, by your rule.
 
 ## For skillqa
 
@@ -598,7 +642,43 @@ follow the speed.
 - Found in milestone 1, game-wide: `areaDamage` in `SkillRunner.ts` falls
   off to 65% at the edge of every nova and area, and no tooltip says so.
   The Paladin's vigils will land flat; other classes' novas are untouched.
+- Consecrated Ground's unique (`uniqueBatches/batchE.ts`) has `more: 25`,
+  but the vigil does no damage, so that part does nothing. Its `grow`
+  (radius, slow, drag) works. Someone who owns uniques should swap `more`
+  for something it can use.
+- Saint's Reach carries `carryPct` of the cut's own multiplier with no cap:
+  Mercy Stroke at x8 carries x2.4 into the enemy behind. Check it is fair.
+- Not seen in motion here: every Paladin swing, rush and look (steel arcs,
+  censer, great bell, vigil rings). No frame time was measured. The look I
+  fear most for cost is Doorbreaker's lane (a dust look every 0.05 s while
+  running), then the great bell's landing (two novas, two bursts, two
+  decals and a flash at once).
+- The curve harness prints "[feel] hit report failed TypeError: Cannot
+  convert object to primitive value" from `CombatFeel.onKill` on many kills
+  (basic swings too, so game-wide, already noted by skillcore). It is
+  caught and does not change the numbers.
+- The Paladin is still walled at d5, d12 and d25, always by the boss (see
+  "Milestone 7: check"). For the owner: damage per hit was not raised.
 
 ## Handover
 
-(empty)
+What exists now:
+
+- Rites (the Mace and Blade weapon skills): `src/scenes/paladin/Rites.ts`.
+  Every blow lands on its gesture's contact; rushes, lunges and steps are
+  carried at real speeds (`sim/Speed.ts`); flurries land on the gesture's
+  own cuts.
+- Vigils (the Aura tree): `src/scenes/paladin/Vigils.ts`. Each reads its
+  own bent knobs and radius, so the two uniques that did nothing now work.
+- Swings: `src/art/hero/gestures/paladin.ts`, one per weapon skill, with a
+  two-hander form.
+- Looks: `src/fx/paladin/` (RiteLooks, Censer, GreatBell, VigilRing),
+  warmed in `DungeonScene.warmup()`.
+- Icons: `src/art/icons/paladinIcons.ts` (pl- keys) and the new glyphs in
+  `src/art/PaladinGlyphs.ts`; each tree lit by `CLASS_LOOK.paladin.trees`.
+- Data and text: `src/data/classSkills/paladin.ts`; passives rule in
+  `src/sim/passives/paladin.ts`.
+
+Left for `finish`: the items under "For skillqa" (the dead `more` on
+Consecrated Ground's unique, the Saint's Reach carry cap, looks in motion
+and frame time) and the walls in the curve notes, for the owner.
