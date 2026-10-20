@@ -453,11 +453,35 @@ No gear = 0% cast speed. Ceiling = 210% (x1.68). Seconds per cast.
 
 ## For the owner to test
 
-(empty)
+- Inferno now hits everything in its cone, so a tick costs 12 mana (+0.7
+  per rank), 25.3 at rank 20. Say if it drains too fast.
+- Spells let go on the release frame. Mana and cooldown are paid on the
+  press, so a dodge before the release cancels the spell and the mana is
+  spent. Say if that feels unfair.
+- Splintering Frost is 20% of the dead enemy's life (+1% per rank) in 3 m
+  (+0.1 m), milder than the plan's 25% (+2%). Say if it should hit harder.
+- Forked now splits only Sparkbolt, not Ball Lightning.
+- Pyre Brand has no hit sound (no free fire recording to give it).
+- Stormstride: the new fast move. Try it into a wall and through a pack.
+- Heavy spells are slower to cast (Fireball 0.6 s, Annihilate 0.85 s,
+  Glacial Comet 0.8 s; table in milestone 3). Damage per hit is the same.
 
 ## For skillqa
 
-(empty)
+- Looks in motion were not seen: the `mg.` particles, mover wakes, impact
+  bursts, Sparkbolt's jitter and Frozen Orb's crack at the end.
+- Real frame time with many movers and brands on screen was not measured.
+  The heaviest layers draw on High and Ultra only.
+- Frozen Orb's body is still the shared cold shard, not a round orb.
+- Dragon's Breath has no gout of its own and Winter's Breath has no crystal
+  fan. Both use the shared cone plus their tree's particles.
+- Fire icons are still mostly flame variants; Sparkbolt and Chain
+  Lightning differ only by the arc.
+- In the headless curve tool, `CombatFeel.onKill` throws "Cannot convert
+  object to primitive value" on `effects.fxScale` (the tool's fake effects
+  object). It is caught and does not change results. Not Mage code.
+- Nightfall (Rogue) had hidden physical ticks like Ionize did. Ionize is
+  fixed; Nightfall is sk-rogue's.
 
 ## Handover
 
