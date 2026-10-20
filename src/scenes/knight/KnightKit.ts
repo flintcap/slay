@@ -1,5 +1,5 @@
 /**
- * SLAY — the Knight's own skill work (class id `warden`).
+ * SLAY: the Knight's own skill work (class id `warden`).
  *
  * Most Knight skills run through the shared families in `SkillRunner.cast`:
  * a blow is a `melee` swing on the skill's own gesture, a stance or a shout

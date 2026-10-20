@@ -1,5 +1,5 @@
 /**
- * SLAY — the Knight's own pictograms, spread into `GLYPHS` (`Glyphs.ts`).
+ * SLAY: the Knight's own pictograms, spread into `GLYPHS` (`Glyphs.ts`).
  *
  * Same 128-unit canvas and painting rules as the shared set: solid objects
  * in a material, caught by the tone's back light; emissive shapes for cuts

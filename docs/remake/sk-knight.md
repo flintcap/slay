@@ -1,6 +1,6 @@
 # Stream: sk-knight (Wave 5: Knight skills remake)
 
-Status: in progress
+Status: done
 
 Class: Knight (code id `warden`). Trees: Bulwark, Carnage, Oaths (`bulwark`, `carnage`, `oath`). Port 4352.
 Fights with melee: swords, axes, maces, shields (starts with a short sword and a buckler). Class color: gold (`0xc8a24a`).
@@ -98,20 +98,19 @@ the first browser check.
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
-- [ ] 7. Check. `check-skills --classes=warden` once (one retry if it fails,
+- [x] 7. Check. (sk-knight: check) `check-skills --classes=warden` once (one retry if it fails,
   then note it) and `check-curve --classes=warden` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+- [x] 8. Handover. (sk-knight: handover) Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
 
 ## Next up
 
-Milestone 7: one check-skills run (check-curve is done), then
-milestone 8 (handover).
+Nothing. The stream is done.
 
 ## Notes for resume
 
@@ -483,9 +482,35 @@ ring. Per the owner's rule nothing was paid back in damage and no monster
 was touched; this is for the owner to decide. The log prints the old
 CombatFeel.onKill TypeError lines skillcore already noted.
 
+check-skills, once (one retry; see "For skillqa"): 25 of 26 Knight
+actives fire and work. Gatefall was refused because Fortress Stance's root
+was still on from two skills earlier (the audit keeps statuses between
+skills).
+
 ## For the owner to test
 
-(empty)
+Play a Knight with a sword and shield, then again with a two-handed weapon.
+
+- Every weapon skill swings its own way. Sword and board is quick and
+  clean; a two-hander is slow and huge. Shield skills hit with the shield.
+- Shield Charge: run through a pack. Each body is hit when you reach it
+  and thrown aside.
+- Gatefall (new, where Phalanx was): leap to a spot and land shield first.
+- Whirlwind: hold it. You walk toward the cursor while you spin.
+- Massacre: five cuts, each one lands on its own cut.
+- Banner of the Gate: a real standard goes into the floor. Its bonus works
+  only inside its ring. Sworn Brother, a ghost in armour, rises beside it.
+- Taunting Roar drags the pack in to you.
+- Guard Stance stays up until you press it again. Fortress Stance roots
+  you, and nothing can stun or knock you back.
+- Blood Tide: kill a bleeding enemy and its bleeds jump to the ones near.
+- The Last Order: any shout also lets loose every oath you have sworn.
+- An old save with Phalanx gets those points back.
+- Icons: every skill has its own picture. Bulwark is steel, Carnage red,
+  Oaths gold.
+- To decide: the Knight is walled at depths 5, 12 and 40 (milestone 7
+  table). Your rule says no damage raise for slower swings, so nothing was
+  paid back.
 
 ## For skillqa
 
@@ -494,7 +519,44 @@ CombatFeel.onKill TypeError lines skillcore already noted.
   skill without an authored buff (`SELF_POWER` or `SELF_BUFF_STATUS`)
   leaves a blank placeholder buff on its caster, other classes too. The
   Knight will skip it for its own skills only.
+- Not seen in motion: every new Knight gesture (`gestures/knight.ts`,
+  sword and board and two-hander), the Whirlwind walk, the Shield Charge
+  run, the Gatefall arc and landing, Massacre's five cuts, the standard,
+  the steel arcs and Sworn Brother's ghost look.
+- Retribution's stored charge shows as gold glints at the shield (faster
+  and brighter as it fills), not as a glowing shield mesh.
+- Frame time not measured. Possible cost: the standard (three see-through
+  lit materials that cast shadows) and Earthshatter (a crack decal and two
+  bursts every metre of its 12 m line).
+- Tools changed outside my files: `tools/skillsound-entry.ts` lets the
+  leap family have a hit sound (Gatefall sounds where it lands);
+  `tools/rankpower-entry.ts` runs a few frames before reading turrets, as
+  the banner now raises Sworn Brother on the release frame.
+- check-skills, once: 25 of 26 actives fire and work, and every damage skill hits.
+  Gatefall was refused, but only because the audit does not clear statuses
+  between skills: Fortress Stance, two skills earlier, still had the Knight
+  rooted, and a rooted Knight cannot leap (on purpose). check-rankpower
+  casts Gatefall in the sim, and it lands and grows each rank. Please run
+  Gatefall on its own, or clear statuses between skills in the audit
+  (`scenes/debug.ts`). The first run was cut off by my own time limit
+  while it waited for the browser lock; the one retry is the result above.
 
 ## Handover
 
-(empty)
+What exists now:
+
+- Gestures: `src/art/hero/gestures/knight.ts` (every Knight skill, with a
+  two-hander form; shield work strikes from the shield side).
+- Skill work beyond the shared families: `src/scenes/knight/KnightKit.ts`
+  (Shield Charge, Gatefall, Massacre, Gorefeast, War Stomp, Earthshatter,
+  the standard, Whirlwind's walk, Taunting Roar's pull, The Last Order,
+  Riposte, Retribution, Blood Tide), wired in `SkillRunner` and
+  `DungeonScene`.
+- Looks: `src/fx/knight/KnightFX.ts` (steel arcs, the standard), warmed in
+  `warmup()`.
+- Icons: `src/art/KnightGlyphs.ts`, `src/art/icons/knightIcons.ts`.
+- Data: the Knight sections of `src/data/skills.ts`, `skillPower.ts`,
+  `classSkills/knightStatuses.ts`; sounds in `audio/SkillSounds.ts`.
+
+Left for `finish`: watch every Knight skill in motion, the owner's call on
+the curve (depths 5, 12 and 40), and the shared aoe junk buff above.

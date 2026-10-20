@@ -1,5 +1,5 @@
 /**
- * SLAY — the Knight's own looks (class id `warden`).
+ * SLAY: the Knight's own looks (class id `warden`).
  *
  * The Knight's skills are steel, blood, dust and broken floor, never a
  * glowing sigil (the owner's call for weapon skills). Most of what they draw

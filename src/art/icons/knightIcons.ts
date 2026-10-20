@@ -1,5 +1,5 @@
 /**
- * SLAY — the Knight's skill icons: icon key -> 'glyph[:variant]^modifier',
+ * SLAY: the Knight's skill icons: icon key -> 'glyph[:variant]^modifier',
  * the same grammar as `ICON_MAP` in `art/SkillIconArt.ts`, which spreads this in.
  * Every key starts `kn-` so no other class's icon can be picked up by mistake,
  * and no two Knight skills share a picture. His own glyphs (`heater`,
