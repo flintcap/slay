@@ -39,7 +39,7 @@ import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './Shifter
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
-import { castRogue, clearRogue, mirrorStrike, ROGUE_MOVES, tickRogue, type CloneBody, type RogueHost } from './rogue/RogueMoves';
+import { castRogue, clearRogue, mirrorStrike, rogueLook, ROGUE_MOVES, tickRogue, type CloneBody, type RogueHost } from './rogue/RogueMoves';
 import { KnightKit, knightBlow, knightUnlit, type KnightCast } from './knight/KnightKit';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 import { atRank, boostRank } from '../fx/kit/Boost';
@@ -646,6 +646,10 @@ export class SkillRunner {
     this.rogueHost = {
       effects,
       land: (t, packet, kind, fromX, fromZ, world) => this.landRite(t, packet, kind, fromX, fromZ, world),
+      strike: (t, packet, kind, fromX, fromZ, w) => {
+        this.caster = w.player;
+        return this.strike(t, packet, w.ctx, kind, fromX, fromZ);
+      },
       area: (centre, radius, packet, w, kind) => {
         this.caster = w.player;
         return this.areaDamage(centre, radius, packet, w.ctx, w.enemies, w.boss, kind);
@@ -670,6 +674,7 @@ export class SkillRunner {
       },
       clones: () => this.cloneBodies(),
       now: () => this.runTime,
+      hero: () => this.caster ?? this.keeper,
     };
     this.knight = new KnightKit({
       ...this.vigilHost,
@@ -1215,7 +1220,7 @@ export class SkillRunner {
           world: { ctx, enemies, boss, player },
           packet: makePacket,
           blowPacket: dual ? (m = 1) => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket,
-          num, school, color, actTime, clip: own ?? clip, hitSound: sound.hit, shed: sig.trail,
+          num, school, color, actTime, clip: own ?? clip, hitSound: sound.hit, shed: sig.trail, burst: sig.emitter, density: sig.density,
           critX: Math.max(100, player.stats.critDamage) / 100,
         });
       } else switch (family) {
@@ -2087,18 +2092,6 @@ export class SkillRunner {
               if (this.strike(t, pk, ctx, 'proc', at.x, at.z)) dealt += left;
             }
           }
-          // Envenom Burst: every poison stack in reach goes off at once, for a
-          // share of all it had left to deal.
-          if (def.effect === 'detonate.dot') {
-            const pct = num('pctPerStack', 45) + num('perRank', 6) * Math.max(0, rank - 1);
-            for (const t of this.allTargets(enemies, boss)) {
-              if (t.life <= 0 || this.groundDistance(t.root.position, at) > radius + t.hitRadius) continue;
-              const left = t.drainStatus('poisoned') * pct / 100;
-              if (left <= 0) continue;
-              const pk: DamagePacket = { amount: left, type: 'poison', crit: false, source: 'player', ability: def.name };
-              if (this.strike(t, pk, ctx, 'proc', at.x, at.z)) dealt += left;
-            }
-          }
           // Gorefeast drinks what it tears open: a share of the burst, more a rank.
           const drink = num('healPct', 0) + num('healPerRank', 0) * Math.max(0, rank - 1);
           if (drink > 0 && dealt > 0) player.heal(dealt * drink / 100);
@@ -2173,8 +2166,12 @@ export class SkillRunner {
         }
       }
       if (kc) this.knight.after(kc);
+      // The Rogue's own looks over his family's drawing (`rogue/RogueMoves.ts`).
+      rogueLook(this.rogueHost, { def, player, aim: target, dir, actTime, num });
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
-      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, player.contactIn, num('radius', 2.5));
+      // A Rogue throw's motif lands with the throw, on its release frame.
+      const lands = ROGUE_MOVES.has(def.id) ? Math.max(player.contactIn, player.releaseIn) : player.contactIn;
+      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, lands, num('radius', 2.5));
     } finally {
       this.effects.endQuiet();
       this.casting = false;
@@ -3007,7 +3004,7 @@ export class SkillRunner {
               t.root.position.clone().setY(1.1),
               mark.root.position.clone().setY(1.1),
               {
-                element: 'physical', color: PHANTOM_BLADE, shape: 'knife', speed: 30, size: 0.3, trail: 'thrown',
+                element: 'physical', color: PHANTOM_BLADE, shape: 'phantom', speed: 30, size: 0.3, trail: 'thrown', shed: 'rg.phantomwake',
                 onHit: () => {
                   if (victim.life <= 0 || !hero.alive) return;
                   this.caster = hero;

@@ -17,8 +17,8 @@ export const SOLID = {
   blade: 5, thorn: 6, crystal: 7, cinder: 8, fang: 9, saw: 10, feather: 11,
   // Thrown weapons.
   buckler: 12,
-  // The Rogue's thrown things: a venom needle, a glass vial.
-  needle: 13, vial: 14,
+  // The Rogue's thrown things: a venom needle, a glass vial, a phantom blade.
+  needle: 13, vial: 14, phantom: 15,
 } as const;
 export type SolidShape = keyof typeof SOLID;
 
@@ -119,6 +119,32 @@ function bladeGeo(): THREE.BufferGeometry {
   grip.rotateX(Math.PI / 2);
   grip.translate(0, 0, -0.3);
   const parts = [tint(edge, 0xc8ccd4), tint(tip, 0xe0e4ea), tint(guard, 0x9a7a3a), tint(grip, 0x2a1c14)];
+  const g = mergeGeometries(parts, false)!;
+  for (const q of parts) q.dispose();
+  return g;
+}
+
+/**
+ * A Phantom Blade: a knife of ghost steel, pale in the body with the class
+ * green along both edges, its grip fading out. Drawn unlit: it gives light.
+ */
+function phantomGeo(): THREE.BufferGeometry {
+  const body = new THREE.BoxGeometry(0.05, 0.01, 0.5);
+  body.translate(0, 0, 0.12);
+  const edgeL = new THREE.BoxGeometry(0.012, 0.012, 0.5);
+  edgeL.translate(-0.031, 0, 0.12);
+  const edgeR = new THREE.BoxGeometry(0.012, 0.012, 0.5);
+  edgeR.translate(0.031, 0, 0.12);
+  const tip = new THREE.ConeGeometry(0.05, 0.16, 4);
+  tip.rotateX(Math.PI / 2);
+  tip.scale(1, 0.25, 1);
+  tip.translate(0, 0, 0.46);
+  const guard = new THREE.BoxGeometry(0.14, 0.025, 0.025);
+  guard.translate(0, 0, -0.15);
+  const grip = new THREE.CylinderGeometry(0.02, 0.024, 0.24, 6);
+  grip.rotateX(Math.PI / 2);
+  grip.translate(0, 0, -0.28);
+  const parts = [tint(body, 0xd4ece2), tint(edgeL, 0x58e8a0), tint(edgeR, 0x58e8a0), tint(tip, 0xf0fff8), tint(guard, 0x8ad8b0), tint(grip, 0x2e5a46)];
   const g = mergeGeometries(parts, false)!;
   for (const q of parts) q.dispose();
   return g;
@@ -287,7 +313,10 @@ export class SolidPool {
     // so it draws with a shader already built. The needle shares the knife's
     // (vertex-coloured steel); the vial the fang's pale venom glow.
     mats.push(mats[0]!, mats[5]!, mats[9]!);
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo()];
+    // The phantom blade: ghost steel, unlit and see-through (its stand-in
+    // warms it with the rest).
+    mats.push(new THREE.MeshBasicMaterial({ vertexColors: true, color: new THREE.Color(1.3, 1.3, 1.3), transparent: true, opacity: 0.8, depthWrite: false }));
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

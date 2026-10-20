@@ -2,10 +2,13 @@
  * SLAY — the Rogue's moves that the shared families could not time.
  *
  * Throws that leave the hand on its release frame (Venom Dart, Plague Vial,
- * Fan of Knives, Throwing Spree), a dash that cuts what it passes (Razor
- * Dash), the escape (Vanish), the knives that circle you (Knife Halo), the
- * dance round one enemy (Steel Waltz), and the clones answering your blows
- * (Mirror Gambit).
+ * Fan of Knives, Throwing Spree), the threads torn out of the poisoned
+ * (Envenom Burst), a dash that cuts what it passes (Razor Dash), the escape
+ * (Vanish), the knives that circle you (Knife Halo), the dance round one
+ * enemy (Steel Waltz), and the clones answering your blows (Mirror Gambit).
+ * `rogueLook` draws the Rogue's own looks over skills the shared families
+ * run (Death Lotus, Nightfall), and `tickRogue` drips the coated blades
+ * (`fx/rogue/RogueFX.ts`).
  *
  * `SkillRunner.cast` hands a skill in `ROGUE_MOVES` to `castRogue`, with a
  * small host that lands blows through the runner's own pipeline (passives,
@@ -26,6 +29,7 @@ import type { EffectSystem, School } from '../../fx/Effects';
 import type { SolidHandle } from '../../fx/kit/Solids';
 import { travelTime } from '../../sim/Speed';
 import { tr } from '../../core/I18n';
+import { clearRogueFX, envenomThread, lotusPetal, nightfallCurtain, tickRogueFX } from '../../fx/rogue/RogueFX';
 
 type Target = Enemy | Boss;
 
@@ -53,6 +57,11 @@ export interface RogueHost {
   readonly effects: EffectSystem;
   /** Lands one tuned blow on one target. Returns the packet that landed (amount 0 on a miss). */
   land(t: Target, packet: DamagePacket, kind: HitKind, fromX: number, fromZ: number, world: RogueWorld): DamagePacket;
+  /**
+   * Lands damage already reckoned (a poison stack going off), with no
+   * passives on top. True when it landed.
+   */
+  strike(t: Target, packet: DamagePacket, kind: HitKind, fromX: number, fromZ: number, world: RogueWorld): boolean;
   /** A blow on everything within `radius` of `centre`; returns what it dealt. */
   area(centre: THREE.Vector3, radius: number, packet: (m?: number) => DamagePacket, world: RogueWorld, kind?: HitKind): number;
   /** The nearest target within `radius` of `at` takes one blow. */
@@ -81,6 +90,8 @@ export interface RogueHost {
   clones(): Iterable<CloneBody>;
   /** Seconds since the run began, the runner's clock. */
   now(): number;
+  /** The hero who cast last, for what their body shows (the coated blades). */
+  hero(): Player | null;
 }
 
 /** One press of a Rogue move. */
@@ -107,13 +118,16 @@ export interface RogueCast {
   hitSound: string | null;
   /** The skill's particle wake for what it throws. */
   shed?: string;
+  /** The skill's own burst (`fx/SkillLooks.ts`) and how thick it is drawn. */
+  burst: string;
+  density: number;
   /** Critical damage multiplier, for a blow that must crit. */
   critX: number;
 }
 
 /** Skills `castRogue` runs. */
 export const ROGUE_MOVES: ReadonlySet<string> = new Set([
-  'venomDart', 'plagueVial', 'fanOfKnives', 'throwingSpree', 'whirlingBlades', 'vanish', 'knifeHalo', 'steelWaltz',
+  'venomDart', 'plagueVial', 'envenomBurst', 'fanOfKnives', 'throwingSpree', 'whirlingBlades', 'vanish', 'knifeHalo', 'steelWaltz',
 ]);
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -245,6 +259,44 @@ function plagueVial(r: RogueCast, host: RogueHost): void {
         const dealt = host.area(p.setY(0), splash, r.packet, r.world);
         if (dealt > 0) host.sound(r.hitSound, p.x, p.z);
       },
+    });
+  });
+}
+
+/** Seconds a thread takes to reel in from a body to the burst. */
+const REEL = 0.18;
+
+/**
+ * Envenom Burst: with the yank of the fist, a thread of venom tears out of
+ * every Poisoned enemy in reach of the aimed point and is reeled into it.
+ * As the threads arrive the point bursts, and every Poisoned stack in reach
+ * goes off at once for a share of all it had left to deal.
+ */
+function envenomBurst(r: RogueCast, host: RogueHost): void {
+  const { player, num, rank } = r;
+  const at = r.aim.clone().setY(0);
+  player.beginAction(r.clip, r.actTime, undefined, { release: true });
+  host.atRelease(player, () => {
+    const radius = num('radius', 3);
+    let reel = 0;
+    for (const t of targets(r.world)) {
+      const p = t.root.position;
+      if (!t.hasStatus('poisoned') || Math.hypot(p.x - at.x, p.z - at.z) > radius + t.hitRadius) continue;
+      envenomThread(host.effects, p.x, p.y + 1 + t.hitRadius * 0.5, p.z, at.x, 0.9, at.z, REEL, t.stacksOf('poisoned'));
+      reel = REEL;
+    }
+    host.later(reel, () => {
+      host.effects.explosion(at.x, 0.8, at.z, { radius, element: r.school, color: r.color });
+      host.effects.nova(at.x, at.z, radius, { element: r.school, color: r.color, emitter: r.burst, density: r.density });
+      host.area(at, radius, r.packet, r.world);
+      const pct = num('pctPerStack', 45) + num('perRank', 6) * Math.max(0, rank - 1);
+      for (const t of targets(r.world)) {
+        const p = t.root.position;
+        if (Math.hypot(p.x - at.x, p.z - at.z) > radius + t.hitRadius) continue;
+        const left = (t.drainStatus('poisoned') * pct) / 100;
+        if (left <= 0) continue;
+        host.strike(t, { amount: left, type: 'poison', crit: false, source: 'player', ability: r.def.name }, 'proc', at.x, at.z, r.world);
+      }
     });
   });
 }
@@ -432,6 +484,7 @@ export function castRogue(host: RogueHost, r: RogueCast): void {
   switch (r.def.id) {
     case 'venomDart': return venomDart(r, host);
     case 'plagueVial': return plagueVial(r, host);
+    case 'envenomBurst': return envenomBurst(r, host);
     case 'fanOfKnives': return fanOfKnives(r, host);
     case 'throwingSpree': return throwingSpree(r, host);
     case 'whirlingBlades': return razorDash(r, host);
@@ -439,6 +492,68 @@ export function castRogue(host: RogueHost, r: RogueCast): void {
     case 'knifeHalo': return knifeHalo(r, host);
     case 'steelWaltz': return steelWaltz(r, host);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Looks over the shared families
+// ---------------------------------------------------------------------------
+
+/** A Rogue skill the shared families ran, for its own look on top. */
+export interface RogueLook {
+  def: SkillDef;
+  player: Player;
+  /** Where the press aimed, on the floor. */
+  aim: THREE.Vector3;
+  /** Facing toward the aim, flat, unit. */
+  dir: THREE.Vector3;
+  /** Seconds this use takes. */
+  actTime: number;
+  num: (key: string, dflt: number) => number;
+}
+
+/** Draws what a Rogue skill shows of its own over its family's drawing (`fx/rogue/RogueFX.ts`). */
+export function rogueLook(host: RogueHost, l: RogueLook): void {
+  switch (l.def.id) {
+    case 'deathLotus': return lotusLook(host, l);
+    case 'nightfall': return nightfallLook(host, l);
+  }
+}
+
+/**
+ * Death Lotus: a petal on the floor with each cut, on the gesture's cuts as
+ * the runner lands them. The first turn lays a cross, the second the
+ * diagonals between, so the lotus is whole on the last cut.
+ */
+function lotusLook(host: RogueHost, l: RogueLook): void {
+  const { player, num } = l;
+  const hits = Math.max(1, Math.floor(num('hits', 8)));
+  const reach = num('reach', num('radius', 2.3));
+  const first = player.contactIn;
+  const cuts = host.cutTimes(l.def.id, l.actTime, first);
+  const gap = Math.min(0.08, (l.actTime * 0.8) / hits);
+  const id = player.actionId;
+  const yaw0 = Math.atan2(l.dir.x, l.dir.z);
+  const turns = Math.ceil(hits / 4);
+  for (let i = 0; i < hits; i++) {
+    // The same keys the runner lands the blows on (`SkillRunner.cast`, melee).
+    const at = i === 0 ? 0 : !cuts ? gap * i : cuts.length === hits - 1 ? cuts[i - 1]! : (cuts[cuts.length - 1]! * i) / (hits - 1);
+    const yaw = yaw0 + (Math.PI / 2) * ((i % 4) + 1) + (Math.floor(i / 4) * (Math.PI / 2)) / turns;
+    host.later(first + at, () => {
+      if (player.actionId !== id || !player.alive) return;
+      lotusPetal(host.effects, player.position.x, player.position.z, yaw, reach);
+    });
+  }
+}
+
+/** Nightfall's hands come down on its gesture's contact key (`gestures/rogue.ts`), this share in. */
+const NIGHTFALL_DROP = 0.4;
+
+/** Nightfall: the curtain of shadow falls as the hands come down. */
+function nightfallLook(host: RogueHost, l: RogueLook): void {
+  const x = l.aim.x;
+  const z = l.aim.z;
+  const radius = l.num('radius', 9);
+  host.later(l.actTime * NIGHTFALL_DROP, () => nightfallCurtain(host.effects, x, z, radius));
 }
 
 // ---------------------------------------------------------------------------
@@ -501,8 +616,9 @@ function dashCut(host: RogueHost, d: Dash, t: Target): void {
   }
 }
 
-/** Cuts what the dash reaches; turns the halo; carries the waltz. */
+/** Cuts what the dash reaches; turns the halo; carries the waltz; drips the coated blades. */
 export function tickRogue(host: RogueHost, dt: number): void {
+  tickRogueFX(host.effects, host.hero(), dt);
   for (let i = dashes.length - 1; i >= 0; i--) {
     const d = dashes[i]!;
     d.left -= dt;
@@ -570,4 +686,5 @@ export function clearRogue(host: RogueHost): void {
   halos.length = 0;
   dashes.length = 0;
   glides.length = 0;
+  clearRogueFX();
 }
