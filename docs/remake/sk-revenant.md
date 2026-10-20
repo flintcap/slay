@@ -73,7 +73,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. Build. (sk-revenant: build) Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -109,20 +109,13 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 3 are done. Milestone 4 is half built and pushed: fear
-and confusion really work (`AI.ts`, `Enemy.ts`), Attrition has its own
-status, Marrow Feast heals the minions, Death Knight multiplies, Harvest is
-order proof, Hex Upon Hex works (`SkillRunner.hexMul`), every rename and
-tooltip is in, Gravewalk and Hex Upon Hex have their data, sound, motif,
-gesture; the Bone Chanter is ranged in a conjurer's body, the Colossus a
-bone titan, knights an armoured body; summons rise at the aim point, a
-thrall out of a corpse. Still to build in milestone 4, in a new module
-`src/scenes/revenant/RevenantKit.ts` (like `mage/Spells.ts`): Femur Lance
-striking as it passes, Hunting Skull homing, Bone Cage (one hit, root, no
-field), Doom and Soul Cage on one target, Gravewalk itself; then in the
-runner Plagued hopping (spread tick) and the zone cap keeping auras. Then
-milestones 5 (icons) and 6 (looks). The plan is under "Milestone 2" below,
-the speeds under "Milestone 3".
+Milestones 1 to 4 are done (what was built is under "Milestone 4" below).
+Next is milestone 5, icons: a glyph and modifier of its own for every one
+of the 54 Revenant skills in `ICON_MAP` (`src/art/SkillIconArt.ts`), no
+two alike, with each tree's own accent; `hex` and `gravewalk` are stand-ins
+today. Then milestone 6, looks (Bone Storm's orbit, Soul Tether's chains,
+Revenant Form's body, the Hunting Skull's skull, Bone Cage's ribs,
+Gravewalk's hands, warm-up stand-ins), 7 checks, 8 handover.
 
 ## Notes for resume
 
@@ -422,6 +415,51 @@ Hex, Harvest order, Death Knight), `DungeonScene.ts` (Attrition status,
 Long Decline tick name, `warmup()` stand-ins), `data/statuses.ts` (the
 `attrition` status), `fx/BodyFX.ts` (Revenant Form look), and the zone cap
 in `SkillRunner.addZone` (auras kept, pools evicted first).
+
+### Milestone 4: what was built
+
+Checked by a scratch run on real monsters (headless), and all eight fast
+checkers pass.
+
+- New module `src/scenes/revenant/RevenantKit.ts`, called from `castNow`
+  next to the Mage's spells with the same `SpellCast` and host: Femur Lance
+  flies as a mover and strikes each body as it passes it (hits at 0.25,
+  0.45, 0.67 s on bodies 3, 8 and 13 m out); Hunting Skull homes on its mark
+  (`homing`, `target`) and turns on the nearest enemy within 12 m if the
+  mark dies; Bone Cage is one hit and a root of exactly its time, the field
+  only drawn for that time; Doom brands one enemy (Doomed lasts the fuse),
+  jumps to the nearest within 8 m keeping its time, and its burst replays
+  the cast recording; Soul Cage holds one enemy; Gravewalk sinks on the
+  release frame, rises up to 8 m on (walls and props stop it), Grasps and
+  hits what is within 3 m and heals 3% of life for each.
+- Fear and confusion: `AI.think` makes the feared run (9 m off) and start
+  nothing, the confused go for the nearest other monster, whose blows land
+  through `Enemy.tickConfusion`. Bosses and fixated monsters excepted.
+  `Enemy.applyStatuses` no longer pins a feared or confused body (both are
+  `control` holds, which set `rootTimer`; that is why Terror never ran).
+  This also makes the Knight's Intimidate fear work.
+- Attrition lays its own status (`attrition`: resistances and attack
+  speed), Marrow Feast heals the minions, Death Knight multiplies, Harvest
+  runs last (`RUN_LAST`), The Long Decline's tick carries its name.
+- Hex Upon Hex: `SkillRunner.hexMul` in `tune`, and `hexed` for melee
+  minion blows (which skip `tune`); `Enemy.countStatuses`.
+- Summons: a point summon rises at the aim (up to 12 m, Grand Ossuary
+  14 m), a Bone Thrall out of a corpse near the aim (the body is used up);
+  hits read `damagePct`; Bone Chanter is ranged in the `bone_conjurer`
+  body with a staff, its bolt lobs and lands; Grand Ossuary's wardens are
+  melee; Charnel Colossus is the `grave_titan` body in bone and teal;
+  knights rise in the `gravebound_knight` body (`ELITE_MONSTER`), Death
+  Knights in dark steel with witchfire; the scene warms the knight body.
+- Plagued hops every 2 s to the nearest clean enemy within 4 m with the
+  time it has left (`SkillRunner.plagueTick`, in the spread tick). This is
+  every Plagued, so the Rogue's Plague Vial spreads now too, as its status
+  text always said.
+- The zone cap (12) drops the oldest floor field first, never an aura that
+  walks with the hero.
+- Names, tooltips (all true to the code), Hex Upon Hex and Gravewalk data,
+  synergies, requirements, unique bend words, minion names, strings.
+- `tools/rankpower-entry.ts`: Reassemble's test lets the raise land on its
+  release frame before hurting the thralls (it read x1.00 since milestone 3).
 
 ### Milestone 3: speed audit (skillcore's model, `sim/Speed.ts`)
 
