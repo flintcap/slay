@@ -118,6 +118,45 @@ the first browser check.
 
 ## Notes for resume
 
+### Milestone 7: checks
+
+Curve (`check-curve --classes=shadowblade`, run once, for information).
+"Skillcore after" is skillcore's last run (the Rogue before this stream);
+"now" is this stream's head. Seconds per fight, "bosses n/3" is bosses
+won.
+
+| Depth | Skillcore after | Now |
+|---|---|---|
+| d1 (L4) | ok: packs 2/3 (8/5/5 s), bosses 2/3 (28/49/28 s) | ok: packs 3/3 (18/7/5 s), bosses 1/3 (35/57/29 s) |
+| d5 (L8) | ok: packs 3/3 (4/5/6 s), bosses 2/3 (41/26/16 s) | **FAIL**: packs 3/3 (5/5/13 s), bosses 0/3 (22/21/17 s, hero died), pots 4 |
+| d12 (L16) | ok: packs 3/3 (24/15/8 s), bosses 3/3 (50/22/20 s) | ok: packs 3/3 (23/15/8 s), bosses 3/3 (52/27/54 s) |
+| d25 (L28) | ok: packs 3/3 (10/6/31 s), bosses 1/3 (63/72/11 s) | ok: packs 3/3 (10/6/19 s), bosses 2/3 (42/32/19 s) |
+| d40 (L41) | FAIL: packs 2/3 (54/18/13 s), bosses 0/3 (23/60/61 s) | FAIL: packs 3/3 (53/18/17 s), bosses 0/3 (26/51/43 s) |
+
+Skillcore's "before" (the Rogue before skillcore) at d5 was ok: packs 3/3
+(4/3/7 s), bosses 2/3 (20/25/11 s).
+
+For the owner to decide:
+- d5 is newly walled: all three bosses (Ylph, Ylph, Pell Dunmarrow, with
+  elites, hardened and gloom on the floor) kill the hero in about 20 s. The
+  likely cause is the slower big blows (Death Lotus, Assassinate, Umbral
+  Ambush, Scissor Cut now take their full swings, as the owner asked).
+  Damage per hit was not raised and monsters were not touched.
+- d40 is still walled, as skillcore recorded (packs now 3/3 instead of
+  2/3; bosses still 0/3).
+- d1, d12 and d25 pass; d25 wins one more boss than before.
+
+The curve log also prints "[feel] hit report failed TypeError: Cannot
+convert object to primitive value" many times. It comes from the curve
+sim's stand-in for the combat feel (`CombatFeel.onKill`), is caught, and
+does not change damage; skillcore's curve log has it too.
+
+Cheap checkers: i18n, iconmatch, names, passives, skilldepth, stattext,
+status, wiring pass (with unique, vfx, coverage, hits, rankpower,
+skillparams and skillsound from milestone 6). `unfinished` fails on two
+statuses no code applies (`static`, `rent`); both are older than this
+stream (`rend: 'rent'` was dropped in 19b230f) and not Rogue statuses.
+
 ### Milestone 6: what was built
 
 - `src/fx/rogue/RogueFX.ts` (new): the Rogue's `rg.` emitters on the
