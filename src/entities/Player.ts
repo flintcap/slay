@@ -454,8 +454,10 @@ export class Player {
    * a beat in, because the game resolves it on the press; with
    * `opts.release` it releases on the gesture's own frame instead
    * (`releaseDelay`), and the caller waits for it (`SkillRunner.atRelease`).
+   * `opts.releaseShare` sets that frame as a share of the action instead, for
+   * a heavy draw held longer than a plain one (kept short of the recovery).
    */
-  beginAction(clip: string, duration: number, side?: 'L' | 'R', opts: { release?: boolean } = {}): void {
+  beginAction(clip: string, duration: number, side?: 'L' | 'R', opts: { release?: boolean; releaseShare?: number } = {}): void {
     if (this.keepAction && this.actionLock > 0) return;
     this.carryLeft = 0;
     this.spinLeft = 0;
@@ -463,7 +465,12 @@ export class Player {
     this.actionTotal = duration;
     this.actionSerial++;
     this.contactAt = contactDelay(clip, duration);
-    this.releaseAt = this.contactAt > 0 ? 0 : releaseDelay(duration, opts.release ?? false);
+    const share = opts.releaseShare;
+    this.releaseAt = this.contactAt > 0
+      ? 0
+      : share !== undefined
+        ? Math.max(0, duration) * Math.min(Player.RECOVERY_CANCEL_AT - 0.05, Math.max(0, share))
+        : releaseDelay(duration, opts.release ?? false);
     this.moveTarget = null;
     this.animator.play(clip, {
       fade: 0.08,

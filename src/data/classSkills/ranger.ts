@@ -367,7 +367,7 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'closeGrouping', name: tr('Close Grouping'),
-    desc: tr('When more than one arrow of a single loose strikes the same enemy, each after the first deals +10% damage (+2% per rank).'),
+    desc: tr('When more than one arrow from a single use of a skill strikes the same enemy, each after the first deals +10% damage (+2% per rank).'),
     tier: 4, col: 2, icon: 'rn-close-grouping', req: ['endlessQuiver'],
     p: { pct: 10, pctPerRank: 2 },
   },

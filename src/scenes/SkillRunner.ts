@@ -42,6 +42,8 @@ import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
 import { RevenantKit } from './revenant/RevenantKit';
 import { castRogue, clearRogue, mirrorStrike, rogueLook, ROGUE_MOVES, tickRogue, type CloneBody, type RogueHost } from './rogue/RogueMoves';
 import { KnightKit, knightBlow, knightUnlit, type KnightCast } from './knight/KnightKit';
+import { basicShot, castRanger, clearRanger, RANGER_BOW, RANGER_MOVES, tickRanger } from './ranger/RangerMoves';
+import type { RangerHost } from './ranger/RangerTypes';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 import { atRank, boostRank } from '../fx/kit/Boost';
 import { tr } from '../core/I18n';
@@ -230,7 +232,6 @@ export function isDualWielding(player: Player): boolean {
  */
 const SELF_BUFF_STATUS: Record<string, string> = {
   veil: 'veiled',
-  camouflage: 'veiled',
   vanish: 'veiled',
   shieldWall: 'shieldWall',
   fortressStance: 'fortress',
@@ -333,8 +334,6 @@ const SKILL_STATUS: Record<string, string> = {
 
   // Traps and impacts
   snareTrap: 'rooted',
-  thornBarrier: 'slowed',
-  spikeTrap: 'bleeding',
 };
 
 /**
@@ -710,6 +709,25 @@ export class SkillRunner {
       now: () => this.runTime,
       hero: () => this.caster ?? this.keeper,
     };
+    this.rangerHost = {
+      effects,
+      land: (t, packet, kind, fromX, fromZ, world, sure) => this.landShot(t, packet, kind, fromX, fromZ, world, sure ?? false),
+      strike: (t, packet, kind, fromX, fromZ, w) => {
+        this.caster = w.player;
+        return this.strike(t, packet, w.ctx, kind, fromX, fromZ);
+      },
+      clear: (from, dir, max, ctx, radius) => this.wallStop(from, dir, max, ctx, radius),
+      later: (seconds, fn) => this.pendingSwings.push({ rank: boostRank(), t: seconds, run: fn }),
+      atRelease: (player, fn) => this.atRelease(player, fn),
+      cutTimes: (skillId, span, first) => cutTimes(skillId, span, first),
+      sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
+      buff: (player, def, rank, num, color) => this.applyBuff(player, def, rank, num, color),
+      cleanse: (player) => this.rogueHost.cleanse(player),
+      skillPacket: (player, skillId, ctx) => this.packetFor(player, skillId, ctx),
+      live: () => this.tickCtx,
+      now: () => this.runTime,
+      hero: () => this.caster ?? this.keeper,
+    };
     this.knight = new KnightKit({
       ...this.vigilHost,
       proc: (t, packet, ctx, fromX, fromZ) => this.strike(t, packet, ctx, 'proc', fromX, fromZ),
@@ -750,6 +768,65 @@ export class SkillRunner {
 
   /** What the Rogue's moves borrow from the runner (`rogue/RogueMoves.ts`). */
   private readonly rogueHost: RogueHost;
+  /** What the Ranger's moves borrow from the runner (`ranger/RangerMoves.ts`). */
+  private readonly rangerHost: RangerHost;
+  /** The blow being landed cannot miss (a volley from the sky, a shaft down a line): `lands` skips the roll. */
+  private sureHit = false;
+
+  /**
+   * One Ranger blow on one target, through the whole hit pipeline. Like
+   * `landRite` without the melee impact (an arrow draws its own), and with
+   * `sure` skipping the attack roll.
+   */
+  private landShot(t: Target, packet: DamagePacket, kind: HitKind, fromX: number, fromZ: number, world: { ctx: CombatContext; enemies: Enemy[]; boss: Boss | null; player: Player }, sure: boolean): DamagePacket {
+    this.caster = world.player;
+    const tuned = this.tune(packet, t);
+    const was = this.sureHit;
+    this.sureHit = sure;
+    let landed: boolean;
+    try {
+      landed = this.strike(t, tuned, world.ctx, kind, fromX, fromZ);
+    } finally {
+      this.sureHit = was;
+    }
+    if (!landed) return { ...tuned, amount: 0, crit: false };
+    this.afterHit(tuned, t, world.ctx, world.enemies, world.boss);
+    return tuned;
+  }
+
+  /**
+   * A fresh packet maker for another of the hero's skills at its own rank and
+   * synergies, riders on (Lay of the Land's Spike Traps). Null unlearned.
+   */
+  private packetFor(player: Player, skillId: string, ctx: CombatContext): ((mult?: number) => DamagePacket) | null {
+    const def = SKILL_BY_ID[skillId];
+    const rank = skillRank(player.character, skillId);
+    if (!def || rank <= 0) return null;
+    const params = def.params ?? {};
+    const bend = bendFor(player.character, def.id);
+    const num = (k: string, d: number): number => {
+      const v = params[k];
+      return bentKnob(bend, k, typeof v === 'number' ? v : d);
+    };
+    const scale =
+      skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) *
+      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num)) *
+      (1 + (bend?.more ?? 0) / 100);
+    const type: DamageType = def.damageType ?? 'physical';
+    const color = shiftHue(ELEMENTS[schoolOf(def)]?.body ?? 0xc9a070, hashId(def.id));
+    let riders: StatusApplication[] | null = null;
+    return (mult = 1) => {
+      const p = rollDamage(player.stats, ctx.rng, {
+        scale: scale * mult, type, ability: def.name, source: 'player', elemPct: player.passives.elementPct[type],
+      });
+      const prev = this.caster;
+      this.caster = player;
+      riders ??= this.statusFor(def, num, color, true);
+      this.caster = prev;
+      if (riders.length) p.applies = riders;
+      return p;
+    };
+  }
 
   /** Your Shadow Clones standing, for Mirror Gambit. */
   private *cloneBodies(): Generator<CloneBody> {
@@ -893,7 +970,7 @@ export class SkillRunner {
    */
   private lands(t: Target, packet: DamagePacket, kind: HitKind, ctx: CombatContext): boolean {
     const p = this.caster;
-    if (!p || packet.source !== 'player' || packet.type !== 'physical') return true;
+    if (!p || packet.source !== 'player' || packet.type !== 'physical' || this.sureHit) return true;
     const weapon = kind === 'melee' || kind === 'heavy' || (kind === 'projectile' && weaponStyle(p) === 'ranged');
     if (!weapon || p.status.has('veiled')) return true;
     if (SKILL_BY_ID[packet.ability ?? '']?.effect?.startsWith('vigil.')) return true;
@@ -1048,7 +1125,7 @@ export class SkillRunner {
           : 0;
     // Endless Quiver: every third skill shot from a bow is free.
     const every = player.passives.freeShotEvery;
-    const shot = every > 0 && (effect.startsWith('projectile') || effect.startsWith('bolt')) && weaponStyle(player) === 'ranged';
+    const shot = every > 0 && (effect.startsWith('projectile') || effect.startsWith('bolt') || RANGER_BOW.has(def.id)) && weaponStyle(player) === 'ranged';
     const free = shot && (this.shots + 1) % every === 0;
     const cost = def.manaCost && !hop && !free && !held ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
@@ -1189,7 +1266,8 @@ export class SkillRunner {
     // in audio/SkillSounds.ts. The effects drawn below stay silent, and so do
     // the sounds they would make later as they land.
     const sound = skillSound(def.id);
-    if (sound.cast && !held) audio.play(sound.cast, { x: origin.x, z: origin.z });
+    // A Ranger skill sounds its cast itself, on the bow's release (`ranger/RangerMoves.ts`).
+    if (sound.cast && !held && !RANGER_MOVES.has(def.id)) audio.play(sound.cast, { x: origin.x, z: origin.z });
 
     // A spell of a class in `RELEASE_CLASSES` lets go on its gesture's
     // release frame: its action starts now, and the rest of this cast runs
@@ -1259,6 +1337,15 @@ export class SkillRunner {
           packet: makePacket,
           blowPacket: dual ? (m = 1) => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket,
           num, school, color, actTime, clip: own ?? clip, hitSound: sound.hit, shed: sig.trail, burst: sig.emitter, density: sig.density,
+          critX: Math.max(100, player.stats.critDamage) / 100,
+        });
+      } else if (RANGER_MOVES.has(def.id)) {
+        // The Ranger's shots, traps, footwork and buffs (ranger/RangerMoves.ts).
+        castRanger(this.rangerHost, {
+          def, rank, player, aim: target.clone().setY(0), dir: dir.clone(),
+          world: { ctx, enemies, boss, player },
+          packet: makePacket, riders: rider, num, school, color, actTime, clip: own ?? clip,
+          castSound: sound.cast, hitSound: sound.hit, shed: sig.trail, burst: sig.emitter, density: sig.density,
           critX: Math.max(100, player.stats.critDamage) / 100,
         });
       } else switch (family) {
@@ -2235,7 +2322,7 @@ export class SkillRunner {
       rogueLook(this.rogueHost, { def, player, aim: target, dir, actTime, num });
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
       // A Rogue throw's motif lands with the throw, on its release frame.
-      const lands = ROGUE_MOVES.has(def.id) ? Math.max(player.contactIn, player.releaseIn) : player.contactIn;
+      const lands = ROGUE_MOVES.has(def.id) || RANGER_MOVES.has(def.id) ? Math.max(player.contactIn, player.releaseIn) : player.contactIn;
       this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, lands, num('radius', 2.5));
     } finally {
       this.effects.endQuiet();
@@ -2302,24 +2389,11 @@ export class SkillRunner {
     if (style === 'ranged') {
       // A bow is drawn and loosed. Sharing the casting animation put archers
       // through a two-handed overhead gesture with a bow in their hands.
-      player.beginAction('shoot', time);
+      // It leaves on the draw's release frame and strikes the first enemy on
+      // its line as it gets there (`ranger/Shots.ts`, with the Ranger's
+      // passives on it).
       this.releaseSchool = null;
-      // Arrows leave the bow hand, offset to the bow side so the shot lines up
-      // with the weapon.
-      const from = player.position.clone().setY(1.28);
-      from.addScaledVector(this.tmp.set(dir.z, 0, -dir.x), 0.16);
-      const stop = this.firstHitAlong(from, dir, 20, enemies, boss, 0.4, ctx);
-      const to = from.clone().addScaledVector(dir, stop);
-
-      this.effects.projectile(from, to, {
-        element: 'physical',
-        color: 0xd8c9a0,
-        speed: 30,
-        size: 0.24,
-        flare: false,
-        onHit: (p) => this.pointDamage(p, 0.5, packet, ctx, enemies, boss, 'projectile', from),
-      });
-      audio.play('cast.physical');
+      basicShot(this.rangerHost, player, dir, { ctx, enemies, boss, player }, packet, time);
       return true;
     }
 
@@ -3677,6 +3751,7 @@ export class SkillRunner {
     this.revenant.update(dt);
     this.stormTick(dt, live.ctx, live.enemies, live.boss);
     tickRogue(this.rogueHost, dt);
+    tickRanger(this.rangerHost, dt);
     this.markCorpses(live.enemies);
     this.trailTick(dt, live.ctx, live.enemies, live.boss);
     this.tetherTick(dt, live.ctx, live.enemies, live.boss);
@@ -4554,6 +4629,7 @@ export class SkillRunner {
 
   dispose(): void {
     clearRogue(this.rogueHost);
+    clearRanger(this.rangerHost);
     for (const z of this.zones) z.fx?.stop();
     this.trail.length = 0;
     this.corpses.length = 0;

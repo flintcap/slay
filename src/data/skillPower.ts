@@ -126,9 +126,16 @@ export const SELF_POWER: Record<string, (k: number, n: Num) => SelfPower> = {
     mods: { moveSpeed: n('speed', 20) },
   }),
   venomCoat: (k) => ({ mods: { poisonDamage: 5 + 3 * k } }),
+  // The quicker step; the veil and its harder crit come from standing still
+  // (`scenes/ranger/RangerMoves.ts`).
   camouflage: (k, n) => ({
-    duration: r1(n('duration', 8) + 0.3 * k),
-    mods: { moveSpeed: r1(15 + 0.5 * k), critChance: 100, critDamage: 30 + 5 * k },
+    duration: r1(n('duration', 10) + 0.3 * k),
+    mods: { moveSpeed: r1(15 + 0.5 * k) },
+  }),
+  // The quicker draw; the extra arrows are read where the volleys loose.
+  openQuiver: (k, n) => ({
+    duration: r1(n('duration', 6) + n('durationPerRank', 0.2) * k),
+    mods: { attackSpeed: r1(n('draw', 15) + n('drawPerRank', 0.5) * k) },
   }),
 
   // Revenant

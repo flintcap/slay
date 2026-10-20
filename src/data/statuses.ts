@@ -444,7 +444,7 @@ export const STATUSES: StatusDef[] = [
     tags: ['shred', 'physical'],
   }),
   def('marked', tr('Marked'), -1, {
-    desc: tr('Hunted. Attackers gain +15% critical strike chance against this target.'),
+    desc: tr('Hunted: every resistance is lowered while the mark lasts.'),
     baseDuration: 10,
     color: 0xff4d6a,
     icon: 'crosshair',
