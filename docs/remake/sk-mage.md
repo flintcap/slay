@@ -1,6 +1,6 @@
 # Stream: sk-mage (Wave 5: Mage skills remake)
 
-Status: in progress
+Status: done
 
 Class: Mage (code id `mage`). Trees: Fire, Lightning, Cold (`conflagration`, `tempest`, `frost`). Port 4353.
 Fights with caster: staffs, wands, orbs (starts with a short staff). No basic attack, ever. Class color: violet (`0x9a8aff`), with fire, lightning and cold colors per tree.
@@ -100,20 +100,19 @@ the first browser check.
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
-- [ ] 7. Check. `check-skills --classes=mage` once (one retry if it fails,
+- [x] 7. Check. (sk-mage: checks) `check-skills --classes=mage` once (one retry if it fails,
   then note it) and `check-curve --classes=mage` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+- [x] 8. Handover. (sk-mage: handover) Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
 
 ## Next up
 
-Milestones 1 to 6 are done. Next: milestone 7 (check-skills and
-check-curve once each), then 8 (handover).
+All milestones are done. See "Handover".
 
 ## Notes for resume
 
@@ -470,6 +469,14 @@ no damage per hit and no monster was touched.
   bosses drawn differ between the two runs, so part of it may be the draw.
   For the owner to watch, not to fix by raising damage.
 
+`check-skills --classes=mage`: the first run timed out at 28 minutes
+(software rendering, 20 of 33 spells done, no results printed). The one
+retry, with a longer limit, finished in about 40 minutes: all 33 actives
+cast, drew, played their sound and hit (refused 0, did nothing 0, threw
+0, working 33). Pyre Brand and Chain Lightning hit 2 targets, Firestorm 3.
+The tool then failed to save `shots/skill-audit.json` because the
+worktree has no `shots/` folder; the results above are complete.
+
 ## For the owner to test
 
 - Inferno now hits everything in its cone, so a tick costs 12 mana (+0.7
@@ -499,6 +506,9 @@ no damage per hit and no monster was touched.
 - In the headless curve tool, `CombatFeel.onKill` throws "Cannot convert
   object to primitive value" on `effects.fxScale` (the tool's fake effects
   object). It is caught and does not change results. Not Mage code.
+- `check-skills --classes=mage` needs about 40 minutes under software
+  rendering (give it `timeout 3000` or more), and it exits 1 at the end
+  when there is no `shots/` folder to save its JSON into.
 - Nightfall (Rogue) had hidden physical ticks like Ionize did. Ionize is
   fixed; Nightfall is sk-rogue's.
 
