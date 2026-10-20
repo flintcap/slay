@@ -227,6 +227,8 @@ export class KnightKit {
   /** Burst options reused by the per-frame looks, so a frame allocates nothing. */
   private readonly dustOpts = { count: 4, scale: 0.9, color: DUST };
   private readonly glintOpts = { count: 3, scale: 0.6, color: KNIGHT_GOLD };
+  private readonly crackDust = { count: 6, scale: 1.1, color: DUST };
+  private readonly crackChips = { count: 5 };
 
   constructor(private readonly host: KnightHost) {}
 
@@ -601,8 +603,8 @@ export class KnightKit {
       // The fissure zigzags a little: the same each time for the same metre.
       const jag = Math.sin(w.crack * 2.7) * 0.35;
       fx.decals.add('crack', x, z, 0.85 + 0.25 * Math.abs(jag), w.yaw + jag);
-      fx.fx.burst('dust', x, 0.2, z, { count: 6, scale: 1.1, color: DUST });
-      fx.fx.burst('chips.stone', x, 0.25, z, { count: 5 });
+      fx.fx.burst('dust', x, 0.2, z, this.crackDust);
+      fx.fx.burst('chips.stone', x, 0.25, z, this.crackChips);
       w.crack += WAVE_CRACK;
     }
     return w.at < w.lane;

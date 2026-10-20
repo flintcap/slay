@@ -45,6 +45,7 @@ import {
 } from './Paint';
 import { PALADIN_GLYPHS } from './PaladinGlyphs';
 import { SHIFTER_GLYPHS } from './ShifterGlyphs';
+import { KNIGHT_GLYPHS } from './KnightGlyphs';
 
 export interface Tone {
   /** White-hot core. */
@@ -1622,6 +1623,7 @@ export const GLYPHS: Record<string, Glyph> = {
   emberdart, stride, splinter, icicle,
   ...PALADIN_GLYPHS,
   ...SHIFTER_GLYPHS,
+  ...KNIGHT_GLYPHS,
 };
 
 export { obj as paintObject, energy as paintEnergy, ray as paintRay };

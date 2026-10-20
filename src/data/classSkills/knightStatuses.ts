@@ -41,7 +41,7 @@ export const KNIGHT_STATUSES: StatusDef[] = [
     mods: mods({ blockChance: 12, damageReduction: 8 }),
     baseDuration: 8,
     color: 0xc9b27a,
-    icon: 'shield-raise',
+    icon: 'kn-shield-wall',
     tags: ['buff'],
   }),
   st('guardStance', tr('Guard Stance'), {
@@ -49,7 +49,7 @@ export const KNIGHT_STATUSES: StatusDef[] = [
     mods: mods({ enhancedDefense: 45, damageReduction: 12, moveSpeed: -25 }),
     baseDuration: STANCE_HELD,
     color: 0x9fb4cf,
-    icon: 'guard',
+    icon: 'kn-guard',
     tags: ['buff', 'held'],
   }),
   st('fortress', tr('Fortress'), {
@@ -58,7 +58,7 @@ export const KNIGHT_STATUSES: StatusDef[] = [
     immobilises: true,
     baseDuration: 6,
     color: 0xb59a62,
-    icon: 'fortress',
+    icon: 'kn-fortress',
     tags: ['buff'],
   }),
   st('retribution', tr('Retribution'), {
@@ -67,7 +67,7 @@ export const KNIGHT_STATUSES: StatusDef[] = [
     stacking: 'stack',
     baseDuration: STANCE_HELD,
     color: 0xe0b450,
-    icon: 'crown-shield',
+    icon: 'kn-retribution',
     tags: ['buff', 'held'],
   }),
   st('standard', tr('Banner of the Gate'), {

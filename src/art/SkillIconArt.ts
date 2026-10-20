@@ -19,6 +19,7 @@
  */
 import type { DamageType } from '../types';
 import { SHIFTER_ICONS } from './icons/shifterIcons';
+import { KNIGHT_ICONS } from './icons/knightIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
 import {
   type Ctx,
@@ -71,10 +72,13 @@ interface ClassLook {
   light: number;
   /** Background tint. */
   ground: number;
+  /** Each tree's own light for its physical skills, in tree order; else `light`. */
+  trees?: readonly [number, number, number];
 }
 
 const CLASS_LOOK: Record<string, ClassLook> = {
-  warden: { ring: GLYPH_MATS.IRON, tex: 'hammered', light: 0xe0b860, ground: 0x2a2216 },
+  // Bulwark cold steel, Carnage blood, Oaths the class gold.
+  warden: { ring: GLYPH_MATS.IRON, tex: 'hammered', light: 0xe0b860, ground: 0x2a2216, trees: [0xa8c0d8, 0xd85040, 0xe0b860] },
   mage: { ring: rampOf(0x6a5aa0, 0.85, 'hammered', 0.3), tex: 'crack', light: 0x9a8aff, ground: 0x1a1430 },
   shadowblade: { ring: rampOf(0x2c3138, 0.9, 'brushed', 0.3), tex: 'mottle', light: 0x6ad8a0, ground: 0x0e1a16 },
   revenant: { ring: GLYPH_MATS.BONE, tex: 'crack', light: 0x9ae0c8, ground: 0x14201c },
@@ -96,11 +100,12 @@ const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8
  * three, an open eye or a closed one).
  */
 const ICON_MAP: Record<string, string> = {
-  // Knight — bulwark
+  // Names first painted for the Knight. His skills now use `kn-` keys
+  // (`icons/knightIcons.ts`); these stay for the icons that still name them.
   'shield-raise': 'shield^rise', plate: 'helm', stance: 'boot^field', bash: 'shield^impact', deflect: 'shield:1^spin',
   guard: 'shield:1', charge: 'shield^speed', anvil: 'anvil', counter: 'sword^cross', 'bubble-shield': 'bubble',
   boulder: 'boulder', 'spike-shield': 'shield:1^burst', fortress: 'tower', 'oath-stone': 'rune:2', discus: 'gear^spin',
-  'crown-shield': 'crown^aura', 'broken-oath': 'crack', wall: 'tower:1', gatefall: 'tower:1^impact',
+  'crown-shield': 'crown^aura', 'broken-oath': 'crack', wall: 'tower:1',
   // Knight — carnage
   cleave: 'axe^impact', rend: 'claw', cleaver: 'axe:1', gash: 'claw^drip', nose: 'drop^impact', overhead: 'hammer^impact',
   shard: 'bone:1^burst', whet: 'sword^rise', hamstring: 'boot^drip', whirl: 'axe:1^spin', artery: 'drop', chalice: 'chalice',
@@ -180,6 +185,7 @@ const ICON_MAP: Record<string, string> = {
   stealth: 'figure^aura', gear: 'gear', arrows: 'arrow:2', speed: 'feather^speed', cone: 'arrow:2^burst', rain: 'arrow^rain',
   bounce: 'arrow^chain', quiver: 'quiver', multi: 'arrow:2^multi',
   ...SHIFTER_ICONS,
+  ...KNIGHT_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */
@@ -402,7 +408,7 @@ function drawGlyph(x: Ctx, g: Glyph, t: Tone, v: number, cx: number, cy: number,
 export function paintSkillIcon(x: Ctx, spec: SkillIconSpec): void {
   const look = CLASS_LOOK[spec.classId ?? ''] ?? NEUTRAL;
   const elem = spec.damageType && spec.damageType !== 'physical' ? ELEMENT_TONE[spec.damageType] : null;
-  const tone = elem ?? toneOf(look.light);
+  const tone = elem ?? toneOf(look.trees?.[spec.treeIndex ?? 0] ?? look.light);
   const h = hashString(spec.skillId);
   const plan = planFor(spec.icon, spec.effect, h);
   const glyph = GLYPHS[plan.glyph] ?? GLYPHS.rune!;

@@ -96,10 +96,14 @@ export class SteelArcs {
    * ring that rides with the body.
    */
   cut(x: number, z: number, facing: number, arc: number, radius: number, opts: { y?: number; life?: number; follow?: THREE.Object3D | null; turn?: number; bright?: number; sweep?: number } = {}): void {
-    let a = this.arcs.find((s) => s.life <= 0);
-    if (!a) {
-      // All busy: the oldest makes way.
-      a = this.arcs.reduce((o, s) => (s.t / s.life > o.t / o.life ? s : o));
+    // A free slot, or else the one nearest its end makes way.
+    let a = this.arcs[0]!;
+    for (const s of this.arcs) {
+      if (s.life <= 0) {
+        a = s;
+        break;
+      }
+      if (a.life > 0 && s.t / s.life > a.t / a.life) a = s;
     }
     const full = arc >= Math.PI * 1.99;
     a.segs = Math.max(2, Math.min(SEGMENTS, Math.round((Math.min(arc, Math.PI * 2) / (Math.PI * 2)) * SEGMENTS)));
