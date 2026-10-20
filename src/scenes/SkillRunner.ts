@@ -1564,7 +1564,9 @@ export class SkillRunner {
                 run: () => {
                   this.effects.explosion(spot.x, 0.8, spot.z, { radius, element: school, color });
                   this.areaDamage(spot, radius, (m = 1) => makePacket(m * groundHit), ctx, enemies, boss);
-                  hitAt(spot);
+                  // Every eruption is heard where it goes up; the first is the cast's own.
+                  if (sound.hit) hitAt(spot);
+                  else if (i > 0 && sound.cast) audio.play(sound.cast, { x: spot.x, z: spot.z });
                 },
               });
             }
