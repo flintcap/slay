@@ -95,7 +95,7 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons. ("sk-ranger: icons") Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
 - [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
@@ -115,7 +115,7 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 4 are done (audit, plan, speed table, build). The
+Milestones 1 to 5 are done (audit, plan, speed table, build, icons). The
 Ranger's skills live in `src/data/classSkills/ranger.ts`; what they do is
 in `src/scenes/ranger/` (`RangerMoves.ts` the switch, `Shots.ts` every bow
 shot, `Traps.ts` traps, brambles and the kestrel), their effects in
@@ -123,8 +123,25 @@ shot, `Traps.ts` traps, brambles and the kestrel), their effects in
 `tools/audio/rangerTakes.mjs`. On resume:
 
 1. Setup as in `PROTOCOL.md`.
-2. Milestone 5: icons, from "Icons (milestone 5)" in the build check list
-   below.
+2. Milestone 6: effects quality and cost (no per-frame allocation in
+   `src/fx/ranger/` and the trap ticks, the quality ladder, `warmup()`
+   stand-ins in `DungeonScene.ts`).
+
+### Milestone 5 notes (2026-10-20)
+
+- Sixteen painted Ranger glyphs in `src/art/RangerGlyphs.ts` (54 forms),
+  one picture per skill in `src/art/icons/rangerIcons.ts` (`rn-` keys).
+  The ring is moss-stained bow wood lit in the class moss; `TREE_LOOK`
+  gives Marksman bone white on hunter's red, Wildcraft amber on bark
+  brown, Volley sky grey on steel. Poison and cold keep their element's
+  light.
+- Looked at on one contact sheet (`node tools/art-sheet.mjs ranger,dupes`,
+  a `ranger` sheet added to `tools/art-sheet-page.ts`): 0 same-tree
+  duplicate pictures. Redrawn after the first look: Through and Through
+  (three foes run through), Suppressing Fire (a stream with gaps), Lay of
+  the Land (spikes out of a lit footprint), Kestrel (wings half open).
+- The old shared keys (`arrow`, `target`, `quiver` ...) stay in `ICON_MAP`
+  for the statuses and panels that still name them.
 
 ### Milestone 4 notes (2026-10-20)
 

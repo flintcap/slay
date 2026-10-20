@@ -478,15 +478,25 @@ const rnshaft: Glyph = (x, t, v) => {
       break;
     }
     default: {
-      // Through and Through: three, and stronger at each.
-      for (const [cx, cy, r] of [[34, 92, 10], [62, 66, 12], [92, 38, 14]] as const) {
-        energy(x, starP(cx, cy, 8, r * 0.45, r, 0.1), t, cx, cy, r, 0.45);
-      }
+      // Through and Through: three in a line, and stronger at each.
+      const foes = [[34, 92, 0.85], [62, 66, 1], [92, 38, 1.15]] as const;
+      for (const [cx, cy, s] of foes) foeAt(x, t, cx, cy, s);
       arrowAt(x, t, 6, 120, 118, 14, { w: 5.4 });
-      for (const [cx, cy] of [[34, 92], [62, 66], [92, 38]] as const) glint(x, cx, cy, 6, t.core, 0.9);
+      for (const [cx, cy, s] of foes) {
+        const r = 4 + s * 4;
+        energy(x, starP(cx, cy, 8, r * 0.4, r, 0.1), t, cx, cy, r, 0.45);
+        glint(x, cx, cy, 6, t.core, 0.9);
+      }
     }
   }
 };
+
+/** A foe's head and shoulders in shadow, chest at (cx, cy). */
+function foeAt(x: Ctx, t: Tone, cx: number, cy: number, s: number): void {
+  const body = smoothP([[cx - 12 * s, cy + 16 * s], [cx - 11 * s, cy - 4 * s], [cx - 5 * s, cy - 9 * s], [cx + 5 * s, cy - 9 * s], [cx + 11 * s, cy - 4 * s], [cx + 12 * s, cy + 16 * s]], 0.35);
+  body.addPath(circleP(cx, cy - 16 * s, 7 * s));
+  obj(x, body, LINEN, t, [cx - 12 * s, cy - 23 * s], [cx + 12 * s, cy + 16 * s], 1.2);
+}
 
 // ---------------------------------------------------------------------------
 // rnbow
@@ -1007,19 +1017,28 @@ const rnplate: Glyph = (x, t, v) => {
       break;
     }
     default: {
-      // Lay of the Land: where your feet left the floor.
-      for (const [fx, fy, rot] of [[44, 92, -0.25], [84, 58, -0.25]] as const) {
-        at(x, fx, fy, rot, 1, () => {
-          const foot = smoothP([[-8, -16], [6, -18], [10, -4], [8, 14], [-2, 18], [-10, 8]], 0.4);
-          x.save();
-          x.fillStyle = 'rgba(4,3,2,.85)';
-          x.fill(foot);
-          x.restore();
-          innerEdge(x, foot, css(t.glow, 0.7), 3, 0, -2, 1.6);
-        });
-      }
-      for (const [dx, h, lean] of [[-14, 30, -4], [-4, 44, -1], [6, 40, 2], [16, 26, 5]] as const) spikeAt(x, t, 44 + dx, 104, h, lean, 7);
-      for (let i = 0; i < 3; i++) ray(x, line([[98 + i * 4, 40 - i * 8], [110 + i * 4, 30 - i * 8]]), t, 2 - i * 0.4);
+      // Lay of the Land: spikes up out of the print you stood in, the next
+      // step already gone on ahead.
+      glow(x, 62, 100, 44, t.glow, 0.45);
+      const print = (fx: number, fy: number, s: number, a: number): void => {
+        x.save();
+        x.globalAlpha = a;
+        x.translate(fx, fy);
+        x.scale(s, s * 0.5);
+        x.rotate(0.9);
+        const sole = smoothP([[-9, -22], [3, -26], [11, -16], [10, -2], [2, 4], [-8, 2], [-12, -10]], 0.4);
+        sole.addPath(smoothP([[-8, 10], [6, 10], [8, 20], [0, 26], [-8, 22]], 0.4));
+        x.fillStyle = 'rgba(4,3,2,.9)';
+        x.fill(sole);
+        x.fillStyle = css(t.glow, 0.3);
+        x.fill(sole);
+        ray(x, sole, t, 2.6 / s);
+        x.restore();
+      };
+      print(100, 52, 1.1, 0.6);
+      print(52, 100, 1.7, 1);
+      for (const [sx, base, h, lean] of [[30, 108, 16, -3], [40, 105, 20, -2], [58, 98, 32, -3], [68, 95, 48, 0], [78, 93, 40, 3], [87, 91, 26, 5]] as const) spikeAt(x, t, sx, base, h, lean, 8);
+      for (const [gx, gy] of [[20, 110], [96, 96]] as const) glint(x, gx, gy, 5, t.core, 0.6);
     }
   }
 };
@@ -1206,7 +1225,7 @@ const rnkestrel: Glyph = (x, t, v) => {
       ray(x, line([[22 + o, 8 - o * 0.2], [48 + o, 38 - o * 0.2]]), t, 2.2);
       x.restore();
     }
-    kestrelAt(x, t, 74, 74, Math.PI * 0.27, 1.05, 1);
+    kestrelAt(x, t, 72, 72, Math.PI * 0.27, 1, 0.55);
     energy(x, starP(104, 110, 6, 4, 12, 0.2), t, 104, 110, 12, 0.5);
     return;
   }
@@ -1393,15 +1412,15 @@ const rnwheel: Glyph = (x, t, v) => {
       break;
     }
     case 1: {
-      // Suppressing Fire: one after another down the line.
-      for (let i = 3; i >= 0; i--) {
-        const o = i * 24;
+      // Suppressing Fire: one after another down the line, never a gap.
+      for (let i = 0; i < 4; i++) {
+        const o = i * 26;
         x.save();
-        x.globalAlpha = 1 - i * 0.2;
-        arrowAt(x, t, 4 + o * 0.8, 112 - o * 0.8, 44 + o * 0.8, 72 - o * 0.8, { w: 4.4 - i * 0.3, trail: 8 });
+        x.globalAlpha = 0.45 + i * 0.18;
+        arrowAt(x, t, 8 + o, 120 - o, 30 + o, 98 - o, { w: 4.2 + i * 0.4, trail: 10 });
         x.restore();
       }
-      ray(x, line([[8, 124], [120, 12]]), t, 1.2);
+      glow(x, 112, 16, 16, t.glow, 0.7);
       break;
     }
     case 2: {
