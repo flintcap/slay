@@ -1,6 +1,6 @@
 # Stream: sk-shifter (Wave 5: Shapeshifter skills remake)
 
-Status: waiting
+Status: in progress
 
 Class: Shapeshifter (code id `shapeshifter`). Trees: Feral, Teeth, Claw (`feral`, `teeth`, `claw`): the cat, the wolf, the bear. Port 4358.
 Fights with melee in beast forms (starts with a club in man form). Class color: rust orange (`0xc46a34`).
