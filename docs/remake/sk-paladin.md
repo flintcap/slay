@@ -73,7 +73,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. Build (sk-paladin: build). Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -109,33 +109,62 @@ the first browser check.
 
 ## Next up
 
-Waiting for skillcore. When resumed:
-
-1. Setup as in `PROTOCOL.md`, then fetch and read `docs/remake/skillcore.md`.
-   Go on only if it says `Status: done`; else push nothing new and end with
-   one line saying you are still waiting.
-2. Read skillcore's "Handover" and its part of `CONTRACTS.md`: the speed
-   function, the per-skill `attackTime` / `castTime` / `timing` fields on
-   `SkillDef`, the multi-hit timing, the contact frame rule (today
-   `CONTACT_CAP` 0.16 s in `Player.ts`), the "paladin hand-off" it plans for
-   `Rites.ts` / `Vigils.ts`, and the icon size.
-3. Milestone 3 (speed audit): re-read every timing in the audit below
-   against the new code (the times here are from before skillcore), write
-   the speed table (basic attack with a mace, a sword and a two-hander, and
-   every active, with no speed gear and at the ceiling), mark each, and set
-   each Paladin skill's timing through skillcore's fields, using the
-   "Speeds" targets in the plan as the starting point. Damage per hit never
-   changes.
-4. Milestone 4: build the plan below ("Milestone 2: the new kit"), in this
-   order: the broken ones first (vigil bends and radius, Tolling Bell and
-   Consecrated Ground uniques, Turn the Blade's answer, flurries tied to the
-   action, Doorbreaker / Confession Thrust / Feint / Last Rites travel speed,
-   Crushing Weight and Red Rosary on every hit, self rites not walking),
-   then the two crowd changes (Pilgrim's Maul, Crosswise), then Relic Bash,
-   Saint's Reach and The Last Bell, then the own blow for every weapon
-   skill, then Hurl the Censer's censer and The Last Hour's bell.
+1. Milestone 5 (icons): the 7 copied icons get their own picture
+   (doorbreaker, weight-stone, answer-steel, whetted-faith, confession,
+   red-psalm, measured-step) and the 4 off-theme ones are redrawn
+   (crosswise, sevenfold, mercy-stroke, saints-reach), each tree with its
+   own accent. Then `iconmatch` and `skillicons` if it exists.
+2. Milestone 6: effects polish and cost (the looks in `fx/paladin/`
+   already exist and are warmed; check per-frame code for allocation).
+3. Milestone 7: `check-skills --classes=paladin` once (get-chrome first,
+   `mkdir -p shots`, flock, timeout 3500), `check-curve --classes=paladin`
+   once.
+4. Milestone 8: handover.
 
 ## Notes for resume
+
+### Milestone 4: what was built
+
+- Rites (`scenes/paladin/Rites.ts`): every blow lands on its gesture's
+  contact; flurries (Twin Verse, Litany, Crosswise, Sevenfold) land on the
+  gesture's own `cuts` and stop on a dodge or a new action, and a cut needs
+  the target in reach. Knell's echo stays free.
+- Doorbreaker runs at 14 m/s (`RUSH_SPEED`, `travelTime`), Confession
+  Thrust lunges at 12 m/s, Feint steps to the side and Last Rites goes to
+  the side and round behind at 10 m/s, all carried by `Player.carry` with
+  the blow on arrival; the action is at least twice the run so a move order
+  cannot cut it. A rush or lunge is refused while rooted. Bodies in
+  Doorbreaker's lane are knocked aside for 25% (`shove`).
+- Crushing Weight, Red Rosary's more damage and its crit Opens moved to
+  `SkillRunner.tune`: every hit of the hero counts them.
+- Pilgrim's Maul breaks the floor: others within 3 m (+0.05 a rank) take
+  20%, their Dents spent the same way. Crosswise's first cut sweeps 150
+  degrees within 3 m. Relic Bash reads Dents and leaves them. The Last
+  Bell's Toll is seen (bronze ring) and heard (the bell's note).
+- Turn the Blade: window +0.03 s a rank; the first blow it turns is
+  answered at once with its own riposte action
+  (`skill.turnTheBlade.answer`), else the answer comes as the guard drops.
+- Saint's Reach: dexterity gone; Blade skills reach 0.4 m further, and each
+  Blade cut carries on into the nearest enemy behind its target (2 m) for
+  30% (+2% a rank). Rule in `sim/passives/paladin.ts`.
+- Vigils: each reads its own bent knobs and its own `radius` (Wide Wick and
+  aura reach on top), a bend's `more` raises its damage, and the burn and
+  toll land flat (`VigilHost.flat`). Tolling Bell's toll draws a bronze
+  ring out to its real reach. Censure and The Last Hour let go on the
+  gesture's frame (`atRelease`); Censure's leap draws a line of ash; The
+  Last Hour calls a real bronze bell (`fx/paladin/GreatBell.ts`) that hangs
+  over its target as it falls.
+- Hurl the Censer throws a real censer on its chain
+  (`fx/paladin/Censer.ts`) on the throw frame.
+- Self rites (Bar the Door, Turn the Blade) and rushes no longer walk to
+  the enemy first (`Controls.ts`).
+- Every weapon skill has its own blow in `art/hero/gestures/paladin.ts`
+  (with `alt.great` for a two-hander); the Paladin `PLAIN_MOVES` are gone.
+  Hit looks are in `fx/paladin/RiteLooks.ts`, warmed by
+  `paladinStandIns()` in `DungeonScene.warmup()`.
+- Checkers: rankpower, stattext, i18n, iconmatch, skilldepth, passives
+  pass. skillparams and skillsound fail only on Ranger and Revenant skills
+  (their streams are still building).
 
 ### Milestone 3: speed audit (read from the code after skillcore, 0616b06)
 

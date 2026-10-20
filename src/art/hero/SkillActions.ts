@@ -189,15 +189,10 @@ export function defineGestures(table: Record<string, Spec>): void {
  * The owner's call: hand-made poses on these read as casting and swung worse
  * than the plain attacks, so a blade skill swings the blade. Each one keeps
  * its own look and sound; only the body move is shared with other skills.
- * The Paladin's are the same clips its rites list in `scenes/paladin/Rites.ts`.
+ * None today: every weapon skill now has its own blow (`hit` and `blade`,
+ * which swing the real weapon the same way).
  */
-const PLAIN_MOVES: Readonly<Record<string, string>> = {
-  // Paladin
-  tollingBlow: 'slam', shieldCrack: 'lunge', anvilfall: 'slam', doorbreaker: 'lunge', knell: 'slam',
-  pilgrimsMaul: 'slam', relicBash: 'lunge', ironVerdict: 'slam', oathCut: 'thrust', twinVerse: 'attack2',
-  feint: 'thrust', litany: 'attack1', confessionThrust: 'lunge', crosswise: 'attack2', mercyStroke: 'thrust',
-  sevenfold: 'attack1', lastRites: 'lunge',
-};
+const PLAIN_MOVES: Readonly<Record<string, string>> = {};
 
 /** The plain move a skill plays instead of a gesture, or null when it has none. */
 export function plainMove(skillId: string): string | null {

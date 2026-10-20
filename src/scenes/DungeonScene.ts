@@ -73,6 +73,7 @@ import { bossHitCap } from '../sim/FairFight';
 import { lootFilterOf, passesFilter } from '../sim/LootFilter';
 import { disposeAbilityWorld, getAbility, projectileStandIns } from '../entities/Abilities';
 import { vigilStandIn } from '../fx/paladin/VigilRing';
+import { paladinStandIns } from '../fx/paladin/RiteLooks';
 import { knightStandIns } from '../fx/knight/KnightFX';
 import { disposeMonsterModels } from '../entities/MonsterModels';
 import { SUMMONED_BY } from '../entities/Abilities';
@@ -474,8 +475,8 @@ export class DungeonScene extends GameScene {
     const coin = new THREE.Mesh(coinGeometry(), emissiveMaterial(0xffc63a, 0.5));
     coin.frustumCulled = false;
     const list = [...this.skills.feel.flash.standIns(roots), ...fallen, coin, this.portalWarm.root, ...this.summonWarm, ...(looks?.meshes ?? []), ...veil, ...shade, ...projectileStandIns(), ...this.effects.standIns()];
-    // A paladin's Vigil ring, for the first one lit.
-    if (this.player.character.classId === 'paladin') list.push(vigilStandIn());
+    // A paladin's Vigil ring, steel smears, censer and great bell, for the first of each.
+    if (this.player.character.classId === 'paladin') list.push(vigilStandIn(), ...paladinStandIns());
     // A Knight's steel arcs and standard, for the first cut and the first banner.
     if (this.player.character.classId === 'warden') list.push(...knightStandIns());
     if (!list.length) return null;
