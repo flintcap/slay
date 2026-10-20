@@ -75,7 +75,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. Build. ("wip(sk-rogue): Knife Halo and Steel Waltz replace Momentum and Perfect Form; renames and true texts") Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -111,25 +111,42 @@ the first browser check.
 
 ## Next up
 
-Waiting for skillcore. When resumed:
-
-1. Setup as in `PROTOCOL.md`, then fetch and read `docs/remake/skillcore.md`.
-   Go on only if it says `Status: done`; else push nothing new and end with
-   one line saying you are still waiting.
-2. Read skillcore's "Handover" and its part of `CONTRACTS.md`: the speed
-   function, the per-skill attack time factor and cast time fields, the
-   multi-hit timing, how dual wield works now, the icon size.
-3. Milestone 3 (speed audit): re-read every timing in this file's audit
-   against the new code (old numbers here are pre-skillcore), write the
-   speed table, then set each Rogue skill's timing through skillcore's
-   fields, Precise Cut first. Damage per hit never changes.
-4. Milestone 4: build the plan below ("Milestone 2: the new kit"), in this
-   order: broken first (Call the Viper, Plague Vial, Smoke Bomb and
-   Nightfall damage, Gloom Shroud, Razor Dash timing, Throwing Spree,
-   Phantom Blades), then the swings, then the two new skills, then text
-   fixes and renames, then `check-i18n`.
+1. Milestone 5: a painted Rogue icon set in `src/art/icons/` (like
+   `shifterIcons.ts`, own painters), one picture per skill, tree accents
+   (Venom acid green, Shadowcraft smoke violet-black with a pale green
+   edge, Bladework bright steel with the class green). Knife Halo and
+   Steel Waltz have placeholder glyph recipes (`knife-halo`, `waltz` in
+   `SkillIconArt.ts`) until then.
+2. Milestone 6: Coat Blades drip, Envenom Burst threads, Nightfall curtain,
+   Death Lotus petal ring, phantom blade look; stand-ins in `warmup()`.
+3. Milestone 7 and 8 as listed.
 
 ## Notes for resume
+
+### Milestone 4: what was built
+
+- Every Rogue blade skill plays its own gesture (`gestures/rogue.ts`), a
+  weapon blow (`hit` + `blade`) with a wind up, a hit and a follow through,
+  one blade and two (`alt.dual`). Multi-cut gestures carry `cuts`: later
+  blows and the off blade's answer land on those keys as the animator
+  plays them (`cutTimes` in `SkillRunner.ts`, SPAN_RATE math). No Rogue
+  skill is in `PLAIN_MOVES` any more.
+- Shadow Step and Void Walk arrive and cut on their gesture's hit frame.
+- `scenes/rogue/RogueMoves.ts`: Venom Dart (needle in flight, passes
+  through `pierce` enemies nearest first), Plague Vial (lobbed to the
+  aimed point, a turning vial), Fan of Knives and Throwing Spree (knives
+  leave on the release frame and on each throw key), Razor Dash (cuts each
+  enemy as the hero reaches it), Vanish (spring back, blinding puff, then
+  the veil), Knife Halo, Steel Waltz, Mirror Gambit (clones blink in and
+  strike for a share of a skill's melee blow).
+- Momentum and Perfect Form are gone with their code (`crowdDamage*`,
+  `hitAt`, `nearbyCount`, the `perfectForm` handler). `guaranteedCritEvery`
+  stays for the Paladin.
+- Renames: Adder's Kiss, Scissor Cut, Razor Dash, Counter-Cut (ids kept).
+- New sounds: `skill.knife.halo`, `skill.swing.waltz`, `skill.hit.waltz`.
+- Checks run: typecheck 0; rankpower, stattext, i18n, skillsound,
+  iconmatch, skilldepth, passives, unique, uniques, hits all pass.
+  skillparams fails only on the Knight's `phalanx` (`capBonus`), not ours.
 
 ### Milestone 1: skill audit (read from the code on 2026-10-20)
 
@@ -443,7 +460,7 @@ with heavy speed gear; casts about 0.5 s bare.
 | Adder's Kiss (viperStrike) | attack 1 | 0.61 / 0.82 | same | 0.40 / 0.55 | 0.33 / 0.41 | right |
 | Cripple Tendon | attack 1 | 0.61 / 0.82 | same | 0.40 / 0.55 | 0.33 / 0.41 | right |
 | Scissor Cut (doubleStrike) | attack 1.2 (was 1) | 0.61 / 0.82, second cut 0.08 s after the first | 0.73 / 0.98 | 0.48 / 0.65 | 0.36 / 0.49 | was too fast (two cuts read as one); second cut spaced in M4 |
-| Death Lotus | attack 1.8 (was 1) | 0.61 / 0.82, 8 hits 0.08 s apart, the last ones after the action ends | 1.09 / 1.47 | 0.73 / 0.98 | 0.55 / 0.74 | was too fast; hits spread over the spin in M4 |
+| Death Lotus | attack 2 (was 1) | 0.61 / 0.82, 8 hits 0.08 s apart, the last ones after the action ends | 1.21 / 1.64 | 0.81 / 1.09 | 0.61 / 0.82 | was too fast; two full turns, a cut every quarter turn (M4) |
 | Umbral Ambush | attack 1.25 (was 1) | 0.61 / 0.82 | 0.76 / 1.02 | 0.51 / 0.68 | 0.38 / 0.51 | was a bit fast for a 320% blow from the veil |
 | Assassinate | attack 1.5 (was 1) | 0.61 / 0.82 | 0.91 / 1.23 | 0.61 / 0.82 | 0.45 / 0.61 | was too fast for a 500% execute |
 | Steel Waltz (new) | attack 2 | - | 1.21 / 1.64 | 0.81 / 1.09 | 0.61 / 0.82 | five cuts, about 0.2 s apart bare |
