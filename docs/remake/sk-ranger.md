@@ -1,6 +1,6 @@
 # Stream: sk-ranger (Wave 5: Ranger skills remake)
 
-Status: waiting for skillcore
+Status: in progress
 
 Class: Ranger (code id `ranger`). Trees: Marksman, Wildcraft, Volley (`marksman`, `wildcraft`, `volley`). Port 4356.
 Fights with ranged: bows with a quiver (starts with a short bow). Class color: moss green (`0x7fc46a`).
