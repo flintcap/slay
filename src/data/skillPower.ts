@@ -179,8 +179,8 @@ export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
   }),
   tauntingRoar: (k, n) => ({
     status: 'vulnerable',
-    duration: r1(n('duration', 5) + n('durationPerRank', 0.2) * k + 3),
-    mods: shred(n('vulnerable', 8) * 3 + 1.5 * k),
+    duration: r1(n('vulnerable', 8) + n('vulnerablePerRank', 0.2) * k),
+    mods: shred(n('amplify', 25) + n('amplifyPerRank', 1.5) * k),
   }),
 
   // Rogue

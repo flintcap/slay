@@ -76,6 +76,6 @@ export const KNIGHT_STATUSES: StatusDef[] = [
     baseDuration: 20,
     color: 0xd8a640,
     icon: 'banner',
-    tags: ['buff', 'held'],
+    tags: ['buff'],
   }),
 ];

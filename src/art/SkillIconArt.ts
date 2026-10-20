@@ -100,7 +100,7 @@ const ICON_MAP: Record<string, string> = {
   'shield-raise': 'shield^rise', plate: 'helm', stance: 'boot^field', bash: 'shield^impact', deflect: 'shield:1^spin',
   guard: 'shield:1', charge: 'shield^speed', anvil: 'anvil', counter: 'sword^cross', 'bubble-shield': 'bubble',
   boulder: 'boulder', 'spike-shield': 'shield:1^burst', fortress: 'tower', 'oath-stone': 'rune:2', discus: 'gear^spin',
-  'crown-shield': 'crown^aura', 'broken-oath': 'crack', wall: 'tower:1',
+  'crown-shield': 'crown^aura', 'broken-oath': 'crack', wall: 'tower:1', gatefall: 'tower:1^impact',
   // Knight — carnage
   cleave: 'axe^impact', rend: 'claw', cleaver: 'axe:1', gash: 'claw^drip', nose: 'drop^impact', overhead: 'hammer^impact',
   shard: 'bone:1^burst', whet: 'sword^rise', hamstring: 'boot^drip', whirl: 'axe:1^spin', artery: 'drop', chalice: 'chalice',

@@ -143,6 +143,11 @@ export const SKILL_TAKES = {
   'skill.charge': x('wpn', 'boots-leather-jump-01.wav', {
     mix: [x('rsp', 'inventory/chainmail1.wav', { gain: -3 }), x('c100b', 'sfx100v2_air_02.ogg', { gain: -4 }), x('yell', '3grunt3.wav', { gain: -6 })],
   }),
+  // Gatefall: the jump in plate, and the shield's rim landing in the stone.
+  'skill.gatefall': x('wpn', 'boots-leather-jump-03.wav', { rate: 0.85, mix: [x('rsp', 'inventory/chainmail2.wav', { gain: -4 }), x('c100b', 'sfx100v2_air_01.ogg', { delay: 60, rate: 0.8, gain: -6 })] }),
+  'skill.gatefall.land': x('c100', 'slam_04.ogg', { rate: 0.7, mix: [x('shield', 'impact.10.ogg', { gain: -2 }), x('bfh', 'bfh1_rock_breaking_02.ogg', { delay: 40, rate: 0.85, gain: -4 })] }),
+  // Sworn Brother: a ghost's blade, a swish and thin steel.
+  'skill.brother.strike': x('battle', 'swish_2.wav', { rate: 0.8, mix: [x('shield', 'impact.1.ogg', { delay: 70, rate: 1.2, gain: -5 })] }),
   'skill.ward.aegis': x('anvil', 'forger_0.ogg', { t: 0.9, mix: [x('chant', 'chant23.wav', { ss: 0.5, t: 1.2, rate: 0.6, fadeIn: 0.1, fadeOut: 0.4, gain: -6 })] }),
   'skill.shield.throw': x('battle', 'swish_3.wav', { rate: 0.7, mix: [x('battle', 'swish_4.wav', { delay: 150, rate: 0.7, gain: -3 })] }),
   'skill.shield.ring': x('shield', 'impact.6.ogg', { mix: [x('rsp', 'inventory/metal-ringing.wav', { gain: -5 })] }),

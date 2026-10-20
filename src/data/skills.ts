@@ -211,7 +211,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'guardStance',
     name: tr('Guard Stance'),
-    desc: tr('Plant and hold. +45% defense and +12% damage reduction (+4% / +1.5% per rank) while active, but -25% movement speed.'),
+    desc: tr('Plant and hold. +45% defense and +12% damage reduction (+4% / +1.5% per rank), but -25% movement speed. It stays up until you press it again.'),
     tier: 2,
     col: 2,
     icon: 'guard',
@@ -224,7 +224,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'shieldCharge',
     name: tr('Shield Charge'),
-    desc: tr('Cross 9 metres shoulder-first. 120% weapon damage (+22% per rank) to everything in the lane, knocking it down.'),
+    desc: tr('Run 9 metres shoulder-first behind the shield. Everything in the lane is struck as you reach it for 120% weapon damage (+22% per rank), thrown aside and knocked down.'),
     tier: 3,
     col: 0,
     icon: 'charge',
@@ -235,7 +235,7 @@ const BULWARK = build('bulwark', [
     dmg: [1.2, 0.22],
     type: 'physical',
     fx: 'dash.attack',
-    p: { range: 9, radius: 1.6, knockdown: 1.2 },
+    p: { range: 9, radius: 1.6, knockdown: 1.2, knockback: 3 },
   },
   {
     id: 'bulwarkMastery',
@@ -300,7 +300,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'fortressStance',
     name: tr('Fortress Stance'),
-    desc: tr('Root yourself for 6s: +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25% damage reduction (+0.5% per rank), and nothing can stun, hold or knock you back. You cannot move.'),
+    desc: tr('Kneel behind the shield for 6s (+0.1s per rank): +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25% damage reduction (+0.5% per rank), and nothing can stun, hold or knock you back. You cannot move. Ends Guard Stance.'),
     tier: 5,
     col: 0,
     icon: 'fortress',
@@ -310,7 +310,7 @@ const BULWARK = build('bulwark', [
     cd: [40, 1, 20],
     fx: 'stance.rooted',
     castTime: 0.6,
-    p: { duration: 6, defPct: 120, defPerRank: 8, blockPct: 20 },
+    p: { duration: 6, durationPerRank: 0.1, defPct: 120, defPerRank: 8, blockPct: 20 },
   },
   {
     id: 'unyielding',
@@ -348,7 +348,7 @@ const BULWARK = build('bulwark', [
   {
     id: 'retribution',
     name: tr('Retribution'),
-    desc: tr('CAPSTONE. Your guard becomes an argument. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.'),
+    desc: tr('CAPSTONE. Your guard becomes an argument. Your block cap rises from 75% to 85%. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.'),
     tier: 6,
     col: 0,
     max: 20,
@@ -356,7 +356,7 @@ const BULWARK = build('bulwark', [
     req: ['fortressStance', 'spikedGuard'],
     fx: 'capstone.retribution',
     type: 'physical',
-    p: { pctPerBlock: 3, perRank: 1.5 },
+    p: { pctPerBlock: 3, perRank: 1.5, capBonus: 10 },
   },
   {
     id: 'lastOath',
@@ -371,17 +371,23 @@ const BULWARK = build('bulwark', [
     p: { cooldown: 90, cdPerRank: 6, healPct: 25, healPerRank: 2, radius: 6, stun: 3 },
   },
   {
-    id: 'phalanx',
-    name: tr('Phalanx'),
-    desc: tr('Raises your block cap from 75% to 85% and adds +1% block per rank.'),
+    id: 'gatefall',
+    name: tr('Gatefall'),
+    desc: tr('Leap up to 10 metres and come down shield first. 240% weapon damage (+38% per rank) to everything within 3.5m (+0.1m per rank), knocking it down. Damage scales with your block chance. Nothing can hold or shove you in the air.'),
     tier: 6,
     col: 2,
     max: 15,
-    icon: 'wall',
+    icon: 'gatefall',
+    t: 'point',
     req: ['fortressStance'],
-    stat: { blockChance: per(1) },
-    fx: 'passive.blockRules',
-    p: { capBonus: 10 },
+    mana: [14, 0.8],
+    cd: [12, 0.35, 5],
+    dmg: [2.4, 0.38],
+    type: 'physical',
+    fx: 'leap.heavy',
+    timing: 'attack',
+    attackTime: 1,
+    p: { range: 10, radius: 3.5, radiusPerRank: 0.1, knockdown: 1.2, blockScale: 1.2 },
   },
 ]);
 
@@ -574,7 +580,7 @@ const CARNAGE = build('carnage', [
   {
     id: 'gorefeast',
     name: tr('Gorefeast'),
-    desc: tr('Consume every bleed on every enemy within 7m. Each stack consumed deals its remaining damage instantly and heals you for 20% of it (+3% per rank).'),
+    desc: tr('Drag the blade round at your ankles: 100% weapon damage (+8% per rank) to everything within 7m, then every bleed on them is drunk at once. Each stack deals its remaining damage now, and you heal for 20% of all of it (+3% per rank).'),
     tier: 5,
     col: 1,
     icon: 'feast',
@@ -609,7 +615,7 @@ const CARNAGE = build('carnage', [
     id: 'bloodTide',
     name: tr('Blood Tide'),
     desc:
-      tr('CAPSTONE. Wounds no longer belong to one body. When a bleeding enemy dies, every stack it carried leaps to all enemies within 6m (+0.3m per rank) at full duration, and each transfer adds +4% bleed damage to the new host. A pack that starts bleeding finishes bleeding.'),
+      tr('CAPSTONE. Wounds no longer belong to one body. When a bleeding enemy dies, every stack it carried leaps to the 8 nearest enemies within 6m (+0.3m per rank) for a fresh 6s, 4% stronger per rank. A pack that starts bleeding finishes bleeding.'),
     tier: 6,
     col: 0,
     max: 20,
@@ -735,7 +741,7 @@ const OATH = build('oath', [
   {
     id: 'bannerOfTheGate',
     name: tr('Banner of the Gate'),
-    desc: tr('Plant a standard for 20s: you gain +25% defense and +15% damage (+2% each per rank).'),
+    desc: tr('Drive a standard into the floor up to 6m away for 20s. While you stand inside its 8m ring you gain +25% defense and +15% damage (+2% each per rank). One stands at a time: a new one lowers the old.'),
     tier: 3,
     col: 0,
     icon: 'banner',
@@ -761,7 +767,7 @@ const OATH = build('oath', [
   {
     id: 'tauntingRoar',
     name: tr('Taunting Roar'),
-    desc: tr('Forces every enemy within 9m to attack you for 5s and applies Vulnerable (+25% damage taken, +1.5% per rank) for 8s (+0.2s per rank).'),
+    desc: tr('Roar them in. Every enemy within 9m is dragged to your feet and made Vulnerable: +25% damage taken (+1.5% per rank) for 8s (+0.2s per rank). Bosses and the unstoppable hold their ground.'),
     tier: 3,
     col: 2,
     icon: 'taunt',
@@ -771,7 +777,7 @@ const OATH = build('oath', [
     cd: [18, 0.4, 8],
     fx: 'shout.taunt',
     castTime: 0.6,
-    p: { radius: 9, duration: 5, durationPerRank: 0.2, vulnerable: 8 },
+    p: { radius: 9, vulnerable: 8, vulnerablePerRank: 0.2, amplify: 25, amplifyPerRank: 1.5 },
   },
   {
     id: 'oathOfBlood',
@@ -864,14 +870,17 @@ const OATH = build('oath', [
     id: 'theLastOrder',
     name: tr('The Last Order'),
     desc:
-      tr('CAPSTONE. You no longer swear one oath at a time. Every Oath aura you have learned runs simultaneously at 45% strength (+2.5% per rank), and each active oath grants +2% damage reduction. With every oath taken you become the gate rather than the thing standing in it.'),
+      tr('CAPSTONE. You no longer swear one oath at a time. Every Oath you have learned runs at once at 45% strength (+2.5% per rank), and each grants +2% damage reduction. Every shout carries them too: Might strikes everything in its reach for 80% weapon damage (+6% per rank), Iron wards you for 8% of your life (+0.5% per rank) for 8s, Blood heals 5% of your life (+0.4% per rank), and the Hymn opens 2 Bleeding stacks on everything in reach.'),
     tier: 6,
     col: 0,
     max: 20,
     icon: 'sworn',
     req: ['standardBearer', 'hymnOfThorns'],
     fx: 'capstone.allOaths',
-    p: { strength: 45, perRank: 2.5, drPerOath: 2 },
+    p: {
+      strength: 45, perRank: 2.5, drPerOath: 2,
+      mightPct: 80, mightPerRank: 6, ironPct: 8, ironPerRank: 0.5, ironDuration: 8, bloodPct: 5, bloodPerRank: 0.4, hymnStacks: 2,
+    },
   },
   {
     id: 'heraldOfRuin',
@@ -3537,7 +3546,9 @@ export const SYNERGIES: SynergyLink[] = [
   syn('shieldThrow', 'bulwarkMastery', 6),
   syn('riposte', 'deflect', 10),
   syn('retribution', 'braced', 6),
-  syn('retribution', 'phalanx', 8),
+  syn('retribution', 'gatefall', 8),
+  syn('gatefall', 'shieldCharge', 10),
+  syn('gatefall', 'fortressStance', 6),
   syn('retribution', 'ironSkin', 4),
   // Carnage
   syn('rend', 'butchery', 12),

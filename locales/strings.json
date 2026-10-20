@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9235,
+ "count": 9236,
  "strings": [
   {
    "key": "Beating iron…",
@@ -17635,7 +17635,7 @@
    ]
   },
   {
-   "key": "CAPSTONE. Wounds no longer belong to one body. When a bleeding enemy dies, every stack it carried leaps to all enemies within 6m (+0.3m per rank) at full duration, and each transfer adds +4% bleed damage to the new host. A pack that starts bleeding finishes bleeding.",
+   "key": "CAPSTONE. Wounds no longer belong to one body. When a bleeding enemy dies, every stack it carried leaps to the 8 nearest enemies within 6m (+0.3m per rank) for a fresh 6s, 4% stronger per rank. A pack that starts bleeding finishes bleeding.",
    "files": [
     "data/skills.ts"
    ]
@@ -17647,7 +17647,7 @@
    ]
   },
   {
-   "key": "CAPSTONE. You no longer swear one oath at a time. Every Oath aura you have learned runs simultaneously at 45% strength (+2.5% per rank), and each active oath grants +2% damage reduction. With every oath taken you become the gate rather than the thing standing in it.",
+   "key": "CAPSTONE. You no longer swear one oath at a time. Every Oath you have learned runs at once at 45% strength (+2.5% per rank), and each grants +2% damage reduction. Every shout carries them too: Might strikes everything in its reach for 80% weapon damage (+6% per rank), Iron wards you for 8% of your life (+0.5% per rank) for 8s, Blood heals 5% of your life (+0.4% per rank), and the Hymn opens 2 Bleeding stacks on everything in reach.",
    "files": [
     "data/skills.ts"
    ]
@@ -17659,7 +17659,7 @@
    ]
   },
   {
-   "key": "CAPSTONE. Your guard becomes an argument. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.",
+   "key": "CAPSTONE. Your guard becomes an argument. Your block cap rises from 75% to 85%. Every block stores 3% bonus damage (+1.5% per rank), up to 300%, and your next blow spends all of it. Blocking no longer just prevents the hit: it loads the answer.",
    "files": [
     "data/skills.ts"
    ]
@@ -17811,12 +17811,6 @@
    ]
   },
   {
-   "key": "Consume every bleed on every enemy within 7m. Each stack consumed deals its remaining damage instantly and heals you for 20% of it (+3% per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Convert 10% of your maximum mana into maximum life per 2 ranks, and gain +1% damage per 400 maximum life.",
    "files": [
     "data/skills.ts"
@@ -17879,12 +17873,6 @@
   },
   {
    "key": "Critical strikes apply Vulnerable for 8s (+25% damage taken), and you deal +5% damage per rank to enemies under any debuff.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Cross 9 metres shoulder-first. 120% weapon damage (+22% per rank) to everything in the lane, knocking it down.",
    "files": [
     "data/skills.ts"
    ]
@@ -18040,6 +18028,12 @@
    ]
   },
   {
+   "key": "Drag the blade round at your ankles: 100% weapon damage (+8% per rank) to everything within 7m, then every bleed on them is drunk at once. Each stack deals its remaining damage now, and you heal for 20% of all of it (+3% per rank).",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Dragon's Breath",
    "files": [
     "data/skills.ts"
@@ -18047,6 +18041,12 @@
   },
   {
    "key": "Draw fully. Slow, single target, and it always crits below half health.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Drive a standard into the floor up to 6m away for 20s. While you stand inside its 8m ring you gain +25% defense and +15% damage (+2% each per rank). One stands at a time: a new one lowers the old.",
    "files": [
     "data/skills.ts"
    ]
@@ -18272,12 +18272,6 @@
    ]
   },
   {
-   "key": "Forces every enemy within 9m to attack you for 5s and applies Vulnerable (+25% damage taken, +1.5% per rank) for 8s (+0.2s per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Forked",
    "files": [
     "data/skills.ts"
@@ -18317,6 +18311,12 @@
   },
   {
    "key": "Gash",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Gatefall",
    "files": [
     "data/skills.ts"
    ]
@@ -18479,6 +18479,12 @@
    ]
   },
   {
+   "key": "Kneel behind the shield for 6s (+0.1s per rank): +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25% damage reduction (+0.5% per rank), and nothing can stun, hold or knock you back. You cannot move. Ends Guard Stance.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Knife Halo",
    "files": [
     "data/skills.ts"
@@ -18492,6 +18498,12 @@
   },
   {
    "key": "Leap 8m backwards and loose an arrow at what you left behind.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Leap up to 10 metres and come down shield first. 240% weapon damage (+38% per rank) to everything within 3.5m (+0.1m per rank), knocking it down. Damage scales with your block chance. Nothing can hold or shove you in the air.",
    "files": [
     "data/skills.ts"
    ]
@@ -18760,12 +18772,6 @@
    ]
   },
   {
-   "key": "Phalanx",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Phantom Blades",
    "files": [
     "data/skills.ts"
@@ -18784,13 +18790,7 @@
    ]
   },
   {
-   "key": "Plant a standard for 20s: you gain +25% defense and +15% damage (+2% each per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Plant and hold. +45% defense and +12% damage reduction (+4% / +1.5% per rank) while active, but -25% movement speed.",
+   "key": "Plant and hold. +45% defense and +12% damage reduction (+4% / +1.5% per rank), but -25% movement speed. It stays up until you press it again.",
    "files": [
     "data/skills.ts"
    ]
@@ -18880,12 +18880,6 @@
    ]
   },
   {
-   "key": "Raises your block cap from 75% to 85% and adds +1% block per rank.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Rallying Horn",
    "files": [
     "data/skills.ts"
@@ -18966,6 +18960,12 @@
    ]
   },
   {
+   "key": "Roar them in. Every enemy within 9m is dragged to your feet and made Vulnerable: +25% damage taken (+1.5% per rank) for 8s (+0.2s per rank). Bosses and the unstoppable hold their ground.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
    "key": "Roll 6m in any direction, untouchable for 0.3s, then run 20% faster for 1.5s (+0.1s per rank).",
    "files": [
     "data/skills.ts"
@@ -18978,16 +18978,16 @@
    ]
   },
   {
-   "key": "Root yourself for 6s: +120% defense (+8% per rank), +20% block chance (+0.5% per rank), +25% damage reduction (+0.5% per rank), and nothing can stun, hold or knock you back. You cannot move.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Ruin",
    "files": [
     "data/skills.ts",
     "sim/Loot.ts"
+   ]
+  },
+  {
+   "key": "Run 9 metres shoulder-first behind the shield. Everything in the lane is struck as you reach it for 120% weapon damage (+22% per rank), thrown aside and knocked down.",
+   "files": [
+    "data/skills.ts"
    ]
   },
   {
@@ -19402,7 +19402,8 @@
   {
    "key": "The Last Order",
    "files": [
-    "data/skills.ts"
+    "data/skills.ts",
+    "scenes/knight/KnightKit.ts"
    ]
   },
   {
@@ -43166,6 +43167,12 @@
    "key": "{0} — Renown rank {1}",
    "files": [
     "scenes/TownStations.ts"
+   ]
+  },
+  {
+   "key": "Rooted: {0} cannot move you.",
+   "files": [
+    "scenes/knight/KnightKit.ts"
    ]
   },
   {

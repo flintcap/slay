@@ -85,7 +85,8 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   heraldOfRuin: s('skill.shout.herald'),
   bannerOfTheGate: s('skill.banner'),
   // A passive, but the brother it raises with the banner fights.
-  swornBrother: s(null, null, 'skill.clone.strike'),
+  swornBrother: s(null, null, 'skill.brother.strike'),
+  gatefall: s('skill.gatefall', 'skill.gatefall.land'),
   warStomp: s('skill.stomp'),
   earthshatter: s('skill.quake'),
 

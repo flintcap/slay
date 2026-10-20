@@ -217,6 +217,8 @@ const DEFS: Record<string, Partial<SoundDef>> = {
   'skill.storm.strike': BOOM,
   'skill.storm.eye': BOOM,
   'skill.quake': BOOM,
+  'skill.gatefall.land': BOOM,
+  'skill.brother.strike': MINION,
   'skill.bone.nova': BOOM,
   'skill.storm.spark': SPARK,
   'skill.storm.orb': SPARK,

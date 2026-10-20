@@ -228,6 +228,8 @@ for (const s of SKILLS) {
   runner.cast(via, player, new THREE.Vector3(0, 0, 1.8), a.ctx, a.enemies, null);
   type T = { life: number; maxLife: number; power: number };
   const ts = (runner as unknown as { turrets: T[] }).turrets;
+  // A spell that lets go on its release frame (a Knight's standard) raises its body a beat later.
+  for (let i = 0; i < 30 && ts.length === 0; i++) runner.update(DT);
   const before = ts.map((t) => [t.maxLife, t.power]);
   c.skills[s.id] = 5;
   for (let i = 0; i < 60; i++) runner.update(DT);

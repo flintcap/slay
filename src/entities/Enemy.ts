@@ -1280,6 +1280,8 @@ export class Enemy implements Combatant {
             id: this.id, amount, type: s.dotType ?? 'physical', crit: false,
             x: this.root.position.x, y: this.centerY + 0.25, z: this.root.position.z,
           });
+          // It bursts where you can see it, not only in the numbers.
+          ctx.fx.burst('blood', this.root.position.x, this.centerY, this.root.position.z, { count: 30, scale: 1.4 });
         }
         this.statuses.splice(i, 1);
       }
