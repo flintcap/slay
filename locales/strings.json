@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9226,
+ "count": 9233,
  "strings": [
   {
    "key": "Beating iron…",
@@ -4956,6 +4956,70 @@
    "key": "right pane",
    "files": [
     "data/bosses3.ts"
+   ]
+  },
+  {
+   "key": "Banner of the Gate",
+   "files": [
+    "data/classSkills/knightStatuses.ts",
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Blocks stored as bonus damage. Your next blow spends all of it. The count is the stored percent.",
+   "files": [
+    "data/classSkills/knightStatuses.ts"
+   ]
+  },
+  {
+   "key": "Fighting under your standard: more defense and damage while you stand inside its ring.",
+   "files": [
+    "data/classSkills/knightStatuses.ts"
+   ]
+  },
+  {
+   "key": "Fortress",
+   "files": [
+    "data/classSkills/knightStatuses.ts"
+   ]
+  },
+  {
+   "key": "Guard Stance",
+   "files": [
+    "data/classSkills/knightStatuses.ts",
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Guard set: more block chance and damage reduction.",
+   "files": [
+    "data/classSkills/knightStatuses.ts"
+   ]
+  },
+  {
+   "key": "Planted and holding: more defense and damage reduction, slower feet. Press Guard Stance again to drop it.",
+   "files": [
+    "data/classSkills/knightStatuses.ts"
+   ]
+  },
+  {
+   "key": "Retribution",
+   "files": [
+    "data/classSkills/knightStatuses.ts",
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Rooted to the floor. Much more defense, block and damage reduction, and nothing can stun, hold or knock you back.",
+   "files": [
+    "data/classSkills/knightStatuses.ts"
+   ]
+  },
+  {
+   "key": "Shield Wall",
+   "files": [
+    "data/classSkills/knightStatuses.ts",
+    "data/skills.ts"
    ]
   },
   {
@@ -16848,13 +16912,13 @@
    ]
   },
   {
-   "key": "-3% skill cooldowns per rank (to 45%) and Veil costs 5% less mana per rank (up to 90%).",
+   "key": "-4% crowd-control duration per rank (to a 60% floor), +2% to all resistances per rank with diminishing returns toward 25%, and shouts cost 3% less mana per rank.",
    "files": [
     "data/skills.ts"
    ]
   },
   {
-   "key": "-4% crowd-control duration per rank (to a 60% floor), +2% to all resistances per rank with diminishing returns toward 25%, and shouts cost 3% less mana per rank.",
+   "key": "-4.5% skill cooldowns per rank, with diminishing returns toward 45%, and Veil costs 5% less mana per rank (up to 90%).",
    "files": [
     "data/skills.ts"
    ]
@@ -17148,7 +17212,7 @@
    ]
   },
   {
-   "key": "A spectral serpent hunts at your side with 90% of your life, striking for 140% weapon damage (+22% per rank) as poison and applying 5 stacks per bite. It stays until it falls.",
+   "key": "A spectral serpent hunts at your side with 90% of your life, biting for 140% weapon damage (+22% per rank) as poison and applying 5 stacks of Poisoned per bite. It stays until it falls. A second serpent answers at rank 12.",
    "files": [
     "data/skills.ts"
    ]
@@ -17323,12 +17387,6 @@
   },
   {
    "key": "Ball Lightning",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Banner of the Gate",
    "files": [
     "data/skills.ts"
    ]
@@ -17813,7 +17871,7 @@
    ]
   },
   {
-   "key": "Critical strikes apply Vulnerable for 8s (+25% damage taken) and reduce the target's defense by 5% per rank.",
+   "key": "Critical strikes apply Vulnerable for 8s (+25% damage taken), and you deal +5% damage per rank to enemies under any debuff.",
    "files": [
     "data/skills.ts"
    ]
@@ -18306,12 +18364,6 @@
   },
   {
    "key": "Gravechill",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Guard Stance",
    "files": [
     "data/skills.ts"
    ]
@@ -18876,12 +18928,6 @@
    ]
   },
   {
-   "key": "Retribution",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Return 18% of every blocked hit as physical damage (+6% per rank), and 6% of unblocked melee damage.",
    "files": [
     "data/skills.ts"
@@ -19049,12 +19095,6 @@
   },
   {
    "key": "Shield Throw",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Shield Wall",
    "files": [
     "data/skills.ts"
    ]
@@ -19383,12 +19423,6 @@
    ]
   },
   {
-   "key": "Three clones instead of one (+1 per 6 ranks, to 6), each at 35% of your damage (+4% per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Throwing Spree",
    "files": [
     "data/skills.ts"
@@ -19462,6 +19496,12 @@
   },
   {
    "key": "Two hits of 85% weapon damage (+15% per rank). The second inherits the first hit's critical result.",
+   "files": [
+    "data/skills.ts"
+   ]
+  },
+  {
+   "key": "Two more Shadow Clones may stand at once (+1 per 6 ranks, up to 6 in all), and every clone deals +4% damage per rank.",
    "files": [
     "data/skills.ts"
    ]
@@ -19606,7 +19646,7 @@
    ]
   },
   {
-   "key": "While unseen or within your own darkness you take 30% less damage (+2% per rank) and regain 2% life per second.",
+   "key": "While Veiled, or standing in your own Smoke Bomb or Nightfall, you take 30% less damage (+2% per rank) and regain 2% life per second.",
    "files": [
     "data/skills.ts"
    ]
@@ -42949,6 +42989,12 @@
   },
   {
    "key": "Skeleton",
+   "files": [
+    "scenes/SkillRunner.ts"
+   ]
+  },
+  {
+   "key": "Spectral Viper",
    "files": [
     "scenes/SkillRunner.ts"
    ]
