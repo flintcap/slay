@@ -76,7 +76,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. Build. (sk-mage: spells module) Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -112,15 +112,10 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 3 are done (tables, plan and speed audit under "Notes for
-resume"; cast times and the release frame are in the code). Next:
-milestone 4, the build, from the plan in "Notes for resume", in this order,
-one commit each: masteries and Ember Soul element-only; Firebolt and
-Fireball size apart from lane; Inferno cone and mana; Annihilate; Sparkbolt;
-Chain Lightning; Conductance; Thunderstorm text; Ball Lightning and Frozen
-Orb rolling; Ionize; Ice Lance thrown; passive types; then the three
-replacements (Pyre Brand, Stormstride, Splintering Frost), synergies, bend,
-cleanup of old ids, i18n extract, checkers.
+Milestones 1 to 4 are done. The build lives in `src/scenes/mage/Spells.ts`
+(see "Milestone 4: build notes"). Next: milestone 5, icons (`brand`,
+`stride`, `splinter` are new; Fireball and Ball Lightning share
+`orb^speed`, Inferno and Sky Lance share `beam`), then 6, 7, 8.
 
 ## Notes for resume
 
@@ -397,6 +392,30 @@ No gear = 0% cast speed. Ceiling = 210% (x1.68). Seconds per cast.
   (+0.7 per rank), 25.3 at rank 20 (was 8, +0.4, 15.6). At no gear that is
   15 to 32 mana a second (was 10 to 20). For the owner: say if it drains
   too fast.
+
+### Milestone 4: build notes
+
+- `src/scenes/mage/Spells.ts` casts Fireball, Sparkbolt, Pyre Brand,
+  Inferno, Annihilate, Chain Lightning, Stormstride, Ball Lightning, Ice
+  Lance, Frozen Orb and Ionize, keyed by skill id, through a host on the
+  runner's own pipeline (`landSpell`: tune, strike, afterHit). Movers
+  (bolts, lances, orbs) are stepped every frame in sub-steps of 0.5 m and
+  strike what they touch then. No other class's skill goes through it.
+- Firebolt keeps the shared projectile branch; that branch now draws a
+  body by `size` when a skill has one (lane stays `radius`).
+- Forked now splits only Sparkbolt ("your bolts"). Before, Ball Lightning
+  forked too, as it was a lightning projectile.
+- Splintering Frost is 20% of the dead enemy's life (+1% per rank), 3 m
+  (+0.1 m per rank), Chill 3 s: milder than the 25% (+2%) in the plan.
+  Hooked in `DungeonScene.passiveOnKill` beside Combustion.
+- Sounds: Pyre Brand casts with the freed `skill.fire.lance` and has no
+  hit sound (no free fire recording, and recordings may not be shared).
+  Stormstride casts with `skill.storm.orbHit` (0.22 s) and lands with
+  `skill.storm.orb`.
+- Pyroclasm: every eruption after the first replays its recording where
+  it goes up.
+- Pyre Brand's Immolated grows by rank (`FOE_POWER`); its synergies grow
+  its hit, not the burn.
 
 ## For the owner to test
 
