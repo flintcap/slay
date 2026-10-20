@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9238,
+ "count": 9279,
  "strings": [
   {
    "key": "Beating iron…",
@@ -5941,6 +5941,656 @@
    "key": "The evening office said under a vigil. More life regeneration and damage reduction.",
    "files": [
     "data/classSkills/paladinStatuses.ts"
+   ]
+  },
+  {
+   "key": "+5% damage per rank with Twin Shot, Scattershot, Fan Fire, Suppressing Fire, Arrow Wheel and the rains (Arrow Rain, Creeping Barrage, Darken The Sky), and +1% critical chance with them every 3 ranks.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A barbed head that will not come out. The first enemy it meets bleeds (Hemorrhage) for 6s.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A brittle shaft that shatters inside the first enemy it meets. That enemy takes the full shot, and 6 splinters spray on through a 6m cone behind it, each striking the first enemy in its way for 35% of the shot.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A burning arrow that bursts on the first enemy it meets, or at the end of its 20m flight, for fire damage to everything within 3m.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A kestrel circles over you for 30s (+1s per rank), stooping every 1.4s on an enemy within 14m (marked ones first) for weapon damage. Nothing can strike it.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A life spent reading ground. +6% damage per rank with your traps, Thorn Barrier and the kestrel, and your traps catch from 3% farther per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A pressure plate at the aimed point, up to 12m away. It arms in 0.5s and waits 25s; the first enemy within 1.2m sets it off, and spikes burst up through everything within 2.6m, leaving 2 stacks of Bleeding for 6s. Up to 3 out at once.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A rain that walks: 5 falls (+1 every 6 ranks), 2.2m and 0.2s apart, from just in front of you toward the aimed point, each striking everything within 1.5m.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "A snap from the hip: 6 short arrows sprayed across a cone 8m deep, each striking the first enemy it meets. What they strike is shoved back 1.5m and Blinded for 2s.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Aim for the eye. +1% critical chance and +8% critical damage per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Aimed Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "An arrow that caroms from enemy to enemy: after the first it flies on to 2 more within 8m (+1 every 4 ranks), each leg striking as it arrives and 18% weaker than the last.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "An arrow that glances off walls up to 2 times (+1 every 7 ranks) over 26m, striking everything on every leg as it passes. Corridors become a weapon.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Arrow Rain",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Arrow Wheel",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Arrows lose nothing on the way through. +3.6% damage per rank, with diminishing returns toward 40%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Arrowsmith",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Bank Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Bleeding Arrow",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Bolt-Hole",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Brambles burst up in a wall 7m long across the aimed point and stand for 6s (+0.2s per rank). Whatever stands in it or pushes through takes poison damage every 0.5s and is Slowed 30%; its first touch leaves 2 stacks of Bleeding.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Breath control. +14 attack rating per rank, and +2.6% critical chance per rank with diminishing returns toward 26%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Camouflage",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Capstone. An arrow that kills scatters into two that fly on to the nearest enemies within 10m for 60% of the killing hit (+2% per rank). Those can scatter again, three times at most, and no more than 12 scattered arrows fly at once.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Capstone. Every Roll Away and Disengage leaves an armed Spike Trap where your feet left the ground (at your Spike Trap rank, which needs a point). Your traps arm at once, you may keep 1 more of each out (+1 every 10 ranks), and your trap damage rises 2% per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Capstone. Your plain shot, Aimed Shot, Bleeding Arrow, Crippling Shot, Disengage's arrow and Quarry's End all pierce, and every enemy an arrow passes through makes it strike the next 10% harder (+1% per rank), up to +50%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Carom Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Clean Kill",
+   "files": [
+    "data/classSkills/ranger.ts",
+    "sim/ItemPowers.ts"
+   ]
+  },
+  {
+   "key": "Close Grouping",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Coat your arrows for 20s: +5 poison damage (+3 per rank) on every hit, and every arrow that lands leaves a stack of Poisoned for 8s. Every arrow skill carries it, rains and caroms too.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Cold Focus",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Creeping Barrage",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Crippling Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Damage rises with range. Your arrows deal +2% damage for every metre past 6m between you and what they hit, up to a cap of +3.3% at rank 1 that rises toward +30%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Darken The Sky",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Disengage",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Down on one knee for a slow, full draw. One heavy arrow into the first enemy on its line: a critical hit against anything below half life, and the target is shoved back 1.5m.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Endless Quiver",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Every third bow skill you loose costs no mana. +1 mana regeneration and +6 mana per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Every trap you have out goes off at once, wherever it is, and steel bursts across 8m around you.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Explosive Tip",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Fan Fire",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Field medicine. +12 life and +1 life regeneration per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Five arrows in one flat sweep of the bow, fanned wide. Every one can crit, and up close several find the same target.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Fletcher's Art",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "For 10s (+0.3s per rank) you move 15% faster (+0.5% per rank), and whenever you stand still for 0.6s you vanish (Veiled) until you move or shoot. Your first arrow from hiding is a critical hit with +30% critical damage (+5% per rank).",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "For 6s (+0.2s per rank), Twin Shot, Scattershot, Fan Fire, Suppressing Fire and Arrow Wheel loose 2 more arrows, and you draw 15% faster (+0.5% per rank).",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Hang a wasp nest at the aimed point, up to 12m away. The first enemy within 2m breaks it, and for 5s the swarm stings everything within 3.5m every 0.5s for poison damage, each sting leaving a stack of Poisoned for 8s. Up to 2 out at once.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Headshot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Holds on you (stuns, roots, knock downs, fear) end sooner: 4% at rank 1, rising toward 50%, and never less than half their time. Roll Away and Disengage shake one hold or slow off you before you go.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Huntcraft",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Hunter's Mark",
+   "files": [
+    "data/classSkills/ranger.ts",
+    "data/quests.ts"
+   ]
+  },
+  {
+   "key": "Hunter's Mark also lands on up to 2 more enemies within 6m of the first (+1 every 8 ranks), and your critical hits on marked enemies deal +6% critical damage per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Kestrel",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Knelt and steady: three arrows one after another down an 18m line, each striking everything it passes. What they touch is Slowed 20% for 4s and Exhausted (-25% attack and cast speed) for 8s.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Lay of the Land",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Leap 8m backwards with your eyes on the enemy, and loose an arrow at what you left behind as you go.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Light Foot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Long Eye",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Loose high. A beat later the volley comes down across a 4.5m circle, up to 20m away, and strikes everything under it.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Murmuration",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Name the quarry. The enemy you point at (or the nearest within 3m of where you point) has every resistance lowered by 12 (+1.5 per rank) for 12s. If it dies marked, the mark jumps to the nearest enemy within 10m with the time it had left.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Nock without looking. +3.2% attack speed per rank, with diminishing returns toward 32%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Nothing hurries you. +6% critical damage per rank, and +1.9% attack speed per rank with diminishing returns toward 24%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "One Shot, One Grave",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "One arrow at every marked enemy within 25m, at most 6 (with none marked, at the one you aim at). Every one is a critical hit, and each mark it strikes is spent.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "One heavy shaft through the whole rank. It flies 22m and strikes every enemy on its line as it reaches each one.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Open Quiver",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Open Season",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Pierce Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Practised hands. -3% skill cooldowns per rank, with diminishing returns toward 30%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Punch Through",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Quarry's End",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Quick Draw",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Roll 6m in any direction, untouchable for 0.3s, then run 20% faster for 1.5s (+0.1s per rank). You come up with an arrow nocked: your next arrow skill within 2s (+0.05s per rank) is a critical hit.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Roll Away",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Scattershot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Set a noose at the aimed point, up to 12m away. It arms in 0.4s and waits 30s; the first enemy within 2m snaps it, and everything within 2m is Rooted for 2.5s (+0.2s per rank). Up to 3 out at once.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Slip Free",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Snare Trap",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Spike Trap",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Splinter Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Steady Hand",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "String a wire 8m long across the aimed point, up to 12m away. It arms in 0.5s and waits 25s; the first enemy to cross it snaps it, and everything within 1m of the wire takes the damage and is Knocked Down for 1.2s (+0.05s per rank). Up to 2 out at once.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Suppressing Fire",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Survivalist",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Take the leg. A low arrow that Cripples the first enemy it meets for 4s: 35% slower (+3% per rank) and 80 less defense.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "The Whole Floor Is A Trap",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "The first arrow into an enemy at full life is a critical hit with +20% critical damage (+3% per rank).",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "The light dims, and a beat later a vast volley falls across 12m, up to 22m away, striking everything under it.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "The longest draw there is. One black arrow that pierces everything on a 30m line. It is always a critical hit, and it deals double damage to anything at full life.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Thicket of Shafts",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Thorn Barrier",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Through and Through",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Trap Mastery",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Tripwire",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Turn on the spot and loose 10 arrows (+1 every 4 ranks) in a full circle, each flying 10m and striking the first enemy it meets. The answer to being surrounded.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Twin Shot",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Twin Shot, Scattershot, Fan Fire, Suppressing Fire and Arrow Wheel loose one more arrow every 5 ranks. +2.8% damage per rank (toward 35%) and +0.9% attack speed per rank (toward 15%).",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Two arrows, one loose after the other, slightly apart. Up close both can find the same target.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Venom Coat",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Volley Mastery",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Wasp Nest",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "When a blow takes you below 35% life, you heal 15% of your life (+1% per rank) over 3s and run 30% faster for 3s. Once every 60s (1s less per rank, never under 40s).",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "When more than one arrow of a single loose strikes the same enemy, each after the first deals +10% damage (+2% per rank).",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Where Arrow Rain, Creeping Barrage and Darken The Sky come down, the floor bristles with shafts for 4s (+0.2s per rank): enemies in it are Slowed 25%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "You move like the floor owes you nothing. +1 dexterity per rank, and +2.7% movement speed per rank with diminishing returns toward 30%.",
+   "files": [
+    "data/classSkills/ranger.ts"
+   ]
+  },
+  {
+   "key": "Your own fletching, your own heads. +5% damage with bow skills per rank, and +0.5% critical chance per rank.",
+   "files": [
+    "data/classSkills/ranger.ts"
    ]
   },
   {
@@ -12836,13 +13486,6 @@
    ]
   },
   {
-   "key": "Hunter's Mark",
-   "files": [
-    "data/quests.ts",
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Interrupt the survey",
    "files": [
     "data/quests.ts"
@@ -16983,12 +17626,6 @@
    ]
   },
   {
-   "key": "A barbed head that will not come out. Applies a bleed for 6s.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "A blocked attack is an opening. 20% chance on block (+4% per rank) to counterattack for 110% weapon damage (+10% per rank).",
    "files": [
     "data/skills.ts"
@@ -17020,12 +17657,6 @@
   },
   {
    "key": "A concussive detonation: 260% spell damage (+40% per rank) in 6m, knocking enemies back and interrupting casts.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "A cone of arrows at close range: everything within 8m in front of you is hit.",
    "files": [
     "data/skills.ts"
    ]
@@ -17097,12 +17728,6 @@
    ]
   },
   {
-   "key": "A pressure plate over a pit. Detonates for heavy physical damage in a small area.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "A pressure wave: 130% spell damage (+21% per rank) in 5m, Stunned for 1.5s (+0.05s per rank), which stops any cast.",
    "files": [
     "data/skills.ts"
@@ -17140,12 +17765,6 @@
   },
   {
    "key": "A shockwave travels 12m, dealing 220% weapon damage (+35% per rank) and applying Sundered to everything it crosses.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "A shot placed through the whole rank. Passes through every enemy in a line.",
    "files": [
     "data/skills.ts"
    ]
@@ -17205,12 +17824,6 @@
    ]
   },
   {
-   "key": "A stream of arrows down an 18m line. Everything it touches is Slowed 20% for 4s and Exhausted (-25% attack and cast speed) for 8s.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "A sworn hymn. You reflect 12% of melee damage taken (+4% per rank).",
    "files": [
     "data/skills.ts"
@@ -17241,12 +17854,6 @@
    ]
   },
   {
-   "key": "A wall of brambles lashes out 7m ahead. Everything caught takes poison damage, is Slowed for 8s and gets 2 stacks of Bleeding.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "A ward of hammered light absorbs 60 damage (+35 per rank) for 12s. What it absorbs is added to your next Shield Bash.",
    "files": [
     "data/skills.ts"
@@ -17271,18 +17878,6 @@
    ]
   },
   {
-   "key": "Aim for the eye. +1% critical chance and +8% critical damage per rank.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Aimed Shot",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Annihilate",
    "files": [
     "data/skills.ts"
@@ -17301,37 +17896,7 @@
    ]
   },
   {
-   "key": "Arrow Rain",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Arrows bounce on to 2 more nearby targets after hitting (+1 per 4 ranks).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Arrows burst on impact for area fire damage.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Arrows carry poison for 20s: +5 poison damage (+3 per rank) on every hit, and every arrow hit applies a stack of Poisoned.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Arrows in quantity — spreads, rains, and shots that keep going.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Arrows lose nothing on the way through. +3.6% damage per rank, with diminishing returns toward 40%.",
    "files": [
     "data/skills.ts"
    ]
@@ -17412,12 +17977,6 @@
   },
   {
    "key": "Bleed Dry",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Bleeding Arrow",
    "files": [
     "data/skills.ts"
    ]
@@ -17553,12 +18112,6 @@
    ]
   },
   {
-   "key": "Breath control. +14 attack rating per rank, and +2.6% critical chance per rank with diminishing returns toward 26%.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Bulwark Mastery",
    "files": [
     "data/skills.ts"
@@ -17661,31 +18214,7 @@
    ]
   },
   {
-   "key": "Camouflage",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Cannot be knocked back. +2% damage reduction per rank and -4% crowd-control duration per rank (to a 70% floor).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Capstone. Every trap you know goes off at once: one blast across 8m around you.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Capstone. The sky goes dark and one vast volley falls across the whole room at once.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Capstone. Your first attack on a full-health target is always a critical hit and pierces everything.",
    "files": [
     "data/skills.ts"
    ]
@@ -17771,12 +18300,6 @@
    ]
   },
   {
-   "key": "Cold Focus",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Cold Mastery",
    "files": [
     "data/skills.ts"
@@ -17833,12 +18356,6 @@
   },
   {
    "key": "Cripple Tendon",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Crippling Shot",
    "files": [
     "data/skills.ts"
    ]
@@ -17928,12 +18445,6 @@
    ]
   },
   {
-   "key": "Damage rises with range. +2% damage per metre past 6, up to +30% (+3% cap per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Dance round one enemy in five cuts of 110% weapon damage (+16% per rank), stepping a quarter turn round it with each. The fifth cut, both blades driven in, is always a critical strike.",
    "files": [
     "data/skills.ts"
@@ -17941,12 +18452,6 @@
   },
   {
    "key": "Dark Pact",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Darken The Sky",
    "files": [
     "data/skills.ts"
    ]
@@ -18000,12 +18505,6 @@
    ]
   },
   {
-   "key": "Disengage",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Doom",
    "files": [
     "data/skills.ts"
@@ -18019,12 +18518,6 @@
   },
   {
    "key": "Dragon's Breath",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Draw fully. Slow, single target, and it always crits below half health.",
    "files": [
     "data/skills.ts"
    ]
@@ -18072,12 +18565,6 @@
    ]
   },
   {
-   "key": "Endless Quiver",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Enemies within 8m lose 1% of all resistances per rank and 2% attack speed per rank while you live.",
    "files": [
     "data/skills.ts"
@@ -18103,12 +18590,6 @@
   },
   {
    "key": "Every minion is healed for 40% of maximum life (+3% per rank), and any that died in the last 5s rise again where they fell.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Every third skill shot from a bow costs no mana. +1 mana regeneration and +6 mana per rank.",
    "files": [
     "data/skills.ts"
    ]
@@ -18145,18 +18626,6 @@
    ]
   },
   {
-   "key": "Explosive Tip",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Fan Fire",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Fan of Knives",
    "files": [
     "data/skills.ts"
@@ -18164,12 +18633,6 @@
   },
   {
    "key": "Femur Lance",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Field medicine. +12 life and +1 life regeneration per rank.",
    "files": [
     "data/skills.ts"
    ]
@@ -18217,12 +18680,6 @@
    "files": [
     "data/skills.ts",
     "entities/Abilities.ts"
-   ]
-  },
-  {
-   "key": "Five arrows in a wide fan. Every one can crit.",
-   "files": [
-    "data/skills.ts"
    ]
   },
   {
@@ -18378,12 +18835,6 @@
    ]
   },
   {
-   "key": "Headshot",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Heals you and every minion for 12% of maximum life (+2% per rank) and clears one crowd-control effect.",
    "files": [
     "data/skills.ts"
@@ -18523,12 +18974,6 @@
    ]
   },
   {
-   "key": "Leap 8m backwards and loose an arrow at what you left behind.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Leap up to 10 metres and come down shield first. 240% weapon damage (+38% per rank) to everything within 3.5m (+0.1m per rank), knocking it down. Damage scales with your block chance. Nothing can hold or shove you in the air.",
    "files": [
     "data/skills.ts"
@@ -18548,12 +18993,6 @@
   },
   {
    "key": "Life is fungible. Take theirs, spend yours, and refuse to stay dead.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Light Foot",
    "files": [
     "data/skills.ts"
    ]
@@ -18580,18 +19019,6 @@
   },
   {
    "key": "Lobbed and heavy: it lands where you aim and bursts for 160% spell damage (+26% per rank) in 3.2m, leaving 3 stacks of Burning on everything caught.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Long Eye",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Loose high. One heavy volley lands across a 4.5m circle.",
    "files": [
     "data/skills.ts"
    ]
@@ -18647,12 +19074,6 @@
    ]
   },
   {
-   "key": "Name the target. It takes 12% more damage from you for 12s (+1.5% per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Night Eyes",
    "files": [
     "data/skills.ts"
@@ -18660,18 +19081,6 @@
   },
   {
    "key": "Nightfall",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Nock without looking. +3.2% attack speed per rank, with diminishing returns toward 32%.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Nothing hurries you. +6% critical damage per rank, and +1.9% attack speed per rank with diminishing returns toward 24%.",
    "files": [
     "data/skills.ts"
    ]
@@ -18708,12 +19117,6 @@
   },
   {
    "key": "Once every 90s (-6s per rank), lethal damage instead leaves you at 1 life, heals 25% of maximum life and stuns everything within 6m for 3s.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "One Shot, One Grave",
    "files": [
     "data/skills.ts"
    ]
@@ -18798,12 +19201,6 @@
    ]
   },
   {
-   "key": "Pierce Shot",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Plague Vial",
    "files": [
     "data/skills.ts"
@@ -18828,19 +19225,7 @@
    ]
   },
   {
-   "key": "Practised hands. -3% skill cooldowns per rank, with diminishing returns toward 30%.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Precise Cut",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Punch Through",
    "files": [
     "data/skills.ts"
    ]
@@ -18859,12 +19244,6 @@
   },
   {
    "key": "Pyroclasm",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Quick Draw",
    "files": [
     "data/skills.ts"
    ]
@@ -18955,12 +19334,6 @@
    ]
   },
   {
-   "key": "Ricochet",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Rime Field",
    "files": [
     "data/skills.ts"
@@ -18986,18 +19359,6 @@
    ]
   },
   {
-   "key": "Roll 6m in any direction, untouchable for 0.3s, then run 20% faster for 1.5s (+0.1s per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Roll Away",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Ruin",
    "files": [
     "data/skills.ts",
@@ -19017,12 +19378,6 @@
    ]
   },
   {
-   "key": "Scattershot",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Scissor Cut",
    "files": [
     "data/skills.ts"
@@ -19037,12 +19392,6 @@
   },
   {
    "key": "Searing Core",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Set a trap. The first thing across it is rooted for 2.5s (+0.2s per rank).",
    "files": [
     "data/skills.ts"
    ]
@@ -19187,12 +19536,6 @@
    ]
   },
   {
-   "key": "Skills that loose several arrows loose one more every 5 ranks. +2.8% damage per rank (toward 35%) and +0.9% attack speed per rank (toward 15%).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Sky Lance",
    "files": [
     "data/skills.ts"
@@ -19200,12 +19543,6 @@
   },
   {
    "key": "Smoke Bomb",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Snare Trap",
    "files": [
     "data/skills.ts"
    ]
@@ -19236,12 +19573,6 @@
   },
   {
    "key": "Spend 20% of current life to deal 400% of the spent amount (+30% per rank) as arcane damage within 8m, healing 15% of damage dealt.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Spike Trap",
    "files": [
     "data/skills.ts"
    ]
@@ -19289,19 +19620,7 @@
    ]
   },
   {
-   "key": "Stand still and disappear for 8s (+0.3s per rank) and move 15% faster (+0.5% per rank). Breaking it grants a guaranteed critical hit with +30% critical damage (+5% per rank).",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Standard Bearer",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Steady Hand",
    "files": [
     "data/skills.ts"
    ]
@@ -19351,28 +19670,10 @@
    ]
   },
   {
-   "key": "Suppressing Fire",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Survivalist",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Sworn Brother",
    "files": [
     "data/skills.ts",
     "scenes/SkillRunner.ts"
-   ]
-  },
-  {
-   "key": "Take the leg. Crippled for 4s: 35% slower (+3% per rank) and easier to hit.",
-   "files": [
-    "data/skills.ts"
    ]
   },
   {
@@ -19439,19 +19740,7 @@
    ]
   },
   {
-   "key": "The Whole Floor Is A Trap",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "The shield as a weapon. Block, absorb, and make the return trip expensive.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Thorn Barrier",
    "files": [
     "data/skills.ts"
    ]
@@ -19487,12 +19776,6 @@
    ]
   },
   {
-   "key": "Trap Mastery",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Trap one soul for 12s: the target is rooted and torn by grave-hands, cannot heal, has 25% lower resistances (+2% per rank), and gives up 2 extra Souls when it dies.",
    "files": [
     "data/skills.ts"
@@ -19512,18 +19795,6 @@
   },
   {
    "key": "Twelve seconds of falling fire over 8m: 3 impacts per second, each with a stack of Burning.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Twin Shot",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Two arrows, slightly apart. Both can hit the same target at close range.",
    "files": [
     "data/skills.ts"
    ]
@@ -19614,12 +19885,6 @@
    ]
   },
   {
-   "key": "Venom Coat",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
    "key": "Venom Dart",
    "files": [
     "data/skills.ts"
@@ -19633,12 +19898,6 @@
   },
   {
    "key": "Void Walk",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "Volley Mastery",
    "files": [
     "data/skills.ts"
    ]
@@ -19730,12 +19989,6 @@
   },
   {
    "key": "You leave poison in your wake: a 1.6m trail that lasts 5s and bites every 0.5s for 25% weapon damage (+5% per rank) per second, with a 40% chance to apply Poisoned.",
-   "files": [
-    "data/skills.ts"
-   ]
-  },
-  {
-   "key": "You move like the floor owes you nothing. +1 dexterity per rank, and +2.7% movement speed per rank with diminishing returns toward 30%.",
    "files": [
     "data/skills.ts"
    ]
@@ -43866,12 +44119,6 @@
   },
   {
    "key": "Chilled or frozen enemies shatter when they die, freezing everything within 4 metres.",
-   "files": [
-    "sim/ItemPowers.ts"
-   ]
-  },
-  {
-   "key": "Clean Kill",
    "files": [
     "sim/ItemPowers.ts"
    ]
