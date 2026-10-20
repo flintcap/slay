@@ -129,6 +129,20 @@ Paladin (sk-paladin, done):
   Confession Thrust, Feint, Last Rites), The Last Hour's bell, Hurl the
   Censer's chain. Frame time not measured.
 
+Revenant (sk-revenant, done):
+- Never seen in motion: Bone Storm, Bone Cage, Gravewalk, Soul Cage, Soul
+  Tether, Revenant Form and the skull projectile. One `check-perf` look
+  with Bone Storm, Bone Cage and Soul Tether all up (about 14 shards, 18
+  ribs, 14 hands, 44 links, 3 skulls).
+- Blinded, silenced and disarmed still root monsters (their `control`
+  holds set `rootTimer`); only fear and confusion were freed. Free them
+  the same way unless the status means to hold the body.
+- Corpse Explosion and Sanguine Nova have no hit sound (the sound checker
+  forbids one); Doom's burst replays its cast sound. Give each a real
+  sound, and fix the checker rule if it is what stops it.
+- Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
+  unused by any Revenant skill. Remove them if nothing else names them.
+
 ## Next up
 
 Wait for skillcore and the seven class streams. Then start milestone 1.
