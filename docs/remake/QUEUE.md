@@ -26,10 +26,9 @@ Paused: no
 
 Wave 5 (skills remake, owner):
 Running: none
-Planned, waiting for a build slot: sk-ranger, sk-paladin, sk-shifter (in
-that order)
-Building: sk-knight, sk-rogue, sk-revenant (three at a time)
+Planned, waiting for a build slot: sk-paladin, sk-shifter (in that order)
+Building: sk-knight, sk-revenant, sk-ranger (three at a time)
 Waiting: then
 skillqa (alone, last)
-Done: skillcore, sk-mage
+Done: skillcore, sk-mage, sk-rogue
 Paused: no

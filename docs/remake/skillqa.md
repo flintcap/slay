@@ -93,6 +93,17 @@ Mage (sk-mage, done):
   rank). Compare it with skills in the same tier and make it worth taking.
 - Spell looks in motion and real frame time were not checked.
 
+Rogue (sk-rogue, done):
+- The new swings and looks were never seen in a running game, and frame
+  time was never measured. Nightfall's smoke curtain is the costliest
+  (about 60 smoke sprites at High per cast): check it against the quality
+  ladder.
+- Seven Shadowcraft icons all show a hooded figure, and Silhouette is
+  close to The Unseen Blade. Make each one clearly its own.
+- `check-skillcost` never ran (it was stopped). Run it once.
+- `check-unfinished` flags two statuses, `static` and `rent`, that no code
+  applies (older than this wave). Wire them or remove them.
+
 ## Next up
 
 Wait for skillcore and the seven class streams. Then start milestone 1.
