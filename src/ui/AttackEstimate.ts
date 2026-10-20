@@ -18,6 +18,7 @@ import { damageRange, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import { basicTime, handsOf, skillPace, speedMultiplier, type Pace } from '../sim/Speed';
 import { bendFor, bentKnob } from '../data/skillBends';
+import { passiveEffects } from '../sim/Passives';
 
 /** Crit chance tops out here (Combat.rollDamage). */
 const CRIT_CHANCE_CAP = 95;
@@ -91,7 +92,8 @@ function estimateDef(c: Character, st: Stats, def: SkillDef): AttackEstimate | n
     scale = 1;
   }
   const type: DamageType = def.damageType ?? 'physical';
-  const r = damageRange(st, scale, type);
+  // A Mage mastery raises its own element's hits only (`RollOpts.elemPct`).
+  const r = damageRange(st, scale, type, type === 'physical' ? 0 : passiveEffects(c).elementPct[type] ?? 0);
   const action = paceFor(c, st, def).time;
   const cd = (def.cooldown ? def.cooldown(rank) : 0) * (1 - Math.min(CDR_CAP, st.cooldownReduction) / 100);
   const period = Math.max(action, cd);

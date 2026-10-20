@@ -196,6 +196,20 @@ export interface PassiveEffects {
   onHitStatuses: Array<{ type: DamageType; id: string; chance: number; duration: number }>;
   /** Fire and Lightning Mastery: percent of a damage type's resistance your hits ignore. */
   pierceByType: Partial<Record<DamageType, number>>;
+  /**
+   * The Mage's masteries: damage percent for hits of one element only, added
+   * to `elementalDamagePct` when the hit is rolled (`RollOpts.elemPct`).
+   */
+  elementPct: Partial<Record<DamageType, number>>;
+  /** Ember Soul: the missing-mana bonus counts only for hits of this type (null for all). */
+  missingManaType: DamageType | null;
+  /** Conductance: more damage against Shocked targets, and seconds on every Shocked you apply. */
+  vsShockedPct: number;
+  shockLongerSec: number;
+  /** Splintering Frost: a Frozen or Brittle kill bursts for this percent of its maximum life, this far, Chilling for this long. */
+  shatterPct: number;
+  shatterRadius: number;
+  shatterChill: number;
   /** Kindling, Deadly Aim: extra critical chance and damage against a kind of target. */
   condCrit: Array<{ when: 'burning' | 'healthy'; chance: number; damage: number }>;
   /** Storm Fury: cast speed per lightning hit, how many, and how long they last. */
@@ -451,6 +465,13 @@ function emptyEffects(): PassiveEffects {
     poisonSlows: false,
     onHitStatuses: [],
     pierceByType: {},
+    elementPct: {},
+    missingManaType: null,
+    vsShockedPct: 0,
+    shockLongerSec: 0,
+    shatterPct: 0,
+    shatterRadius: 0,
+    shatterChill: 0,
     condCrit: [],
     castStackPct: 0,
     castStackMax: 0,
@@ -670,9 +691,11 @@ const RULES: Record<string, Contribution> = {
     e.killExplodeIgnite = Math.max(e.killExplodeIgnite, param(id, 'spreadBurn', 1));
   },
   fireMastery: (e, r, id) => {
+    e.elementPct.fire = (e.elementPct.fire ?? 0) + param(id, 'damagePerRank', 9) * r;
     e.pierceByType.fire = Math.min(param(id, 'pierceFloor', 20), (e.pierceByType.fire ?? 0) + param(id, 'piercePerRank', 1) * r);
   },
   lightningMastery: (e, r, id) => {
+    e.elementPct.lightning = (e.elementPct.lightning ?? 0) + param(id, 'damagePerRank', 10) * r;
     e.pierceByType.lightning = Math.min(param(id, 'pierceFloor', 25), (e.pierceByType.lightning ?? 0) + param(id, 'piercePerRank', 1) * r);
   },
   kindling: (e, r, id) => {
@@ -689,6 +712,8 @@ const RULES: Record<string, Contribution> = {
   emberSoul: (e, r, id) => {
     e.missingManaPct += param(id, 'pctPer10', 1) * r;
     e.missingManaCap = Math.max(e.missingManaCap, param(id, 'cap', 60));
+    // "Your fire damage": the bonus is for fire hits only.
+    e.missingManaType = 'fire';
   },
   cataclysm: (e, r, id) => {
     e.overkillCarryPct += param(id, 'carryPct', 60) + param(id, 'perRank', 3) * (r - 1);
@@ -702,10 +727,10 @@ const RULES: Record<string, Contribution> = {
 
   // ------------------------------------------------------- mage, lightning
   conductance: (e, r, id) => {
-    // Shocked enemies take more from everything, which is the debuff branch of
-    // the conditional multiplier rather than a lightning-only bonus.
-    e.vsDebuffedPct += param(id, 'pctPerRank', 5) * r;
-    e.curseDurationPct += param(id, 'durationPerRank', 0.4) * r * 10;
+    // Shocked enemies take more from all your hits (any element), and every
+    // Shocked you apply lasts longer. Nothing else.
+    e.vsShockedPct += param(id, 'pctPerRank', 5) * r;
+    e.shockLongerSec += param(id, 'durationPerRank', 0.4) * r;
   },
   forkedBolt: (e, r, id) => {
     e.forkCount = Math.max(
@@ -720,6 +745,14 @@ const RULES: Record<string, Contribution> = {
   },
 
   // ------------------------------------------------------------ mage, cold
+  coldMastery: (e, r, id) => {
+    e.elementPct.cold = (e.elementPct.cold ?? 0) + param(id, 'damagePerRank', 9) * r;
+  },
+  splinteringFrost: (e, r, id) => {
+    e.shatterPct += param(id, 'lifePct', 20) + param(id, 'perRank', 1) * (r - 1);
+    e.shatterRadius = Math.max(e.shatterRadius, param(id, 'radius', 3) + param(id, 'radiusPerRank', 0.1) * (r - 1));
+    e.shatterChill = Math.max(e.shatterChill, param(id, 'chill', 3));
+  },
   frostbite: (e, r, id) => {
     e.onHitStatuses.push({
       type: 'cold',
@@ -1128,7 +1161,7 @@ export function newPassiveState(): PassiveState {
  */
 export function damageMultiplier(
   e: PassiveEffects,
-  target: { lifeFrac: number; bleeding: boolean; debuffed: boolean },
+  target: { lifeFrac: number; bleeding: boolean; debuffed: boolean; shocked?: boolean },
   self: {
     manaFrac: number;
     maxMana: number;
@@ -1140,6 +1173,8 @@ export function damageMultiplier(
     /** Flurry stacks held. */
     hitStacks?: number;
   },
+  /** The hit's damage type, for bonuses that count one element only. */
+  type?: DamageType,
 ): number {
   let pct = 0;
   if (e.hitStackDamagePct > 0) pct += e.hitStackDamagePct * (self.hitStacks ?? 0);
@@ -1148,7 +1183,8 @@ export function damageMultiplier(
   if (e.executeThreshold > 0 && target.lifeFrac * 100 <= e.executeThreshold) {
     pct += e.executeDamagePct;
   }
-  if (e.missingManaPct > 0) {
+  if (target.shocked) pct += e.vsShockedPct;
+  if (e.missingManaPct > 0 && (e.missingManaType === null || e.missingManaType === type)) {
     const missingTenths = Math.max(0, (1 - self.manaFrac) * 10);
     pct += Math.min(e.missingManaCap, e.missingManaPct * missingTenths);
   }

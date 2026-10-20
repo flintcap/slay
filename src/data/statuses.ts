@@ -706,7 +706,7 @@ export const STATUSES: StatusDef[] = [
     tags: ['buff', 'drain'],
   }),
   def('overcharged', tr('Overcharged'), 1, {
-    desc: tr('+45% lightning damage, and attacks arc to a second target.'),
+    desc: tr('+25% elemental damage and +12 lightning damage.'),
     mods: mods({ lightningDamage: 12, elementalDamagePct: 25 }),
     baseDuration: 8,
     color: 0x9fe0ff,

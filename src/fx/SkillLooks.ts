@@ -84,7 +84,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   // Mage: Conflagration.
   firebolt: m('embers', 'fan'),
   emberNova: m('cinders', 'burst'),
-  flameLance: m('fire pillars', 'line'),
+  pyreBrand: m('sigil brands', 'arch'),
   fireball: m('embers', 'converge'),
   infernoStream: m('fire pools', 'fan'),
   blastWave: m('scorch marks', 'ring'),
@@ -98,7 +98,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   chainLightning: m('sparks', 'zigzag'),
   thunderclap: m('shock rings', 'pulse'),
   lightningStrike: m('fork burns', 'star'),
-  tempestOrb: m('sparks', 'orbit'),
+  stormstride: m('fork burns', 'trail'),
   thunderstorm: m('arcs', 'crown'),
   ballLightning: m('sparks', 'helix'),
   skyLance: m('lightning strikes', 'line'),

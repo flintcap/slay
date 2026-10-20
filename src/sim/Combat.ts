@@ -135,6 +135,11 @@ export interface RollOpts {
   knockback?: number;
   /** True when the packet is area damage — applies `areaDamagePct`. */
   area?: boolean;
+  /**
+   * Damage percent for this packet's own element only (a Mage mastery),
+   * added to `elementalDamagePct`. Ignored on physical packets.
+   */
+  elemPct?: number;
 }
 
 const ELEMENTAL_FLAT: ReadonlyArray<[DamageType, keyof Stats]> = [
@@ -167,7 +172,7 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
   const max = Math.max(min, stats.maxDamage);
   const weapon = rng.range(min, max + 1) * (1 + stats.enhancedDamage / 100);
   const flatElem = flatElementalTotal(stats);
-  const elemPct = 1 + stats.elementalDamagePct / 100;
+  const elemPct = 1 + (stats.elementalDamagePct + (type === 'physical' ? 0 : opts.elemPct ?? 0)) / 100;
 
   let amount: number;
   let parts: DamagePacket['parts'];
@@ -230,15 +235,16 @@ export function skillDamageScale(skills: Record<string, number>, skillLevels: nu
 /**
  * The lowest and highest hit a skill lands before crits, area bonuses and
  * the target's defences: the same arithmetic as `rollDamage` at both ends of
- * the weapon roll. `scale` is the skill's whole multiplier. The character
+ * the weapon roll. `scale` is the skill's whole multiplier, `elemPct` its
+ * element's own damage percent (`RollOpts.elemPct`). The character
  * sheet reads it so the damage it shows is the attack you actually press.
  */
-export function damageRange(stats: Stats, scale: number, type: DamageType): { min: number; max: number } {
+export function damageRange(stats: Stats, scale: number, type: DamageType, elemPct = 0): { min: number; max: number } {
   const min = Math.max(0, stats.minDamage);
   const max = Math.max(min, stats.maxDamage);
   const ed = 1 + stats.enhancedDamage / 100;
   const flat = flatElementalTotal(stats);
-  const elem = 1 + stats.elementalDamagePct / 100;
+  const elem = 1 + (stats.elementalDamagePct + (type === 'physical' ? 0 : elemPct)) / 100;
   const at = (w: number): number => {
     const weapon = w * ed;
     const amount = type === 'physical' ? weapon + flat * elem : (weapon + flat) * elem;

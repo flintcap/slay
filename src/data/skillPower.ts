@@ -191,6 +191,8 @@ export const FOE_POWER: Record<string, (k: number, n: Num) => FoePower> = {
   }),
 
   // Mage
+  // Pyre Brand's Immolated burns hotter every rank, and keeps its time when it leaps.
+  pyreBrand: (k, n) => ({ status: 'immolated', duration: n('duration', 6), magnitude: r1(1 + 0.1 * k) }),
   ionize: (k, n) => ({
     status: 'shocked',
     duration: n('duration', 10),

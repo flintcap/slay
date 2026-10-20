@@ -27,16 +27,15 @@ const MAGE_FIRE: Record<string, Spec> = {
     ],
     glow: 'both',
   },
-  /** Both hands drawn back to the hip, then driven straight ahead with a step. */
-  flameLance: {
+  /** The brand pinched off the left palm, then flicked overhand like a dart. */
+  pyreBrand: {
     keys: [
-      [0.16, { R: [0.1, 0.25, 0.9, 1.9, 0.7], L: [0.35, -0.25, 1.1, 1.9, 0.7], turn: -0.5, fwd: -0.08 }, true],
-      [0.26, { R: [1.35, 0.0, 0.9, 0.15, 1.1, -0.9], L: [1.35, -0.05, 0.9, 0.15, 1.1, -0.9], turn: 0.15, lean: 0.25, fwd: 0.35 }],
-      [0.42, { R: [1.3, 0.05, 0.9, 0.25, 1.1, -0.7], L: [1.3, 0.0, 0.9, 0.25, 1.1, -0.7], turn: 0.12, lean: 0.22, fwd: 0.32 }],
+      [0.14, { R: [2.4, 0.5, 0.4, 2.0, 0.4, 0.3], L: [0.9, -0.2, 0.9, 1.6, 0.4], turn: -0.4, lean: -0.1, fistR: 0.8 }, true],
+      [0.22, { R: [1.2, 0.1, 0.4, 0.1, 1.1, -0.9], L: [0.5, 0.3, 0.6, 1.4], turn: 0.3, lean: 0.2, fwd: 0.12, fistR: 0 }],
+      [0.4, { R: [1.0, 0.1, 0.4, 0.2, 1.1, -0.7], L: [0.45, 0.3, 0.6, 1.3], turn: 0.25, lean: 0.16, fwd: 0.1 }],
     ],
-    steps: [step('L', 0.12, 0.6)],
-    glow: 'both',
-    end: 0.78,
+    glow: 'right',
+    end: 0.7,
   },
   /** Both hands up behind the head, then lobbed forward. */
   fireball: {
@@ -167,15 +166,15 @@ const MAGE_LIGHTNING: Record<string, Spec> = {
     ],
     end: 0.8,
   },
-  /** An orb cradled at the hip in both hands and pushed off underhand. */
-  tempestOrb: {
+  /** A crouch with one fist to the floor, then up and gone in a crack. */
+  stormstride: {
     keys: [
-      [0.16, { R: [0.2, 0.2, -0.5, 1.7, -0.8], L: [0.45, -0.1, -0.5, 1.7, -0.8], turn: -0.3, down: 0.2 }, true],
-      [0.26, { R: [1.1, 0.25, -0.2, 0.3, -0.6, 0.2], L: [1.1, 0.25, -0.2, 0.3, -0.6, 0.2], turn: 0.05, fwd: 0.2, lean: 0.15 }],
-      [0.44, { R: [1.0, 0.3, -0.2, 0.4, -0.6, 0.2], L: [1.0, 0.3, -0.2, 0.4, -0.6, 0.2], fwd: 0.15, lean: 0.12 }],
+      [0.1, { R: [0.4, 0.3, 0.2, 0.6], L: [0.9, 0.6, 0, 0.8], lean: 0.4, down: 0.4, fistR: 1 }, true],
+      [0.18, { R: [1.6, 0.9, -0.2, 0.2, 0.6, -0.4], L: [1.2, 0.9, 0, 0.4], lean: 0.3, fwd: 0.25, down: 0.1, fistR: 0 }],
+      [0.32, { R: [1.4, 0.9, -0.2, 0.3, 0.6, -0.3], L: [1.0, 0.9, 0, 0.5], lean: 0.2, fwd: 0.2 }],
     ],
-    glow: 'both',
-    end: 0.8,
+    glow: 'right',
+    end: 0.55,
   },
   /** Arms spread wide and lifted, head back: calling the storm in. */
   thunderstorm: {

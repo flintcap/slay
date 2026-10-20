@@ -194,7 +194,7 @@ export const BATCH_C: UniqueDef[] = [
   U('uq.bottledsquall', tr('Bottled Squall'), 'orb.crystalline', 33,
     tr('A sailor caught a storm in a jar off the end of the pier, and the pier went with it.'),
     [['lightningDamage', 1], ['energy', 0.9], ['castSpeed', 0.6]],
-    { classId: 'mage', bend: { skill: 'tempestOrb', more: 20, grow: { splash: 30 }, names: { splash: 'burst' }, applies: { status: 'shocked', duration: 4, label: tr('shock enemies') } },
+    { classId: 'mage', bend: { skill: 'ballLightning', more: 20, grow: { radius: 30 }, applies: { status: 'shocked', duration: 4, label: tr('shock enemies') } },
       look: D('crystal.ice|0xa8c8e8', undefined, 'metal.copper', ['bolts', 'coils'], 0.15, {}) }),
 
   U('uq.coalinajar', tr('Coal in a Jar'), 'orb.glowing', 42,

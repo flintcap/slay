@@ -697,6 +697,8 @@ export class SkillRunner {
     if (!p) return list;
     const e = p.passives;
     if (e.poisonHoldBelow > 0) list = list.map((a) => (a.id === 'poisoned' ? { ...a, holdBelow: e.poisonHoldBelow } : a));
+    // Conductance: every Shocked you apply lasts longer.
+    if (e.shockLongerSec > 0) list = list.map((a) => (a.id === 'shocked' ? { ...a, duration: a.duration + e.shockLongerSec } : a));
     const low = p.life / Math.max(1, p.stats.life) < 0.5;
     const more = e.bleedDamagePct + (low ? e.lowLifeBleedPct : 0);
     if (more <= 0 && e.bleedDurationPct <= 0 && e.bleedHoldBelow <= 0) return list;
@@ -938,6 +940,8 @@ export class SkillRunner {
         bonusCrit: critBonus,
         forceCrit,
         knockback: num('knockback', 0) || undefined,
+        // A Mage mastery raises its own element's hits only.
+        elemPct: player.passives.elementPct[type],
       });
       if (banked > 0) p.amount += banked;
       const r = rider();
@@ -2617,6 +2621,7 @@ export class SkillRunner {
         lifeFrac: t.life / Math.max(1, t.maxLife),
         bleeding: t.isBleeding,
         debuffed: t.isDebuffed,
+        shocked: e.vsShockedPct > 0 && t.hasStatus('shocked'),
       },
       {
         manaFrac: p.mana / Math.max(1, p.stats.mana),
@@ -2628,6 +2633,7 @@ export class SkillRunner {
         maxLife: p.stats.life,
         hitStacks: p.passiveState.hitStacks,
       },
+      packet.type,
     );
     const st = p.passiveState;
     let amount = packet.amount * mul;

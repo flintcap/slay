@@ -92,7 +92,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   // --- Mage, fire: roars and whoomps ---------------------------------------
   firebolt: s('skill.fire.bolt', 'skill.fire.hit'),
   emberNova: s('skill.fire.nova'),
-  flameLance: s('skill.fire.lance'),
+  pyreBrand: s('skill.fire.lance', 'skill.fire.hit'),
   fireball: s('skill.fire.ball', 'skill.fire.blast'),
   infernoStream: s('skill.fire.stream'),
   blastWave: s('skill.fire.wave'),
@@ -132,7 +132,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   chainLightning: s('skill.storm.chain', 'skill.storm.arc'),
   thunderclap: s('skill.storm.clap'),
   lightningStrike: s('skill.storm.call', 'skill.storm.strike'),
-  tempestOrb: s('skill.storm.orb', 'skill.storm.orbHit'),
+  stormstride: s('skill.storm.orbHit', 'skill.storm.arc'),
   ballLightning: s('skill.storm.ball', 'skill.storm.ballHit'),
   thunderstorm: s('skill.storm.gather'),
   skyLance: s('skill.storm.lance'),
