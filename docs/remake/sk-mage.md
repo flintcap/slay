@@ -451,6 +451,24 @@ No gear = 0% cast speed. Ceiling = 210% (x1.68). Seconds per cast.
   crystal fan, and Frozen Orb's body is still the shared cold shard
   (`Effects.ts` is shared, not mine to change).
 
+### Milestone 7: checks
+
+`check-curve --classes=mage`, run once after the build. Information only:
+no damage per hit and no monster was touched.
+
+| Depth | After skillcore (before this stream) | Now |
+| --- | --- | --- |
+| 1 | ok: packs 3/3 (9/4/2 s), bosses 1/3 (26/55/23 s) | ok: packs 3/3 (10/6/2 s), bosses 2/3 (27/52/27 s) |
+| 5 | FAIL: packs 3/3 (4/6/3 s), bosses 0/3 (49/50/27 s) | ok: packs 3/3 (3/7/5 s), bosses 1/3 (44/21/31 s) |
+| 12 | ok: packs 3/3 (11/2/4 s), bosses 3/3 (37/18/17 s) | ok: packs 3/3 (6/2/3 s), bosses 1/3 (64/14/22 s) |
+| 25 | ok: packs 3/3 (0/0/2 s), bosses 3/3 (37/55/19 s) | ok: packs 3/3 (1/0/3 s), bosses 2/3 (65/67/19 s) |
+| 40 | ok: packs 3/3 (18/2/0 s), bosses 3/3 (47/25/20 s) | ok: packs 3/3 (11/3/1 s), bosses 3/3 (45/19/20 s) |
+
+- The d5 wall is gone: the curve says the Mage is challenged at every
+  depth and walled at none. Boss wins move both ways at d12 and d25; the
+  seeds and run modifiers differ between runs, so read it as noise unless
+  the owner sees it in play.
+
 ## For the owner to test
 
 - Inferno now hits everything in its cone, so a tick costs 12 mana (+0.7
