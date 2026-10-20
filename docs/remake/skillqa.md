@@ -8,6 +8,15 @@ frame rate not reduced (faster where it can be). Fix what falls short
 before the wave is called finished. You may edit any file for a fix; you do
 not redesign kits.
 
+**Owner: fix every issue, do not just list it.** Every item under "Known
+issues" below and every item in each stream's "For skillqa" is yours to
+fix before the wave is done. Only two kinds of item stay with the owner:
+numbers listed under "For the owner to test" that are a matter of taste,
+and heroes walled by the slower speeds (the owner decides that after the
+wave; never raise damage to make up for speed, never touch monsters). If a
+fix truly cannot be made, write why in "Notes for resume" and in the
+handover, one line each.
+
 Runs alone, last. Port 4359. Start only when `skillcore.md` and every
 `sk-*.md` say `Status: done`. Read each one's "For skillqa" and "For the
 owner to test" first.
@@ -43,6 +52,46 @@ sheet per class only where a "For skillqa" note asks for a look. Run
 - [ ] 6. Handover. List what was fixed, the before and after frame numbers,
   and "For the owner to test" (one line per class: what to try and what
   should happen). Set `Status: done`, push.
+
+## Known issues (lead, from the reports so far; add each stream's as it lands)
+
+Shared code:
+- The shared area-effect code puts a blank buff on the caster.
+- Area damage falls to 65% at the edge and no tooltip says so. Say it, or
+  drop the falloff.
+- Spells and throws that still resolve on the key press instead of on the
+  gesture's release (`SkillRunner.atRelease`). sk-mage moved the Mage's;
+  find every other class's that remain.
+- Dodging after the key press and before a spell lets go still spends the
+  mana. Charge on release, or give it back when the cast is cancelled.
+- Skill passives, buffs, boons and statuses that give speed were not
+  retuned by skillcore. Check every one fits under the ceilings in
+  `sim/Speed.ts`.
+- `check-curve` logs "[feel] hit report failed TypeError: Cannot convert
+  object to primitive value" from `CombatFeel.onKill` about 1500 times a
+  run. Find the cause and fix it.
+- The curve bot dodges mid-swing, which cancels heavy blows. Make the bot
+  fair (it is a test tool) so the curve reads true.
+- `check-economy` fails once on a seeded path ("shapeshifter: no set or
+  unique in a whole descent at depth 30"). Drop rates are unchanged. Find
+  out whether it is the seed or a real gap and fix the right one.
+- Skill icons now bake in idle time 3 s after the town loads; never tested
+  in a browser. Check the skill board opens with no stall.
+- `check-skills` exits 1 when there is no `shots/` folder; make it create
+  it. One class takes about 40 minutes; make it faster if you can without
+  testing less.
+- `check-skillparams` failed on phalanx, vanish, momentum and perfectForm
+  (before sk-knight and sk-rogue finished). Rerun once after them.
+
+Mage (sk-mage, done):
+- Dragon's Breath has no fire blast of its own; Winter's Breath has no
+  crystal fan.
+- Frozen Orb looks like a shard, not a round orb.
+- The fire tree's icons need a deeper repaint.
+- Pyre Brand has no hit sound.
+- Splintering Frost may be too weak (20% of the dead enemy's life, +1% a
+  rank). Compare it with skills in the same tier and make it worth taking.
+- Spell looks in motion and real frame time were not checked.
 
 ## Next up
 
