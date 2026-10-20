@@ -192,6 +192,11 @@ const DEATH_LOOK: Record<DamageType, DeathLook> = {
 const SHATTER: DeathLook = { burst: 'death.shatter', mark: 'ice', peak: 0xeaf8ff, end: 0xa8d0ec, vanish: 0.05, lean: 0.3 };
 /** Seconds a death look holds: the corpse is gone by then (Enemy.tickDeath). */
 const DEATH_HOLD = 1.25;
+/** Seconds between the hero's hurt cries, and between heavy ones. */
+const CRY_GAP = 1.1;
+const HEAVY_CRY_GAP = 2.2;
+/** Share of max life a blow must take before the hero cries out at all. */
+const CRY_MIN_SHARE = 0.03;
 
 
 const RANK_WEIGHT: Record<MonsterRank, number> = {
@@ -222,6 +227,8 @@ export class CombatFeel {
   private kills: number[] = [];
   private multiFiredAt = -99;
   private nextPlayerHurt = 0;
+  private nextCry = 0;
+  private nextHeavyCry = 0;
   /** When the next short element mark may go down under a struck body. */
   private nextMark = 0;
   private nextHeartbeat = 0;
@@ -535,12 +542,18 @@ export class CombatFeel {
       if (h && frac > 0.01) {
         this.effects.fx.burst('blood', h.position.x, 1.15, h.position.z, { count: Math.round(5 + Math.min(10, frac * 60)), scale: 0.7 });
       }
-      audio.play(heroSound('hurt'), { volume: Math.min(1.3, 0.55 + frac * 3) });
     }
-    if (frac > 0.14) {
-      // A hit that takes a real chunk gets its own heavier sound, so the
-      // player registers *that* one in a flurry of small ones.
+    // The hero cries out now and then, not on every blow: a scratch stays
+    // silent, and a cry waits before the next one. A hit that takes a real
+    // chunk gets the heavier cry instead, so the player registers *that*
+    // one in a flurry of small ones.
+    if (frac > 0.14 && this.clock >= this.nextHeavyCry) {
+      this.nextHeavyCry = this.clock + HEAVY_CRY_GAP;
+      this.nextCry = this.clock + CRY_GAP;
       audio.play(heroSound('hurtHeavy'), { volume: Math.min(1.2, 0.6 + frac * 2) });
+    } else if (frac >= CRY_MIN_SHARE && this.clock >= this.nextCry) {
+      this.nextCry = this.clock + CRY_GAP;
+      audio.play(heroSound('hurt'), { volume: Math.min(1.3, 0.55 + frac * 3) });
     }
   }
 

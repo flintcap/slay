@@ -120,6 +120,8 @@ const DEFS: Record<string, Partial<SoundDef>> = {
   // --- the hero -------------------------------------------------------------
   'player.hurt': { vol: 0.7, prio: 2, max: 1, gap: 0.25 },
   'player.hurtHeavy': { vol: 0.85, prio: 2, max: 1, gap: 0.4 },
+  'player.female.hurt': { vol: 0.7, prio: 2, max: 1, gap: 0.25 },
+  'player.female.hurtHeavy': { vol: 0.85, prio: 2, max: 1, gap: 0.4 },
   'player.death': { vol: 1, prio: 2, max: 1, gap: 2, jitter: 0, send: 0.5 },
   'player.evade': { vol: 0.65, prio: 2, max: 1 },
   'player.stunned': { vol: 0.8, prio: 2, max: 1, gap: 0.5 },
