@@ -95,7 +95,7 @@ the first browser check.
 - [x] 5. Icons. (sk-mage: icons) Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost. (sk-mage: per-tree spell particles) Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
@@ -112,8 +112,8 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 5 are done. Next: milestone 6 (per-tree looks, cost,
-`warmup()` stand-in), then 7 (check-skills and check-curve once each), 8.
+Milestones 1 to 6 are done. Next: milestone 7 (check-skills and
+check-curve once each), then 8 (handover).
 
 ## Notes for resume
 
@@ -429,6 +429,27 @@ No gear = 0% cast speed. Ceiling = 210% (x1.68). Seconds per cast.
 - Not done: many fire icons are still flame variants, and Sparkbolt and
   Chain Lightning differ only by the chain arc. A deeper repaint is for a
   later pass.
+
+### Milestone 6: effects and cost
+
+- `src/fx/mage/looks.ts` adds 12 `mg.` emitters on the shared particle
+  field, four per tree: fire (billow, cinderfall, sootwake, emberwake),
+  lightning (arcburst, skitter, crackle, sparkwake), cold (shatter,
+  rimefall, rimewake, glasswake). `skillParticles` gives every Mage skill
+  one of its tree's emitters and trails, so each tree reads as its own.
+- Counts go through the shared quality and pressure scaling; the heavier
+  layers are marked `rich` and draw on High and Ultra only.
+- Movers leave a wake every 0.6 m. Fireball, Annihilate, Pyre Brand's
+  end, Ice Lance's end, Stormstride's landing and every Chain Lightning
+  target burst on impact. Splintering Frost bursts `mg.shatter`.
+- No new render pipeline: the emitters reuse the particle field's
+  material, so `warmup()` needs no new stand-in.
+- Per-frame code (`moveAll`, `burnAll`, `markAll`) allocates nothing; a
+  brand leap allocates two vectors once, when it leaps.
+- `check-particles` passes.
+- Not done: Dragon's Breath has no gout of its own, Winter's Breath has no
+  crystal fan, and Frozen Orb's body is still the shared cold shard
+  (`Effects.ts` is shared, not mine to change).
 
 ## For the owner to test
 
