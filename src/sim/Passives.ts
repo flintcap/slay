@@ -32,7 +32,7 @@ import { SKILL_BY_ID, synergyPct } from '../data/skills';
 import { applyPowerPassives } from './ItemPowers';
 import { emptyPaladinEffects, PALADIN_RULES, type PaladinEffects } from './passives/paladin';
 import { SHIFTER_RULES } from './shifterPassives';
-import { RANGER_RULES } from './passives/ranger';
+import { emptyRangerEffects, RANGER_RULES, type RangerEffects } from './passives/ranger';
 
 /** A skill's rank, after +skills. Mirrors `Stats.effectiveRank`. */
 function rankOf(c: Character, id: string): number {
@@ -397,6 +397,8 @@ export interface PassiveEffects {
 
   /** The Paladin's own numbers (`passives/paladin.ts`). */
   pal: PaladinEffects;
+  /** The Ranger's own numbers (`passives/ranger.ts`). */
+  rgr: RangerEffects;
 }
 
 function emptyEffects(): PassiveEffects {
@@ -585,6 +587,7 @@ function emptyEffects(): PassiveEffects {
     tideLeapMax: 0,
     tideLeapRadius: 0,
     pal: emptyPaladinEffects(),
+    rgr: emptyRangerEffects(),
   };
 }
 
