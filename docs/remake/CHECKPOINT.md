@@ -524,6 +524,35 @@ Update this file and push it after every finished step.
   corpse; no graphics errors.
 - The owner's Phase 2 and Phase 3 list is done (#126). Phase 4 (Steam) waits
   for the owner.
+- #157 Speed audit (owner: sluggish since Phase 2+3). Measured with each
+  effect switched off in turn and three's own pipeline log. Fixed: a pack
+  skeleton sent its whole 64-bone buffer for every draw; it now writes and
+  sends only the bones its seated bodies use (`Packs.ts`, BufferNode update
+  ranges). Five shader values (viewEye, floorDepth, coverShare, waterRays,
+  worldLite) went once per object drawn and now go once per pass
+  (`Tsl.ts`, render group). The lantern's shadow map covers its lit cone
+  only (focus 0.84): fewer shadow draws, sharper shadows. A warm-up run
+  inside one animation frame built no shaders at all (three draws a pass
+  once per frame), so a boss area loaded with its textures in made every
+  shader in the fight; `Renderer.warm` now advances three's frame each turn.
+  Map frame CPU 32 -> 24-28 ms in software rendering, boss 30 -> 28.5;
+  boss fight shaders built in play 6-17 -> 1. New hook self-test entries
+  for each three.js internal this leans on. Not reproduced: one 1.2 s
+  update stall in one boss run (no body was built in it).
+- #158 Tiers 1-10 are short maps (owner: you outscale the monsters): an even
+  roll between one and two areas and then the boss's (`MapGen.SHORT_MAP_TIERS`,
+  `trimChain`). Tier 11+ maps are the same as before. About 30% fewer
+  monsters a map at tiers 1-10. check-curve now gives the ranger L18 at
+  tier 12 (was L19) and calls it walled there (0 of 3 bosses).
+- #159 Bounty board: the reward is sealed (no gold, Renown or item shown);
+  rolled on claim from a seed fixed per bounty. Taking or looking no longer
+  posts new contracts; abandoning puts one back. "Post new bounties" costs
+  (60 + 25 x next tier) gold x 1.5 per repost; being paid posts a fresh board
+  free and resets the price. `check-town` covers it.
+- #160 Vault: with many tabs the add-tab and sort buttons were pushed out of
+  the panel. They sit by the search box now; the tab row scrolls (wheel too),
+  fades where there is more, and keeps the open tab in view. Checked with 4,
+  12 and 24 tabs.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
