@@ -504,4 +504,29 @@ no damage per hit and no monster was touched.
 
 ## Handover
 
-(empty)
+What exists now:
+
+- `src/scenes/mage/Spells.ts`: the Mage's spells (Fireball, Sparkbolt,
+  Pyre Brand, Inferno, Annihilate, Chain Lightning, Stormstride, Ball
+  Lightning, Ice Lance, Frozen Orb, Ionize) behind a small host on
+  `SkillRunner` (`landSpell`: tune, strike, afterHit). Movers, brands and
+  marked fields tick in `MageSpells.update`; `clear()` on a new level.
+- Mage spells let go on the gesture's release frame (`RELEASE_CLASSES`).
+  Heavy spells cast slower (milestone 3 table). Damage per hit unchanged.
+- Kept: 29 skills (list in milestone 2). Changed (22): Firebolt,
+  Fireball, Inferno, Annihilate, Pyroclasm (a sound per eruption),
+  Sparkbolt, Chain Lightning, Ball Lightning, Ionize, Ice Lance, Frozen
+  Orb, Conductance, Thunderstorm (text), the three Masteries and Ember
+  Soul (own element only), and Blast Wave, Dragon's Breath, Frost Shard,
+  Glacial Spike, Winter's Breath (tree particles only). Every passive now
+  carries its tree's element.
+  Replaced: Flame Lance -> Pyre Brand, Tempest Orb -> Stormstride, Heart of
+  Winter -> Splintering Frost (old ranks refund on load).
+- Icons: four new glyphs in `src/art/Glyphs.ts`; all 54 Mage skills have
+  their own picture. Looks: `src/fx/mage/looks.ts`, 12 `mg.` emitters on
+  the shared particle field.
+- The d5 wall is gone in `check-curve`.
+
+Left for `finish` (also under "For skillqa"): Dragon's Breath gout,
+Winter's Breath crystal fan, a round Frozen Orb body, a deeper repaint of
+the fire icons, and checking the looks in motion and frame time.
