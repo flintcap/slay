@@ -205,6 +205,10 @@ Everything in "Wave 4 rules" still holds. On top of it:
   `node tools/check-rankpower.mjs`. Caster weapons (wands, staffs, orbs)
   have no basic attack. Every class uses mana; no new resources. Mouse and
   keyboard only. Never make monsters weaker or fewer.
+- **Damage per hit never changes because of speed (owner).** Slowing a
+  swing or a cast does not raise its damage, and speeding one up does not
+  lower it. If a class ends up walled, write the numbers down for the
+  owner; never raise damage to make up for it, never touch monsters.
 - **No frame rate cost.** No allocation in per-frame code you touch. Every
   new effect pipeline gets a stand-in in `warmup()` so nothing compiles on
   first cast. Particle counts follow the quality ladder.

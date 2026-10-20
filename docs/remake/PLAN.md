@@ -302,6 +302,10 @@ plus "Wave 5 rules" in `PROTOCOL.md`, which override anything looser.
 
 Order (owner): speed first, then skills, then a quality pass.
 
+Owner rule: damage per hit never changes because of swing or cast speed.
+Only speeds change; damage per second moves with them, and that is
+accepted. If a class ends up walled, the numbers go to the owner.
+
 1. **skillcore** runs alone first. It audits and remakes the speed of the
    whole game: basic attack speed and cast rate, how attack skills and
    spells time off them, and how items add speed. Target feel: as close as
@@ -333,8 +337,7 @@ Order (owner): speed first, then skills, then a quality pass.
   `src/entities/Player.ts` (`attackSpeedPct`, `castSpeedPct`,
   `beginAction`), weapon speeds in `src/data/itemBases.ts`, the speed
   ladders in `src/data/affixes.ts`, speed lines on uniques, sets, gems,
-  runes, runewords and charms (numbers only), `src/sim/HeroPower.ts` (to
-  keep damage per second where it was), `tools/curve-entry.ts`, clip
+  runes, runewords and charms (numbers only), `tools/curve-entry.ts`, clip
   playback in `src/art/hero/Animator.ts`, the speed readout in
   `src/ui/CharacterPanel.ts` and tooltips, and the icon render size in
   `src/art/Icons.ts` / `src/art/SkillIconArt.ts` (the pipeline, not

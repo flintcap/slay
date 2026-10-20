@@ -578,7 +578,9 @@ Update this file and push it after every finished step.
   (speed model, item speed, icon size), then seven class streams three at a
   time (sk-knight, sk-mage, sk-rogue, sk-revenant, sk-ranger, sk-paladin,
   sk-shifter), then skillqa (quality, every skill working, frame rate).
-  Rules in `PROTOCOL.md` "Wave 5 rules". skillcore launched.
+  Rules in `PROTOCOL.md` "Wave 5 rules". skillcore launched. Owner: damage
+  per hit never changes because of speed (no making up for slower swings);
+  only speeds change.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

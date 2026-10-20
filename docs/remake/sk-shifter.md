@@ -46,8 +46,9 @@ the first browser check.
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
   reference games. Mark each one too fast, right, or too slow, and fix the
-  numbers through skillcore's fields. Speeds must not change damage per
-  second at equal gear by much; where a skill slows down, it hits harder.
+  numbers through skillcore's fields. Owner rule: damage per hit never
+  changes because of speed. A skill you slow down keeps the damage per hit
+  it has today.
 - [ ] 2. Skill audit. For every skill, read its data, its runner code, its
   swing or cast animation, its effect, its icon and its sound, and answer
   in one table under "Notes for resume":
@@ -86,9 +87,11 @@ the first browser check.
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
 - [ ] 7. Check. `check-skills --classes=shapeshifter` once (one retry if it fails,
-  then note it) and `check-curve --classes=shapeshifter` once; no depth may be
-  walled that was not before (make the class stronger, never monsters
-  weaker or fewer).
+  then note it) and `check-curve --classes=shapeshifter` once, for
+  information. If a depth is walled that was not before, do not raise
+  damage per hit to make up for slower speed and never touch monsters:
+  write the before and after numbers under "Notes for resume" for the
+  owner to decide.
 - [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
