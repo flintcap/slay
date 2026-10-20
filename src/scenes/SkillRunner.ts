@@ -2563,6 +2563,7 @@ export class SkillRunner {
         moving: p.passiveState.moving,
         souls: p.passiveState.souls,
         maxLife: p.stats.life,
+        hitStacks: p.passiveState.hitStacks,
       },
     );
     const st = p.passiveState;

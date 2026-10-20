@@ -1,6 +1,6 @@
 # Stream: sk-rogue (Wave 5: Rogue skills remake)
 
-Status: waiting for skillcore
+Status: in progress
 
 Class: Rogue (code id `shadowblade`). Trees: Venom, Shadowcraft, Bladework (`venom`, `shadowcraft`, `bladework`). Port 4354.
 Fights with melee and thrown: daggers, often two at once (starts with two daggers). Class color: green (`0x5ad18f`).
@@ -66,7 +66,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
   under "Notes for resume": the Rogue's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -424,6 +424,47 @@ Nothing beyond the two replacements: every tree is full, and the gap
   accents: Venom acid green, Shadowcraft smoke violet-black with a pale
   green edge, Bladework bright steel with the class green. Fourteen icons
   share a picture today (see the audit).
+
+### Milestone 3: speed audit (skillcore's model, `src/sim/Speed.ts`)
+
+Read from the code after skillcore (head f348980). Seconds per use with a
+1.65 dagger (most daggers are 1.5 to 1.75). "Bare": no speed. "Geared":
++100% summed attack speed (x1.5 through the curve). "Ceiling": the curve's
+top (x2) under the 3.0 a second cap. Two blades: melee skills x1.35
+(`DUAL_SKILL_STRETCH`); throws and blinks are not stretched. Reference
+feel: one-hand melee swings about 0.6 to 0.8 s bare and 0.36 to 0.44 s
+with heavy speed gear; casts about 0.5 s bare.
+
+| Use | Kind | Before (bare / two blades) | After: bare | After: geared | After: ceiling | Verdict |
+|---|---|---|---|---|---|---|
+| Basic attack, one dagger | attack | 0.61 | 0.61 | 0.40 | 0.33 | right |
+| Basic attack, two daggers (each blow) | attack | 0.47 | 0.47 | 0.33 | 0.33 | right |
+| Precise Cut | attack 1 swing (was 0.87) | 0.53 / 0.71 | 0.61 / 0.82 | 0.40 / 0.55 | 0.33 / 0.41 | was too fast (quicker than a basic swing): now one full swing, wind-up 0.21 s |
+| Adder's Kiss (viperStrike) | attack 1 | 0.61 / 0.82 | same | 0.40 / 0.55 | 0.33 / 0.41 | right |
+| Cripple Tendon | attack 1 | 0.61 / 0.82 | same | 0.40 / 0.55 | 0.33 / 0.41 | right |
+| Scissor Cut (doubleStrike) | attack 1.2 (was 1) | 0.61 / 0.82, second cut 0.08 s after the first | 0.73 / 0.98 | 0.48 / 0.65 | 0.36 / 0.49 | was too fast (two cuts read as one); second cut spaced in M4 |
+| Death Lotus | attack 1.8 (was 1) | 0.61 / 0.82, 8 hits 0.08 s apart, the last ones after the action ends | 1.09 / 1.47 | 0.73 / 0.98 | 0.55 / 0.74 | was too fast; hits spread over the spin in M4 |
+| Umbral Ambush | attack 1.25 (was 1) | 0.61 / 0.82 | 0.76 / 1.02 | 0.51 / 0.68 | 0.38 / 0.51 | was a bit fast for a 320% blow from the veil |
+| Assassinate | attack 1.5 (was 1) | 0.61 / 0.82 | 0.91 / 1.23 | 0.61 / 0.82 | 0.45 / 0.61 | was too fast for a 500% execute |
+| Steel Waltz (new) | attack 2 | - | 1.21 / 1.64 | 0.81 / 1.09 | 0.61 / 0.82 | five cuts, about 0.2 s apart bare |
+| Fan of Knives | attack 1 (throw) | 0.61, knives leave on the press | 0.61 | 0.40 | 0.33 | right; knives leave on the release frame in M4 |
+| Venom Dart | attack 0.9 (was a 0.5 s spell: poison type made it a cast) | 0.50 | 0.55 | 0.36 | 0.33 | wrong kind fixed: a thrown dart runs on attack speed |
+| Plague Vial | attack 1.2 (was a 0.5 s spell) | 0.50 | 0.73 | 0.48 | 0.36 | wrong kind fixed: a lobbed flask |
+| Throwing Spree | attack 2 (was 1) | 0.61, six knives at once | 1.21 | 0.81 | 0.61 | was too fast; a knife a hand every 0.2 s bare in M4 |
+| Shadow Step | blink + attack 0.9 stab | 0.26 blink, blow on the press | 0.26 + 0.55 | 0.26 + 0.36 | 0.26 + 0.33 | was too fast (no hit frame); stab on its hit frame in M4 |
+| Void Walk (each blink) | blink + attack 1 | 0.26 blink, blow on the press | 0.26 + 0.61 | 0.26 + 0.40 | 0.26 + 0.33 | same as Shadow Step |
+| Razor Dash (whirlingBlades) | dash, `travelTime` | 0.50 for 8 m, every enemy hit on the press | 0.57 for 8 m (14 m/s) | same | same | hit timing wrong; hits as you pass in M4 |
+| Coat Blades, Veil, Vanish, Knife Halo | spell 0.35 | 0.35 | 0.35 | 0.35 | 0.29 | right |
+| Noxious Cloud, Envenom Burst, Smoke Bomb, Nightfall, Shadow Clone, Call the Viper | spell 0.5 | 0.50 | 0.50 | 0.50 (rogue gear has little cast speed) | 0.29 | right |
+
+Flurry: was +10% attack speed a stack (+1% a rank), 6 stacks: +60% at rank
+1 and +174% at rank 20, which puts a geared rogue at the 3.0 cap, so later
+ranks bought nothing. Now +8% attack speed a stack, fixed (+48% summed at 6
+stacks, x1.32 alone), and the ranks grow damage: +2% (+0.3% a rank) a stack,
+12% at rank 1 and 46% at rank 20 with 6 stacks (`hitStackDamagePct`,
+`damageMultiplier` in `src/sim/Passives.ts`).
+
+Damage per hit is unchanged for every skill slowed above.
 
 ## For the owner to test
 

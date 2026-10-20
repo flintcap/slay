@@ -1225,6 +1225,8 @@ const VENOM = build('venom', [
     dmg: [0.95, 0.16],
     type: 'poison',
     fx: 'projectile',
+    timing: 'attack',
+    attackTime: 0.9,
     p: { speed: 30, range: 16, poisonStacks: 4, pierce: 1 },
   },
   {
@@ -1291,6 +1293,8 @@ const VENOM = build('venom', [
     dmg: [1.8, 0.29],
     type: 'poison',
     fx: 'projectile.explode',
+    timing: 'attack',
+    attackTime: 1.2,
     p: { radius: 4, splash: 4, speed: 14, duration: 12 },
   },
   {
@@ -1357,6 +1361,7 @@ const VENOM = build('venom', [
     dmg: [0.6, 0.1],
     type: 'poison',
     fx: 'melee.multiSlash',
+    attackTime: 1.8,
     p: { hits: 8, radius: 4, arc: 360, poisonPerHit: 1 },
   },
   {
@@ -1434,6 +1439,8 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [1.1, 0.18],
     type: 'physical',
     fx: 'teleport.strike',
+    timing: 'attack',
+    attackTime: 0.9,
     p: { range: 7, rangePerRank: 0.12, backstab: 1, critBonus: 50, single: 1 },
   },
   {
@@ -1511,6 +1518,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [3.2, 0.5],
     type: 'physical',
     fx: 'melee.ambush',
+    attackTime: 1.25,
     p: { requiresStealth: 1, alwaysCrit: 1, killKeepsStealth: 1, single: 1 },
   },
   {
@@ -1601,6 +1609,8 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [3.2, 0.5],
     type: 'physical',
     fx: 'teleport.chain',
+    timing: 'attack',
+    attackTime: 1,
     p: { hops: 4, hopsPerRanks: 5, window: 3, range: 9 },
   },
   {
@@ -1642,6 +1652,7 @@ const SHADOWCRAFT = build('shadowcraft', [
     dmg: [5, 0.7],
     type: 'physical',
     fx: 'melee.execute',
+    attackTime: 1.5,
     p: { threshold: 15, perRank: 1, refundOnKill: 1, single: 1 },
   },
   {
@@ -1665,7 +1676,7 @@ const BLADEWORK = build('bladework', [
   {
     id: 'preciseCut',
     name: tr('Precise Cut'),
-    desc: tr('A clean, fast strike: 120% weapon damage (+20% per rank) with +15% critical strike chance and no wind-up.'),
+    desc: tr('A clean, drawn cut: 120% weapon damage (+20% per rank) with +15% critical strike chance (+1.5% per rank).'),
     tier: 1,
     col: 0,
     icon: 'cut',
@@ -1674,7 +1685,7 @@ const BLADEWORK = build('bladework', [
     dmg: [1.2, 0.2],
     type: 'physical',
     fx: 'melee.strike',
-    attackTime: 0.87,
+    attackTime: 1,
     p: { critBonus: 15, critPerRank: 1.5, single: 1 },
   },
   {
@@ -1742,6 +1753,7 @@ const BLADEWORK = build('bladework', [
     dmg: [0.85, 0.15],
     type: 'physical',
     fx: 'melee.multiSlash',
+    attackTime: 1.2,
     p: { hits: 2, inheritCrit: 1, arc: 60, radius: 2.2, single: 1 },
   },
   {
@@ -1785,6 +1797,7 @@ const BLADEWORK = build('bladework', [
     dmg: [0.9, 0.16],
     type: 'physical',
     fx: 'projectile.stream',
+    attackTime: 2,
     p: { duration: 3, range: 14, count: 6, spread: 0.08 },
   },
   {
@@ -1801,13 +1814,13 @@ const BLADEWORK = build('bladework', [
   {
     id: 'flurry',
     name: tr('Flurry'),
-    desc: tr('Attack speed increases by 10% per hit landed (+1% per rank), stacking 6 times and decaying after 2s without a hit.'),
+    desc: tr('Each hit you land builds a stack of Flurry, up to 6: +8% attack speed and +2% damage (+0.3% per rank) per stack. The stacks fall away after 2s without a hit.'),
     tier: 4,
     col: 1,
     icon: 'flurry',
     req: ['doubleStrike'],
     fx: 'passive.onHitStack',
-    p: { attackSpeedPerStack: 10, perRank: 1, maxStacks: 6, decay: 2 },
+    p: { attackSpeedPerStack: 8, damagePerStack: 2, perRank: 0.3, maxStacks: 6, decay: 2 },
   },
   {
     id: 'momentum',

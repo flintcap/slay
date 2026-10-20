@@ -146,6 +146,8 @@ export interface PassiveEffects {
   /** Stacking attack speed per hit landed. */
   hitStackAttackSpeed: number;
   hitStackMax: number;
+  /** Flurry: damage percent per stack held. */
+  hitStackDamagePct: number;
   /** Chance for a hit to arc to a second target. */
   arcChance: number;
   arcRadius: number;
@@ -413,6 +415,7 @@ function emptyEffects(): PassiveEffects {
     killLifePct: 0,
     hitStackAttackSpeed: 0,
     hitStackMax: 0,
+    hitStackDamagePct: 0,
     arcChance: 0,
     arcRadius: 0,
     arcDamagePct: 0,
@@ -816,8 +819,11 @@ const RULES: Record<string, Contribution> = {
     e.meleeCounterPct = Math.max(e.meleeCounterPct, 160 + 20 * (r - 1));
     e.meleeCounterCrit = e.meleeCounterCrit || param(id, 'alwaysCrit', 0) > 0;
   },
+  // Flurry: the speed a stack gives is fixed (the ceiling is near anyway);
+  // each rank makes every stack hit harder.
   flurry: (e, r, id) => {
-    e.hitStackAttackSpeed += param(id, 'attackSpeedPerStack', 10) + param(id, 'perRank', 1) * (r - 1);
+    e.hitStackAttackSpeed += param(id, 'attackSpeedPerStack', 8);
+    e.hitStackDamagePct += param(id, 'damagePerStack', 2) + param(id, 'perRank', 0.3) * (r - 1);
     e.hitStackMax = Math.max(e.hitStackMax, param(id, 'maxStacks', 6));
     e.hitStackDecay = Math.max(e.hitStackDecay, param(id, 'decay', 2));
   },
@@ -1120,9 +1126,12 @@ export function damageMultiplier(
     moving?: number;
     souls?: number;
     maxLife?: number;
+    /** Flurry stacks held. */
+    hitStacks?: number;
   },
 ): number {
   let pct = 0;
+  if (e.hitStackDamagePct > 0) pct += e.hitStackDamagePct * (self.hitStacks ?? 0);
   if (target.bleeding) pct += e.vsBleedingPct;
   if (target.debuffed) pct += e.vsDebuffedPct;
   if (e.executeThreshold > 0 && target.lifeFrac * 100 <= e.executeThreshold) {
