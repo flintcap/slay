@@ -574,6 +574,11 @@ Update this file and push it after every finished step.
   and the gambler roll at 1, Reaver rolls exactly as before. Hard-tier MF is
   a flat add like gear; the resist penalty is on fire, cold, lightning,
   poison and arcane (`computeStats`). Card lines are built from the numbers.
+- #162 Skills remake (owner), Wave 5 in `PLAN.md`. Order: skillcore alone
+  (speed model, item speed, icon size), then seven class streams three at a
+  time (sk-knight, sk-mage, sk-rogue, sk-revenant, sk-ranger, sk-paladin,
+  sk-shifter), then skillqa (quality, every skill working, frame rate).
+  Rules in `PROTOCOL.md` "Wave 5 rules". skillcore launched.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
