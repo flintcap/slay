@@ -111,8 +111,8 @@ const ICON_MAP: Record<string, string> = {
   'two-banners': 'banner:1', fissure: 'crack^field', 'thorn-crest': 'spikes^aura', sworn: 'sword^aura', 'skull-horn': 'skull:1',
   'ghost-knight': 'helm:1^aura',
   // Mage — fire
-  'bolt-fire': 'flame^speed', 'mastery-fire': 'flame^mastery', 'nova-fire': 'flame^nova', lance: 'beam^impact', scorch: 'flame:1^field',
-  fireball: 'orb^speed', stream: 'beam', kindle: 'flame', blast: 'nova', eruption: 'flame^rise', burst: 'nova^burst',
+  'bolt-fire': 'flame^speed', 'mastery-fire': 'flame^mastery', 'nova-fire': 'flame^nova', 'ember-brand': 'emberdart', scorch: 'flame:1^field',
+  fireball: 'orb^speed', inferno: 'flame^burst', stream: 'beam', kindle: 'flame', blast: 'nova', eruption: 'flame^rise', burst: 'nova^burst',
   shimmer: 'wave', 'rain-fire': 'flame^rain', core: 'orb^aura', dragon: 'wing:1^burst', 'chain-fire': 'flame^chain', nuke: 'sun',
   'soul-fire': 'skull:2',
   // Rogue — venom
@@ -131,13 +131,13 @@ const ICON_MAP: Record<string, string> = {
   // Mage — lightning
   spark: 'bolt', 'mastery-lightning': 'bolt^mastery', 'nova-shock': 'bolt^nova', chain: 'bolt^chain', clap: 'hand^nova',
   conduct: 'coil', 'strike-down': 'cloud:1', fork: 'bolt^multi', orb: 'orb', storm: 'cloud:1^rain', fury: 'bolt^burst',
-  ball: 'orb^speed', 'sky-lance': 'beam', overload: 'orb^burst', ionize: 'swirl^aura', 'eye-storm': 'eye:1^aura',
+  stride: 'stride', ball: 'orb^chain', 'sky-lance': 'beam^impact', overload: 'orb^burst', ionize: 'swirl^aura', 'eye-storm': 'eye:1^aura',
   pillar: 'bolt^field', 'mastery-storm': 'cloud:1^mastery',
   // Mage — cold
-  'shard-ice': 'flake^speed', 'mastery-cold': 'flake^mastery', 'nova-frost': 'flake^nova', 'lance-ice': 'lance^impact',
+  'shard-ice': 'flake^speed', 'mastery-cold': 'flake^mastery', 'nova-frost': 'flake^nova', 'lance-ice': 'icicle',
   'bite-frost': 'fang^aura', 'armor-ice': 'hexshield^aura', 'spike-ice': 'spikes^impact', 'crack-cold': 'crack^aura',
   'field-rime': 'flake^field', blizzard: 'flake^rain', permafrost: 'hourglass^aura', 'step-frost': 'footprints^aura',
-  'orb-frost': 'orb^spin', 'heart-winter': 'heart^field', 'breath-frost': 'lungs^burst', zero: 'flake^cross',
+  'orb-frost': 'orb^spin', splinter: 'splinter', 'breath-frost': 'lungs^burst', zero: 'flake^cross',
   comet: 'star^impact', 'edge-winter': 'split^aura',
   // Shared by more than one class
   dash: 'boot^speed', leap: 'boot^rise',

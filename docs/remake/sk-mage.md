@@ -92,7 +92,7 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons. (sk-mage: icons) Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
 - [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
@@ -112,10 +112,8 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 4 are done. The build lives in `src/scenes/mage/Spells.ts`
-(see "Milestone 4: build notes"). Next: milestone 5, icons (`brand`,
-`stride`, `splinter` are new; Fireball and Ball Lightning share
-`orb^speed`, Inferno and Sky Lance share `beam`), then 6, 7, 8.
+Milestones 1 to 5 are done. Next: milestone 6 (per-tree looks, cost,
+`warmup()` stand-in), then 7 (check-skills and check-curve once each), 8.
 
 ## Notes for resume
 
@@ -416,6 +414,21 @@ No gear = 0% cast speed. Ceiling = 210% (x1.68). Seconds per cast.
   it goes up.
 - Pyre Brand's Immolated grows by rank (`FOE_POWER`); its synergies grow
   its hit, not the burn.
+
+### Milestone 5: icons
+
+- New glyphs in `src/art/Glyphs.ts`: `emberdart` (Pyre Brand), `stride`
+  (Stormstride), `splinter` (Splintering Frost), `icicle` (Ice Lance, which
+  drew a wooden jousting lance before).
+- Duplicates fixed: Ball Lightning is now `orb^chain` (was Fireball's
+  `orb^speed`); Inferno has its own icon name `inferno` -> `flame^burst`
+  (the Ranger's Suppressing Fire keeps `stream`); Sky Lance is
+  `beam^impact` (freed by Flame Lance).
+- All 54 Mage skills now resolve to 54 different pictures. One contact
+  sheet was looked at; the dart and icicle were thickened after it.
+- Not done: many fire icons are still flame variants, and Sparkbolt and
+  Chain Lightning differ only by the chain arc. A deeper repaint is for a
+  later pass.
 
 ## For the owner to test
 

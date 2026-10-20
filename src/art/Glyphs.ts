@@ -1509,12 +1509,117 @@ const lance: Glyph = (x, t) => {
   glint(x, 104, 24, 10, lift(t.core, 0.5), 1);
 };
 
+// ---------------------------------------------------------------------------
+// Mage spells
+// ---------------------------------------------------------------------------
+
+/** Pyre Brand: an ember dart in flight, its head burning, a brand ring at its heel. */
+const emberdart: Glyph = (x, t) => {
+  glow(x, 88, 40, 42, t.glow, 0.6);
+  // Smoke behind it: two short wisps off the heel.
+  for (const o of [-12, 12]) {
+    const w = new Path2D();
+    w.moveTo(22 + o, 96 + o);
+    w.quadraticCurveTo(10 + o, 112 + o * 0.4, 4 + o * 0.5, 124);
+    x.save();
+    x.globalAlpha = 0.55;
+    ray(x, w, t, 2.5);
+    x.restore();
+  }
+  energy(x, polyP([[20, 96], [76, 40], [88, 52], [32, 108]]), t, 56, 72, 46, 0.3);
+  energy(x, polyP([[66, 62], [78, 24], [120, 8], [104, 50]]), t, 100, 28, 34, 0.65);
+  ray(x, circleP(26, 102, 15), t, 3.5);
+  energy(x, starP(26, 102, 4, 4, 11, -Math.PI / 4), t, 26, 102, 12, 0.5);
+  for (const [gx, gy, r] of [[112, 34, 3], [96, 14, 2.5], [118, 22, 2]] as const) glint(x, gx, gy, r * 2, t.core, 1);
+};
+
+/** Stormstride: a bolt laid on its side and running, its wake breaking up behind it. */
+const stride: Glyph = (x, t) => {
+  glow(x, 80, 64, 46, t.glow, 0.55);
+  for (let i = 0; i < 3; i++) {
+    const p = new Path2D();
+    const y = 46 + i * 18;
+    p.moveTo(8 + i * 4, y);
+    p.lineTo(30 + i * 6, y);
+    p.moveTo(36 + i * 6, y);
+    p.lineTo(46 + i * 4, y);
+    x.save();
+    x.globalAlpha = 0.45 + i * 0.15;
+    ray(x, p, t, 3);
+    x.restore();
+  }
+  x.save();
+  x.translate(78, 64);
+  x.rotate(-Math.PI / 2);
+  x.scale(0.82, 0.82);
+  x.translate(-64, -64);
+  energy(x, polyP([[74, 8], [36, 66], [60, 66], [44, 120], [94, 52], [68, 52], [86, 8]]), t, 64, 60, 60, 0.5);
+  x.restore();
+};
+
+/** Splintering Frost: a crystal breaking apart, its shards flung outward. */
+const splinter: Glyph = (x, t) => {
+  glow(x, 64, 64, 54, t.glow, 0.55);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 - Math.PI / 2 + 0.28;
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    const r0 = 32 + (i % 2) * 4;
+    const r1 = 54 + (i % 2) * 4;
+    energy(x, polyP([
+      [64 + ca * r1, 64 + sa * r1],
+      [64 + ca * r0 - sa * 6, 64 + sa * r0 + ca * 6],
+      [64 + ca * r0 + sa * 6, 64 + sa * r0 - ca * 6],
+    ]), t, 64 + ca * 44, 64 + sa * 44, 16, 0.5);
+  }
+  const hex: Pt[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    hex.push([64 + Math.cos(a) * 25, 64 + Math.sin(a) * 25]);
+  }
+  const core = polyP(hex);
+  energy(x, core, t, 56, 56, 30, 0.55);
+  // The crack that breaks it.
+  const c = new Path2D();
+  c.moveTo(48, 46);
+  c.lineTo(62, 60);
+  c.lineTo(56, 70);
+  c.lineTo(78, 86);
+  c.moveTo(62, 60);
+  c.lineTo(82, 52);
+  x.save();
+  x.clip(core);
+  x.lineJoin = 'round';
+  x.strokeStyle = css(sink(t.dark, 0.5), 0.95);
+  x.lineWidth = 3;
+  x.stroke(c);
+  x.restore();
+  glint(x, 54, 52, 8, 0xffffff, 0.9);
+};
+
+/** Ice Lance: a long icicle thrown point first, faceted and glassy. */
+const icicle: Glyph = (x, t) => {
+  glow(x, 74, 54, 48, t.glow, 0.5);
+  const body = polyP([[10, 94], [116, 12], [34, 118], [8, 120]]);
+  energy(x, body, t, 92, 34, 70, 0.35);
+  // The facet down its length, and frost coming off it.
+  const f = new Path2D();
+  f.moveTo(24, 104);
+  f.lineTo(108, 20);
+  x.save();
+  x.globalAlpha = 0.8;
+  ray(x, f, t, 1.6);
+  x.restore();
+  for (const [gx, gy, r] of [[104, 30, 3], [70, 54, 2.5], [44, 86, 2.5], [112, 14, 4]] as const) glint(x, gx, gy, r * 2, t.core, 1);
+};
+
 export const GLYPHS: Record<string, Glyph> = {
   shield, sword, dagger, axe, hammer, anvil, fist, skull, bone, chalice, crown, banner, horn, arrow, bow, target,
   boot, trap, quiver, helm, cage, chain, scythe, claw, tower, boulder, spikes, fang, serpent, leaf, vial, totem,
   mirror, figure, hand, heart, coil, crack, footprints, flame, drop, bolt, flake, eye, orb, star, sun, moon, cloud,
   swirl, tornado, ghost, wing, rune, nova, beam, wave, hourglass, lungs, coin, brand, anchor, wilt, mute, lens,
   feather, link, gear, bubble, rift, pool, firechain, ward, split, hexshield, adapt, lance,
+  emberdart, stride, splinter, icicle,
   ...PALADIN_GLYPHS,
   ...SHIFTER_GLYPHS,
 };
