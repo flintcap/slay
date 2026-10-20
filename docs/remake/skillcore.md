@@ -101,7 +101,7 @@ to paste.
   the new one), the way owned uniques and sets were updated before (find
   that code from `migrateAccount` in `src/core/Save.ts` and reuse it). Write what happens to old
   saves under "Notes for resume".
-- [ ] 4. Damage per hit unchanged (owner change). Damage per swing, per
+- [x] 4. Damage per hit unchanged (owner change). ("skillcore: curve before and after") Damage per swing, per
   shot and per cast must NOT change because of speed: per-hit damage stays
   exactly what it is today. Do not touch weapon damage bands in
   `src/data/itemBases.ts`, per-hit numbers in `src/sim/HeroPower.ts`, skill
@@ -135,11 +135,11 @@ to paste.
 
 ## Next up
 
-Milestone 4: run `check-curve` after (default grid, about two minutes,
-log to the scratchpad), write the before/after table under "Notes for
-resume" (before: `curve-before.keep` in the scratchpad, 7 of 35 failed).
-Then milestone 5: `contactDelay` / `CONTACT_CAP` and the Animator clip
-speed follow the action time, plus the three class-stream requests below.
+Milestone 5: `contactDelay` / `CONTACT_CAP` in `Player.ts` and the
+Animator clip speed follow the action time (hit on the clip's hit frame,
+no smear, no float), plus the three class-stream requests under "Notes for
+resume". Then one browser check (`check-attack` or `check-clips`) with
+`get-chrome` first, `flock`, `timeout`, `SLAY_PORT=4351`.
 
 ## Notes for resume
 
@@ -220,12 +220,59 @@ daggers are about 1.4x their target and two-handers 2-2.8x; with gear the
 linear sum reaches 7/s melee (2.5x the target ceiling), 9.4/s with two
 blades (3x), 6/s casts (1.8x). Bow skills ignore attack speed entirely.
 
-### Curve before (check-curve, default grid, 2026-10-20, before any change)
+### Curve before and after (check-curve, default grid, for the owner)
 
-7 of 35 failed before skillcore touched anything: warden d5, revenant d5,
-ranger d5 and d12, paladin d5, shapeshifter d5 and d40. The log also prints
-1571 "[feel] hit report failed TypeError: Cannot convert object to primitive
-value" lines (CombatFeel.onKill, pre-existing, not speed).
+Information only (owner's rule): damage per hit and monsters were not
+touched. Before = before any skillcore change; after = milestones 2 and 3
+(weapon-paced swings, item speed on the new scale). Times are seconds per
+pack and per boss; "low" lines dropped.
+
+| Class | Depth | Before | After |
+| --- | --- | --- | --- |
+| warden | 1 | ok: packs 3/3 (16/5/3 s), bosses 2/3 (38/68/49 s) | FAIL: packs 3/3 (26/8/5 s), bosses 0/3 (46/117/83 s) |
+| warden | 5 | FAIL: packs 3/3 (6/5/6 s), bosses 0/3 (39/51/30 s) | FAIL: packs 3/3 (5/8/11 s), bosses 0/3 (59/38/39 s) |
+| warden | 12 | ok: packs 3/3 (101/59/29 s), bosses 2/3 (178/96/152 s) | ok: packs 2/3 (120/88/50 s), bosses 1/3 (300/106/136 s) |
+| warden | 25 | ok: packs 3/3 (11/7/47 s), bosses 2/3 (74/42/14 s) | ok: packs 3/3 (18/13/83 s), bosses 1/3 (68/80/47 s) |
+| warden | 40 | ok: packs 3/3 (41/13/19 s), bosses 2/3 (44/44/18 s) | ok: packs 2/3 (50/23/19 s), bosses 2/3 (26/19/24 s) |
+| mage | 1 | ok: packs 3/3 (9/4/2 s), bosses 1/3 (26/55/23 s) | ok: packs 3/3 (9/4/2 s), bosses 1/3 (26/55/23 s) |
+| mage | 5 | ok: packs 3/3 (3/6/3 s), bosses 1/3 (22/47/34 s) | FAIL: packs 3/3 (4/6/3 s), bosses 0/3 (49/50/27 s) |
+| mage | 12 | ok: packs 3/3 (9/1/4 s), bosses 2/3 (34/16/49 s) | ok: packs 3/3 (11/2/4 s), bosses 2/3 (37/18/33 s) |
+| mage | 25 | ok: packs 3/3 (0/0/2 s), bosses 3/3 (47/39/19 s) | ok: packs 3/3 (0/0/2 s), bosses 3/3 (37/51/19 s) |
+| mage | 40 | ok: packs 3/3 (18/2/0 s), bosses 2/3 (55/18/20 s) | ok: packs 3/3 (18/2/0 s), bosses 3/3 (47/18/20 s) |
+| shadowblade | 1 | ok: packs 3/3 (13/5/4 s), bosses 2/3 (19/41/23 s) | ok: packs 3/3 (18/5/5 s), bosses 2/3 (32/52/32 s) |
+| shadowblade | 5 | ok: packs 3/3 (4/3/7 s), bosses 2/3 (20/25/11 s) | ok: packs 3/3 (4/5/6 s), bosses 2/3 (32/22/19 s) |
+| shadowblade | 12 | ok: packs 3/3 (22/12/7 s), bosses 3/3 (39/16/16 s) | ok: packs 3/3 (24/15/8 s), bosses 3/3 (50/19/20 s) |
+| shadowblade | 25 | ok: packs 3/3 (5/4/18 s), bosses 3/3 (41/29/11 s) | ok: packs 3/3 (10/6/31 s), bosses 1/3 (39/68/11 s) |
+| shadowblade | 40 | ok: packs 2/3 (55/17/5 s), bosses 1/3 (49/51/51 s) | FAIL: packs 2/3 (54/18/13 s), bosses 0/3 (23/69/68 s) |
+| revenant | 1 | ok: packs 3/3 (6/3/3 s), bosses 3/3 (17/38/15 s) | ok: packs 3/3 (7/3/4 s), bosses 2/3 (24/40/24 s) |
+| revenant | 5 | FAIL: packs 3/3 (7/9/7 s), bosses 0/3 (30/44/24 s) | ok: packs 3/3 (5/7/3 s), bosses 1/3 (44/37/31 s) |
+| revenant | 12 | ok: packs 1/3 (11/12/8 s), bosses 3/3 (77/41/48 s) | ok: packs 1/3 (12/14/8 s), bosses 2/3 (75/34/60 s) |
+| revenant | 25 | ok: packs 3/3 (2/1/10 s), bosses 3/3 (20/20/11 s) | ok: packs 3/3 (2/1/10 s), bosses 3/3 (25/20/10 s) |
+| revenant | 40 | ok: packs 3/3 (9/7/6 s), bosses 2/3 (17/21/20 s) | ok: packs 3/3 (9/5/6 s), bosses 3/3 (31/38/19 s) |
+| ranger | 1 | ok: packs 3/3 (7/2/2 s), bosses 3/3 (22/38/20 s) | ok: packs 2/3 (13/5/3 s), bosses 3/3 (38/66/38 s) |
+| ranger | 5 | FAIL: packs 3/3 (9/11/7 s), bosses 0/3 (45/37/16 s) | FAIL: packs 2/3 (15/7/9 s), bosses 0/3 (50/62/27 s) |
+| ranger | 12 | FAIL: packs 1/3 (120/57/63 s), bosses 0/3 (72/14/40 s) | FAIL: packs 0/3 (95/49/16 s), bosses 0/3 (66/11/46 s) |
+| ranger | 25 | ok: packs 3/3 (8/6/12 s), bosses 1/3 (37/14/16 s) | ok: packs 3/3 (8/9/16 s), bosses 1/3 (19/14/17 s) |
+| ranger | 40 | ok: packs 1/3 (24/7/12 s), bosses 1/3 (20/18/32 s) | FAIL: packs 1/3 (20/9/18 s), bosses 0/3 (23/25/57 s) |
+| paladin | 1 | ok: packs 3/3 (21/8/7 s), bosses 3/3 (48/101/38 s) | FAIL: packs 2/3 (15/12/9 s), bosses 0/3 (82/171/98 s) |
+| paladin | 5 | FAIL: packs 3/3 (6/6/13 s), bosses 0/3 (51/54/25 s) | FAIL: packs 3/3 (8/13/20 s), bosses 0/3 (52/59/41 s) |
+| paladin | 12 | ok: packs 3/3 (38/15/13 s), bosses 3/3 (64/29/29 s) | FAIL: packs 2/3 (34/47/19 s), bosses 0/3 (79/35/50 s) |
+| paladin | 25 | ok: packs 3/3 (25/10/53 s), bosses 1/3 (94/60/43 s) | FAIL: packs 3/3 (22/13/83 s), bosses 0/3 (51/67/61 s) |
+| paladin | 40 | ok: packs 3/3 (29/7/15 s), bosses 3/3 (43/37/15 s) | ok: packs 3/3 (43/10/19 s), bosses 1/3 (51/75/21 s) |
+| shapeshifter | 1 | ok: packs 3/3 (11/5/4 s), bosses 3/3 (22/49/24 s) | ok: packs 2/3 (13/6/7 s), bosses 2/3 (40/86/40 s) |
+| shapeshifter | 5 | FAIL: packs 3/3 (5/5/8 s), bosses 0/3 (22/41/19 s) | ok: packs 3/3 (8/8/5 s), bosses 1/3 (26/41/37 s) |
+| shapeshifter | 12 | ok: packs 2/3 (40/20/16 s), bosses 1/3 (84/38/43 s) | FAIL: packs 2/3 (15/28/26 s), bosses 0/3 (65/44/46 s) |
+| shapeshifter | 25 | ok: packs 3/3 (14/11/37 s), bosses 1/3 (33/28/21 s) | ok: packs 3/3 (73/21/94 s), bosses 1/3 (62/51/35 s) |
+| shapeshifter | 40 | FAIL: packs 2/3 (54/20/24 s), bosses 0/3 (28/66/43 s) | FAIL: packs 1/3 (37/16/30 s), bosses 0/3 (48/45/46 s) |
+
+7 of 35 failed before, 13 of 35 after. Walled now and not before: warden
+d1, mage d5, shadowblade d40, ranger d40, paladin d1, d12 and d25,
+shapeshifter d12. Passing now and not before: revenant d5, shapeshifter
+d5. The paladin (two-handed mace, 0.84-0.98 swings a second, was 2.38)
+and the warden lose the most; the mage and revenant barely move. Both
+logs: scratchpad `curve-before.keep` and `curve-after-sc.log`. Both runs
+print the pre-existing CombatFeel.onKill TypeError lines (see "For
+skillqa").
 
 ### Item speed (milestone 3)
 
