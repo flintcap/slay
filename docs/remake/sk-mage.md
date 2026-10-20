@@ -1,6 +1,6 @@
 # Stream: sk-mage (Wave 5: Mage skills remake)
 
-Status: in progress
+Status: waiting for skillcore
 
 Class: Mage (code id `mage`). Trees: Fire, Lightning, Cold (`conflagration`, `tempest`, `frost`). Port 4353.
 Fights with caster: staffs, wands, orbs (starts with a short staff). No basic attack, ever. Class color: violet (`0x9a8aff`), with fire, lightning and cold colors per tree.
@@ -47,7 +47,7 @@ the first browser check.
 
 ## Milestones
 
-- [x] 1. Skill audit (read code only). (wip(sk-mage): skill audit) For every skill, read its data, its runner code, its
+- [x] 1. Skill audit (read code only). (sk-mage: skill audit and new kit plan) For every skill, read its data, its runner code, its
   swing or cast animation, its effect, its icon and its sound, and answer
   in one table under "Notes for resume":
   - Does it work? (read the code; flag anything broken)
@@ -57,7 +57,7 @@ the first browser check.
   - Is the icon unique to the skill, sharp, and in class colors?
   - Do the projectile, swing and effect look AAA?
   - Keep, change, or replace, with one line why.
-- [ ] 2. Plan the new kit (owner: change, add and replace skills where
+- [x] 2. Plan the new kit (sk-mage: skill audit and new kit plan) (owner: change, add and replace skills where
   needed). Write the list under "Notes for resume": skills to keep, skills
   to change (what changes), skills to replace (the new skill's idea in one
   line) and new skills to add (where they go, their idea in one line).
@@ -112,8 +112,19 @@ the first browser check.
 
 ## Next up
 
-Start milestone 1 (skill audit). Do not touch code before skillcore is
-done.
+Milestones 1 and 2 are done (tables and plan under "Notes for resume").
+Waiting for skillcore. On resume:
+
+1. Fetch the branch and read `docs/remake/skillcore.md`. Go on only if it
+   says `Status: done`; read its "Handover" and the speed parts of
+   `CONTRACTS.md` first.
+2. Milestone 3: for the Mage's default cast and every active skill, write
+   the real time per use under skillcore's model, with no speed gear and at
+   the speed ceiling, next to the reference feel. Mark too fast / right /
+   too slow and fix through skillcore's fields only. Recheck Heat Shimmer
+   and Storm Fury cast speed, and Inferno's mana cost (see the plan). Damage
+   per hit never changes.
+3. Then milestone 4 from the plan in "Notes for resume".
 
 ## Notes for resume
 
@@ -226,6 +237,114 @@ Also found while reading:
   Orb (Bottled Squall, batchC line 197), Firestorm, Frost Nova, Ice Lance.
 - Lightning Strike's sky bolt plays the shared `spell.thunder` on top of
   its own hit sound (it fires after the quiet window).
+- Hero damage over time (Burning, Immolated) ticks on the depth curve
+  (`sim/Status.ts` `dotRate`), scaled only by `magnitude`, not by spell
+  damage. A new damage-over-time skill grows through a `FOE_POWER`
+  magnitude line.
+- Flat elemental adds (`fireDamage`, `coldDamage`...) feed every elemental
+  spell, whatever its element (`sim/Combat.ts` `rollDamage`).
+
+### Milestone 2: the new kit
+
+Every tree is full (18 of 18 slots), so each new skill takes the slot of
+the one it replaces. Capstones, tiers and columns stay where they are.
+Look direction per tree (class notes): fire heavy and smoky, lightning
+sharp and bright, cold glassy and slow.
+
+**Keep as they are (numbers may still move in milestone 3, icons in 5,
+looks in 6):** Ember Nova, Scorch, Kindling, Combustion, Heat Shimmer,
+Firestorm, Searing Core, Cataclysm; Shock Nova, Thunderclap, Lightning
+Strike, Forked, Storm Fury, Sky Lance, Overload, The Eye of the Storm,
+Heaven's Gate, Storm Mastery; Frost Nova, Frostbite, Ice Armor,
+Shatterpoint, Rime Field, Blizzard, Permafrost, Frost Step, Absolute Zero,
+Glacial Comet, Winter's Edge.
+
+**Change:**
+
+- Firebolt: body size apart from the hit lane (a new `size` knob; `radius`
+  stays the lane at 0.4); own smoky dart look.
+- Fire Mastery, Lightning Mastery, Cold Mastery: each raises only its own
+  element (a per-element share added to `elementalDamagePct` for packets of
+  that type, so it stays additive with gear). Text says so.
+- Fireball: body `size` apart from the blast `radius` (the unique's
+  `radius` bend keeps growing the blast); a real lob (`arc`); heavy smoky
+  blast. Burn stacks land on everything in the blast: text says so.
+- Inferno: a real stream of flame, not a beam: a narrow cone (7 m, about
+  25 degrees) that hits everything in it, drawn as rolling flame. Damage
+  per hit stays 200% (+34%/rank). Because it now hits a crowd, its mana
+  cost rises (numbers in milestone 3, written down for the owner).
+- Blast Wave, Dragon's Breath: own heavy smoky looks (Dragon's Breath a
+  rolling gout, not the shared cone).
+- Pyroclasm: a hit sound per eruption.
+- Annihilate: no empty buff; the blast gathers at the point for a short
+  telegraph, then goes off. Same damage.
+- Ember Soul: raises fire damage only, as written.
+- Sparkbolt: the wide roll it promises (40% to 110%, average 75%), pierces
+  exactly one enemy as written, an erratic jittering path.
+- Chain Lightning: its hits go through `afterHit` (Storm Fury, Scorch,
+  Frostbite, Absolute Zero, crit riders), as an opt-in on the shared helper
+  so Ricochet and Shield Throw stay as they are. The first arc must be in
+  reach of the caster (14 m) and in line of sight.
+- Conductance: does what it says: +5% damage per rank against Shocked
+  enemies only, and +0.4 s per rank on the Shocked you apply.
+- Thunderstorm: the text names the Overcharged buff it grants for its 30 s.
+- Ball Lightning: really rolls: hits what it passes (a tick every 0.25 s
+  within its 3 m) instead of everything at once at the end. Own crackling
+  sphere look. Takes over Bottled Squall's bend (see below).
+- Ionize: a debuff field only, no hidden physical ticks.
+- Ice Lance: a thrown lance of ice that flies and pierces everything in
+  its 14 m, leaving Brittle; no longer a beam. The unique's `length`,
+  `width`, `duration` bends keep their meaning.
+- Frozen Orb: rolls and chills what it passes (ticks along its path),
+  drawn as a real orb, and cracks open at the end of its path, Freezing
+  what stands within 3 m. Same damage per hit.
+- Frost Shard, Glacial Spike, Winter's Breath: own glassy, slow cold looks
+  (Winter's Breath a fan of frost crystals, not the shared cone).
+- Every Mage passive gets its tree's damage type (`type`) so its icon is lit
+  in the tree's element, not class violet. Passives are never cast, so the
+  type changes nothing else (check before relying on it).
+
+**Replace (new id in the same slot; old ids refund on load):**
+
+- Flame Lance (fire 2.0) -> **Pyre Brand** (`pyreBrand`). A slow ember dart
+  that brands one enemy: 90% spell damage (+15% per rank) as fire, and
+  Immolated (the game's heavy burn) for 6 s, stronger every rank through a
+  `FOE_POWER` magnitude. If the branded enemy dies while Immolated, the
+  brand leaps to the nearest enemy within 6 m (+0.2 m per rank) with the
+  time it had left. Fire's "spread it". Requires Firebolt; Inferno now
+  requires Pyre Brand. Sound: the freed `skill.fire.lance` recording.
+- Tempest Orb (lightning 3.2) -> **Stormstride** (`stormstride`), the class's
+  missing fast move. You become a bolt and strike a point up to 9 m away
+  (+0.15 m per rank), stopping at walls: 120% spell damage (+18% per rank)
+  as lightning to everything along the path and 1 stack of Shocked.
+  Requires Thunderclap; Ball Lightning now requires Stormstride. Sound: the
+  freed `skill.storm.orb` / `skill.storm.orbHit` recordings.
+- Heart of Winter (cold 5.1) -> **Splintering Frost** (`splinteringFrost`),
+  passive. The blurb promises "shatter" and nothing in the tree did it: a
+  Frozen or Brittle enemy you kill bursts into ice, dealing 25% of its
+  maximum life (+2% per rank) as cold damage within 3 m (+0.1 m per rank)
+  and Chilling what it hits. Requires Cold Mastery; Winter's Edge now
+  requires Splintering Frost. Lives beside Combustion in the kill hook.
+
+**Synergies and links that move with the replacements:**
+
+- `syn('flameLance','firebolt',10)`, `syn('flameLance','infernoStream',6)`,
+  `syn('infernoStream','flameLance',8)` become the same with `pyreBrand`
+  (its synergy also grows the brand's magnitude).
+- `syn('tempestOrb','ballLightning',8)`, `syn('tempestOrb','shockNova',6)`,
+  `syn('ballLightning','tempestOrb',8)` become the same with `stormstride`.
+- `syn('glacialComet','heartOfWinter',6)` becomes
+  `syn('glacialComet','splinteringFrost',6)`.
+- Bottled Squall (`data/uniqueBatches/batchC.ts` line 197) bends Ball
+  Lightning: 20% more damage, 30% more `radius` (named "burst"), its hits
+  Shock for 4 s.
+- Gesture, motif, sound, icon and `SKILL_STATUS` rows for the three removed
+  ids are deleted; the new ids get their own. Grep the old ids to zero.
+- Starting skill (Firebolt) and the starting hints are unchanged.
+
+**New skills to add:** none beyond the three replacements. Every slot is
+taken, and the replacements fill the three real gaps: a fast move for the
+Mage, a "spread it" skill for Fire, a shatter for Cold.
 
 ## For the owner to test
 
