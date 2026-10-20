@@ -33,11 +33,13 @@ import { MONSTERS } from '../data/monsters';
 import type { PlateData } from '../ui/Nameplates';
 import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
-import { releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
+import { gestureCuts, releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
+import { SPAN_RATE } from '../art/hero/Animator';
 import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
+import { castRogue, clearRogue, mirrorStrike, ROGUE_MOVES, tickRogue, type CloneBody, type RogueHost } from './rogue/RogueMoves';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 import { atRank, boostRank } from '../fx/kit/Boost';
 import { tr } from '../core/I18n';
@@ -243,6 +245,21 @@ const arcRad = (v: number): number => (v > Math.PI * 2 ? (v * Math.PI) / 180 : v
 
 /** A count that grows by one every `per` ranks ("+1 per 3 ranks"). */
 const perRanks = (base: number, per: number, rank: number): number => base + (per > 0 ? Math.floor(rank / per) : 0);
+
+/**
+ * Real seconds after a gesture's first blow (or throw) at which its later
+ * cuts land (`Spec.cuts`), when it plays over `span` seconds with the first
+ * at `first`. The hero animator warps the clock to land the first key on
+ * time, then runs the rest at one rate held within `SPAN_RATE`; this is
+ * that rate. Null for a gesture without cuts.
+ */
+function cutTimes(skillId: string, span: number, first: number): number[] | null {
+  const g = gestureCuts(skillId);
+  if (!g) return null;
+  const left = Math.max(0.05, span - Math.min(first, span));
+  const rate = Math.min(SPAN_RATE[1], Math.max(SPAN_RATE[0], (g.end - g.contact) / left));
+  return g.cuts.map((t) => Math.max(0, t - g.contact) / rate);
+}
 
 const SKILL_STATUS: Record<string, string> = {
   // Curses and marks
@@ -623,6 +640,34 @@ export class SkillRunner {
       clear: (from, dir, max, ctx, radius) => this.wallStop(from, dir, max, ctx, radius),
       live: () => this.tickCtx,
     });
+    this.rogueHost = {
+      effects,
+      land: (t, packet, kind, fromX, fromZ, world) => this.landRite(t, packet, kind, fromX, fromZ, world),
+      area: (centre, radius, packet, w, kind) => {
+        this.caster = w.player;
+        return this.areaDamage(centre, radius, packet, w.ctx, w.enemies, w.boss, kind);
+      },
+      point: (at, radius, packet, w, kind, from) => {
+        this.caster = w.player;
+        this.pointDamage(at, radius, packet, w.ctx, w.enemies, w.boss, kind, from);
+      },
+      clear: (from, dir, max, ctx, radius) => this.wallStop(from, dir, max, ctx, radius),
+      firstHit: (from, dir, max, radius, w) => this.firstHitAlong(from, dir, max, w.enemies, w.boss, radius, w.ctx),
+      later: (seconds, fn) => this.pendingSwings.push({ rank: boostRank(), t: seconds, run: fn }),
+      atRelease: (player, fn) => this.atRelease(player, fn),
+      cutTimes: (skillId, span, first) => cutTimes(skillId, span, first),
+      sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
+      buff: (player, def, rank, num, color) => this.applyBuff(player, def, rank, num, color),
+      cleanse: (player) => {
+        const off = CLEANSE.find((id) => player.status.has(id));
+        if (off) {
+          player.status.remove(off);
+          player.refreshStats();
+        }
+      },
+      clones: () => this.cloneBodies(),
+      now: () => this.runTime,
+    };
   }
 
   /** The Mage's spells that are more than their effect family (`mage/Spells.ts`). */
@@ -639,8 +684,35 @@ export class SkillRunner {
 
   /** Splintering Frost: a Frozen or Brittle enemy that died bursts into ice (the scene's kill hook). */
   splinter(player: Player, at: THREE.Vector3, maxLife: number): void {
-    this.setCaster(player, this.tickCtx?.enemies ?? [], this.tickCtx?.boss ?? null);
+    this.setCaster(player);
     this.spells.splinter(player, at, maxLife);
+  }
+
+  /** What the Rogue's moves borrow from the runner (`rogue/RogueMoves.ts`). */
+  private readonly rogueHost: RogueHost;
+
+  /** Your Shadow Clones standing, for Mirror Gambit. */
+  private *cloneBodies(): Generator<CloneBody> {
+    for (const t of this.turrets) {
+      if (t.skillId !== 'shadowClone' || !t.body || t.life <= 0) continue;
+      const body = t.body;
+      const hero = t.hero;
+      yield {
+        body,
+        get x() { return t.x; },
+        set x(v: number) { t.x = v; },
+        get z() { return t.z; },
+        set z(v: number) { t.z = v; },
+        get facing() { return t.facing; },
+        set facing(v: number) { t.facing = v; },
+        color: t.color,
+        swing: () => {
+          t.action = 'attack';
+          t.actionT = 1;
+          hero?.play('attack1', { fade: 0.06, restart: true, speed: 1.3, contact: 0.12 });
+        },
+      };
+    }
   }
 
   /** What the Paladin's Aura skills borrow from the runner (`paladin/Vigils.ts`). */
@@ -685,8 +757,13 @@ export class SkillRunner {
     packet = this.coated(packet, kind, ctx);
     if (packet.source === 'player' && packet.applies?.length) packet = { ...packet, applies: this.heroDots(packet.applies) };
     const before = t.life;
-    if (packet.source === 'player' && this.caster?.passives.crowdDamagePct) this.hitAt.set(t.id, this.runTime);
     t.takeDamage(packet, ctx);
+    // Mirror Gambit: a skill's melee blow is answered by your clones.
+    const mirror = this.caster?.passives.mirrorStrikePct ?? 0;
+    if (mirror > 0 && (kind === 'melee' || kind === 'heavy') && packet.source === 'player' && this.caster
+      && packet.ability !== undefined && SKILL_NAMES.has(packet.ability)) {
+      mirrorStrike(this.rogueHost, { ctx, enemies: this.tickCtx?.enemies ?? [], boss: this.tickCtx?.boss ?? null, player: this.caster }, t, packet.amount, mirror);
+    }
     this.veilAfterHit(packet, kind, before > 0 && t.life <= 0);
     // Assassinate: a kill hands the skill straight back. Reaping: a kill banks Souls.
     if (before > 0 && t.life <= 0 && packet.source === 'player' && this.caster) {
@@ -847,7 +924,7 @@ export class SkillRunner {
     held = false
   ): boolean {
     if (!player.alive || (held ? player.incapacitated : player.isBusy)) return false;
-    this.setCaster(player, enemies, boss);
+    this.setCaster(player);
 
     const def = SKILLS.find((s) => s.id === skillId);
     if (!def || def.targeting === 'passive') return false;
@@ -1093,6 +1170,17 @@ export class SkillRunner {
         };
         this.spells.cast(sc);
         if (sc.landAt) target = sc.landAt;
+      } else if (ROGUE_MOVES.has(def.id)) {
+        // The Rogue's throws, dash, escape, halo and waltz (rogue/RogueMoves.ts).
+        const dual = isDualWielding(player) && (family === 'melee' || family === 'cleave');
+        castRogue(this.rogueHost, {
+          def, rank, player, aim: target.clone().setY(0), dir: dir.clone(),
+          world: { ctx, enemies, boss, player },
+          packet: makePacket,
+          blowPacket: dual ? (m = 1) => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket,
+          num, school, color, actTime, clip: own ?? clip, hitSound: sound.hit, shed: sig.trail,
+          critX: Math.max(100, player.stats.critDamage) / 100,
+        });
       } else switch (family) {
         case 'melee':
         case 'cleave': {
@@ -2076,7 +2164,7 @@ export class SkillRunner {
     // A wand, a staff or a focus does not hit anything by itself: every bolt a
     // caster throws is a spell.
     if (style === 'caster' || (style === 'unarmed' && casterOffHand(player))) return false;
-    this.setCaster(player, enemies, boss);
+    this.setCaster(player);
 
     player.faceTowards(target.x, target.z);
     const dir = this.tmp.copy(target).sub(player.position).setY(0).normalize().clone();
@@ -2514,7 +2602,7 @@ export class SkillRunner {
     enemies: Enemy[],
     boss: Boss | null,
   ): void {
-    this.setCaster(player, enemies, boss);
+    this.setCaster(player);
     const packet = (): DamagePacket =>
       rollDamage(player.stats, ctx.rng, { scale, type, ability: tr('Rebirth'), source: 'player' });
     this.areaDamage(at, radius, packet, ctx, enemies, boss);
@@ -2642,7 +2730,7 @@ export class SkillRunner {
    * Applies the caster's conditional passives to one packet against one target.
    *
    * This is the single choke point for "more damage when...". Executioner,
-   * Blood Scent, Ember Soul, Hemotoxin and Momentum all land here, because all
+   * Blood Scent, Ember Soul, Hemotoxin and Flurry all land here, because all
    * of them need the attacker and the victim at the same moment and nowhere
    * else in the pipeline has both.
    */
@@ -2671,7 +2759,6 @@ export class SkillRunner {
         manaFrac: p.mana / Math.max(1, p.stats.mana),
         maxMana: p.stats.mana,
         lifeFrac: p.life / Math.max(1, p.stats.life),
-        nearby: this.nearbyCount,
         moving: p.passiveState.moving,
         souls: p.passiveState.souls,
         maxLife: p.stats.life,
@@ -2682,7 +2769,7 @@ export class SkillRunner {
     const st = p.passiveState;
     let amount = packet.amount * mul;
 
-    // Perfect Form: every Nth blow is a guaranteed critical, and hits harder
+    // The Fifth Verse: every Nth blow is a guaranteed critical, and hits harder
     // for being one. Counted per landed blow, not per press, so a whirlwind
     // does not burn the counter on a swing that touched nothing.
     let crit = packet.crit;
@@ -2979,27 +3066,10 @@ export class SkillRunner {
   private casting = false;
   private atContact = false;
 
-  /** Enemies close to the caster, refreshed per cast for the crowd passives. */
-  private nearbyCount = 0;
-
-  /**
-   * Records who is acting and how surrounded they are.
-   *
-   * Counted once per cast rather than per target: a whirlwind hitting eight
-   * monsters should not walk the whole enemy list eight times to answer the
-   * same question.
-   */
-  private setCaster(player: Player, enemies: Enemy[], boss: Boss | null): void {
+  /** Records who is acting, and what their weapon sounds like. */
+  private setCaster(player: Player): void {
     this.caster = player;
     this.weaponSound = weaponSoundOf(player);
-    if (player.passives.crowdDamagePct <= 0) {
-      this.nearbyCount = 0;
-      return;
-    }
-    // Momentum: every enemy you hit inside its window still counts.
-    const window = player.passives.crowdWindow || 3;
-    for (const [id, at] of this.hitAt) if (this.runTime - at > window) this.hitAt.delete(id);
-    this.nearbyCount = this.hitAt.size;
   }
 
   private pointDamage(
@@ -3249,8 +3319,6 @@ export class SkillRunner {
 
   /** Wall clock for the tick, so rigs breathe and bob. */
   private runTime = 0;
-  /** When each enemy was last hit by the hero, for Momentum. */
-  private hitAt = new Map<string, number>();
   /** When A Thousand Cuts last counted a blow. */
   private cutAt = 0;
   /** When the last Phantom Blades flew, for their limit a second. */
@@ -3455,6 +3523,7 @@ export class SkillRunner {
 
     this.spells.update(dt);
     this.stormTick(dt, live.ctx, live.enemies, live.boss);
+    tickRogue(this.rogueHost, dt);
     this.markCorpses(live.enemies);
     this.trailTick(dt, live.ctx, live.enemies, live.boss);
     this.tetherTick(dt, live.ctx, live.enemies, live.boss);
@@ -4260,6 +4329,7 @@ export class SkillRunner {
   }
 
   dispose(): void {
+    clearRogue(this.rogueHost);
     for (const z of this.zones) z.fx?.stop();
     this.trail.length = 0;
     this.corpses.length = 0;

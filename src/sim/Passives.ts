@@ -100,9 +100,6 @@ export interface PassiveEffects {
   /** Against a target below `executeThreshold` of its life. */
   executeThreshold: number;
   executeDamagePct: number;
-  /** Scales with how many enemies are near the player. */
-  crowdDamagePct: number;
-  crowdDamageCap: number;
   /** Scales with the player's own missing mana, per 10% missing. */
   missingManaPct: number;
   missingManaCap: number;
@@ -235,6 +232,8 @@ export interface PassiveEffects {
   // --- shadow and clones --------------------------------------------------
   cloneCount: number;
   clonePowerPct: number;
+  /** Mirror Gambit: share (%) of a skill's melee blow each nearby clone strikes again. */
+  mirrorStrikePct: number;
   /** Damage reduction and regeneration while unseen. */
   stealthReductionPct: number;
   stealthRegenPct: number;
@@ -341,8 +340,6 @@ export interface PassiveEffects {
   critPhysPiercePct: number;
   /** Phantom Blades: most spectral blades a second (0 = no limit). */
   critBladeMax: number;
-  /** Momentum: seconds an enemy you hit keeps counting. */
-  crowdWindow: number;
   /** A Thousand Cuts: critical damage (points) per Cut, the most Cuts, and what a crit costs. */
   cutPct: number;
   cutMax: number;
@@ -415,8 +412,6 @@ function emptyEffects(): PassiveEffects {
     vsBleedingPct: 0,
     executeThreshold: 0,
     executeDamagePct: 0,
-    crowdDamagePct: 0,
-    crowdDamageCap: 0,
     missingManaPct: 0,
     missingManaCap: 0,
     maxManaPct: 0,
@@ -487,6 +482,7 @@ function emptyEffects(): PassiveEffects {
     bleedLeechDouble: 0,
     cloneCount: 0,
     clonePowerPct: 0,
+    mirrorStrikePct: 0,
     stealthReductionPct: 0,
     stealthRegenPct: 0,
     soulMaxStacks: 0,
@@ -546,7 +542,6 @@ function emptyEffects(): PassiveEffects {
     meleeCounterCrit: false,
     critPhysPiercePct: 0,
     critBladeMax: 0,
-    crowdWindow: 0,
     cutPct: 0,
     cutMax: 0,
     cutSpend: 0,
@@ -851,13 +846,6 @@ const RULES: Record<string, Contribution> = {
   lethality: (e, r, id) => {
     e.critPhysPiercePct = Math.max(e.critPhysPiercePct, Math.min(param(id, 'pierceCap', 40), param(id, 'piercePerRank', 2) * r));
   },
-  perfectForm: (e, r, id) => {
-    e.guaranteedCritEvery = Math.max(
-      param(id, 'floor', 5),
-      Math.round(param(id, 'interval', 12) - param(id, 'reducePerRank', 0.4) * (r - 1)),
-    );
-    e.guaranteedCritBonusPct = Math.max(e.guaranteedCritBonusPct, param(id, 'bonusDamage', 50));
-  },
   riposteBlade: (e, r, id) => {
     e.meleeCounterChance = Math.max(e.meleeCounterChance, Math.min(param(id, 'chanceCap', 60), param(id, 'chancePerRank', 15) * r));
     e.meleeCounterPct = Math.max(e.meleeCounterPct, 160 + 20 * (r - 1));
@@ -870,11 +858,6 @@ const RULES: Record<string, Contribution> = {
     e.hitStackDamagePct += param(id, 'damagePerStack', 2) + param(id, 'perRank', 0.3) * (r - 1);
     e.hitStackMax = Math.max(e.hitStackMax, param(id, 'maxStacks', 6));
     e.hitStackDecay = Math.max(e.hitStackDecay, param(id, 'decay', 2));
-  },
-  momentum: (e, r, id) => {
-    e.crowdDamagePct += param(id, 'pctPerRank', 2) * r;
-    e.crowdDamageCap = Math.max(e.crowdDamageCap, param(id, 'pctPerRank', 2) * r * param(id, 'maxTargets', 8));
-    e.crowdWindow = Math.max(e.crowdWindow, param(id, 'window', 3));
   },
   finisher: (e, r, id) => {
     e.executeThreshold = Math.max(e.executeThreshold, param(id, 'threshold', 30));
@@ -901,9 +884,9 @@ const RULES: Record<string, Contribution> = {
   silhouette: (e, r, id) => {
     e.avoidPct = Math.max(e.avoidPct, Math.min(param(id, 'dodgeCap', 25), param(id, 'dodgePerRank', 1) * r));
   },
+  // Mirror Gambit: your clones answer your skills' melee blows.
   mirrorGambit: (e, r, id) => {
-    e.clonePowerPct += param(id, 'mimicPct', 40) + param(id, 'perRank', 4) * (r - 1);
-    if (e.cloneCount === 0) e.cloneCount = 1;
+    e.mirrorStrikePct += param(id, 'mimicPct', 40) + param(id, 'perRank', 4) * (r - 1);
   },
   apexPredator: (e, r, id) => {
     e.poisonHoldBelow = Math.max(e.poisonHoldBelow, param(id, 'threshold', 50));
@@ -1156,8 +1139,7 @@ export function newPassiveState(): PassiveState {
  * The multiplier a packet gets against one specific target.
  *
  * `lifeFrac` is the target's remaining life as a fraction, `bleeding` and
- * `debuffed` describe what the player has already put on it, and `nearby` is
- * how many enemies are close to the player.
+ * `debuffed` describe what the player has already put on it.
  */
 export function damageMultiplier(
   e: PassiveEffects,
@@ -1166,7 +1148,6 @@ export function damageMultiplier(
     manaFrac: number;
     maxMana: number;
     lifeFrac: number;
-    nearby: number;
     moving?: number;
     souls?: number;
     maxLife?: number;
@@ -1202,9 +1183,6 @@ export function damageMultiplier(
   if (e.damagePer400Life > 0) pct += ((self.maxLife ?? 0) / 400) * e.damagePer400Life;
   if (e.maxManaPct > 0) {
     pct += Math.min(e.maxManaCap, e.maxManaPct * (self.maxMana / 200));
-  }
-  if (e.crowdDamagePct > 0) {
-    pct += Math.min(e.crowdDamageCap, e.crowdDamagePct * Math.max(0, self.nearby));
   }
   // Momentum: metres banked in the last few seconds turn into damage.
   if (e.momentumDamageShare > 0 && (self.moving ?? 0) > 0) {
