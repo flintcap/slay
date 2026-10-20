@@ -154,6 +154,31 @@ export interface MapPlan {
 /** Most areas a map may have, and most zones one area may hold. */
 export const MAX_AREAS = 4;
 export const MAX_ZONES_PER_AREA = 2;
+/**
+ * The first tiers are short maps: one or two areas, then the boss. A hero
+ * levels on every area cleared, and four of them a map left the monsters of
+ * the early tiers behind on the base difficulty.
+ */
+export const SHORT_MAP_TIERS = 10;
+
+const areaCount = (chain: BiomeId[]): number => Math.max(...splitAreas(chain)) + 1;
+
+/**
+ * Drops middle zones until the chain fits in `max` areas, keeping at least
+ * `fewest` zones and always two areas, so the boss never shares the way in.
+ */
+function trimChain(chain: BiomeId[], max: number, fewest: number): void {
+  while (areaCount(chain) > max && chain.length > fewest) {
+    let cut = -1;
+    for (let i = 1; i < chain.length - 1 && cut < 0; i++) {
+      const trial = chain.slice();
+      trial.splice(i, 1);
+      if (areaCount(trial) >= 2) cut = i;
+    }
+    if (cut < 0) return;
+    chain.splice(cut, 1);
+  }
+}
 
 const unlocked = (b: BiomeId, tier: number): boolean => getBiome(b).minDepth <= tier;
 
@@ -211,8 +236,12 @@ export function planMap(tier: number, rng: Rng, want?: BiomeId, minZones = 3): M
     theme = { id: `solo.${b}`, names: [getBiome(b).name.replace(/^The /, '')], weight: 1, chain: [b, b, b] };
     chain = [b, b, b];
   }
-  // Never more than four loads: drop middle zones until it fits.
-  while (Math.max(...splitAreas(chain)) + 1 > MAX_AREAS && chain.length > 3) chain.splice(1, 1);
+  // Never more loads than the tier allows: drop middle zones until it fits.
+  // A short map is one or two areas and then the boss's, an even roll.
+  const short = tier <= SHORT_MAP_TIERS;
+  const maxAreas = short ? (rng.chance(0.5) ? 2 : 3) : MAX_AREAS;
+  const fewest = short ? 2 : 3;
+  trimChain(chain, maxAreas, fewest);
   // Never fewer zones than asked (the old run's floor count), so a map never
   // holds fewer fights: repeat a zone before the boss while the loads allow.
   for (let guard = 0; chain.length < Math.min(5, minZones) && guard < 8; guard++) {
@@ -220,7 +249,7 @@ export function planMap(tier: number, rng: Rng, want?: BiomeId, minZones = 3): M
     for (let i = chain.length - 2; i >= 0 && !grown; i--) {
       const trial = chain.slice();
       trial.splice(i + 1, 0, chain[i]!);
-      if (Math.max(...splitAreas(trial)) + 1 <= MAX_AREAS) {
+      if (areaCount(trial) <= maxAreas) {
         chain = trial;
         grown = true;
       }
@@ -232,7 +261,7 @@ export function planMap(tier: number, rng: Rng, want?: BiomeId, minZones = 3): M
   // the biome the story sent you to, so its monsters are there to be hunted.
   if (want) {
     for (let i = 1; i < chain.length - 1; i++) chain[i] = want;
-    while (Math.max(...splitAreas(chain)) + 1 > MAX_AREAS && chain.length > 3) chain.splice(1, 1);
+    trimChain(chain, maxAreas, fewest);
   }
 
   const areaOf = splitAreas(chain);

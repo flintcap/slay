@@ -56,7 +56,7 @@ try {
       label: document.querySelector('.hud-depth')?.textContent ?? '(no label)',
     };
   });
-  ok(!!m.name && m.zones >= 3 && m.areas >= 1, 'the run is a map', `${m.name}, ${m.zones} zones in ${m.areas} areas`);
+  ok(!!m.name && m.zones >= 2 && m.areas >= 2, 'the run is a map', `${m.name}, ${m.zones} zones in ${m.areas} areas`);
   ok(m.waypoint && m.ring, 'the first area has a waypoint ring');
   ok(m.hud, 'the HUD shows the tier', m.label);
 

@@ -58,7 +58,7 @@ import {
   isWalkableValue,
 } from './Layouts';
 import { type ZonePlan, buildArea } from './zones/Area';
-import { planMap, zoneHeat } from './MapGen';
+import { SHORT_MAP_TIERS, planMap, zoneHeat } from './MapGen';
 import { chestKindFor, placeProps } from './Props';
 import { rollRunTheme, runTheme, themeFits } from './Themes';
 import { getMonster } from '../data/monsters';
@@ -569,13 +569,14 @@ function questRoomKind(quest: QuestInstance): DungeonRoom['kind'] | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Fewest zones in a map: what a run used to have in floors, 3 early and 5
- * deep, so a map never holds fewer fights than a descent did.
+ * Fewest zones in a map: what a run used to have in floors, 3 and then 5
+ * deep, so a map never holds fewer fights than a descent did. The short maps
+ * of the first tiers (MapGen.SHORT_MAP_TIERS) may be a way in and a boss.
  */
 export function levelsForDepth(depth: number): number {
   if (depth >= 25) return 5;
-  if (depth >= 9) return 4;
-  return 3;
+  if (depth > SHORT_MAP_TIERS) return 4;
+  return 2;
 }
 
 /**
