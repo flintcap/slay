@@ -156,8 +156,11 @@ function gradeNode(src: (p: V2) => V3, over?: (p: V2) => V3): V4 {
     const p = rippleOffset(p0.add(vec2(dx, dy)));
 
     // Chromatic aberration scales with radius: clean centre, fringed edges.
-    const ca = G.aberration.mul(G.hurt.mul(G.warp).mul(6.0).add(1.0));
-    const dir = normalize(center.add(1e-6)).mul(ca).mul(r2.mul(2.0).add(0.25));
+    // Only a hit fringes the middle too. A resting half-pixel split there
+    // put red and blue edges on the hero once the frame was sharpened.
+    const rest = G.aberration.mul(r2.mul(2.0));
+    const hit = G.aberration.mul(G.hurt.mul(G.warp).mul(6.0)).mul(r2.mul(2.0).add(0.25));
+    const dir = normalize(center.add(1e-6)).mul(rest.add(hit));
     const raw = vec3(src(p.add(dir)).x, src(p).y, src(p.sub(dir)).z);
 
     let col: V3 = raw.mul(G.exposure);

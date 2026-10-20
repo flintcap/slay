@@ -482,6 +482,9 @@ Update this file and push it after every finished step.
   TRAA, TAAU only below full size (frame weight 0.06); a light RCAS sharpen
   follows it and film grain goes on last. Medium draws at full size. The
   same build measured about 2.8x sharper, average colour unchanged.
+  The resting lens fringe now grows from zero at the centre (it had a
+  half-pixel floor that put red and blue edges on the hero once sharpened);
+  only a hit fringes the middle.
 
 ## Phase 0d log
 
