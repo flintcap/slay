@@ -196,8 +196,8 @@ export interface ProjectileOpts {
   /** false skips the impact recipe on arrival. */
   impact?: boolean;
   scale?: number;
-  /** Arrow (a solid shaft), bolt (the school's own body), or a thrown knife or shield. */
-  shape?: 'arrow' | 'bolt' | 'knife' | 'shield';
+  /** Arrow (a solid shaft), bolt (the school's own body), or a thrown knife, shield, needle or vial. */
+  shape?: 'arrow' | 'bolt' | 'knife' | 'shield' | 'needle' | 'vial';
   /** A skill's own particle wake, laid over the school's. */
   shed?: string;
   /** false skips the flare at the caster's hand. */
@@ -369,6 +369,10 @@ const enum Body {
   Knife,
   /** A thrown shield, flat and spinning. */
   Disc,
+  /** A venom needle: thin steel, point first. */
+  Needle,
+  /** A glass vial, tumbling end over end. */
+  Vial,
 }
 
 class Live {
@@ -832,7 +836,11 @@ export class EffectSystem {
     const el = element(school);
     const scale = opts.scale ?? 1;
     const size = (opts.size ?? 0.22) * scale;
-    const thrown = opts.shape === 'knife' ? Body.Knife : opts.shape === 'shield' ? Body.Disc : null;
+    const thrown =
+      opts.shape === 'knife' ? Body.Knife :
+      opts.shape === 'shield' ? Body.Disc :
+      opts.shape === 'needle' ? Body.Needle :
+      opts.shape === 'vial' ? Body.Vial : null;
     // Solid things that fly: arrows, knives and shields carry no glowing heart.
     const isArrow = thrown !== null || opts.shape === 'arrow' || (opts.shape !== 'bolt' && school === 'physical');
     const body = thrown ?? (isArrow ? Body.Arrow : school === 'cold' ? Body.Shard : school === 'bone' ? Body.Spear : Body.Core);
@@ -866,6 +874,8 @@ export class EffectSystem {
     if (body === Body.Arrow) e.solid = this.solids.alloc('arrow');
     else if (body === Body.Knife) e.solid = this.solids.alloc('blade');
     else if (body === Body.Disc) e.solid = this.solids.alloc('buckler');
+    else if (body === Body.Needle) e.solid = this.solids.alloc('needle');
+    else if (body === Body.Vial) e.solid = this.solids.alloc('vial');
     else if (body === Body.Shard) e.solid = this.solids.alloc('shard');
     else if (body === Body.Spear) e.solid = this.solids.alloc('spear');
     if (!isArrow) this.take(e, this.cores);
@@ -916,13 +926,20 @@ export class EffectSystem {
         const a = e.t * 22;
         const r = Math.max(0.55, e.size * 1.6);
         this.solids.place(e.solid, p.x, p.y, p.z, Math.cos(a), 0, Math.sin(a), 0, r, r);
+      } else if (e.body === Body.Vial) {
+        // A vial tumbles end over end along its flight.
+        const a = e.t * 13;
+        const c = Math.cos(a);
+        const r = Math.max(0.7, e.size * 2.2);
+        this.solids.place(e.solid, p.x, p.y, p.z, _v2.x * c, Math.sin(a), _v2.z * c, e.t * 3, r, r);
       } else {
         const roll = e.body === Body.Shard ? e.t * 4.2 : e.body === Body.Spear ? e.t * 14 : e.body === Body.Knife ? 0.35 : 0;
         const len =
           e.body === Body.Arrow ? Math.max(0.7, e.size / 0.24) :
           e.body === Body.Knife ? Math.max(0.55, e.size * 1.6) :
+          e.body === Body.Needle ? Math.max(0.6, e.size * 2) :
           e.body === Body.Shard ? e.size * 3.2 : e.size * 4.2;
-        const girth = e.body === Body.Arrow || e.body === Body.Knife ? len : e.body === Body.Shard ? e.size * 3.2 : e.size * 3;
+        const girth = e.body === Body.Arrow || e.body === Body.Knife || e.body === Body.Needle ? len : e.body === Body.Shard ? e.size * 3.2 : e.size * 3;
         this.solids.place(e.solid, p.x, p.y, p.z, _v2.x, _v2.y, _v2.z, roll, len, girth);
       }
     }
@@ -982,7 +999,7 @@ export class EffectSystem {
       if (e.flag) {
         if (e.body === Body.Arrow) {
           this.impact(e.school, p.x, p.y, p.z, { scale: e.scale * 0.6, color: e.color, shake: 0.02, light: 0, decal: false, sfx: 'arrow.thunk' });
-        } else if (e.body === Body.Knife || e.body === Body.Disc) {
+        } else if (e.body === Body.Knife || e.body === Body.Disc || e.body === Body.Needle) {
           this.impact(e.school, p.x, p.y, p.z, { scale: e.scale * (e.body === Body.Disc ? 0.9 : 0.6), color: e.color, shake: e.body === Body.Disc ? 0.06 : 0.02, light: 0.4, decal: false });
         } else {
           this.impact(e.school, p.x, p.y, p.z, { scale: e.scale, color: e.color });

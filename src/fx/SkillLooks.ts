@@ -328,8 +328,10 @@ export function fieldLook(skillId: string | undefined, school: School): FieldLoo
 }
 
 /** What a thrown skill throws, where it is not an arrow or a spell's own body. */
-export const THROWN_SHAPES: Readonly<Record<string, 'knife' | 'shield'>> = {
+export const THROWN_SHAPES: Readonly<Record<string, 'knife' | 'shield' | 'needle' | 'vial'>> = {
   fanOfKnives: 'knife',
   throwingSpree: 'knife',
+  venomDart: 'needle',
+  plagueVial: 'vial',
   shieldThrow: 'shield',
 };

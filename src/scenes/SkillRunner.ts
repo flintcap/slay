@@ -23,7 +23,7 @@ import type { MinionTarget } from '../entities/Abilities';
 import type { Boss } from '../entities/Boss';
 import { EffectSystem, ELEMENTS, type School } from '../fx/Effects';
 import { CombatFeel, type HitKind, type WeaponSound } from '../fx/CombatFeel';
-import type { EffectHandle } from '../fx/Effects';
+import type { EffectHandle, ProjectileOpts } from '../fx/Effects';
 import { getStatus, synthesizeSkillBuff } from '../data/statuses';
 import { getBase } from '../sim/Loot';
 import { CASTER_CATEGORIES } from '../data/itemBases';
@@ -3091,7 +3091,7 @@ export class SkillRunner {
     color: number,
     hitSfx: string | null = null,
     /** A thrown thing (an arrow, a shield) flies between targets instead of an arc. */
-    thrown?: 'arrow' | 'bolt' | 'knife' | 'shield',
+    thrown?: ProjectileOpts['shape'],
     /** What each jump loses, in percent. */
     falloff = 18,
   ): void {

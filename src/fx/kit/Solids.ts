@@ -17,6 +17,8 @@ export const SOLID = {
   blade: 5, thorn: 6, crystal: 7, cinder: 8, fang: 9, saw: 10, feather: 11,
   // Thrown weapons.
   buckler: 12,
+  // The Rogue's thrown things: a venom needle, a glass vial.
+  needle: 13, vial: 14,
 } as const;
 export type SolidShape = keyof typeof SOLID;
 
@@ -194,6 +196,41 @@ function bucklerGeo(): THREE.BufferGeometry {
   return g;
 }
 
+/** A venom needle: a long steel spike, its tip dipped green, a dark wrapped end. */
+function needleGeo(): THREE.BufferGeometry {
+  const shaft = new THREE.CylinderGeometry(0.008, 0.016, 0.62, 5, 1);
+  shaft.rotateX(Math.PI / 2);
+  shaft.translate(0, 0, -0.02);
+  const tip = new THREE.ConeGeometry(0.009, 0.24, 5);
+  tip.rotateX(Math.PI / 2);
+  tip.translate(0, 0, 0.4);
+  const wrap = new THREE.CylinderGeometry(0.022, 0.022, 0.12, 6);
+  wrap.rotateX(Math.PI / 2);
+  wrap.translate(0, 0, -0.38);
+  const parts = [tint(shaft, 0xc4c8d0), tint(tip, 0x7cff6a), tint(wrap, 0x1e2a18)];
+  const g = mergeGeometries(parts, false)!;
+  for (const q of parts) q.dispose();
+  return g;
+}
+
+/** A glass vial of plague: a round belly, a neck and a cork, along +Z. */
+function vialGeo(): THREE.BufferGeometry {
+  const belly = new THREE.SphereGeometry(0.2, 10, 8);
+  belly.scale(1, 1, 1.15);
+  const neck = new THREE.CylinderGeometry(0.06, 0.08, 0.2, 8);
+  neck.rotateX(Math.PI / 2);
+  neck.translate(0, 0, 0.29);
+  const cork = new THREE.CylinderGeometry(0.07, 0.065, 0.09, 8);
+  cork.rotateX(Math.PI / 2);
+  cork.translate(0, 0, 0.42);
+  const parts = [belly.toNonIndexed(), neck.toNonIndexed(), cork.toNonIndexed()];
+  for (const q of parts) q.deleteAttribute('uv');
+  const g = mergeGeometries(parts, false)!;
+  for (const q of [belly, neck, cork, ...parts]) q.dispose();
+  g.computeVertexNormals();
+  return g;
+}
+
 function featherGeo(): THREE.BufferGeometry {
   const g = new THREE.ConeGeometry(0.12, 1, 4, 3);
   g.rotateX(-Math.PI / 2);
@@ -247,9 +284,10 @@ export class SolidPool {
       new THREE.MeshStandardMaterial({ color: 0x8a7a66, roughness: 0.8, side: THREE.DoubleSide }),
     ];
     // The buckler shares the arrow's material (vertex-coloured, same layout),
-    // so it draws with a shader already built.
-    mats.push(mats[0]!);
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo()];
+    // so it draws with a shader already built. The needle shares the knife's
+    // (vertex-coloured steel); the vial the fang's pale venom glow.
+    mats.push(mats[0]!, mats[5]!, mats[9]!);
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
