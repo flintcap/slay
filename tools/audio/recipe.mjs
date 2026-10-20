@@ -23,6 +23,7 @@
 
 import { SHIFTER_TAKES } from './shifter-takes.mjs';
 import { PALADIN_TAKES } from './paladinTakes.mjs';
+import { RANGER_TAKES } from './rangerTakes.mjs';
 
 /** Folder inside each pack where its files live, so takes can use short names. */
 export const ROOTS = {
@@ -98,6 +99,7 @@ const brk = (n) => `Deep Break ${n}.wav`;
 
 export const SKILL_TAKES = {
   ...PALADIN_TAKES,
+  ...RANGER_TAKES,
   // --- bows and arrows --------------------------------------------------------
   'skill.bow': x('battle', 'Bow.wav', { mix: [x('wpn', 'arrow-feathers-01.wav', { gain: -6 })] }),
   'skill.bow.pierce': x('battle', 'Bow.wav', { rate: 1.1, mix: [x('swish', 'swish-1.wav', { hp: 1500, delay: 60, gain: -4 }), x('wpn', 'arrow-feathers-03.wav', { gain: -6 })] }),

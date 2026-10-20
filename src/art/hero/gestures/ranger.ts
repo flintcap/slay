@@ -141,6 +141,41 @@ const MARKSMAN: Record<string, Spec> = {
     contact: 0.36,
     end: 0.95,
   },
+  /** A short hard draw, then the bow given a sharp twist on the loose so the shaft goes brittle. */
+  splinterShot: {
+    keys: [
+      [0.1, aim(0.4, { cant: 0.15, side: 0.06 })],
+      [0.22, aim(0.95, { cant: 0.2, side: 0.08, down: 0.06 }), true],
+      [0.27, loose({ cant: 0.7, side: 0.08, down: 0.06, turn: -0.1 }, 0.8)],
+      [0.42, loose({ cant: 0.6, side: 0.06, down: 0.05, turn: -0.08 }, 0.9)],
+    ],
+    contact: 0.27,
+    end: 0.72,
+  },
+  /** The whole body leaned over sideways to find the angle off the wall. */
+  bankShot: {
+    keys: [
+      [0.1, { ...aim(0.4, { up: 0.1, turn: -0.2 }), roll: 0.35, side: -0.2 }],
+      [0.24, { ...aim(1, { up: 0.1, turn: -0.25 }), roll: 0.4, side: -0.25 }, true],
+      [0.29, { ...loose({ up: 0.1, turn: -0.25 }, 0.9), roll: 0.4, side: -0.25 }],
+      [0.46, { ...loose({ up: 0.05, turn: -0.2 }, 1.0), roll: 0.3, side: -0.2 }],
+    ],
+    contact: 0.29,
+    end: 0.75,
+  },
+  /** The drawn bow swept slowly across the marked, head following, then one clean loose. */
+  quarrysEnd: {
+    keys: [
+      [0.1, aim(0.6, { turn: 0.35, head: 0.05 })],
+      [0.24, aim(1, { turn: 0.15, head: 0.08 })],
+      [0.34, aim(1.05, { turn: -0.15, head: 0.08, down: 0.05 }), true],
+      [0.39, loose({ turn: -0.15, down: 0.05 }, 1.2)],
+      [0.56, loose({ turn: -0.12, down: 0.04 }, 1.3)],
+    ],
+    steps: [step('R', 0.06, -0.25, -0.15)],
+    contact: 0.39,
+    end: 0.9,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -234,6 +269,39 @@ const WILDCRAFT: Record<string, Spec> = {
     glow: 'both',
     end: 0.8,
   },
+  /** Knelt, the cord run out between both hands as wide as they go, then pulled taut. */
+  tripwire: {
+    keys: [
+      [0.12, { R: [0.9, 0.2, 0.4, 0.5, 0.6, -0.6], L: [0.9, 0.2, 0.4, 0.5, 0.6, -0.6], lean: 0.5, down: 1.0, head: 0.25, fistR: 1, fistL: 1 }],
+      [0.26, { R: [1.0, 1.4, -0.2, 0.15, 0.6, -0.6], L: [1.0, 1.4, -0.2, 0.15, 0.6, -0.6], lean: 0.45, down: 1.05, head: 0.2, fistR: 1, fistL: 1 }, true],
+      [0.34, { R: [0.95, 1.5, -0.25, 0.1, 0.6, -0.6], L: [0.95, 1.5, -0.25, 0.1, 0.6, -0.6], lean: 0.42, down: 1.02, head: 0.18, fistR: 1, fistL: 1 }],
+      [0.52, { R: [0.9, 1.45, -0.2, 0.15, 0.6, -0.6], L: [0.9, 1.45, -0.2, 0.15, 0.6, -0.6], lean: 0.4, down: 1.0, fistR: 1, fistL: 1 }],
+    ],
+    steps: [step('R', 0.05, -0.45)],
+    contact: 0.26,
+    end: 0.85,
+  },
+  /** The nest weighed in the hand and lobbed underarm, gently, out ahead. */
+  waspNest: {
+    keys: [
+      [0.14, { R: [-0.4, 0.35, 0.1, 0.4, 0.3, 0.4], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.6, lean: 0.25, down: 0.3, turn: -0.3 }, true],
+      [0.26, { R: [1.2, 0.3, 0.1, 0.2, 0.3, 0.6], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.1, lean: 0.05, down: 0.1, turn: 0.15, head: -0.05 }],
+      [0.46, { R: [1.1, 0.35, 0.1, 0.3, 0.3, 0.5], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.1, lean: 0.04, down: 0.08, turn: 0.12 }],
+    ],
+    steps: [step('L', 0.12, 0.35)],
+    contact: 0.26,
+    end: 0.8,
+  },
+  /** A two-finger whistle, then the left forearm raised level for the bird. */
+  kestrel: {
+    keys: [
+      [0.12, { R: [1.5, -0.2, 1.1, 2.4, 0.3], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.5, head: 0.12 }],
+      [0.26, { R: [1.45, -0.2, 1.1, 2.4, 0.3], L: [1.6, 0.9, -0.3, 1.6, 0.3], fistR: 0.5, fistL: 1, head: -0.25, lean: -0.1 }, true],
+      [0.5, { R: [0.6, 0.45, 0.1, 0.9, 0.3], L: [1.65, 0.95, -0.3, 1.55, 0.3], fistL: 1, head: -0.3, lean: -0.12 }],
+    ],
+    contact: 0.26,
+    end: 0.85,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -251,6 +319,7 @@ const VOLLEY: Record<string, Spec> = {
       [0.33, loose({ turn: 0.05 }, 1.0)],
     ],
     contact: 0.13,
+    cuts: [0.33],
     end: 0.6,
   },
   /** A crouched short draw off the hip, the bow canted low, the arrows spraying. */
@@ -276,31 +345,32 @@ const VOLLEY: Record<string, Spec> = {
     contact: 0.31,
     end: 0.8,
   },
-  /** A bank shot: the whole body leans over sideways to find the angle. */
+  /** A quick snap from a high draw, the wrist rolled on the loose and the bow following round after it. */
   ricochet: {
     keys: [
-      [0.1, { ...aim(0.4, { up: 0.1, turn: -0.2 }), roll: 0.35, side: -0.2 }],
-      [0.2, { ...aim(1, { up: 0.1, turn: -0.25 }), roll: 0.4, side: -0.25 }, true],
-      [0.25, { ...loose({ up: 0.1, turn: -0.25 }, 0.9), roll: 0.4, side: -0.25 }],
-      [0.4, { ...loose({ up: 0.05, turn: -0.2 }, 1.0), roll: 0.3, side: -0.2 }],
+      [0.08, aim(0.5, { up: 0.2, turn: 0.15 })],
+      [0.16, aim(0.9, { up: 0.2, turn: 0.15 }), true],
+      [0.2, loose({ up: 0.15, turn: 0.15, cant: 0.4 }, 0.8)],
+      [0.3, loose({ up: 0.05, turn: -0.35, cant: 0.5 }, 0.9)],
+      [0.42, after({ turn: -0.45 })],
     ],
-    contact: 0.25,
+    contact: 0.2,
     end: 0.65,
   },
-  /** Three short draws fanned across the front, the trunk sweeping between each. */
+  /** The bow laid flat and drawn, then swept across the front as it empties. */
   fanFire: {
     keys: [
-      [0.06, aim(0.6, { turn: 0.3 })],
-      [0.1, loose({ turn: 0.3 }, 0.5)],
-      [0.16, aim(0.6, { turn: 0.0 })],
-      [0.2, loose({ turn: 0.0 }, 0.5)],
-      [0.26, aim(0.6, { turn: -0.3 })],
-      [0.3, loose({ turn: -0.3 }, 0.6)],
+      [0.08, aim(0.5, { cant: 0.95, turn: 0.4, down: 0.12 })],
+      [0.16, aim(0.95, { cant: 1, turn: 0.4, down: 0.15 }), true],
+      [0.2, loose({ cant: 1, turn: 0.38, down: 0.15 }, 0.6)],
+      [0.3, loose({ cant: 1, turn: -0.4, down: 0.15 }, 0.7)],
+      [0.42, loose({ cant: 0.9, turn: -0.45, down: 0.12 }, 0.8)],
     ],
-    contact: 0.1,
-    end: 0.55,
+    steps: [step('L', 0.06, 0.3)],
+    contact: 0.2,
+    end: 0.65,
   },
-  /** Knelt low and steady, four quick half-draws in a row. */
+  /** Knelt low and steady, three quick half-draws in a row. */
   suppressing: {
     keys: [
       [0.06, aim(0.5, { down: 0.55, lean: 0.12 })],
@@ -308,13 +378,12 @@ const VOLLEY: Record<string, Spec> = {
       [0.14, aim(0.5, { down: 0.55, lean: 0.12 })],
       [0.17, loose({ down: 0.55, lean: 0.12 }, 0.4)],
       [0.22, aim(0.5, { down: 0.55, lean: 0.12 })],
-      [0.25, loose({ down: 0.55, lean: 0.12 }, 0.4)],
-      [0.3, aim(0.5, { down: 0.55, lean: 0.12 })],
-      [0.33, loose({ down: 0.55, lean: 0.12 }, 0.5)],
+      [0.25, loose({ down: 0.55, lean: 0.12 }, 0.5)],
     ],
     steps: [step('L', 0.03, 0.45)],
     contact: 0.09,
-    end: 0.6,
+    cuts: [0.17, 0.25],
+    end: 0.55,
   },
   /** The arrowhead struck along the thigh to light it, then drawn and loosed. */
   explosiveTip: {
@@ -341,6 +410,48 @@ const VOLLEY: Record<string, Spec> = {
     steps: [step('R', 0.04, -0.3, -0.35), step('L', 0.08, 0.15, 0.3)],
     contact: 0.27,
     end: 0.9,
+  },
+  /** Bow at the sky, drawn and loosed, then drawn again a little lower and a little lower: the fall walks out. */
+  creepingBarrage: {
+    keys: [
+      [0.1, aim(0.5, { up: 1.05, side: 0.1 })],
+      [0.22, aim(1, { up: 1.05, side: 0.1 }), true],
+      [0.26, loose({ up: 1.05, side: 0.1 }, 0.7)],
+      [0.34, aim(0.8, { up: 0.85, side: 0.1, lean: 0.04 })],
+      [0.38, loose({ up: 0.85, side: 0.1, lean: 0.04 }, 0.7)],
+      [0.46, aim(0.8, { up: 0.65, side: 0.1, lean: 0.08 })],
+      [0.5, loose({ up: 0.65, side: 0.1, lean: 0.08 }, 0.9)],
+    ],
+    steps: [step('R', 0.04, -0.3, -0.2)],
+    contact: 0.26,
+    end: 0.85,
+  },
+  /** The string hand run over the quiver's fletching, then the bow lifted with a flourish. */
+  openQuiver: {
+    keys: [
+      [0.12, { R: [2.6, 0.35, -0.8, 2.2, 0.3], L: [0.9, 0.55, 0.15, 0.4, 0.3], fistR: 0.2, head: -0.15, turn: 0.25 }],
+      [0.24, { R: [2.3, 0.75, -0.5, 1.6, 0.3], L: [0.9, 0.55, 0.15, 0.4, 0.3], fistR: 0.1, head: -0.1, turn: 0.35 }, true],
+      [0.38, { R: [1.2, 0.6, 0.1, 0.8, 0.3], L: [2.2, 0.7, 0.1, 0.4, 0.4], fistR: 0.2, head: 0.05, turn: -0.1, lean: -0.08 }],
+      [0.6, { R: [1.1, 0.6, 0.1, 0.85, 0.3], L: [2.1, 0.7, 0.1, 0.45, 0.4], fistR: 0.2, head: 0.05, turn: -0.08, lean: -0.06 }],
+    ],
+    glow: 'right',
+    contact: 0.24,
+    end: 0.9,
+  },
+  /** Turned right round on the spot with the bow out, the string snapping back again and again. */
+  arrowWheel: {
+    keys: [
+      [0.08, aim(0.9, { turn: 0.6, down: 0.2 })],
+      [0.14, loose({ turn: 0.6, down: 0.2 }, 0.5), true],
+      [0.24, loose({ turn: -0.2, down: 0.22 }, 0.6)],
+      [0.34, loose({ turn: -1.0, down: 0.22 }, 0.6)],
+      [0.44, loose({ turn: -1.6, down: 0.2 }, 0.7)],
+      [0.56, after({ turn: -0.4, down: 0.1 })],
+    ],
+    steps: [step('R', 0.1, 0.25, -0.3), step('L', 0.3, -0.25, 0.3)],
+    contact: 0.14,
+    free: true,
+    end: 0.8,
   },
 };
 

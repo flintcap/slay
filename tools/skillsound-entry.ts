@@ -28,8 +28,9 @@ const FAMILIES = new Set([
   'rite', 'vigil',
 ]);
 // Families whose cast plays the skill's hit sound where it lands.
-// A leap that comes down on them (Gatefall) sounds where it lands.
-const HITS = new Set(['melee', 'cleave', 'whirlwind', 'projectile', 'bolt', 'slam', 'meteor', 'cone', 'chain', 'dash', 'sky', 'teleport', 'rite', 'vigil', 'leap', 'default']);
+// A leap that comes down on them (Gatefall) sounds where it lands; a Ranger
+// trap where it springs (`scenes/ranger/Traps.ts`).
+const HITS = new Set(['melee', 'cleave', 'whirlwind', 'projectile', 'bolt', 'slam', 'meteor', 'cone', 'chain', 'dash', 'sky', 'teleport', 'rite', 'vigil', 'leap', 'trap', 'default']);
 // Families that raise something that fights, and so need a minion sound.
 const RAISES = new Set(['summon', 'minion']);
 

@@ -16,6 +16,7 @@ import type { MotifShape, MotifMotion } from './Motifs';
 import type { School } from './kit/Palette';
 import { SHIFTER_DRAWING, SHIFTER_MOTIFS } from './shifter/motifs';
 import { PALADIN_DRAWING, PALADIN_MOTIFS } from './paladin/motifs';
+import { RANGER_MOTIFS } from './ranger/motifs';
 import { mageParticles } from './mage/looks';
 import { rogueParticles } from './rogue/RogueFX';
 
@@ -174,31 +175,8 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   soulTether: m('wisps', 'trail'),
   reaping: m('crescents', 'burst'),
 
-  // Ranger: Marksman.
-  pierceShot: m('wedges', 'line'),
-  huntersMark: m('hoops', 'pulse', 'target'),
-  aimedShot: m('hoops', 'converge', 'target'),
-  bleedingArrow: m('blood spray', 'line'),
-  crippling: m('scuffs', 'zigzag'),
-  oneShot: m('crosses', 'pulse', 'target'),
-  // Ranger: Wildcraft.
-  rollAway: m('scuffs', 'trail'),
-  snareTrap: m('hoops', 'ring'),
-  spikeTrap: m('bone spikes', 'rise'),
-  thornBarrier: m('thorns', 'wall'),
-  disengage: m('leaves', 'trail'),
-  venomCoat: m('thorns', 'orbit'),
-  camouflage: m('leaves', 'converge'),
-  theWholeFloor: m('saws', 'scatter'),
-  // Ranger: Volley.
-  twinShot: m('feathers', 'fan'),
-  scattershot: m('arrows', 'fan'),
-  arrowRain: m('arrows', 'rain'),
-  ricochet: m('wedges', 'zigzag'),
-  fanFire: m('arrows', 'burst'),
-  suppressing: m('arrows', 'line'),
-  explosiveTip: m('flares', 'shatter'),
-  darkenTheSky: m('arrows', 'fall'),
+  // The Ranger's are in `ranger/motifs.ts`.
+  ...RANGER_MOTIFS,
   ...SHIFTER_MOTIFS,
   ...PALADIN_MOTIFS,
 };

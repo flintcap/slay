@@ -24,6 +24,7 @@ import type { CharClassId } from '../types';
 import { skillsForClass } from '../data/skills';
 import { SHIFTER_SOUNDS } from './shifterSounds';
 import { PALADIN_SOUNDS } from './PaladinSounds';
+import { RANGER_SOUNDS } from './RangerSounds';
 
 export interface SkillSound {
   cast: string | null;
@@ -36,29 +37,8 @@ const s = (cast: string | null, hit: string | null = null, minion: string | null
 /** Skill id -> its sounds. Every active skill has a row; `tools/check-skillsound.mjs` proves it. */
 export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   ...PALADIN_SOUNDS,
-  // --- Ranger: bows, traps and the wild ------------------------------------
-  pierceShot: s('skill.bow.pierce', 'skill.arrow.hit'),
-  huntersMark: s('skill.bow.mark', 'skill.arrow.mark'),
-  aimedShot: s('skill.bow.heavy', 'skill.arrow.heavy'),
-  bleedingArrow: s('skill.bow', 'skill.arrow.barb'),
-  crippling: s('skill.bow.cripple', 'skill.arrow.cripple'),
-  oneShot: s('skill.bow.grave', 'skill.arrow.grave'),
-  twinShot: s('skill.bow.twin', 'skill.arrow.twin'),
-  fanFire: s('skill.bow.fanFire', 'skill.arrow.fan'),
-  scattershot: s('skill.bow.fan'),
-  ricochet: s('skill.bow.ricochet', 'skill.arrow.ricochet'),
-  explosiveTip: s('skill.bow.fire', 'skill.fire.burst'),
-  suppressing: s('skill.bow.stream'),
-  arrowRain: s('skill.bow.sky', 'skill.arrow.rain'),
-  darkenTheSky: s('skill.bow.darken', 'skill.arrow.storm'),
-  rollAway: s('skill.roll'),
-  disengage: s('skill.leap.back'),
-  snareTrap: s('skill.trap.snare'),
-  spikeTrap: s('skill.trap.spike'),
-  theWholeFloor: s('skill.trap.field'),
-  thornBarrier: s('skill.thorns'),
-  venomCoat: s('skill.coat.arrows'),
-  camouflage: s('skill.camo'),
+  // The Ranger's are in `RangerSounds.ts`.
+  ...RANGER_SOUNDS,
 
   // --- Knight: shield, steel and voice -------------------------------------
   shieldWall: s('skill.shield.wall'),

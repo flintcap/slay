@@ -2325,10 +2325,16 @@
   "c100",
   "chant"
  ],
+ "sounds/skill.arrow.bank/01.ogg": [
+  "ki"
+ ],
  "sounds/skill.arrow.barb/01.ogg": [
   "kr",
   "ki",
   "mud"
+ ],
+ "sounds/skill.arrow.creep/01.ogg": [
+  "ki"
  ],
  "sounds/skill.arrow.cripple/01.ogg": [
   "ki",
@@ -2358,10 +2364,18 @@
  "sounds/skill.arrow.ricochet/01.ogg": [
   "ki"
  ],
+ "sounds/skill.arrow.splinter/01.ogg": [
+  "mw",
+  "ki",
+  "tiny"
+ ],
  "sounds/skill.arrow.storm/01.ogg": [
   "ki"
  ],
  "sounds/skill.arrow.twin/01.ogg": [
+  "ki"
+ ],
+ "sounds/skill.arrow.wheel/01.ogg": [
   "ki"
  ],
  "sounds/skill.banner/01.ogg": [
@@ -2464,6 +2478,13 @@
   "bones",
   "wwoosh"
  ],
+ "sounds/skill.bow.bank/01.ogg": [
+  "battle",
+  "kr"
+ ],
+ "sounds/skill.bow.creep/01.ogg": [
+  "battle"
+ ],
  "sounds/skill.bow.cripple/01.ogg": [
   "battle",
   "wpn"
@@ -2502,6 +2523,11 @@
   "swish",
   "wpn"
  ],
+ "sounds/skill.bow.quarry/01.ogg": [
+  "wpn",
+  "kr",
+  "battle"
+ ],
  "sounds/skill.bow.ricochet/01.ogg": [
   "battle",
   "kr"
@@ -2510,12 +2536,20 @@
   "battle",
   "c100b"
  ],
+ "sounds/skill.bow.splinter/01.ogg": [
+  "battle",
+  "mw"
+ ],
  "sounds/skill.bow.stream/01.ogg": [
   "battle"
  ],
  "sounds/skill.bow.twin/01.ogg": [
   "battle",
   "wpn"
+ ],
+ "sounds/skill.bow.wheel/01.ogg": [
+  "kr",
+  "battle"
  ],
  "sounds/skill.bow/01.ogg": [
   "battle",
@@ -2818,6 +2852,15 @@
   "r80",
   "ki"
  ],
+ "sounds/skill.kestrel.stoop/01.ogg": [
+  "crow",
+  "swish",
+  "kr"
+ ],
+ "sounds/skill.kestrel/01.ogg": [
+  "tiny",
+  "kr"
+ ],
  "sounds/skill.knife.halo/01.ogg": [
   "wpn",
   "swish"
@@ -3104,6 +3147,9 @@
   "bang",
   "rumble",
   "bfh"
+ ],
+ "sounds/skill.quiver.open/01.ogg": [
+  "wpn"
  ],
  "sounds/skill.reap/01.ogg": [
   "battle",
@@ -3498,6 +3544,14 @@
   "r80",
   "ki"
  ],
+ "sounds/skill.trap.nest/01.ogg": [
+  "tiny",
+  "kr"
+ ],
+ "sounds/skill.trap.snap/01.ogg": [
+  "kr",
+  "tiny"
+ ],
  "sounds/skill.trap.snare/01.ogg": [
   "kr",
   "r80"
@@ -3506,6 +3560,24 @@
   "ki",
   "kr",
   "r80"
+ ],
+ "sounds/skill.trap.spring/01.ogg": [
+  "ki",
+  "r80",
+  "bfh"
+ ],
+ "sounds/skill.trap.swarm/01.ogg": [
+  "crick",
+  "tiny"
+ ],
+ "sounds/skill.trap.trip/01.ogg": [
+  "kr",
+  "ki",
+  "dsteps"
+ ],
+ "sounds/skill.trap.wire/01.ogg": [
+  "wpn",
+  "kr"
  ],
  "sounds/skill.vanish/01.ogg": [
   "whoosh",
