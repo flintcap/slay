@@ -991,6 +991,7 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [1.6, 0.26],
     type: 'fire',
     fx: 'projectile.explode',
+    castTime: 0.6,
     p: { speed: 16, radius: 3.2, radiusPerRank: 0.05, splash: 3.2, burnStacks: 3 },
   },
   {
@@ -1050,6 +1051,7 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [1.7, 0.28],
     type: 'fire',
     fx: 'ground.sequence',
+    castTime: 0.6,
     p: { bursts: 6, radius: 2.5, spacing: 1.8, interval: 0.18, burnStacks: 2 },
   },
   {
@@ -1087,6 +1089,7 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [0.85, 0.14],
     type: 'fire',
     fx: 'ground.rain',
+    castTime: 0.65,
     p: { duration: 12, radius: 8, rate: 3, burnStacks: 1 },
   },
   {
@@ -1144,6 +1147,7 @@ const CONFLAGRATION = build('conflagration', [
     dmg: [6, 0.9],
     type: 'fire',
     fx: 'point.detonate',
+    castTime: 0.85,
     p: { radius: 5, vsBurning: 100 },
   },
   {
@@ -2098,6 +2102,7 @@ const TEMPEST = build('tempest', [
     dmg: [3, 0.45],
     type: 'lightning',
     fx: 'beam.line',
+    castTime: 0.6,
     p: { range: 22, width: 1.6, pierceResist: 20, shockStacks: 3 },
   },
   {
@@ -2141,6 +2146,7 @@ const TEMPEST = build('tempest', [
     dmg: [0.9, 0.08],
     type: 'lightning',
     fx: 'capstone.eyeOfStorm',
+    castTime: 0.6,
     p: { radius: 16, interval: 0.8, refreshShock: 1, duration: 9999 },
   },
   {
@@ -2158,6 +2164,7 @@ const TEMPEST = build('tempest', [
     dmg: [2.2, 0.34],
     type: 'lightning',
     fx: 'ground.pillar',
+    castTime: 0.75,
     p: { radius: 4, duration: 5, tickRate: 1, tickScale: 1, stun: 0.5, shockStacks: 3 },
   },
   {
@@ -2272,6 +2279,7 @@ const FROST = build('frost', [
     dmg: [1.5, 0.24],
     type: 'cold',
     fx: 'projectile.explode',
+    castTime: 0.6,
     p: { speed: 18, radius: 0.6, splash: 3, duration: 1.2 },
   },
   {
@@ -2315,6 +2323,7 @@ const FROST = build('frost', [
     dmg: [1, 0.17],
     type: 'cold',
     fx: 'ground.rain',
+    castTime: 0.65,
     p: { radius: 7, duration: 8, tickRate: 0.33, tickScale: 0.4 },
   },
   {
@@ -2416,6 +2425,7 @@ const FROST = build('frost', [
     dmg: [5, 0.75],
     type: 'cold',
     fx: 'sky.impact',
+    castTime: 0.8,
     p: { radius: 5, duration: 2 },
   },
   {

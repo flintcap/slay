@@ -1,6 +1,6 @@
 # Stream: sk-mage (Wave 5: Mage skills remake)
 
-Status: waiting for skillcore
+Status: in progress
 
 Class: Mage (code id `mage`). Trees: Fire, Lightning, Cold (`conflagration`, `tempest`, `frost`). Port 4353.
 Fights with caster: staffs, wands, orbs (starts with a short staff). No basic attack, ever. Class color: violet (`0x9a8aff`), with fire, lightning and cold colors per tree.
@@ -67,7 +67,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. Speed audit (owner: before any skill is changed). (sk-mage: speed audit and release frame) Under skillcore's model, write a table
   under "Notes for resume": the Mage's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -112,19 +112,15 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 and 2 are done (tables and plan under "Notes for resume").
-Waiting for skillcore. On resume:
-
-1. Fetch the branch and read `docs/remake/skillcore.md`. Go on only if it
-   says `Status: done`; read its "Handover" and the speed parts of
-   `CONTRACTS.md` first.
-2. Milestone 3: for the Mage's default cast and every active skill, write
-   the real time per use under skillcore's model, with no speed gear and at
-   the speed ceiling, next to the reference feel. Mark too fast / right /
-   too slow and fix through skillcore's fields only. Recheck Heat Shimmer
-   and Storm Fury cast speed, and Inferno's mana cost (see the plan). Damage
-   per hit never changes.
-3. Then milestone 4 from the plan in "Notes for resume".
+Milestones 1 to 3 are done (tables, plan and speed audit under "Notes for
+resume"; cast times and the release frame are in the code). Next:
+milestone 4, the build, from the plan in "Notes for resume", in this order,
+one commit each: masteries and Ember Soul element-only; Firebolt and
+Fireball size apart from lane; Inferno cone and mana; Annihilate; Sparkbolt;
+Chain Lightning; Conductance; Thunderstorm text; Ball Lightning and Frozen
+Orb rolling; Ionize; Ice Lance thrown; passive types; then the three
+replacements (Pyre Brand, Stormstride, Splintering Frost), synergies, bend,
+cleanup of old ids, i18n extract, checkers.
 
 ## Notes for resume
 
@@ -345,6 +341,62 @@ Glacial Comet, Winter's Edge.
 **New skills to add:** none beyond the three replacements. Every slot is
 taken, and the replacements fill the three real gaps: a fast move for the
 Mage, a "spread it" skill for Fire, a shatter for Cold.
+
+### Milestone 3: speed audit (skillcore's model, `sim/Speed.ts`)
+
+How a Mage cast is timed now (read from the code after skillcore):
+
+- Every Mage active is a spell (`skillTiming`: no attack family, and a
+  staff is neither melee nor ranged). One use takes `castTime` seconds
+  (default 0.5, self buffs 0.35, channels 0.8) divided by `castMult`.
+- `castMult` = `speedMultiplier(castSpeed% + Storm Fury stacks)`: gain is
+  100p/(p+100). `sim/Stats.ts` still clamps cast speed at 200%, Storm Fury's
+  10 stacks add 10% on top, so the most a hero reaches is 210%: x1.68. A
+  0.5 s spell then takes 0.30 s (3.35 a second), under the 3.4 ceiling.
+  Before skillcore the same hero cast 6 a second.
+- From the trees alone: Heat Shimmer rank 20 is +35% (x1.26, 0.40 s),
+  Storm Fury rank 20 is +30% plus 10% in stacks (x1.28), both together +75%
+  (x1.43, 0.35 s, 2.9 a second). Under the curve these are fair: keep
+  their numbers.
+- Frost Step stays a fixed 0.26 s blink (the teleport branch). Caster
+  weapons have no basic attack; a Mage's "default cast" is the tier 1 bolt.
+- Reference feel: a Diablo II caster casts about 1.9 a second with no gear
+  and about 3.6 at its best; Path of Exile spells take 0.5 to 0.9 s base,
+  big ones about 1 s. Light spells near 0.5 s, heavy ones slower.
+
+No gear = 0% cast speed. Ceiling = 210% (x1.68). Seconds per cast.
+
+| Skill | castTime now | No gear | Ceiling | Verdict | New castTime |
+| --- | --- | --- | --- | --- | --- |
+| Firebolt, Sparkbolt, Frost Shard (default casts) | 0.5 | 0.50 (2.0/s) | 0.30 (3.35/s) | Right: the Diablo II caster pace, not a machine gun | 0.5 |
+| Ember Nova, Shock Nova, Frost Nova, Blast Wave, Thunderclap | 0.5 | 0.50 | 0.30 | Right | 0.5 |
+| Chain Lightning, Lightning Strike, Ice Lance, Ionize, Rime Field | 0.5 | 0.50 | 0.30 | Right | 0.5 |
+| Dragon's Breath, Winter's Breath, Ball Lightning, Frozen Orb | 0.5 | 0.50 | 0.30 | Right | 0.5 |
+| Pyre Brand (new, Flame Lance's slot) | 0.5 | 0.50 | 0.30 | Right | 0.5 |
+| Thunderstorm, Ice Armor (self buffs) | 0.35 | 0.35 | 0.29 (ceiling) | Right | 0.35 |
+| Inferno (channel, a tick) | 0.8 | 0.80 | 0.48 | Right: same as before skillcore | 0.8 |
+| Fireball | 0.5 | 0.50 | 0.30 | A little fast for a heavy lobbed blast | 0.6 (0.36 at the ceiling) |
+| Glacial Spike | 0.5 | 0.50 | 0.30 | A little fast for a heavy spike | 0.6 |
+| Sky Lance | 0.5 | 0.50 | 0.30 | A little fast for a lance from the sky | 0.6 |
+| Pyroclasm | 0.5 | 0.50 | 0.30 | A little fast for a line of eruptions | 0.6 |
+| The Eye of the Storm (capstone) | 0.5 | 0.50 | 0.30 | Too fast for a capstone call | 0.6 |
+| Firestorm, Blizzard | 0.5 | 0.50 | 0.30 | Too fast for a storm called down | 0.65 (0.39) |
+| Heaven's Gate | 0.5 | 0.50 | 0.30 | Too fast | 0.75 (0.45) |
+| Glacial Comet | 0.5 | 0.50 | 0.30 | Too fast for a comet | 0.8 (0.48) |
+| Annihilate (capstone) | 0.5 | 0.50 | 0.30 | Too fast: no build-up at all | 0.85 (0.51) |
+| Frost Step | fixed 0.26 | 0.26 | 0.26 | Right (a blink) | unchanged |
+| Stormstride (new) | - | - | - | A bolt over the ground | `travelTime(distance, 32)`: 0.28 s at 9 m |
+
+- Every skill slowed above has a cooldown longer than its new cast, so its
+  damage per second barely moves; damage per hit is unchanged.
+- Release frame: every Mage spell but the channel and the blinks now lets
+  go on its gesture's release frame (`beginAction(..., { release: true })`
+  and `atRelease`), a third of the cast, at most 0.25 s. Mana and cooldown
+  are paid on the press; a dodge before the release cancels the spell.
+- Inferno's mana: it now hits everything in its cone, so a tick costs 12
+  (+0.7 per rank), 25.3 at rank 20 (was 8, +0.4, 15.6). At no gear that is
+  15 to 32 mana a second (was 10 to 20). For the owner: say if it drains
+  too fast.
 
 ## For the owner to test
 

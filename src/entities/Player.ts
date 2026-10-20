@@ -198,6 +198,12 @@ export class Player {
   private actionTotal = 0;
   /** Bumped by every new action and every dodge, so a queued blow can tell it was cut off. */
   private actionSerial = 0;
+  /**
+   * While set, `beginAction` leaves the running action alone. A spell held
+   * to its release frame (`SkillRunner.atRelease`) runs its branch after its
+   * action began, and the branch's own start must not play it again.
+   */
+  keepAction = false;
   /** Seconds into the current action at which its blow connects. */
   private contactAt = 0;
   /** Seconds into the current action at which its cast or throw lets go (0 for a blow). */
@@ -442,6 +448,7 @@ export class Player {
    * (`releaseDelay`), and the caller waits for it (`SkillRunner.atRelease`).
    */
   beginAction(clip: string, duration: number, side?: 'L' | 'R', opts: { release?: boolean } = {}): void {
+    if (this.keepAction && this.actionLock > 0) return;
     this.actionLock = duration;
     this.actionTotal = duration;
     this.actionSerial++;

@@ -7,7 +7,7 @@ import { events } from '../core/Events';
 import { audio } from '../audio/Audio';
 import { heroBark } from '../audio/HeroVoice';
 import { skillSound } from '../audio/SkillSounds';
-import { SKILLS, SKILL_BY_ID, synergyPct } from '../data/skills';
+import { SKILLS, SKILL_BY_ID, classOfSkill, synergyPct } from '../data/skills';
 import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import { basicTime, handsOf, skillPace } from '../sim/Speed';
@@ -336,6 +336,15 @@ function shiftHue(hex: number, seed: number): number {
 
 /** Hero clips whose animation has a release frame (see `art/hero/Actions.ts`). */
 const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink', 'shoot', 'snapshot', 'skyshot']);
+
+/**
+ * Classes whose spells let go on their gesture's release frame
+ * (`beginAction(..., { release: true })`, then `atRelease`) instead of on
+ * the key press. A class joins once its spells are timed for it.
+ */
+const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage']);
+/** Families that never wait for a release frame: a channel runs from the press, a move goes at once. */
+const PRESS_FAMILIES: ReadonlySet<string> = new Set(['channel', 'teleport', 'dash', 'leap', 'shift', 'rite', 'vigil']);
 
 /**
  * Families whose handler in `cast` plays a clip of its own rather than the one
@@ -771,15 +780,21 @@ export class SkillRunner {
     return atRank(skillRank(player.character, skillId), () => this.castNow(skillId, player, target, ctx, enemies, boss));
   }
 
+  /**
+   * `held`: this is the release frame of a spell that started its action on
+   * the press (`RELEASE_CLASSES`). Its mana, cooldown and cast sound were
+   * paid then; now it only lets go.
+   */
   private castNow(
     skillId: string,
     player: Player,
     target: THREE.Vector3,
     ctx: CombatContext,
     enemies: Enemy[],
-    boss: Boss | null
+    boss: Boss | null,
+    held = false
   ): boolean {
-    if (player.isBusy || !player.alive) return false;
+    if (!player.alive || (held ? player.incapacitated : player.isBusy)) return false;
     this.setCaster(player, enemies, boss);
 
     const def = SKILLS.find((s) => s.id === skillId);
@@ -789,7 +804,7 @@ export class SkillRunner {
     if (rank <= 0) return false;
     // Void Walk: a chain blink pressed again inside its window is free.
     const hop = this.hops !== null && this.hops.id === skillId && this.hops.left > 0 && ctx.elapsed <= this.hops.until;
-    if (!hop && player.isOnCooldown(skillId)) return false;
+    if (!hop && !held && player.isOnCooldown(skillId)) return false;
     // Corpse Explosion needs a body to burst.
     if (def.effect === 'corpse.explode' && !this.corpseNear(target, CORPSE_REACH)) {
       events.emit('toast', { text: tr('No corpse there.'), kind: 'bad' });
@@ -841,7 +856,7 @@ export class SkillRunner {
     const every = player.passives.freeShotEvery;
     const shot = every > 0 && (effect.startsWith('projectile') || effect.startsWith('bolt')) && weaponStyle(player) === 'ranged';
     const free = shot && (this.shots + 1) % every === 0;
-    const cost = def.manaCost && !hop && !free ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
+    const cost = def.manaCost && !hop && !free && !held ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
       // Say so. A skill that silently refuses reads as a broken button, which
       // is exactly how being out of mana was being reported as a bug.
@@ -850,13 +865,13 @@ export class SkillRunner {
       heroBark('noMana');
       return false;
     }
-    if (shot) this.shots++;
+    if (shot && !held) this.shots++;
 
     const cd = def.cooldown ? def.cooldown(rank) : 0;
-    if (cd > 0 && !hop) player.startCooldown(skillId, cd);
+    if (cd > 0 && !hop && !held) player.startCooldown(skillId, cd);
 
     player.faceTowards(target.x, target.z);
-    events.emit('skill:cast', { skillId: def.id, type: def.damageType ?? 'physical' });
+    if (!held) events.emit('skill:cast', { skillId: def.id, type: def.damageType ?? 'physical' });
 
     // Rank with +skills, and the synergies the tree shows (combat's `skillDamageScale`).
     const params = def.params ?? {};
@@ -976,7 +991,27 @@ export class SkillRunner {
     // in audio/SkillSounds.ts. The effects drawn below stay silent, and so do
     // the sounds they would make later as they land.
     const sound = skillSound(def.id);
-    if (sound.cast) audio.play(sound.cast, { x: origin.x, z: origin.z });
+    if (sound.cast && !held) audio.play(sound.cast, { x: origin.x, z: origin.z });
+
+    // A spell of a class in `RELEASE_CLASSES` lets go on its gesture's
+    // release frame: its action starts now, and the rest of this cast runs
+    // again on that frame (`held`), aimed where it was aimed now. Its own
+    // branch then keeps the running action (`keepAction`).
+    if (!held && released && !blow && pace.timing === 'spell' && !PRESS_FAMILIES.has(family)
+      && bodyClip(def.effect, holding, def.id) === clip && RELEASE_CLASSES.has(classOfSkill(def.id) ?? '')) {
+      player.beginAction(clip, actTime, undefined, { release: true });
+      const aim = target.clone();
+      this.atRelease(player, () => {
+        const live = this.tickCtx;
+        player.keepAction = true;
+        try {
+          this.castNow(skillId, player, aim, live?.ctx ?? ctx, live?.enemies ?? enemies, live ? live.boss : boss, true);
+        } finally {
+          player.keepAction = false;
+        }
+      });
+      return true;
+    }
     const hitAt = (p: { x: number; z: number }): void => {
       if (sound.hit) audio.play(sound.hit, { x: p.x, z: p.z });
     };
