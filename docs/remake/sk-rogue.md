@@ -91,10 +91,10 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons. ("wip(sk-rogue): a painted Rogue icon set, one picture per skill, tree lights") Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost. ("wip(sk-rogue): Rogue looks: coat drip, venom threads, lotus petals, nightfall curtain, phantom blade", "wip(sk-rogue): Venom and Shadowcraft draw their own bursts and wakes") Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
@@ -111,17 +111,73 @@ the first browser check.
 
 ## Next up
 
-1. Milestone 5: a painted Rogue icon set in `src/art/icons/` (like
-   `shifterIcons.ts`, own painters), one picture per skill, tree accents
-   (Venom acid green, Shadowcraft smoke violet-black with a pale green
-   edge, Bladework bright steel with the class green). Knife Halo and
-   Steel Waltz have placeholder glyph recipes (`knife-halo`, `waltz` in
-   `SkillIconArt.ts`) until then.
-2. Milestone 6: Coat Blades drip, Envenom Burst threads, Nightfall curtain,
-   Death Lotus petal ring, phantom blade look; stand-ins in `warmup()`.
-3. Milestone 7 and 8 as listed.
+1. Milestone 7: `check-skills --classes=shadowblade` once, then
+   `check-curve --classes=shadowblade` once, both inside the browser lock;
+   cheap checkers.
+2. Milestone 8 as listed.
 
 ## Notes for resume
+
+### Milestone 6: what was built
+
+- `src/fx/rogue/RogueFX.ts` (new): the Rogue's `rg.` emitters on the
+  shared particle field, and:
+  - Coat Blades: while `skill.coatBlades` is on, venom beads and drips off
+    each blade near the point, the two blades taking turns every 0.16 s.
+    Each held blade is found and measured once (`hold:mainHand`,
+    `hold:offHand`), looked for again twice a second when the hand is
+    empty. Driven from `tickRogue` through the host's `hero()`.
+  - Envenom Burst moved into `RogueMoves.ts` (`ROGUE_MOVES`): on the fist's
+    release a thread (beam pool, the drain cord, its beads flowing into
+    the burst) tears out of every Poisoned enemy in reach, thicker with
+    more stacks, and is reeled in over 0.18 s; the burst and the stacks
+    going off land as they arrive. Same damage, radius and share as
+    before; the drained stacks land untuned through the host's new
+    `strike` (as the old code did). The old `detonate.dot` block in
+    `SkillRunner.ts` is gone.
+  - Death Lotus: a petal of venom light on the floor with each cut (the
+    floor's `wedge` glow), a cross on the first turn and the diagonals on
+    the second, on the same keys the runner lands the cuts on
+    (`rogueLook` in `RogueMoves.ts`, called once at the end of `cast`).
+  - Nightfall: on the hands coming down (40% in, the gesture's contact
+    key) a curtain of unlit smoke falls round the field's edge and over
+    it, then lies flat on the floor; the void field stays under it.
+  - Phantom Blades: a new `phantom` solid (`fx/kit/Solids.ts`): pale ghost
+    steel with the class green on both edges, unlit and see-through, and a
+    pale wake (`rg.phantomwake`).
+  - Tree pools like the Mage's: Venom bursts and wakes are wet and green
+    (`rg.splash`, `rg.fumes`, `rg.drips`, `rg.fumewake`); Shadowcraft's
+    are unlit dark smoke with a few pale motes (`rg.smokeburst`,
+    `rg.gloom`, `rg.smokewake`, `rg.gloomwake`) instead of the arcane
+    sparkle. Bladework keeps the steel pool.
+- A Rogue throw's motif now lands on its release frame, not 0.1 s after
+  the press (`drawMotif` lead in `SkillRunner.cast`, Rogue moves only).
+- Cost: everything draws through pipelines already built (particle field,
+  beam pool, floor glows); the one new pipeline is the phantom solid,
+  which the solids' stand-ins already warm, so `warmup()` needs nothing
+  new. No per-frame allocation (fixed thread pool, kept burst options).
+  Counts follow the quality ladder; fumes and the curtain's heavy smoke are
+  `rich` (High and Ultra only). Nightfall's curtain is the biggest: about
+  60 smoke sprites at High over a 9 m field, once per cast (26 s
+  cooldown).
+- Checks: typecheck 0; unique, vfx, coverage, hits, rankpower,
+  skillparams, skillsound pass.
+
+### Milestone 5: what was built
+
+- `src/art/RogueGlyphs.ts` (new): the Rogue's own painters (`rgblade`,
+  `rgknives`, `rgneedle`, `rgflask`, `rgvenom`, `rgadder`, `rglotus`,
+  `rgrupture`, `rgmiasma`, `rghood`, `rgtwin`, `rgbomb`, `rgeclipse`,
+  `rgblink`, `rgmark`, `rgtendon`, `rgdash`, `rghalo`, `rgwaltz`), each
+  with variants. `src/art/icons/rogueIcons.ts` (new) gives every Rogue
+  skill an `rg-` key; all 54 resolve to 54 different plans and no other
+  class's plan changed.
+- Each Rogue tree has its own light and ground (`TREE_LOOK` in
+  `SkillIconArt.ts`): Venom acid green, Shadowcraft pale green on
+  violet-black, Bladework class green on steel blue.
+- The old Rogue `ICON_MAP` blocks are gone; `vial`, `apex`, `eye` and
+  `fan` stay for the Ranger's icons that name them.
+- `tools/art-sheet.mjs rogue` draws the Rogue sheet (96 px and 40 px).
 
 ### Milestone 4: what was built
 
