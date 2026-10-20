@@ -466,11 +466,16 @@ Update this file and push it after every finished step.
   heroes, new characters, beasts and townsfolk ahead into
   public/meshes/heroes.bin (10.3 MB), read at boot; anything missing is
   meshed as before. `tools/check-meshes.mjs` holds it.
-- #136 E3 in progress: three keeps a render record per mesh until the mesh
-  or its material is disposed, and shared materials never are, so every map
-  stayed in memory (Enemy count 118 to 214, about 300 MB a visit). Teardown
-  now sends each mesh its dispose event and `Renderer.forget(scene)` drops
-  what is left. Next: heap probe and soak to confirm.
+- #136 E3 done: map memory. three keeps a render record per mesh until the
+  mesh or its material is disposed, and shared materials never are, so every
+  map stayed in memory (Enemy count 118 to 214, about 300 MB a visit).
+  Teardown now sends each mesh its dispose event and `Renderer.forget(scene)`
+  drops the rest: the per-scene bind groups, the depth copies the screen
+  passes made (now one per target, shared), the motion textures of batched
+  meshes, and the loot hero's chase closure that held the last map.
+  `check-soak` (6 runs, 4 depths, 31 min): town heap 174 to 218 MB and
+  flat over the last three visits, textures 136 to 165, geometry about 310,
+  no errors. #136 Engine safety is done.
 - #150 Fog out of town and maps (owner: way too much): no fog, mist sheets
   or light shafts; indoor and outdoor shots checked.
 - #151 The loading curtain holds until the scene's own textures are in and
