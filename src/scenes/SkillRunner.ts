@@ -1952,7 +1952,11 @@ export class SkillRunner {
         }
 
         case 'teleport': {
-          player.beginAction(own ?? 'blink', 0.26);
+          // A strike teleport (Shadow Step, Void Walk) arrives and plays its
+          // own blow at the skill's pace; the cut lands on its hit frame.
+          const strikes = (def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain');
+          if (strikes) player.beginAction(own ?? 'attack1', actTime);
+          else player.beginAction(own ?? 'blink', 0.26);
           const range = num('range', 9) + num('rangePerRank', 0) * (rank - 1);
           const stop = this.wallStop(player.position, dir, Math.min(range, dir.length() > 0 ? range : range), ctx, 0.5);
           const want = target.clone().setY(0);
@@ -1985,11 +1989,11 @@ export class SkillRunner {
           this.effects.teleportOut(player.position.x, 0.9, player.position.z, color);
           player.position.set(land.x, 0, land.z);
           this.effects.teleportIn(land.x, 0.9, land.z, color);
-          // A strike teleport arrives swinging.
-          if ((def.effect ?? '').includes('strike') || (def.effect ?? '').includes('chain')) {
+          // A strike teleport arrives swinging, and connects on its contact frame.
+          if (strikes) {
             const single = num('single', 0) > 0;
             this.meleeSwing(
-              player, swingDir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit,
+              player, swingDir, 2.4, num('radius', 2.6), makePacket, ctx, enemies, boss, type, true, 'melee', sound.hit,
               single ? 1 : Infinity, single ? { x: land.x, z: land.z } : null,
             );
           }
