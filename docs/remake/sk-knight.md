@@ -74,7 +74,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. Build. (sk-knight: milestone 4 built) Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -110,12 +110,10 @@ the first browser check.
 
 ## Next up
 
-Milestone 4, build, in this order: the broken ones first (Fortress
-Stance, Guard Stance, Shield Wall status, Blood Tide, The Last Order,
-Banner, Taunting Roar pull, Shield Charge and Earthshatter timing,
-Gorefeast and War Stomp junk buff), then Gatefall, then the own blows for
-every weapon skill, then Sworn Brother. The plan is under "Milestone 2"
-in "Notes for resume"; times are under "Milestone 3".
+Milestone 5, icons: look at every Knight icon in `src/art/SkillIconArt.ts`
+(`ICON_MAP` and the glyphs it names), and repaint the ones that are shared,
+blurry or off color. Then milestone 6 (effect cost), 7 (one check-skills,
+one check-curve) and 8 (handover).
 
 ## Notes for resume
 
@@ -418,6 +416,24 @@ blows lose damage per second by the same share; that is accepted and
 written down, never paid back in damage. Cleave and Rend, the Knight's
 level 1 attacks, are not slowed (skillcore's curve walls the warden at
 depth 1 and 12; recorded for the owner).
+
+### Milestone 4: what was built
+
+- Every Knight weapon skill has its own blow in
+  `src/art/hero/gestures/knight.ts` (with a two-hander version), and has
+  left `PLAIN_MOVES`. Shield work strikes from the shield side.
+- The skills that are more than their family run in
+  `src/scenes/knight/KnightKit.ts`: Shield Charge, Gatefall, Massacre,
+  Gorefeast, War Stomp, Earthshatter, Banner of the Gate, plus Whirlwind's
+  walk, Taunting Roar's pull, The Last Order, Riposte, Retribution and
+  Blood Tide. Physical looks are in `src/fx/knight/KnightFX.ts`, with
+  stand-ins in `warmup()`.
+- Shouts, stances and the standard let go on the gesture's release frame
+  (`warden` is in `RELEASE_CLASSES`) and show no spell flare
+  (`knightUnlit`).
+- Gatefall replaces Phalanx; old saves get Phalanx's points back.
+- New sounds: `skill.gatefall`, `skill.gatefall.land`,
+  `skill.brother.strike` (built from CC0 packs, listed in `ASSETS.md`).
 
 ## For the owner to test
 

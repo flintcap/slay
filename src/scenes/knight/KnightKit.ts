@@ -500,6 +500,8 @@ export class KnightKit {
       const key = over <= 0 ? cuts[i - 1]! : (cuts[cuts.length - 1] ?? first) + over * 0.1;
       this.host.later(pre + (key - first) / rate, () => {
         if (p.actionId !== id || !p.alive) return;
+        // Each later cut trails the blade too, as the first one does.
+        p.animator.strike(c.clip, 'R');
         this.host.swing(p, facing, arc, reach, c.blowPacket, w, 'melee', c.hitSound, true);
         this.cutLook(p, facing, reach, i);
       });
