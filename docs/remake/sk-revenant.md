@@ -92,7 +92,7 @@ the first browser check.
 - [x] 5. Icons. (sk-revenant: icons) Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost. (sk-revenant: looks) Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
@@ -109,12 +109,11 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 5 are done (what was built is under "Milestone 4" and
-"Milestone 5" below). Next is milestone 6, looks: Bone Storm's orbit, Soul
-Tether's chains, Revenant Form's body, the Hunting Skull's skull with a
-wisp tail, Bone Cage's ribs, Gravewalk's hands and dirt, each with a
-warm-up stand-in in `DungeonScene.warmup()` and no per-frame allocation.
-Then 7 checks (check-skills once, check-curve once), 8 handover.
+Milestones 1 to 6 are done (what was built is under "Milestone 4",
+"Milestone 5" and "Milestone 6" below). Next is milestone 7: `mkdir -p
+shots`, then `check-skills --classes=revenant` once (one retry) and
+`check-curve --classes=revenant` once, each under flock and timeout; write
+the numbers below. Then 8, handover.
 
 ## Notes for resume
 
@@ -459,6 +458,61 @@ checkers pass.
   synergies, requirements, unique bend words, minion names, strings.
 - `tools/rankpower-entry.ts`: Reassemble's test lets the raise land on its
   release frame before hurting the thralls (it read x1.00 since milestone 3).
+
+### Milestone 6: looks and cost
+
+- New file `src/fx/revenant/RevenantFX.ts`, driven each frame by
+  `RevenantKit.update` (made on first use through `RevenantKit.looks`,
+  cleared with the kit on a new level). What it draws:
+  - Bone Storm: 6 to 14 bone shards (the `spear` solid) orbit him on their
+    own rings and heights, all one way, tumbling, with a chip of bone now
+    and then. They fly out from him at the start and scatter to the floor
+    when the storm ends. The zone's handle stops shards and aura together.
+  - Bone Cage: 6 to 18 ribs (new `rib` solid) burst up round the ring with a
+    ripple, overshoot and settle, curl in over the middle, stand exactly as
+    long as the root, then sink. Bone chips and dust where each breaks the
+    floor. The floor field and nova stay under them.
+  - Gravewalk: 6 to 8 grave-hands (new `claw` solid) claw up round where he
+    rises, and one at the feet of each enemy held (up to 6), fingers
+    curled toward what they hold, shuddering while they grip, sinking when
+    the grasp ends.
+  - Soul Cage: 3 or 4 hands round the one soul, following it, for the
+    hold's time, letting go early if it dies.
+  - Soul Tether: a sagging chain of dark iron links (new `link` solid, a red
+    glow in the iron) from one bound enemy to the next, round the pack in
+    a loop (a single span for two). It draws out over 0.3 s, closes up
+    round the rest when one dies, ends when fewer than two live or the
+    time runs out, and breaks in wisps. One budget of 34 to 44 links for
+    the whole chain.
+  - Revenant Form: three skulls (new `skull` solid) chase each other round
+    his head inside a shroud (`effects.aura`), with wisps coming off him,
+    for exactly as long as the form's status holds; they rise and shrink
+    away when it ends.
+  - Hunting Skull: the projectile has a new `shape: 'skull'` body in
+    `EffectSystem.projectile` (`Body.Skull`): a bone skull flying face
+    first and upright, rocking a little, its arcane glow hung behind it
+    so the bone reads, with the school's wake and light.
+- Cost: every piece is an instance in the shared solid pool
+  (`fx/kit/Solids.ts`, one draw call per shape, 48 each). The four new
+  shapes use materials of a kind already built (vertex-coloured standard,
+  plain standard), so they add no new shader, and `SolidPool.standIns()`
+  (already in `DungeonScene.warmup` through `effects.standIns()`) warms
+  them with the rest. Handles are taken once at the cast and written each
+  frame; nothing in the per-frame code allocates. Counts follow
+  `effects.fxScale` (Low about two thirds of High). Particles go through
+  the shared field, which follows the quality ladder itself. No dice: the
+  pieces are spread by index on the golden ratio.
+- Looked at in a bare scene (scratch script, the game's WebGPU three.js,
+  newest Chrome): ribs curl in over the ring, hands curl toward what they
+  hold, the chain sags link by link in a loop, skulls fly upright and face
+  first. 80 pieces live at once in that scene.
+- Every look is drawn after the blow, root or heal it rides with, and
+  `RevenantFX` reads `fxScale` only when it is a number, so the rank and
+  parameter checkers' stand-in effects cannot stop the gameplay.
+- Fast checkers: rankpower, stattext, iconmatch, skilldepth, passives,
+  wiring and i18n pass. skillparams, unique and skillsound fail only on
+  Ranger skills (sk-ranger's stream, mid-build upstream); no Revenant
+  skill is listed.
 
 ### Milestone 5: icons
 

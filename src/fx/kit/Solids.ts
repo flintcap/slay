@@ -364,7 +364,7 @@ function clawGeo(): THREE.BufferGeometry {
   };
   bone(0.04, 0.03, 0.5, -0.04, 0, 0, 0);
   bone(0.035, 0.028, 0.5, 0.045, 0, 0, 0);
-  const palm = new THREE.BoxGeometry(0.22, 0.07, 0.2);
+  const palm = new THREE.BoxGeometry(0.21, 0.05, 0.18);
   palm.translate(0, 0.01, 0.58);
   parts.push(palm.toNonIndexed());
   palm.dispose();
@@ -372,9 +372,9 @@ function clawGeo(): THREE.BufferGeometry {
   const fingers = [-0.08, -0.027, 0.027, 0.08];
   for (let i = 0; i < fingers.length; i++) {
     const x = fingers[i]!;
-    bone(0.022, 0.008, i === 0 || i === 3 ? 0.3 : 0.36, x, 0.66, x * 1.6, 0.2);
+    bone(0.022, 0.008, i === 0 || i === 3 ? 0.32 : 0.38, x, 0.66, x * 1.6, 0.34);
   }
-  bone(0.022, 0.009, 0.26, 0.12, 0.5, 0.7, 0.14);
+  bone(0.022, 0.009, 0.26, 0.11, 0.5, 0.7, 0.2);
   for (const q of parts) q.deleteAttribute('uv');
   const g = mergeGeometries(parts, false)!;
   for (const q of parts) q.dispose();

@@ -268,8 +268,8 @@ const boneCage: Cast = (s, k) => {
     k.host.effects.field(at.x, at.z, radius, hold, { school: s.school, color: s.color, skill: s.def.id, rank: s.rank });
     k.host.effects.nova(at.x, at.z, radius, { element: s.school, color: s.color, emitter: s.sig.emitter, density: s.sig.density });
   });
-  k.looks.cage(at.x, at.z, radius, hold);
   k.host.area(at, radius, (m = 1) => s.packet(m), s.world);
+  k.looks.cage(at.x, at.z, radius, hold);
 };
 
 /** One enemy, branded: it goes off when the time runs out, wherever it walked to. */
@@ -343,8 +343,8 @@ const gravewalk: Cast = (s, k) => {
     k.host.hit(t, s.packet(), 'area', land.x, land.z, w);
     held++;
   }
-  k.looks.grasp(land.x, land.z, radius, hold[0]!.duration, caught);
   if (held > 0) s.player.heal(s.player.stats.life * (s.num('healPct', 3) / 100) * held);
+  k.looks.grasp(land.x, land.z, radius, hold[0]!.duration, caught);
 };
 
 const KIT: Readonly<Record<string, Cast>> = {

@@ -139,9 +139,10 @@ export class RevenantFX {
 
   constructor(private readonly effects: EffectSystem) {}
 
-  /** The quality ladder as a 0.35..1 share of the full count. */
+  /** The quality ladder as a 0.35..1 share of the full count (full when nothing says). */
   private get detail(): number {
-    return Math.max(0.35, Math.min(1, this.effects.fxScale));
+    const f: unknown = this.effects.fxScale;
+    return typeof f === 'number' && Number.isFinite(f) ? Math.max(0.35, Math.min(1, f)) : 1;
   }
 
   /**

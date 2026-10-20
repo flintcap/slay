@@ -1790,10 +1790,10 @@ export class SkillRunner {
             const zone = this.zones[this.zones.length - 1]!;
             zone.fx?.stop();
             zone.fx = this.effects.aura(player.root, { radius, color, element: school, groundRing: true });
-            // Bone Storm's shards orbit him inside it, and stop with it.
-            if (def.id === 'boneStorm') zone.fx = this.revenant.looks.storm(player.root, radius, zone.fx);
             zone.follow = player.root;
             zone.skillId = def.id;
+            // Bone Storm's shards orbit him inside it, and stop with it.
+            if (def.id === 'boneStorm') zone.fx = this.revenant.looks.storm(player.root, radius, zone.fx);
           }
           // Sworn Brother: a spectral Knight rises where the standard goes in.
           if (family === 'banner') this.raiseSwornBrother(player, target, ctx);
