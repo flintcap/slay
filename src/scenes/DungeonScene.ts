@@ -1434,6 +1434,9 @@ export class DungeonScene extends GameScene {
         }
       }
     }
+    // Splintering Frost: a Frozen or Brittle body bursts into ice.
+    if (e.shatterPct > 0 && this.lastShatter > 0) this.skills.splinter(this.player, pos, this.lastShatter);
+    this.lastShatter = 0;
     // Reaver: a kill feeds the next.
     if (e.killFrenzy > 0) this.player.applyStatus('frenzy', 6, 1, Math.floor(e.killFrenzy));
     if (e.executeManaRefund > 0) {
@@ -1480,6 +1483,8 @@ export class DungeonScene extends GameScene {
   private lastCurses: StatusApplication[] = [];
   /** Whether the last enemy to fall was held in Soul Cage. */
   private lastCaged = false;
+  /** The last enemy to fall's life, when it fell Frozen or Brittle (Splintering Frost); else 0. */
+  private lastShatter = 0;
   /**
    * The monster whose `update` is running right now.
    *
@@ -1993,6 +1998,7 @@ export class DungeonScene extends GameScene {
         this.lastOverkill = e.overkill;
         this.lastCurses = e.cursesCarried();
         this.lastCaged = e.hasStatus('grasped');
+        this.lastShatter = e.hasStatus('frozen') || e.hasStatus('brittle') ? e.maxLife : 0;
         // A warden pays like a rare; its chest is the rest of the reward.
         const isWarden = e === this.warden;
         this.grantKill(e.monsterId, isWarden ? 'rare' : e.rank, e.family, e.root.position, e.ilvl);

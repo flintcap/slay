@@ -37,6 +37,7 @@ import { releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
 import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
+import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
 import { atRank, boostRank } from '../fx/kit/Boost';
 import { tr } from '../core/I18n';
@@ -610,6 +611,36 @@ export class SkillRunner {
       ...this.riteHost,
       area: (centre, radius, packet, ctx, enemies, boss, kind) => this.areaDamage(centre, radius, packet, ctx, enemies, boss, kind),
     };
+    this.spells = new MageSpells({
+      effects,
+      hit: (t, packet, kind, fromX, fromZ, world) => this.landSpell(t, packet, kind, fromX, fromZ, world),
+      area: (centre, radius, packet, world, kind) => {
+        this.caster = world.player;
+        return this.areaDamage(centre, radius, packet, world.ctx, world.enemies, world.boss, kind);
+      },
+      later: (seconds, fn) => this.pendingSwings.push({ rank: boostRank(), t: seconds, run: fn }),
+      sound: (id, x, z) => { if (id) audio.play(id, { x, z }); },
+      clear: (from, dir, max, ctx, radius) => this.wallStop(from, dir, max, ctx, radius),
+      live: () => this.tickCtx,
+    });
+  }
+
+  /** The Mage's spells that are more than their effect family (`mage/Spells.ts`). */
+  private readonly spells: MageSpells;
+
+  /** One Mage spell's blow on one target, through the whole hit pipeline. */
+  private landSpell(t: Target, packet: DamagePacket, kind: HitKind, fromX: number, fromZ: number, world: SpellWorld): DamagePacket | null {
+    this.caster = world.player;
+    const tuned = this.tune(packet, t);
+    if (!this.strike(t, tuned, world.ctx, kind, fromX, fromZ)) return null;
+    this.afterHit(tuned, t, world.ctx, world.enemies, world.boss);
+    return tuned;
+  }
+
+  /** Splintering Frost: a Frozen or Brittle enemy that died bursts into ice (the scene's kill hook). */
+  splinter(player: Player, at: THREE.Vector3, maxLife: number): void {
+    this.setCaster(player, this.tickCtx?.enemies ?? [], this.tickCtx?.boss ?? null);
+    this.spells.splinter(player, at, maxLife);
   }
 
   /** What the Paladin's Aura skills borrow from the runner (`paladin/Vigils.ts`). */
@@ -1052,7 +1083,17 @@ export class SkillRunner {
     this.casting = true;
     this.effects.beginQuiet();
     try {
-      switch (family) {
+      // The Mage's spells that are more than their family (`mage/Spells.ts`).
+      if (MageSpells.casts(def.id)) {
+        const sc: SpellCast = {
+          def, rank, player, aim: target.clone().setY(0), origin, dir,
+          world: { ctx, enemies, boss, player },
+          packet: makePacket, riders: rider, num, type, school, color, clip, own,
+          actTime, released, hitSound: sound.hit, sig,
+        };
+        this.spells.cast(sc);
+        if (sc.landAt) target = sc.landAt;
+      } else switch (family) {
         case 'melee':
         case 'cleave': {
           const dual = isDualWielding(player);
@@ -1228,7 +1269,8 @@ export class SkillRunner {
               shed: sig.trail,
               flare: i === 0 && !released,
               speed: num('speed', 17),
-              size: num('radius', 0.42) * sig.size,
+              // The body's size apart from its hit lane (Firebolt's dart).
+              size: num('size', num('radius', 0.42)) * sig.size,
               onHit: (p) => {
                 const hit = (m = 1): DamagePacket => makePacket(m * forkScale);
                 if (pierce > 0) {
@@ -3409,6 +3451,7 @@ export class SkillRunner {
       }
     }
 
+    this.spells.update(dt);
     this.stormTick(dt, live.ctx, live.enemies, live.boss);
     this.markCorpses(live.enemies);
     this.trailTick(dt, live.ctx, live.enemies, live.boss);
@@ -4227,6 +4270,7 @@ export class SkillRunner {
     this.zones.length = 0;
     this.turrets.length = 0;
     this.storms.length = 0;
+    this.spells.clear();
     this.pendingSwings.length = 0;
     this.tickCtx = null;
     this.feel.clear();
