@@ -158,6 +158,7 @@ const BULWARK = build('bulwark', [
     mana: [6, 0.5],
     cd: [14, 0.4, 6],
     fx: 'buff.self',
+    castTime: 0.4,
     p: { duration: 8, blockPct: 12, blockPerRank: 1.5, drPerRank: 2 },
   },
   {
@@ -192,6 +193,7 @@ const BULWARK = build('bulwark', [
     dmg: [0.9, 0.16],
     type: 'physical',
     fx: 'melee.strike',
+    attackTime: 0.9,
     p: { stun: 1.5, blockScale: 1.2, knockback: 2.5 },
   },
   {
@@ -216,6 +218,7 @@ const BULWARK = build('bulwark', [
     t: 'self',
     mana: [2, 0.2],
     fx: 'stance.toggle',
+    castTime: 0.4,
     p: { defPct: 45, defPerRank: 4, dr: 12, drPerRank: 1.5, moveSpeed: -25 },
   },
   {
@@ -268,6 +271,7 @@ const BULWARK = build('bulwark', [
     mana: [16, 1.2],
     cd: [22, 0.6, 10],
     fx: 'buff.absorb',
+    castTime: 0.5,
     p: { absorb: 60, absorbPerRank: 35, duration: 12 },
   },
   {
@@ -305,6 +309,7 @@ const BULWARK = build('bulwark', [
     mana: [24, 1],
     cd: [40, 1, 20],
     fx: 'stance.rooted',
+    castTime: 0.6,
     p: { duration: 6, defPct: 120, defPerRank: 8, blockPct: 20 },
   },
   {
@@ -412,6 +417,7 @@ const CARNAGE = build('carnage', [
     dmg: [0.6, 0.1],
     type: 'physical',
     fx: 'melee.strike',
+    attackTime: 0.9,
     p: { bleedStacks: 3, bleedDuration: 6, bleedPerRank: 0.25 },
   },
   {
@@ -466,6 +472,7 @@ const CARNAGE = build('carnage', [
     dmg: [1.75, 0.28],
     type: 'physical',
     fx: 'melee.heavy',
+    attackTime: 1.3,
     p: { critBonus: 25, sunderChance: 20 },
   },
   {
@@ -482,6 +489,7 @@ const CARNAGE = build('carnage', [
     dmg: [0.95, 0.15],
     type: 'physical',
     fx: 'melee.strike',
+    attackTime: 1.15,
     p: { sunderStacks: 1, duration: 8, durationPerRank: 0.3 },
   },
   {
@@ -576,6 +584,8 @@ const CARNAGE = build('carnage', [
     cd: [18, 0.5, 8],
     type: 'physical',
     fx: 'aoe.consumeBleeds',
+    timing: 'attack',
+    attackTime: 1.1,
     p: { radius: 7, healPct: 20, healPerRank: 3, damagePct: 100 },
   },
   {
@@ -592,6 +602,7 @@ const CARNAGE = build('carnage', [
     dmg: [0.55, 0.09],
     type: 'physical',
     fx: 'melee.multiSlash',
+    attackTime: 1.4,
     p: { hits: 5, arc: 200, radius: 3.4, bleedPerHit: 1 },
   },
   {
@@ -623,6 +634,7 @@ const CARNAGE = build('carnage', [
     dmg: [4, 0.6],
     type: 'physical',
     fx: 'melee.heavy',
+    attackTime: 1.5,
     p: { arc: 90, radius: 5, vsBleeding: 100 },
   },
   {
@@ -655,6 +667,7 @@ const OATH = build('oath', [
     mana: [7, 0.4],
     cd: [16, 0.4, 8],
     fx: 'shout',
+    castTime: 0.6,
     p: { radius: 8, duration: 12, damagePct: 20, perRank: 3, weakenDuration: 8 },
   },
   {
@@ -689,6 +702,7 @@ const OATH = build('oath', [
     mana: [14, 0.8],
     cd: [30, 0.8, 14],
     fx: 'shout.heal',
+    castTime: 0.6,
     p: { radius: 12, healPct: 12, perRank: 2, cleanse: 1 },
   },
   {
@@ -715,6 +729,7 @@ const OATH = build('oath', [
     mana: [10, 0.6],
     cd: [20, 0.5, 10],
     fx: 'shout.debuff',
+    castTime: 0.55,
     p: { radius: 7, fear: 3, fearPerRank: 0.2, weaken: 10 },
   },
   {
@@ -729,6 +744,7 @@ const OATH = build('oath', [
     mana: [20, 1],
     cd: [45, 1, 20],
     fx: 'banner',
+    castTime: 0.7,
     p: { duration: 20, radius: 8, defPct: 25, dmgPct: 15, perRank: 2 },
   },
   {
@@ -754,6 +770,7 @@ const OATH = build('oath', [
     mana: [12, 0.6],
     cd: [18, 0.4, 8],
     fx: 'shout.taunt',
+    castTime: 0.6,
     p: { radius: 9, duration: 5, durationPerRank: 0.2, vulnerable: 8 },
   },
   {
@@ -782,6 +799,8 @@ const OATH = build('oath', [
     dmg: [1.5, 0.24],
     type: 'physical',
     fx: 'aoe.slam',
+    timing: 'attack',
+    attackTime: 1.2,
     p: { radius: 6, stun: 2, knockdown: 1.2 },
   },
   {
@@ -827,6 +846,7 @@ const OATH = build('oath', [
     dmg: [2.2, 0.35],
     type: 'physical',
     fx: 'wave.line',
+    attackTime: 1.35,
     p: { range: 12, width: 3, sunder: 8, knockdown: 1 },
   },
   {
@@ -868,6 +888,7 @@ const OATH = build('oath', [
     dmg: [3, 0.45],
     type: 'physical',
     fx: 'shout.nova',
+    castTime: 0.9,
     p: { radius: 12, stun: 2, fear: 4, sunder: 10, vulnerable: 10 },
   },
   {

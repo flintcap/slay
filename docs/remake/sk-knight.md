@@ -1,6 +1,6 @@
 # Stream: sk-knight (Wave 5: Knight skills remake)
 
-Status: waiting for skillcore
+Status: in progress
 
 Class: Knight (code id `warden`). Trees: Bulwark, Carnage, Oaths (`bulwark`, `carnage`, `oath`). Port 4352.
 Fights with melee: swords, axes, maces, shields (starts with a short sword and a buckler). Class color: gold (`0xc8a24a`).
@@ -65,7 +65,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. Speed audit (sk-knight: speed audit and per-skill times) (owner: before any skill is changed). Under skillcore's model, write a table
   under "Notes for resume": the Knight's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -110,17 +110,12 @@ the first browser check.
 
 ## Next up
 
-Waiting for skillcore. When resumed: fetch and rebase, read
-`docs/remake/skillcore.md` (must say `Status: done`), its "Handover" and
-the new speed model in `CONTRACTS.md`. Then milestone 3: the speed table
-for the Knight's basic attack and every active under that model (no speed
-gear and at the ceiling), mark each too fast / right / too slow, and set
-the numbers through skillcore's per-skill fields. Then milestone 4, in
-this order: the broken ones first (Fortress Stance, Guard Stance, Shield
-Wall status, Blood Tide, The Last Order, Banner, Taunting Roar pull, Shield
-Charge and Earthshatter timing, Gorefeast and War Stomp junk buff), then
-Gatefall, then the own blows for every weapon skill, then Sworn Brother.
-The plan is under "Milestone 2" in "Notes for resume".
+Milestone 4, build, in this order: the broken ones first (Fortress
+Stance, Guard Stance, Shield Wall status, Blood Tide, The Last Order,
+Banner, Taunting Roar pull, Shield Charge and Earthshatter timing,
+Gorefeast and War Stomp junk buff), then Gatefall, then the own blows for
+every weapon skill, then Sworn Brother. The plan is under "Milestone 2"
+in "Notes for resume"; times are under "Milestone 3".
 
 ## Notes for resume
 
@@ -373,6 +368,56 @@ names a Knight skill.
 for Blood Tide on death, `warmup()` stand-ins), `sim/Passives.ts` (Knight
 rules only), `sim/Stats.ts` (Hymn of Thorns counted as an oath).
 
+### Milestone 3: speed audit (skillcore's model, `src/sim/Speed.ts`)
+
+Read from the code after `0616b06 skillcore: handover`. An attack takes
+`attackTime` swings of the weapon (`1 / baseSpeed` s a swing); a spell takes
+`castTime` s; speed gear goes through `speedMultiplier` (x1.5 at +100%,
+approaching x2), caps 3.0 attacks and 3.4 casts a second. Times below are
+seconds per use: short sword (1.4 a second, the Knight's start) with no
+speed gear / the same at the ceiling (x2, capped) / great sword (1.08)
+with no speed gear. Spells: no cast speed / the ceiling.
+
+Reference feel (feel only, our numbers): a sword and board warrior swings
+about 0.6 to 0.7 s a blow bare and 0.35 to 0.4 s fully geared; a two
+hander nearly a second bare; a shout or war cry is a half second to most of
+a second; a heavy slam is clearly slower than a plain blow.
+
+| Skill | Timing | Before (code default) | After (own field) | Mark |
+| --- | --- | --- | --- | --- |
+| Basic attack | attack | 1 swing: 0.71 / 0.36 / 0.93 | same | right |
+| Shield Bash | attack | 1 swing: 0.71 / 0.36 / 0.93 | 0.9: 0.64 / 0.33 / 0.83 | a hair slow: a shield punch is quick and clean |
+| Shield Throw | attack | 1 swing: 0.71 / 0.36 / 0.93 | same | right |
+| Cleave | attack | 1 swing: 0.71 / 0.36 / 0.93 | same | right |
+| Rend | attack | 1 swing: 0.71 / 0.36 / 0.93 | 0.9: 0.64 / 0.33 / 0.83 | a hair slow: a short draw cut |
+| Gash | attack | 1 swing: 0.71 / 0.36 / 0.93 | same | right |
+| Overhead Strike | attack | 1 swing: 0.71 / 0.36 / 0.93 | 1.3: 0.93 / 0.46 / 1.20 | too fast: a committed overhead |
+| Sunder | attack | 1 swing: 0.71 / 0.36 / 0.93 | 1.15: 0.82 / 0.41 / 1.06 | too fast: a chop that splits plate |
+| Maim | attack | 1 swing: 0.71 / 0.36 / 0.93 | same | right |
+| Whirlwind (one spin) | attack | 0.83: 0.59 / 0.33 / 0.77 | same (skillcore set it) | right |
+| Massacre (5 cuts) | attack | 1 swing: 0.71 / 0.36 / 0.93 | 1.4: 1.00 / 0.50 / 1.30 | too fast: five cuts in one swing's time |
+| Ruin | attack | 1 swing: 0.71 / 0.36 / 0.93 | 1.5: 1.07 / 0.54 / 1.39 | too fast: the biggest blow in the tree |
+| Earthshatter | attack | 1 swing: 0.71 / 0.36 / 0.93 | 1.35: 0.96 / 0.48 / 1.25 | too fast: a jump and a landing |
+| War Stomp | spell | 0.5 s: 0.50 / 0.29 | attack 1.2: 0.86 / 0.43 / 1.11 | wrong kind: weapon damage and a body move, was a cast |
+| Gorefeast | spell | 0.5 s: 0.50 / 0.29 | attack 1.1: 0.79 / 0.39 / 1.02 | wrong kind: a blade drag and weapon damage |
+| Shield Wall | spell | 0.35 s: 0.35 / 0.29 | 0.4: 0.40 / 0.29 | a hair fast |
+| Guard Stance | spell | 0.35: 0.35 / 0.29 | 0.4: 0.40 / 0.29 | a hair fast |
+| Aegis | spell | 0.35: 0.35 / 0.29 | 0.5: 0.50 / 0.29 | too fast: the shield lifted to the light |
+| Fortress Stance | spell | 0.35: 0.35 / 0.29 | 0.6: 0.60 / 0.30 | too fast: down on one knee |
+| Battle Cry | spell | 0.35: 0.35 / 0.29 | 0.6: 0.60 / 0.30 | too fast for a war cry |
+| Rallying Horn | spell | 0.35: 0.35 / 0.29 | 0.6: 0.60 / 0.30 | too fast |
+| Intimidate | spell | 0.35: 0.35 / 0.29 | 0.55: 0.55 / 0.29 | too fast |
+| Taunting Roar | spell | 0.35: 0.35 / 0.29 | 0.6: 0.60 / 0.30 | too fast |
+| Banner of the Gate | spell | 0.35: 0.35 / 0.29 | 0.7: 0.70 / 0.35 | too fast: planting a standard |
+| Herald of Ruin | spell | 0.35: 0.35 / 0.29 | 0.9: 0.90 / 0.45 | too fast: a crouch and an explosion |
+| Shield Charge | rush | `Player.dodge` span, capped 0.5 s for 9 m (18 m/s) | `travelTime(9)` 0.64 s (14 m/s) | too fast: reads as a blink |
+| Gatefall (new) | leap | - | `travelTime(distance)` (10 m 0.71 s) plus a landing beat | new |
+
+Damage per hit is unchanged in every row (owner's rule). The slower heavy
+blows lose damage per second by the same share; that is accepted and
+written down, never paid back in damage. Cleave and Rend, the Knight's
+level 1 attacks, are not slowed (skillcore's curve walls the warden at
+depth 1 and 12; recorded for the owner).
 
 ## For the owner to test
 
