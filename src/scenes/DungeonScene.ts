@@ -93,6 +93,13 @@ import { uiHeight, uiWidth } from '../core/UiScale';
 const LANTERN_ANGLE = 1.25;
 /** The lantern's share of the hero's light; the point light above keeps the rest. */
 const LANTERN_SHARE = 0.6;
+/**
+ * Share of the cone its shadow map covers. Past about seven metres the
+ * lantern is a few hundredths of its light underfoot, so a shadow there
+ * cannot be seen; the narrower map draws far fewer things and sharpens the
+ * shadows near the hero.
+ */
+const LANTERN_SHADOW_FOCUS = 0.84;
 const _view = new THREE.Frustum();
 const _viewMat = new THREE.Matrix4();
 /** The hero's spot on screen, for the see-through map. */
@@ -766,6 +773,7 @@ export class DungeonScene extends GameScene {
     this.heroLantern.castShadow = true;
     this.heroLantern.shadow.mapSize.set(1024, 1024);
     this.heroLantern.shadow.camera.near = 0.5;
+    this.heroLantern.shadow.focus = LANTERN_SHADOW_FOCUS;
     this.heroLantern.shadow.bias = -0.0015;
     this.heroLantern.shadow.normalBias = 0.03;
     this.heroLantern.userData.lantern = true;

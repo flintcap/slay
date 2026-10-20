@@ -1362,6 +1362,13 @@ export class Renderer {
         if (gate) gate.skipped = 0;
         // Every caster in this frame's shadow maps, built too.
         this.shadowAt = -Infinity;
+        // three draws the scene pass once per animation frame. A warm-up run
+        // inside one (a boss area loaded with its textures already in) drew
+        // nothing at all, found nothing left to build, and came up with every
+        // shader still to make: they were all made in the fight. Each turn
+        // here is a frame of its own.
+        const frame = (this.gl as unknown as { _nodes?: { nodeFrame?: { update?: () => void } } })._nodes?.nodeFrame;
+        if (hookSeen('NodeFrame.update', typeof frame?.update === 'function')) frame!.update!();
         this.render(scene, camera, 0, elapsed);
         if (!gate) return 0;
         const left = gate.skipped;

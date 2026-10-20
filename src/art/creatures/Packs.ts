@@ -21,6 +21,7 @@
  * and out of its pack draw on every hit.
  */
 import * as THREE from 'three';
+import { hookSeen } from '../../core/ThreeHooks';
 
 /**
  * Bone slots in every pack skeleton. One size for all, so every pack draw
@@ -39,6 +40,58 @@ EMPTY.matrixAutoUpdate = false;
 EMPTY.matrixWorldAutoUpdate = false;
 EMPTY.matrixWorld.makeScale(0, 0, 0);
 const IDENTITY = new THREE.Matrix4();
+const OFFSET = new THREE.Matrix4();
+/** Floats in one pack skeleton's bone buffer. */
+const PACK_FLOATS = PACK_BONES * 16;
+
+/**
+ * A pack's skeleton. Most of its slots sit empty, so it works out only the
+ * bones up to the last slot seated (`reach`); the rest are never drawn.
+ */
+class PackSkeleton extends THREE.Skeleton {
+  reach = 0;
+
+  override update(): void {
+    const m = this.boneMatrices!;
+    for (let i = 0; i < this.reach; i++) OFFSET.multiplyMatrices(this.bones[i]!.matrixWorld, this.boneInverses[i]!).toArray(m, i * 16);
+  }
+}
+
+/** Each pack skeleton by its bone buffer, and the widest reach of any. */
+const reachOf = new WeakMap<ArrayLike<number>, PackSkeleton>();
+let widest = 0;
+
+/*
+ * three.js sends a bone buffer whole for every draw in every pass: 48 KB a
+ * pack, twice over with last frame's copy. Its update ranges let a buffer
+ * send part of itself, so a pack's buffers send only the bones in reach.
+ * Last frame's copy is not ours to name; any buffer of a pack's size that is
+ * not a pack's own is that copy, and sends as far as the widest pack.
+ */
+{
+  type Ranged = { value: unknown; _ranges: { start: number; count: number }[]; _packRange?: { start: number; count: number }[] };
+  Object.defineProperty(THREE.BufferNode.prototype, 'updateRanges', {
+    configurable: true,
+    get(this: Ranged) {
+      const v = this.value as ArrayLike<number> | null;
+      if (v?.length !== PACK_FLOATS || this._ranges.length > 0) return this._ranges;
+      const count = (reachOf.get(v)?.reach ?? widest) * 16;
+      // Refilled on every read: three.js empties the list after each send.
+      const r = (this._packRange ??= []);
+      r.length = 0;
+      r.push({ start: 0, count: Math.max(16, count) });
+      return r;
+    },
+    set(this: Ranged, list: { start: number; count: number }[]) {
+      this._ranges = list;
+    },
+  });
+  // A buffer node made now must have set its list through the setter above.
+  const probe = new THREE.BufferNode(new Float32Array(16), 'mat4', 1) as unknown as Ranged;
+  const ranged = hookSeen('BufferNode.updateRanges', Array.isArray(probe._ranges));
+  // The binding side is not exported; the checker reads it in three's source.
+  hookSeen('NodeUniformBuffer.updateRanges', ranged);
+}
 
 interface Pack {
   key: string;
@@ -51,7 +104,7 @@ interface Pack {
   slots: Array<THREE.SkinnedMesh | null>;
   members: number;
   mesh: THREE.SkinnedMesh;
-  skeleton: THREE.Skeleton;
+  skeleton: PackSkeleton;
 }
 
 /** `src` repeated `copies` times, each copy's skin indices moved to its slot's bones. */
@@ -194,6 +247,7 @@ export class PackDraws {
       pack.skeleton.dispose();
     }
     this.packs.clear();
+    this.widen();
     this.riding.clear();
     this.plain.clear();
     this.want.clear();
@@ -220,10 +274,11 @@ export class PackDraws {
     const bones = first.skeleton.bones.length;
     const capacity = slotsFor(bones);
     const copies = Math.min(capacity, 4);
-    const skeleton = new THREE.Skeleton(
+    const skeleton = new PackSkeleton(
       Array.from({ length: PACK_BONES }, () => EMPTY),
       Array.from({ length: PACK_BONES }, () => IDENTITY),
     );
+    reachOf.set(skeleton.boneMatrices!, skeleton);
     const mesh = new THREE.SkinnedMesh(packGeometry(first.geometry, copies, bones), first.material);
     mesh.name = `pack:${first.name}`;
     mesh.castShadow = first.castShadow;
@@ -274,10 +329,17 @@ export class PackDraws {
       pack.mesh.geometry = packGeometry(pack.source, pack.copies, B);
     }
     pack.mesh.geometry.setDrawRange(0, Math.max(0, need) * pack.source.index!.count);
+    pack.skeleton.reach = Math.max(0, need) * B;
+    this.widen();
+  }
+
+  private widen(): void {
+    widest = 0;
+    for (const p of this.packs.values()) widest = Math.max(widest, p.skeleton.reach);
   }
 }
 
-let warmSkeleton: THREE.Skeleton | null = null;
+let warmSkeleton: PackSkeleton | null = null;
 
 /**
  * Stand-ins for a scene's warm-up: one pack-sized skinned mesh per kind of
@@ -286,10 +348,13 @@ let warmSkeleton: THREE.Skeleton | null = null;
  * parts' geometry and one empty skeleton, and draw nothing.
  */
 export function packStandIns(roots: Iterable<THREE.Object3D>): THREE.Object3D[] {
-  warmSkeleton ??= new THREE.Skeleton(
-    Array.from({ length: PACK_BONES }, () => EMPTY),
-    Array.from({ length: PACK_BONES }, () => IDENTITY),
-  );
+  if (!warmSkeleton) {
+    warmSkeleton = new PackSkeleton(
+      Array.from({ length: PACK_BONES }, () => EMPTY),
+      Array.from({ length: PACK_BONES }, () => IDENTITY),
+    );
+    reachOf.set(warmSkeleton.boneMatrices!, warmSkeleton);
+  }
   const kinds = new Map<string, THREE.Object3D>();
   for (const root of roots) {
     const own = root.userData.monsterSkeleton as THREE.Skeleton | undefined;

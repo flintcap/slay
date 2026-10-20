@@ -18,8 +18,10 @@
 import * as THREE from 'three/webgpu';
 import {
   abs, cross, dFdx, dFdy, dot, floor, fract, mix, normalViewGeometry, normalize, positionView, pow,
-  screenCoordinate, sign, sin, texture, uniform, varying, vec2, vec3,
+  renderGroup, screenCoordinate, sign, sin, texture, uniform, varying, vec2, vec3,
 } from 'three/tsl';
+
+// Each value here is sent once per pass (the render group), not once per object drawn.
 
 /**
  * Where the eye of the frame stands, set by the renderer before each frame.
@@ -27,30 +29,30 @@ import {
  * a shader that should only change what the player sees (the wall cut away
  * between camera and hero) checks it is drawing for this eye.
  */
-export const viewEye = uniform(new THREE.Vector3());
+export const viewEye = uniform(new THREE.Vector3()).setGroup(renderGroup);
 
 /**
  * How deep, in metres, the relief of a floor scan reads: the gaps between
  * cobbles and flags sink this far below the stone tops as the view moves.
  * Set from the quality (0 turns it off and skips its texture reads).
  */
-export const floorDepth = uniform(0);
+export const floorDepth = uniform(0).setGroup(renderGroup);
 
 /**
  * Share of the outdoor ground cover (grass tufts, reeds) drawn, 0..1, set
  * from the quality. A tuft past it folds to a point (`PropMats`, `cover`).
  */
-export const coverShare = uniform(1);
+export const coverShare = uniform(1).setGroup(renderGroup);
 
 /** 1 when water traces its reflections across the screen (from the quality), 0 to skip. */
-export const waterRays = uniform(0);
+export const waterRays = uniform(0).setGroup(renderGroup);
 
 /**
  * 1 for the light world shader (the Low preset): one texture tap where the
  * tiling breakup takes two, and one projection where a slope blends three
  * (`WorldMaterial`). A uniform, so moving to and from Low rebuilds nothing.
  */
-export const worldLite = uniform(0);
+export const worldLite = uniform(0).setGroup(renderGroup);
 
 export type F = THREE.Node<'float'>;
 export type V2 = THREE.Node<'vec2'>;

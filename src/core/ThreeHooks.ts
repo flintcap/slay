@@ -24,6 +24,7 @@
  * i18n-ignore-file: three.js names and source lines, read by developers.
  */
 import * as THREE from 'three/webgpu';
+import { skinning } from 'three/tsl';
 
 /** The three.js release (`THREE.REVISION`) these hooks were written for and checked on. */
 export const THREE_TESTED = '186';
@@ -238,6 +239,35 @@ export const HOOKS: readonly ThreeHook[] = [
     theirs: 'examples/jsm/tsl/display/TRAANode.js',
     needs: ['this._historyRenderTarget = new RenderTarget('],
     check: { on: 'use' },
+  },
+  {
+    id: 'NodeFrame.update',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/nodes/core/NodeFrame.js',
+    needs: ['this.frameId ++;'],
+    check: { on: 'use' },
+  },
+  {
+    id: 'BufferNode.updateRanges',
+    ours: 'src/art/creatures/Packs.ts',
+    theirs: 'src/renderers/webgpu/utils/WebGPUBindingUtils.js',
+    needs: ['const updateRanges = binding.updateRanges;'],
+    check: { on: 'use' },
+  },
+  {
+    id: 'NodeUniformBuffer.updateRanges',
+    ours: 'src/art/creatures/Packs.ts',
+    theirs: 'src/renderers/common/nodes/NodeUniformBuffer.js',
+    needs: ['return this.nodeUniform.updateRanges;'],
+    // Not exported: the checker reads it in three's source.
+    check: { on: 'use' },
+  },
+  {
+    id: 'skinning boneMatrices buffer',
+    ours: 'src/art/creatures/Packs.ts',
+    theirs: 'src/nodes/accessors/Skinning.js',
+    needs: ["referenceBuffer( 'skeleton.boneMatrices', 'mat4', skeleton.bones.length )", 'skeleton.update();'],
+    check: { on: 'class', test: () => typeof skinning === 'function' },
   },
   {
     id: 'ReferenceNode.setGroup',
