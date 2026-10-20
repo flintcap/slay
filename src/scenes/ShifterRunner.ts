@@ -23,7 +23,8 @@ import type { HitKind } from '../fx/CombatFeel';
 import type { BeastForm } from '../art/hero/forms/BeastBody';
 import { FORM_OF_TREE, FORM_SKILL } from '../entities/Shapeshift';
 import { ClawFX, FeralFX, TeethFX, formChange } from '../fx/shifter/ShifterFX';
-import { SHIFTER_SELF_POWER, bristleReflect, ursaLifePct } from '../data/shifterPower';
+import { SHIFTER_SELF_POWER, beastOfSkill, bristleReflect, formHands, ursaLifePct } from '../data/shifterPower';
+import type { Hands } from '../sim/Speed';
 import { getSkill } from '../data/skills';
 import { effectiveSkillRank } from '../sim/Character';
 import { heroPower } from '../sim/HeroPower';
@@ -91,8 +92,12 @@ export interface ShiftCast {
   color: number;
   /** The body clip the skill plays (its own gesture when it has one). */
   clip: string;
-  /** Seconds a basic attack takes at the hero's speed. */
+  /**
+   * Seconds this use takes as an attack: the skill's own `attackTime` swings
+   * at its beast's pace (`FORM_PACE`) and the hero's attack speed.
+   */
   attackTime: number;
+  /** Seconds this use takes as a cast: its own `castTime` at the hero's cast speed. */
   castTime: number;
   makePacket: (mult?: number) => DamagePacket;
   num: (k: string, d: number) => number;
@@ -188,7 +193,7 @@ function change(k: ShiftKit, player: Player, dir: THREE.Vector3, to: BeastForm |
 const form: Handler = (k, c) => {
   const want = FORM_INDEX[Math.floor(c.num('form', 0))] ?? 'cat';
   const to = c.player.shape.form === want ? null : want;
-  c.player.beginAction(c.clip, c.castTime * 1.1);
+  c.player.beginAction(c.clip, c.castTime);
   change(k, c.player, c.dir, to, false);
 };
 
@@ -203,7 +208,7 @@ const form: Handler = (k, c) => {
 const rake: Handler = (k, c) => {
   const hits = Math.max(1, Math.floor(c.num('hits', 3)));
   const reach = c.num('reach', 2.4);
-  const time = c.attackTime * 1.25;
+  const time = c.attackTime;
   c.player.beginAction(c.clip, time);
   const focus = { x: c.target.x, z: c.target.z };
   const facing = c.dir.clone();
@@ -270,7 +275,7 @@ const slink: Handler = (k, c) => {
 /** Hamstring: one low swipe at the back of the legs. Crippled, and two stacks of Bleeding. */
 const hamstring: Handler = (k, c) => {
   const reach = c.num('reach', 2.2);
-  c.player.beginAction(c.clip, c.attackTime * 1.15);
+  c.player.beginAction(c.clip, c.attackTime);
   const t = prey(k, c, reach + 1);
   const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
   const dur = c.num('duration', 4);
@@ -285,7 +290,7 @@ const hamstring: Handler = (k, c) => {
  */
 const throatTear: Handler = (k, c) => {
   const reach = c.num('reach', 2);
-  c.player.beginAction(c.clip, c.attackTime * 1.3);
+  c.player.beginAction(c.clip, c.attackTime);
   const t = prey(k, c, reach + 1);
   const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
   const dir = toward(c, focus);
@@ -346,7 +351,7 @@ const killingDance: Handler = (k, c) => {
 
 /** Night Hunt: the dark runs with you. Feral skills cost nothing while it lasts (`runShift`). */
 const nightHunt: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.2);
+  c.player.beginAction(c.clip, c.castTime);
   k.buff();
   FeralFX.nightHunt(k.effects, c.player.root, rk(c, 'duration', 8));
 };
@@ -379,7 +384,7 @@ function frenzy(c: ShiftCast, add: number, time: number): void {
 /** Snap: a fast bite that feeds Pack Frenzy. */
 const snap: Handler = (k, c) => {
   const reach = c.num('reach', 2.2);
-  c.player.beginAction(c.clip, c.attackTime * 0.85);
+  c.player.beginAction(c.clip, c.attackTime);
   const t = prey(k, c, reach + 0.8);
   const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
   const dir = toward(c, focus);
@@ -390,7 +395,7 @@ const snap: Handler = (k, c) => {
 
 /** Hunting Howl: the hunt is called. More damage, a surer bite. */
 const huntingHowl: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.6);
+  c.player.beginAction(c.clip, c.castTime);
   k.buff();
   TeethFX.howl(k.effects, c.player.position, c.num('radius', 10));
 };
@@ -454,7 +459,7 @@ const worry: Handler = (k, c) => {
 
 /** Call the Pack: grey wolves out of the fog to fight beside you. */
 const callThePack: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.4);
+  c.player.beginAction(c.clip, c.castTime);
   const count = Math.max(1, Math.floor(c.num('count', 2) + Math.floor(c.rank / Math.max(1, c.num('perRanks', 6)))));
   // At the limit a cast still does something: the oldest wolf goes back to the dark.
   let room = count - k.pack();
@@ -483,7 +488,7 @@ const callThePack: Handler = (k, c) => {
 
 /** Blood Howl: heals you and the pack at once, and every hit drinks while it lasts. */
 const bloodHowl: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.5);
+  c.player.beginAction(c.clip, c.castTime);
   k.buff();
   TeethFX.bloodHowl(k.effects, c.player.position);
 };
@@ -519,7 +524,7 @@ const goForTheThroat: Handler = (k, c) => {
 
 /** Bloodmoon: Pack Frenzy goes full and stays full; more damage; every hit drinks deep. */
 const bloodmoon: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.6);
+  c.player.beginAction(c.clip, c.castTime);
   k.buff();
   const dur = rk(c, 'duration', 10);
   frenzy(c, 99, dur);
@@ -537,7 +542,7 @@ let maulSide: 'L' | 'R' = 'R';
 const maul: Handler = (k, c) => {
   const reach = c.num('reach', 2.9) * ursaReach(c);
   maulSide = maulSide === 'R' ? 'L' : 'R';
-  c.player.beginAction(c.clip, c.attackTime * 1.3, maulSide);
+  c.player.beginAction(c.clip, c.attackTime, maulSide);
   ClawFX.maulStroke(k.effects, c.player.bones, maulSide, c.player.contactIn + 0.14);
   k.swing(c.dir, c.num('arc', 2.4), reach, (m = 1) => c.makePacket(m), { kind: 'heavy' });
   k.later(c.player.contactIn, () => ClawFX.maulGrit(k.effects, c.player.position, c.dir));
@@ -545,7 +550,7 @@ const maul: Handler = (k, c) => {
 
 /** Rattling Roar: everything near flinches, and is Rattled (it hits softer). */
 const rattlingRoar: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.5);
+  c.player.beginAction(c.clip, c.castTime);
   const radius = c.num('radius', 7);
   const p = c.player.position;
   // The rank's Rattled (`FOE_POWER.rattlingRoar`), with the curse passives in it.
@@ -570,7 +575,7 @@ const hammerfall: Handler = (k, c) => {
   const d = new THREE.Vector3(c.target.x - p.x, 0, c.target.z - p.z);
   const len = Math.min(range, d.length(), k.wallStop(p, c.dir, range, 0.3));
   const at = p.clone().addScaledVector(c.dir, Math.max(1.2, len)).setY(0);
-  c.player.beginAction(c.clip, c.attackTime * 1.7);
+  c.player.beginAction(c.clip, c.attackTime);
   k.later(c.player.contactIn, () => {
     k.area(at, radius, () => withStatus(c.makePacket(), st('knockedDown', c.num('knockdown', 0.8))), 'heavy');
     ClawFX.hammerfall(k.effects, at, c.dir, radius);
@@ -580,7 +585,7 @@ const hammerfall: Handler = (k, c) => {
 
 /** Bristle: spines up. Less damage taken, and melee attackers take a share of it back. */
 const bristle: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.2);
+  c.player.beginAction(c.clip, c.castTime);
   k.buff();
   // The status's own reflect is the reference (30%); its magnitude scales it to this rank.
   const a = c.player.status.get('ss.bristle');
@@ -632,7 +637,7 @@ const overrun: Handler = (k, c) => {
 /** Reaping Swipe: a full turn with both paws out. More for every enemy it catches. */
 const reapingSwipe: Handler = (k, c) => {
   const radius = c.num('radius', 3.4) * ursaReach(c);
-  const time = c.attackTime * 1.6;
+  const time = c.attackTime;
   c.player.beginAction(c.clip, time);
   const start = Math.atan2(c.dir.x, c.dir.z);
   k.later(Math.max(0, c.player.contactIn - 0.12), () => ClawFX.reap(k.effects, c.player.position.clone(), radius, 0.26, start));
@@ -670,7 +675,7 @@ const bearHug: Handler = (k, c) => {
 
 /** Ursa Major: the great bear of the old stories. Bigger, harder, wider swipes. */
 const ursaMajor: Handler = (k, c) => {
-  c.player.beginAction(c.clip, c.castTime * 1.8);
+  c.player.beginAction(c.clip, c.castTime);
   const kk = Math.max(0, c.rank - 1);
   const power = SHIFTER_SELF_POWER.ursaMajor!(kk, c.num);
   // A share of the bear's life as flat life, and that much more of it filled.
@@ -731,6 +736,15 @@ export function formRefusal(def: SkillDef, player: Player): string | null {
   if (!form || FORM_OF_TREE[def.treeId] === form || def.effect === 'shift.form') return null;
   const own = getSkill(FORM_SKILL[form])?.name ?? tr('your form skill');
   return tr('{0} cannot be used in {1} form. Change form, or press {2} to stand up.', def.name, form, own);
+}
+
+/**
+ * What the hero swings, at the pace of the beast swinging it (`FORM_PACE`):
+ * a Shapeshifter tree skill in its own beast (it always fights in it), the
+ * basic attack (no `def`) in the form he is in. Anyone else's hands as they are.
+ */
+export function shiftHands(player: Player, hands: Hands, def?: SkillDef): Hands {
+  return formHands(hands, def ? beastOfSkill(def) : (player.shape?.form ?? null));
 }
 
 /** Runs one Shapeshifter skill. Returns false for an effect with no handler. */

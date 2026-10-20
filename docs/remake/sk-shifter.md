@@ -1,6 +1,6 @@
 # Stream: sk-shifter (Wave 5: Shapeshifter skills remake)
 
-Status: waiting for skillcore
+Status: in progress
 
 Class: Shapeshifter (code id `shapeshifter`). Trees: Feral, Teeth, Claw (`feral`, `teeth`, `claw`): the cat, the wolf, the bear. Port 4358.
 Fights with melee in beast forms (starts with a club in man form). Class color: rust orange (`0xc46a34`).
@@ -67,7 +67,7 @@ the first browser check.
   Keep prerequisites, synergies and capstones whole. Our own names and
   ideas, never copies. Then check `skillcore.md`: if it is not done, follow
   the waiting rule above.
-- [ ] 3. Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
+- [x] 3. (sk-shifter: speed audit, beast pace and skill timings) Speed audit (owner: before any skill is changed). Under skillcore's model, write a table
   under "Notes for resume": the Shapeshifter's basic attack (or, for a caster,
   its default cast) and every skill's real time per use, with no speed gear
   and at the speed ceiling, next to the feel of similar classes in the two
@@ -112,25 +112,17 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 and 2 are done (audit table and kit plan under "Notes for
-resume"). Waiting for skillcore: do not touch game code until
-`docs/remake/skillcore.md` says `Status: done`. When resumed:
-
-1. Setup from `PROTOCOL.md` (link node_modules, fetch, rebase, typecheck).
-2. Read skillcore's "Handover", `CONTRACTS.md` and `src/sim/Speed.ts` as they
-   stand then; check what became of the four requests at the end of
-   milestone 2 (form pace hook, later contact for skill blows, multi-hit gaps
-   on gesture keys, long gestures not cut).
-3. Milestone 3: re-read every Shapeshifter timing under the new model (basic
-   attack in each form and every active, no speed gear and at the ceiling),
-   write the table, set the numbers through skillcore's fields only. Damage
-   per hit stays as it is today.
-4. Milestone 4 build order: broken ones first (Alpha and Call the Pack,
-   Overrun, Killing Dance, Rake / Worry / Bear Hug timing, Pounce / Lunge
-   leaps, Slink and Night Hunt, Hammerfall and Reaping Swipe flat area),
-   then the two replacements (Ravening for Go for the Throat, Many Mouths
-   for Scent of Weakness, with refunds through `repairCharacter`), then
-   Reaping Swipe pull, then form pace and beast basic sounds.
+Milestones 1 to 3 are done (audit, kit plan, speed table under "Notes for
+resume"; every active has its `timing` / `attackTime` / `castTime`, the
+beast pace is `FORM_PACE` in `data/shifterPower.ts`, read through
+`shiftHands` in `SkillRunner.cast` / `basicAttack` and `formHands` in
+`ui/AttackEstimate.paceFor`). Next, milestone 4 build order: multi-hit on
+gesture keys (Rake, Worry, Bear Hug: `cuts` on their gestures and a
+`cuts` helper on the `ShiftKit`), Killing Dance (crowd, runs), Pounce /
+Lunge / Overrun by distance (`travelTime`), Alpha and Call the Pack, Slink
+and Night Hunt (free cost in `SkillRunner.cast`), Hammerfall and Reaping
+Swipe flat (+ pull), then Ravening and Many Mouths (old ids refunded by
+`repairCharacter`), then beast basic sounds, reach and impacts.
 
 ## Notes for resume
 
@@ -435,6 +427,70 @@ and the sound files (rename two takes).
 their own key; multi-hit gaps that follow the speed and ride the gesture's
 keys; gestures longer than about 0.45 s natural play out over their action
 instead of being cut.
+
+### Milestone 3: speed audit (read from skillcore's finished model, 0616b06)
+
+What skillcore left (read again in `sim/Speed.ts`, `Player.ts`,
+`Animator.ts`, `SkillActions.ts`): a blow lands at 35% of its action
+(`SKILL_BLOW_CONTACT`, cap `CONTACT_CAP` 0.5 s), the clip is stretched over
+the action (`span`, `SPAN_RATE` 0.55-2.6), a gesture's later blows sit on
+its keys (`Spec.cuts`, `cutTimes`), rushes go by distance (`travelTime`,
+14 m/s). My four requests: later contact, cuts on keys and gestures played
+over their action are in; the form pace was left to me.
+
+Today (before this milestone) a beast swings at the hidden weapon's pace,
+the `shift` family times as a spell in every menu (wrong for the blows),
+and `ShifterRunner` multiplies one swing (`c.attackTime`) or 0.5 s
+(`c.castTime`) by its own factors.
+
+The fix:
+- Form pace: the beast swings at the weapon's pace times cat 1.25, wolf
+  1.1, bear 0.85 (`FORM_PACE`, `data/shifterPower.ts`), for the basic
+  attack and every tree skill (a tree skill always fights in its form, so
+  the skill board reads the same pace). Damage per hit unchanged.
+- Every blow skill gets `timing: 'attack'` and its own `attackTime`;
+  every howl, roar, buff and form its own `castTime`. The runner's in-code
+  factors go; leaps and rushes add `travelTime(distance)` to their own
+  crouch and recovery.
+
+Times: starting club (1.2 a second), rank 1, no speed gear (the cat with
+Shadowcat's +10%), and at the ceiling (speed gear's curve at its limit, x2,
+under 3 attacks a second). Leaps at 9 m, rushes at 8 m. "Old" is today's
+code under skillcore's model.
+
+| Use | Old, no gear | New field | New, no gear | New, ceiling | Feel next to the references | Verdict on old |
+| --- | --- | --- | --- | --- | --- | --- |
+| Basic, cat | 0.76 s (1.31 a s) | pace 1.25 | 0.61 s (1.64 a s) | 0.33 s | a cat is as quick as a dagger | too slow |
+| Basic, wolf | 0.83 s (1.2) | pace 1.1 | 0.76 s (1.32) | 0.38 s | a sword's pace | right (a hair slow) |
+| Basic, bear | 0.83 s (1.2) | pace 0.85 | 0.98 s (1.02) | 0.49 s | a great maul's pace | too fast |
+| Forms (x3) | 0.55 s | cast 0.5 | 0.5 s | 0.29 s | quick change | right |
+| Rake (3 hits) | 0.96 s, hits off their swipes | attack 1.4 | 0.86 s | 0.47 s | a short flurry | too slow, hits off |
+| Pounce | 0.79 s, no crouch | attack 0.6 + leap | 1.01 s | 0.98 s | a leap you see | too fast in the air |
+| Slink | 0.5 s | cast 0.45 | 0.45 s | 0.29 s | a step into the dark | right |
+| Hamstring | 0.88 s | attack 1.0 | 0.61 s | 0.33 s | one swipe | too slow |
+| Throat Tear | 0.99 s | attack 1.2 | 0.73 s | 0.4 s | a heavier bite | too slow |
+| Killing Dance (6) | 1.83 s, blinks, first blow on the press | attack 2.8 | 1.71 s | 0.93 s | a dance at a run | blinks |
+| Night Hunt | 0.6 s | cast 0.6 | 0.6 s | 0.3 s | a long breath | right |
+| Snap | 0.71 s | attack 0.8 | 0.61 s | 0.33 s | a quick bite | a hair slow |
+| Hunting Howl | 0.8 s | cast 0.8 | 0.8 s | 0.4 s | a howl | right |
+| Lunge | 0.68 s, bite pose mid run | attack 0.4 + run 18 m/s | 0.78 s | 0.78 s | a dart | pose off |
+| Worry (4 + throw) | 0.83 s, throw never seen | attack 1.6 | 1.21 s | 0.61 s | a held shake | too fast |
+| Call the Pack | 0.7 s | cast 0.7 | 0.7 s | 0.35 s | a call | right |
+| Blood Howl | 0.75 s | cast 0.75 | 0.75 s | 0.38 s | a howl | right |
+| Ravening (5, new) | (Go for the Throat 0.74 s) | attack 1.8 | 1.36 s | 0.68 s | a crowd bite | new |
+| Bloodmoon | 0.8 s | cast 0.85 | 0.85 s | 0.43 s | a big call | right |
+| Maul | 1.08 s | attack 1.0 | 0.98 s | 0.49 s | the bear's swing | right |
+| Rattling Roar | 0.75 s | cast 0.75 | 0.75 s | 0.38 s | a roar | right |
+| Hammerfall | 1.42 s | attack 1.5 | 1.47 s | 0.74 s | a slam with a wind up | right |
+| Bristle | 0.6 s | cast 0.55 | 0.55 s | 0.29 s | a shudder | right |
+| Overrun | 0.95 s | attack 0.5 + charge 14 m/s | 1.06 s | 0.9 s | a charge | hits ahead of the bear |
+| Reaping Swipe | 1.33 s | attack 1.4 | 1.37 s | 0.69 s | a full turn | right |
+| Bear Hug (3) | 1.16 s, squeezes off their keys | attack 1.7 | 1.67 s | 0.83 s | three slow crushes | too fast |
+| Ursa Major | 0.9 s | cast 1.0 | 1.0 s | 0.5 s | the big change | right |
+
+Multi-hit skills (Rake, Killing Dance, Worry, Ravening, Bear Hug) take
+longer when a rank or a unique adds hits (time x hits / base hits), so a
+blow never comes quicker; damage per hit stays as it is.
 
 ## For the owner to test
 

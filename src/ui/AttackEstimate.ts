@@ -18,6 +18,7 @@ import { damageRange, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import { basicTime, handsOf, skillPace, speedMultiplier, type Pace } from '../sim/Speed';
 import { bendFor, bentKnob } from '../data/skillBends';
+import { beastOfSkill, formHands } from '../data/shifterPower';
 import { passiveEffects } from '../sim/Passives';
 
 /** Crit chance tops out here (Combat.rollDamage). */
@@ -77,7 +78,8 @@ export function estimateAttack(c: Character, st: Stats): AttackEstimate | null {
  */
 export function paceFor(c: Character, st: Stats, def: SkillDef): Pace {
   const bend = bendFor(c, def.id);
-  return skillPace(def, handsOf(c.equipment), speedMultiplier(st.attackSpeed), speedMultiplier(st.castSpeed), (k, v) => bentKnob(bend, k, v));
+  // A Shapeshifter skill is fought in its beast, at the beast's pace.
+  return skillPace(def, formHands(handsOf(c.equipment), beastOfSkill(def)), speedMultiplier(st.attackSpeed), speedMultiplier(st.castSpeed), (k, v) => bentKnob(bend, k, v));
 }
 
 function estimateDef(c: Character, st: Stats, def: SkillDef): AttackEstimate | null {

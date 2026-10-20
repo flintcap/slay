@@ -35,7 +35,7 @@ import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { gestureCuts, releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
 import { SPAN_RATE } from '../art/hero/Animator';
-import { formRefusal, runShift, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
+import { formRefusal, runShift, shiftHands, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
@@ -1204,7 +1204,7 @@ export class SkillRunner {
     // carry the skill's own `attackTime` / `castTime`; runners that time a
     // skill themselves (shift, rite, vigil) multiply nothing more onto them
     // once the skill's own field is set.
-    const pace = skillPace(def, handsOf(player.character.equipment), player.attackMult, player.castMult, (k, v) => bentKnob(bend, k, v));
+    const pace = skillPace(def, shiftHands(player, handsOf(player.character.equipment), def), player.attackMult, player.castMult, (k, v) => bentKnob(bend, k, v));
     const attackTime = pace.attack;
     const castTime = pace.cast;
     const actTime = pace.time;
@@ -2390,7 +2390,7 @@ export class SkillRunner {
 
     // The weapon decides what a basic attack even is, and how long it takes:
     // one swing or shot at the weapon's own pace (`sim/Speed.ts`).
-    const hands = handsOf(player.character.equipment);
+    const hands = shiftHands(player, handsOf(player.character.equipment));
     const time = basicTime(hands, player.attackMult);
     if (style === 'ranged') {
       // A bow is drawn and loosed. Sharing the casting animation put archers

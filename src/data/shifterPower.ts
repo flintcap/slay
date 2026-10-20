@@ -10,8 +10,32 @@
  * bear's share of life into flat life (there is no life-percent stat).
  */
 import type { FoePower, SelfPower } from './skillPower';
+import type { SkillDef } from '../types';
+import type { Hands } from '../sim/Speed';
 
 type Num = (key: string, d: number) => number;
+type Beast = 'cat' | 'wolf' | 'bear';
+
+/**
+ * How each beast swings next to the weapon hidden in its hands: the cat
+ * quicker than the weapon, the wolf a little quicker, the bear slower. The
+ * weapon still sets the pace (a great maul is no cat's weapon), and damage
+ * per hit never changes with it (owner's rule).
+ */
+export const FORM_PACE: Readonly<Record<Beast, number>> = { cat: 1.25, wolf: 1.1, bear: 0.85 };
+
+const TREE_BEAST: Readonly<Record<string, Beast>> = { feral: 'cat', teeth: 'wolf', claw: 'bear' };
+
+/** The beast a Shapeshifter skill is fought in (a tree skill always is), or null. */
+export function beastOfSkill(def: Pick<SkillDef, 'treeId' | 'effect'>): Beast | null {
+  if (!def.effect?.startsWith('shift.') || def.effect === 'shift.form') return null;
+  return TREE_BEAST[def.treeId] ?? null;
+}
+
+/** What is in the hands, at the pace of the beast holding it (a man: the weapon's own). */
+export function formHands(hands: Hands, form: Beast | null | undefined): Hands {
+  return form ? { ...hands, aps: hands.aps * FORM_PACE[form] } : hands;
+}
 
 const r1 = (v: number): number => Math.round(v * 10) / 10;
 /** A param at a rank: its base plus its `R` step for every rank past the first. */

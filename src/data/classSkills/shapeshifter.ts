@@ -71,6 +71,7 @@ const FERAL = build('feral', [
     mana: [8, 0],
     cd: [1, 0],
     fx: 'shift.form',
+    castTime: 0.5,
     p: { form: 0, moveSpeed: 12, moveSpeedR: 1, attackSpeed: 10, attackSpeedR: 1, crit: 4, critR: 0.4 },
   },
   {
@@ -85,6 +86,8 @@ const FERAL = build('feral', [
     dmg: [0.5, 0.07],
     type: 'physical',
     fx: 'shift.rake',
+    timing: 'attack',
+    attackTime: 1.4,
     p: { hits: 3, reach: 2.4, duration: 4 },
   },
   {
@@ -111,6 +114,8 @@ const FERAL = build('feral', [
     dmg: [1.5, 0.22],
     type: 'physical',
     fx: 'shift.pounce',
+    timing: 'attack',
+    attackTime: 0.6,
     p: { range: 9, stun: 0.8, reach: 1.8 },
   },
   {
@@ -145,6 +150,7 @@ const FERAL = build('feral', [
     mana: [8, 0.3],
     cd: [10, 0.3, 5],
     fx: 'shift.slink',
+    castTime: 0.45,
     p: { duration: 4, moveSpeed: 30, moveSpeedR: 1.5, crit: 20, critR: 0.5, ambush: 60, ambushR: 8 },
   },
   {
@@ -160,6 +166,8 @@ const FERAL = build('feral', [
     dmg: [1.1, 0.16],
     type: 'physical',
     fx: 'shift.hamstring',
+    timing: 'attack',
+    attackTime: 1.0,
     p: { duration: 4, reach: 2.2, bleed: 2 },
   },
   {
@@ -187,6 +195,8 @@ const FERAL = build('feral', [
     dmg: [1.6, 0.24],
     type: 'physical',
     fx: 'shift.throatTear',
+    timing: 'attack',
+    attackTime: 1.2,
     p: { execute: 30, executeMult: 2.5, duration: 5, reach: 2 },
   },
   {
@@ -224,6 +234,8 @@ const FERAL = build('feral', [
     dmg: [0.45, 0.06],
     type: 'physical',
     fx: 'shift.killingDance',
+    timing: 'attack',
+    attackTime: 2.8,
     p: { hits: 6, perRanks: 5, reach: 2.4, radius: 1.5 },
   },
   {
@@ -259,6 +271,7 @@ const FERAL = build('feral', [
     mana: [25, 1],
     cd: [40, 0.8, 20],
     fx: 'shift.nightHunt',
+    castTime: 0.6,
     p: { duration: 8, durationR: 0.4, moveSpeed: 25, moveSpeedR: 1, crit: 25, critR: 1, critDamage: 50, critDamageR: 3 },
   },
   {
@@ -299,6 +312,7 @@ const TEETH = build('teeth', [
     mana: [8, 0],
     cd: [1, 0],
     fx: 'shift.form',
+    castTime: 0.5,
     p: { form: 1, damage: 20, damageR: 3, leech: 3, leechR: 0.2, attackRating: 40, attackRatingR: 15 },
   },
   {
@@ -313,6 +327,8 @@ const TEETH = build('teeth', [
     dmg: [0.9, 0.13],
     type: 'physical',
     fx: 'shift.snap',
+    timing: 'attack',
+    attackTime: 0.8,
     p: { duration: 6, maxStacks: 5, reach: 2.2 },
   },
   {
@@ -337,6 +353,7 @@ const TEETH = build('teeth', [
     mana: [10, 0.5],
     cd: [14, 0.3, 8],
     fx: 'shift.huntingHowl',
+    castTime: 0.8,
     p: { duration: 12, durationR: 0.5, damage: 15, damageR: 3, attackRating: 60, attackRatingR: 20, radius: 10 },
   },
   {
@@ -372,6 +389,8 @@ const TEETH = build('teeth', [
     dmg: [1.3, 0.2],
     type: 'physical',
     fx: 'shift.lunge',
+    timing: 'attack',
+    attackTime: 0.4,
     p: { range: 8, knockback: 1.5, reach: 2 },
   },
   {
@@ -388,6 +407,8 @@ const TEETH = build('teeth', [
     dmg: [0.4, 0.06],
     type: 'physical',
     fx: 'shift.worry',
+    timing: 'attack',
+    attackTime: 1.6,
     p: { shakes: 4, stun: 1.2, reach: 2, knockback: 2.5 },
   },
   {
@@ -414,6 +435,7 @@ const TEETH = build('teeth', [
     cd: [20, 0.5, 10],
     type: 'physical',
     fx: 'shift.callThePack',
+    castTime: 0.7,
     p: { count: 2, perRanks: 6, minionScale: 0.45, minionScaleR: 0.03, lifePct: 30, lifePctR: 1, attackRate: 1.0, range: 2.4 },
   },
   {
@@ -428,6 +450,7 @@ const TEETH = build('teeth', [
     mana: [12, 0.6],
     cd: [20, 0.4, 10],
     fx: 'shift.bloodHowl',
+    castTime: 0.75,
     p: { duration: 8, leech: 6, leechR: 0.4, heal: 10, healR: 0.5, radius: 10 },
   },
   {
@@ -454,6 +477,8 @@ const TEETH = build('teeth', [
     dmg: [2.2, 0.3],
     type: 'physical',
     fx: 'shift.goForTheThroat',
+    timing: 'attack',
+    attackTime: 1.8,
     p: { range: 4, duration: 6, weaken: 4 },
   },
   {
@@ -491,6 +516,7 @@ const TEETH = build('teeth', [
     mana: [30, 1.2],
     cd: [45, 1, 20],
     fx: 'shift.bloodmoon',
+    castTime: 0.85,
     p: { duration: 10, durationR: 0.5, damage: 40, damageR: 2, leech: 10, leechR: 0.5 },
   },
   {
@@ -531,6 +557,7 @@ const CLAW = build('claw', [
     mana: [8, 0],
     cd: [1, 0],
     fx: 'shift.form',
+    castTime: 0.5,
     p: { form: 2, life: 30, lifeR: 2, defense: 40, defenseR: 6, dr: 6, drR: 0.4, moveSpeed: -8 },
   },
   {
@@ -545,6 +572,8 @@ const CLAW = build('claw', [
     dmg: [1.0, 0.15],
     type: 'physical',
     fx: 'shift.maul',
+    timing: 'attack',
+    attackTime: 1.0,
     p: { arc: 2.4, reach: 2.9 },
   },
   {
@@ -569,6 +598,7 @@ const CLAW = build('claw', [
     mana: [8, 0.4],
     cd: [10, 0.3, 5],
     fx: 'shift.rattlingRoar',
+    castTime: 0.75,
     p: { radius: 7, duration: 5, durationR: 0.2, stun: 0.6, weaken: 20, weakenR: 1.5 },
   },
   {
@@ -605,6 +635,8 @@ const CLAW = build('claw', [
     dmg: [1.6, 0.24],
     type: 'physical',
     fx: 'shift.hammerfall',
+    timing: 'attack',
+    attackTime: 1.5,
     p: { radius: 3.2, range: 3.5, knockdown: 0.8 },
   },
   {
@@ -619,6 +651,7 @@ const CLAW = build('claw', [
     mana: [10, 0.4],
     cd: [16, 0.4, 8],
     fx: 'shift.bristle',
+    castTime: 0.55,
     p: { duration: 8, dr: 10, drR: 0.5, reflect: 30, reflectR: 2 },
   },
   {
@@ -645,6 +678,8 @@ const CLAW = build('claw', [
     dmg: [1.2, 0.18],
     type: 'physical',
     fx: 'shift.overrun',
+    timing: 'attack',
+    attackTime: 0.5,
     p: { range: 8, width: 1.8, knockback: 3 },
   },
   {
@@ -686,6 +721,8 @@ const CLAW = build('claw', [
     dmg: [1.3, 0.2],
     type: 'physical',
     fx: 'shift.reapingSwipe',
+    timing: 'attack',
+    attackTime: 1.4,
     p: { radius: 3.4, perTarget: 8, maxTargets: 5 },
   },
   {
@@ -702,6 +739,8 @@ const CLAW = build('claw', [
     dmg: [0.5, 0.08],
     type: 'physical',
     fx: 'shift.bearHug',
+    timing: 'attack',
+    attackTime: 1.7,
     p: { squeezes: 3, stun: 2, heal: 2, reach: 2 },
   },
   {
@@ -727,6 +766,7 @@ const CLAW = build('claw', [
     mana: [30, 1.2],
     cd: [50, 1, 25],
     fx: 'shift.ursaMajor',
+    castTime: 1.0,
     p: { duration: 12, durationR: 0.5, life: 30, lifeR: 1.5, damage: 30, damageR: 2, reach: 40, scale: 1.18 },
   },
   {
