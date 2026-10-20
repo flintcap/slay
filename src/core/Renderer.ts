@@ -695,6 +695,8 @@ export class Renderer {
     cutLooseOnDispose(this.gl);
     // Shared bind groups are kept per scene, and go with it (`bindGroupsPerScene`).
     bindGroupsPerScene();
+    // One copy of the screen per frame target, freed with it (`viewportCopiesGoWithTarget`).
+    viewportCopiesGoWithTarget();
     // Every place the game reaches inside three.js, looked for once. A missing
     // one only costs speed or a detail, so the game goes on; the log and the
     // bug report say which.
@@ -1535,6 +1537,7 @@ function cutLooseOnDispose(gl: THREE.WebGPURenderer): void {
   if (!hookSeen('RenderObjects.createRenderObject, onDispose', typeof make === 'function')) return;
   objects!.createRenderObject = function (this: unknown, ...args: unknown[]): DrawRecord {
     const ro = make!.apply(this, args);
+    previousMatricesGoWithBatch(ro);
     const done = ro.onDispose;
     ro.onDispose = () => {
       // The buffers it drew from, worked out while it still can (three's
@@ -1552,6 +1555,100 @@ function cutLooseOnDispose(gl: THREE.WebGPURenderer): void {
       for (const k of RECORD_LINKS) ro[k] = null;
     };
     return ro;
+  };
+}
+
+/** The parts of a batched mesh that `previousMatricesGoWithBatch` reads. */
+interface BatchOwner extends THREE.EventDispatcher<{ dispose: object }> {
+  isBatchedMesh?: boolean;
+  _matricesTexture: THREE.DataTexture | null;
+  _indirectTexture: THREE.DataTexture | null;
+  _colorsTexture: THREE.DataTexture | null;
+}
+
+/**
+ * Frees a batched mesh's copy of last frame's places when the mesh goes.
+ *
+ * For the motion target, three keeps a second texture per batched mesh (the
+ * places its copies stood last frame), filed where only three can see it,
+ * and nothing frees it on the GPU: a map's flames left four behind each
+ * visit. Its draw records still bind it, so when the mesh is disposed the
+ * one that is not the mesh's own is freed here.
+ */
+function previousMatricesGoWithBatch(ro: DrawRecord): void {
+  const mesh = ro.object as BatchOwner | null;
+  if (!mesh?.isBatchedMesh) return;
+  const was = ro.onObjectDispose as (() => void) | undefined;
+  if (!hookSeen('RenderObject.onObjectDispose, _bindings', typeof was === 'function') || !was) return;
+  hookSeen('Batch.js previous matrices texture', true);
+  const now = (): void => {
+    const own = mesh._matricesTexture;
+    const groups = (ro._bindings ?? []) as { bindings: { texture?: THREE.Texture | null }[] }[];
+    for (const g of groups) {
+      for (const b of g.bindings) {
+        const t = b.texture as THREE.DataTexture | null | undefined;
+        if (!t?.isDataTexture || !own || t === own || t === mesh._indirectTexture || t === mesh._colorsTexture) continue;
+        // three makes it as a copy of the mesh's own (`Batch.js previous matrices texture`).
+        if (t.image.data instanceof Float32Array && t.image.width === own.image.width && t.image.height === own.image.height) t.dispose();
+      }
+    }
+    was();
+  };
+  mesh.removeEventListener('dispose', was);
+  ro.onObjectDispose = now;
+  mesh.addEventListener('dispose', now);
+}
+
+/** The parts of three's viewport texture node that `viewportCopiesGoWithTarget` reads. */
+interface ViewportCopier {
+  referenceNode?: ViewportCopier | null;
+  defaultFramebuffer?: THREE.Texture | null;
+}
+
+/** For each picture a shader copies (one depth for all), its copy per target drawn into. */
+const viewportCopies = new WeakMap<THREE.Texture, WeakMap<object, THREE.Texture>>();
+let viewportCopiesScoped = false;
+
+/**
+ * One copy of the screen per frame target, shared, and freed with the target.
+ *
+ * A shader that reads the depth already drawn (soft sparks, water, ground
+ * marks) makes three copy it into a texture of its own, one per shader and
+ * per target. The frame target lives as long as the game, and every map
+ * brings new shaders, so each visit left new copies on the GPU: two for
+ * town, four for a map. All of them hold the same picture, so now every
+ * shader reading the same thing shares one copy per target, and the copy is
+ * freed with its target (also when the target is resized; the next frame
+ * makes a fresh one).
+ */
+function viewportCopiesGoWithTarget(): void {
+  if (viewportCopiesScoped) return;
+  const proto = THREE.ViewportTextureNode.prototype as unknown as {
+    getTextureForReference?: (this: ViewportCopier, reference?: object | null) => THREE.Texture;
+  };
+  const get = proto.getTextureForReference;
+  if (!hookSeen('ViewportTextureNode.getTextureForReference, defaultFramebuffer', typeof get === 'function')) return;
+  viewportCopiesScoped = true;
+  proto.getTextureForReference = function (reference = null) {
+    const base = (this.referenceNode ?? this).defaultFramebuffer;
+    if (reference === null || !base) return get!.call(this, reference);
+    let byTarget = viewportCopies.get(base);
+    if (!byTarget) viewportCopies.set(base, (byTarget = new WeakMap()));
+    let tex = byTarget.get(reference);
+    if (!tex) {
+      const copy = base.clone();
+      byTarget.set(reference, (tex = copy));
+      const target = reference as THREE.EventDispatcher<{ dispose: object }>;
+      if (typeof target.addEventListener === 'function') {
+        const drop = (): void => {
+          target.removeEventListener('dispose', drop);
+          if (byTarget.get(target) === copy) byTarget.delete(target);
+          copy.dispose();
+        };
+        target.addEventListener('dispose', drop);
+      }
+    }
+    return tex;
   };
 }
 

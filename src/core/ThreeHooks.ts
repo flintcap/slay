@@ -145,6 +145,32 @@ export const HOOKS: readonly ThreeHook[] = [
     check: { on: 'class', test: () => fn(THREE.NodeBuilder.prototype, '_getBindGroup') },
   },
   {
+    id: 'ViewportTextureNode.getTextureForReference, defaultFramebuffer',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/nodes/display/ViewportTextureNode.js',
+    needs: [
+      'getTextureForReference( reference = null )',
+      'this.defaultFramebuffer = defaultFramebuffer;',
+      'defaultFramebuffer = this.referenceNode.defaultFramebuffer;',
+      'const framebufferTexture = defaultFramebuffer.clone();',
+    ],
+    check: { on: 'class', test: () => fn(THREE.ViewportTextureNode.prototype, 'getTextureForReference') },
+  },
+  {
+    id: 'RenderObject.onObjectDispose, _bindings',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/renderers/common/RenderObject.js',
+    needs: ['this._bindings = null', 'this.onObjectDispose = () => {', "this.object.addEventListener( 'dispose', this.onObjectDispose );"],
+    check: { on: 'use' },
+  },
+  {
+    id: 'Batch.js previous matrices texture',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/nodes/accessors/Batch.js',
+    needs: ['const previousMatricesTexture = new DataTexture( image.data.slice(), image.width, image.height, format, type );'],
+    check: { on: 'use' },
+  },
+  {
     id: 'RenderObject.scene, dispose',
     ours: 'src/core/Renderer.ts',
     theirs: 'src/renderers/common/RenderObject.js',
