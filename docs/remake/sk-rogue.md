@@ -1,6 +1,6 @@
 # Stream: sk-rogue (Wave 5: Rogue skills remake)
 
-Status: in progress
+Status: done
 
 Class: Rogue (code id `shadowblade`). Trees: Venom, Shadowcraft, Bladework (`venom`, `shadowcraft`, `bladework`). Port 4354.
 Fights with melee and thrown: daggers, often two at once (starts with two daggers). Class color: green (`0x5ad18f`).
@@ -99,22 +99,20 @@ the first browser check.
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
-- [ ] 7. Check. `check-skills --classes=shadowblade` once (one retry if it fails,
+- [x] 7. Check. ("wip(sk-rogue): milestone 7 curve numbers and cheap checks for the owner") `check-skills --classes=shadowblade` once (one retry if it fails,
   then note it) and `check-curve --classes=shadowblade` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+- [x] 8. Handover. ("sk-rogue: checks and handover, stream done") Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
 
 ## Next up
 
-1. Milestone 7: `check-skills --classes=shadowblade` once, then
-   `check-curve --classes=shadowblade` once, both inside the browser lock;
-   cheap checkers.
-2. Milestone 8 as listed.
+Nothing: the stream is done. The owner's call on the d5 wall and the
+items under "For skillqa" are left for `finish`.
 
 ## Notes for resume
 
@@ -160,6 +158,10 @@ status, wiring pass (with unique, vfx, coverage, hits, rankpower,
 skillparams and skillsound from milestone 6). `unfinished` fails on two
 statuses no code applies (`static`, `rent`); both are older than this
 stream (`rend: 'rent'` was dropped in 19b230f) and not Rogue statuses.
+
+Icon sheet: Night Eyes (now a hunter's eyes in the dark, no hood) and
+Silhouette (a thrown knife passing through his shadow) were repainted
+after the first sheet; unique and coverage pass after.
 
 ### Milestone 6: what was built
 
@@ -633,11 +635,14 @@ Play a Rogue with two daggers, then with one.
   damage of its own, as meant. The tool then stopped with exit 1 because it
   could not write `shots/skill-audit.json`: a fresh worktree has no
   `shots/` folder. That is the tool, not a skill; not retried.
-- The icon sheet was seen at 96 and 40 px. Night Eyes and Silhouette were
-  repainted after it (too close to Veil and Shadow Clone); the second
-  sheet is ICON_SHEET_LINE. Shadowcraft still has five hooded figures
-  (Veil, Shadow Clone, Shadow Legion, Mirror Gambit, The Unseen Blade);
-  each differs, but at 40 px they are the closest set.
+- The icon sheet (`node tools/art-sheet.mjs rogue`) was seen at 96 and
+  40 px. Night Eyes and Silhouette were repainted after it (too close to
+  Veil and Shadow Clone) and seen again: Night Eyes now reads at 40 px.
+  Shadowcraft still draws a hooded figure in seven icons (Veil, Shadow
+  Clone, Vanish, Shadow Legion, Silhouette, Mirror Gambit, The Unseen
+  Blade); each differs, but at 40 px they are the closest set, and
+  Silhouette (knife through the chest) is nearest The Unseen Blade
+  (blade before the face).
 - `check-curve`: d5 newly walled, d40 still walled (table in Milestone 7).
 - The curve sim prints "[feel] hit report failed" many times: the sim's
   stand-in for the combat feel, caught, no effect on damage.
