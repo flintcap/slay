@@ -195,7 +195,7 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
     const { MONSTER_AFFIXES } = await import('../src/data/monsterAffixes');
     const ids = ['desecrator', 'fire_chains', 'bulwark', 'splitter', 'hexing', 'adaptive', 'lancer'];
     const list = ids.map((b) => MONSTER_AFFIXES.find((a) => a.behavior === b)!).filter(Boolean);
-    const skills = ['harvest', 'rg-assassinate', 'bone-spear', 'knight', 'golem', 'rg-veil', 'shroud'].map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
+    const skills = ['rv-harvest', 'rg-assassinate', 'rv-femur-lance', 'rv-knight', 'rv-colossus', 'rg-veil', 'shroud'].map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
     const S = 140;
     const COLS = 7;
     const { c, g } = sheet(COLS * S, 2 * (S + 30));
@@ -224,7 +224,7 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
 
   /** A handful of skill icons at native size, to judge the brushwork. */
   async skillcloseup() {
-    const ids = ['bash', 'nova-fire', 'bone-spear', 'chain', 'rg-adderskiss', 'rain', 'mastery-fire', 'cleave', 'blizzard', 'zero', 'rg-smokebomb', 'harvest'];
+    const ids = ['bash', 'nova-fire', 'rv-femur-lance', 'chain', 'rg-adderskiss', 'rain', 'mastery-fire', 'cleave', 'blizzard', 'zero', 'rg-smokebomb', 'rv-harvest'];
     const list = ids.map((n) => SKILLS.find((s) => s.icon === n)!).filter(Boolean);
     const S = 192;
     const COLS = 4;

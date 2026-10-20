@@ -21,6 +21,7 @@ import type { DamageType } from '../types';
 import { ROGUE_ICONS } from './icons/rogueIcons';
 import { SHIFTER_ICONS } from './icons/shifterIcons';
 import { KNIGHT_ICONS } from './icons/knightIcons';
+import { REVENANT_ICONS } from './icons/revenantIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
 import {
   type Ctx,
@@ -75,6 +76,8 @@ interface ClassLook {
   ground: number;
   /** Each tree's own light for its physical skills, in tree order; else `light`. */
   trees?: readonly [number, number, number];
+  /** Damage types lit in the tree's own light, not the element's (the Revenant's arcane is his grave light). */
+  ownLight?: readonly DamageType[];
 }
 
 const CLASS_LOOK: Record<string, ClassLook> = {
@@ -97,6 +100,13 @@ const NEUTRAL: ClassLook = { ring: GLYPH_MATS.IRON, tex: 'fine', light: 0xd8c8a8
  * green edge, Bladework bright steel in the class green.
  */
 const TREE_LOOK: Record<string, readonly ClassLook[]> = {
+  // The Revenant: Ossuary grave teal, Blight bile green, Grave Pact heart red.
+  // His arcane and poison take the tree's light, so each tree reads as one.
+  revenant: [
+    { ...CLASS_LOOK.revenant!, light: 0x9ae0c8, ground: 0x14201c, ownLight: ['arcane', 'poison'] },
+    { ...CLASS_LOOK.revenant!, light: 0xb4d84a, ground: 0x161c0a, ownLight: ['arcane', 'poison'] },
+    { ...CLASS_LOOK.revenant!, light: 0xe04a5e, ground: 0x200a10, ownLight: ['arcane', 'poison'] },
+  ],
   shadowblade: [
     { ...CLASS_LOOK.shadowblade!, light: 0x8fd84a, ground: 0x0e1a08 },
     { ...CLASS_LOOK.shadowblade!, light: 0xa6e8c4, ground: 0x160f20 },
@@ -190,6 +200,7 @@ const ICON_MAP: Record<string, string> = {
   ...SHIFTER_ICONS,
   ...KNIGHT_ICONS,
   ...ROGUE_ICONS,
+  ...REVENANT_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */
@@ -411,7 +422,7 @@ function drawGlyph(x: Ctx, g: Glyph, t: Tone, v: number, cx: number, cy: number,
 /** Paints a skill icon onto a clear 128px context. */
 export function paintSkillIcon(x: Ctx, spec: SkillIconSpec): void {
   const look = TREE_LOOK[spec.classId ?? '']?.[spec.treeIndex ?? 0] ?? CLASS_LOOK[spec.classId ?? ''] ?? NEUTRAL;
-  const elem = spec.damageType && spec.damageType !== 'physical' ? ELEMENT_TONE[spec.damageType] : null;
+  const elem = spec.damageType && spec.damageType !== 'physical' && !look.ownLight?.includes(spec.damageType) ? ELEMENT_TONE[spec.damageType] : null;
   const tone = elem ?? toneOf(look.trees?.[spec.treeIndex ?? 0] ?? look.light);
   const h = hashString(spec.skillId);
   const plan = planFor(spec.icon, spec.effect, h);
