@@ -377,6 +377,7 @@ type HeroEvent = 'hit' | 'release' | 'step' | 'end';
 animator.on(event: HeroEvent, fn: (e: { clip: string; side?: 'L' | 'R' }) => void): () => void;
 animator.play(action: string, opts?: { fade?; speed?; once?; hold?; restart?; force?;
   contact?: number;   // seconds from now to the hit / release frame; the clip is time-warped to land it
+  span?: number;      // seconds the whole action takes; the clip after contact is stretched to end with it (SPAN_RATE 0.55-2.6x)
   onEnd?: () => void });
 animator.actionState: { clip: string; t: number; contact: number | null } | null;
 animator.castGlow: number; animator.castHands: 'left' | 'right' | 'both' | null;
@@ -809,6 +810,61 @@ export function grownMods(base: Partial<Stats> | undefined, k: number): Partial<
 `StatusApplication.mods` and `.absorb` set one application's stat changes and
 ward in place of the def's, on the hero (`Player.applyStatus(..., { mods, absorb })`)
 and on monsters. A ward with stat changes keeps its stats after the ward breaks.
+
+## Speed — `src/sim/Speed.ts` — owned by skillcore
+
+How long a swing, a shot or a cast takes. Every place that turns speed into
+seconds goes through here (Handover in `docs/remake/skillcore.md`).
+
+```ts
+export const ATTACK_RATE_CAP = 3.0;  // attacks a second, at most
+export const CAST_RATE_CAP = 3.4;    // casts a second, at most
+export const UNARMED_APS = 1.4;      // bare hands
+export const BASE_CAST_TIME = 0.5;   // a spell with no castTime of its own
+export const DUAL_SWING_RATE = 1.3;  // two blades take turns this much more often
+export const DUAL_SKILL_STRETCH = 1.35; // a melee skill with two blades takes this much longer
+export const ATTACK_FACTOR: Record<string, number>; // swings per use by family (whirlwind 1.4, slam 1.5)
+export const CAST_BASE: Record<string, number>;     // seconds per cast by family (buffs 0.35, channel 0.8)
+export const RUSH_SPEED = 14; export const RUSH_MIN_TIME = 0.15;
+/** Summed speed percent -> rate multiplier: gain 100p/(p+100), slows after it at full strength, floor 0.4. */
+export function speedMultiplier(pct: number, slowPct?: number): number;
+export function handsOf(equipment): { aps: number; dual: boolean; ranged: boolean; melee: boolean };
+export function basicTime(hands, attackMult: number): number;   // seconds, one basic attack
+export function basicRate(hands, attackMult: number): number;
+export function castSeconds(base: number, castMult: number): number;
+export function skillTiming(def: SkillDef, hands): 'attack' | 'spell';
+export function skillPace(def: SkillDef, hands, attackMult: number, castMult: number,
+  knob?: (key: 'attackTime' | 'castTime', v: number) => number): { swing; attack; cast; timing; time };
+export function weaponRate(baseSpeed: number, ownPct: number): number;  // item tooltip
+export function speedReadout(equipment, attackPct: number, castPct: number): SpeedReadout; // character panel
+export function travelTime(distance: number, speed?: number): number;   // rushes, charges, leaps
+// src/ui/AttackEstimate.ts — the same pace for menus, skill bends counted.
+export function paceFor(c: Character, st: Stats, def: SkillDef): Pace;
+```
+
+`SkillDef` fields: `timing?: 'attack' | 'spell'` (default by family and what
+is in hand), `attackTime?` (swings; default `ATTACK_FACTOR` else 1),
+`castTime?` (seconds; default `CAST_BASE` else 0.5).
+
+**Damage per hit never depends on speed** (owner's rule). Weapon damage
+bands, `HeroPower` per-hit numbers, skill damage numbers and blow scales
+(`DUAL_BLOW_DAMAGE` 1.2343, `DUAL_SKILL_DAMAGE` 1.35, `DUAL_SKILL_MAIN` 0.6
+in `SkillRunner.ts`) are frozen numbers, never derived from a time or a
+speed. A quicker action is more of the same blow; only damage per second
+moves.
+
+### Skill icons — `src/art/Icons.ts`, `src/art/SkillIconArt.ts`
+
+```ts
+export function skillIconUri(skillId: string, effect?: string, damageType?: DamageType, passive?: boolean, iconKey?: string): string;
+export function warmSkillIcons(classId: string): void; // bakes a class's icons in idle time (town, 3 s after the curtain)
+```
+
+Painted in a 128-unit square, baked at 128 x `iconScale()` pixels (128 on a
+plain screen, 205 at ratio 2, 307 at the most). The largest shown is 62 CSS
+px (skill board detail; hotbar 40 px x HUD 150% = 60), 248 screen pixels at
+UI 200% on a density-2 screen, so the bake covers every real size. One bake
+costs about 4 ms at 128 px and 16 ms at 307 px; keep richer icons near that.
 
 ## `src/sim/Loot.ts` — owned by ITEMS
 
@@ -1332,8 +1388,13 @@ export function skillDamageScale(skills: Record<string, number>, skillLevels: nu
 export function comboForSkill(skill: SkillDef): ComboDef | null;   // name, desc, colour
 export function comboBonusPct(skill: SkillDef): number;            // 25..50 by tier
 // src/entities/Player.ts — melee lands at the swing's contact frame.
-export const CLIP_CONTACT: Record<string, number>; export const CONTACT_CAP: number;
-player.contactIn; player.actionId;
+export const CLIP_CONTACT: Record<string, number>; export const CONTACT_CAP: number; // share of the action, cap 0.5 s
+export function contactDelay(clip: string, duration: number): number;
+export function releaseDelay(duration: number, onFrame: boolean): number;           // RELEASE_SHARE 0.33, RELEASE_CAP 0.25
+player.beginAction(clip: string, duration: number, side?: 'L' | 'R', opts?: { release?: boolean }): void;
+player.contactIn; player.releaseIn; player.actionId; player.attackMult; player.castMult;
+// src/scenes/SkillRunner.ts — a spell or throw lets go on its gesture's release frame.
+skillRunner.atRelease(player: Player, run: () => void): void;
 ```
 
 Events: `combat:combo` { id, name, setup, payoff, bonusPct, x, y, z }. Only

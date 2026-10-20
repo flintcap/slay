@@ -423,4 +423,136 @@ Full notes: `docs/remake/sk-paladin.md`, `docs/remake/sk-mage.md`.
 
 ## Handover
 
-(empty)
+One model times every action: `src/sim/Speed.ts`. Read its header first.
+
+**The rules.**
+- The weapon sets the pace. A basic attack takes `1 / baseSpeed` seconds
+  (`ItemBase.baseSpeed`, attacks a second). Bare hands: `UNARMED_APS` 1.4.
+- Attack skills take `attackTime` swings of that weapon; spells take
+  `castTime` seconds, whatever is in hand.
+- Gear, passive, buff and stack speed is summed as a percent and goes
+  through `speedMultiplier(pct, slowPct)`: gain = 100p / (p + 100), so +50%
+  is worth x1.33, +100% x1.5, +300% x1.75, never x2. Slows on the hero
+  multiply after that at full strength. Floor x0.4 (`SPEED_FLOOR`).
+- Ceilings: `ATTACK_RATE_CAP` 3.0 attacks a second, `CAST_RATE_CAP` 3.4
+  casts a second, however it is built.
+- **Damage per hit never depends on speed (owner's rule).** A quicker swing
+  is more swings of the same blow, never a softer one. Weapon damage bands,
+  `HeroPower` per-hit numbers, skill damage and blow scales are frozen
+  numbers: `DUAL_BLOW_DAMAGE` 1.2343, `DUAL_SKILL_DAMAGE` 1.35,
+  `DUAL_SKILL_MAIN` 0.6 (`SkillRunner.ts`) are today's values, never
+  derived from a speed. Speed moves damage per second; that is accepted.
+
+**Functions** (all pure):
+- `handsOf(equipment)`: `{ aps, dual, ranged, melee }`.
+- `basicTime(hands, attackMult)` / `basicRate`: one basic attack.
+- `skillPace(def, hands, attackMult, castMult, knob?)`: `{ swing, attack,
+  cast, timing, time }`; `time` is the one the skill uses. `knob` lets a
+  skill-bending unique grow `attackTime` / `castTime`.
+- `skillTiming(def, hands)`: `'attack'` or `'spell'`.
+- `castSeconds(base, castMult)`, `weaponRate(baseSpeed, ownPct)` (item
+  tooltip), `speedReadout(equipment, attackPct, castPct)` (character
+  panel), `effectiveSpeedPct(pct)`.
+- `travelTime(distance, speed = RUSH_SPEED)`: seconds a rush takes.
+- In play: `player.attackMult` / `player.castMult` (summed speed with
+  stacks, slows applied). In menus: `paceFor(c, stats, def)` in
+  `ui/AttackEstimate.ts` (bends counted, no stacks).
+
+**Skill fields** (`SkillDef`, `src/types.ts`), all optional:
+- `timing?: 'attack' | 'spell'`. Left out: families `melee cleave
+  whirlwind slam wave rite` are attacks; `projectile bolt cone beam chain
+  meteor sky` are attacks with a bow or crossbow in hand, or with a melee
+  weapon when the skill deals physical damage; everything else is a spell.
+- `attackTime?: number` (swings). Left out: `ATTACK_FACTOR` (whirlwind
+  1.4, slam 1.5), else 1.
+- `castTime?: number` (seconds). Left out: `CAST_BASE` (heal, buff, aura,
+  stance, shout, banner, self, absorb 0.35; channel 0.8), else
+  `BASE_CAST_TIME` 0.5.
+- `speedBonus` is gone.
+
+**Target table** (attacks a second; our numbers, set against the
+reference feel; ceiling 3.0):
+
+| Weapon | Base | +50% gear | +100% gear | +300% gear |
+| --- | --- | --- | --- | --- |
+| Dagger | 1.50-1.75 | 2.00-2.33 | 2.25-2.63 | 2.63-3.00 |
+| Sword 1h | 1.20-1.55 | 1.60-2.07 | 1.80-2.33 | 2.10-2.71 |
+| Axe 1h | 1.10-1.25 | 1.47-1.67 | 1.65-1.88 | 1.93-2.19 |
+| Mace 1h | 1.05-1.20 | 1.40-1.60 | 1.58-1.80 | 1.84-2.10 |
+| Scepter | 1.05-1.35 | 1.40-1.80 | 1.58-2.03 | 1.84-2.36 |
+| Spear | 1.08-1.15 | 1.44-1.53 | 1.62-1.72 | 1.89-2.01 |
+| Sword 2h | 1.08 | 1.44 | 1.62 | 1.89 |
+| Axe 2h | 1.02-1.06 | 1.36-1.41 | 1.53-1.59 | 1.79-1.85 |
+| Mace 2h | 1.00-1.08 | 1.33-1.44 | 1.50-1.62 | 1.75-1.89 |
+| Bow | 1.15-1.48 | 1.53-1.97 | 1.72-2.22 | 2.01-2.59 |
+| Crossbow | 0.95-1.20 | 1.27-1.60 | 1.42-1.80 | 1.66-2.10 |
+| Wand (attack skills only) | 1.30-1.55 | 1.73-2.07 | 1.95-2.33 | 2.27-2.71 |
+| Staff (attack skills only) | 1.00-1.10 | 1.33-1.47 | 1.50-1.65 | 1.75-1.93 |
+| Spell, 0.5 s cast | 2.00 casts | 2.67 | 3.00 | 3.40 (cap) |
+
+Caster weapons (wands, staves, orbs) still make no basic attack.
+
+**Dual wield.** Two melee weapons pace at their average `aps`. Basic
+attacks: the blades take turns, one blow a swing, `DUAL_SWING_RATE` 1.3x as
+often as one blade (two daggers at 1.6: 2.08 a second bare, 3.0 at +100%).
+Melee and cleave skills take `DUAL_SKILL_STRETCH` 1.35x as long so the
+left blade's swing fits inside. Blow damage multipliers are the frozen
+numbers above.
+
+**How a class stream times a new skill.**
+1. Pick `timing` only if the family default is wrong for it.
+2. An attack: set `attackTime` in swings (1 a plain swing, 0.85 a quick
+   cut, 1.5 a heavy slam). A spell: set `castTime` in seconds (0.35 quick
+   self-cast, 0.5 usual, 0.7-0.9 a big one).
+3. Never use a time to balance damage: damage per hit is set by the damage
+   numbers alone.
+4. Runners that time skills in code (`ShifterRunner` x0.85-1.7,
+   `paladin/Rites` `rite.time`, `paladin/Vigils` `act.time`) read
+   `pace.attack` / `pace.cast` and multiply their own factor on top. When
+   a skill gets its own `attackTime` / `castTime`, drop that in-code
+   factor so it is not counted twice.
+5. Check the tooltip: the skill board's Speed section shows the real time.
+
+**Contact, release and travel** (`src/entities/Player.ts`,
+`src/art/hero/Animator.ts`, `src/scenes/SkillRunner.ts`).
+- `player.beginAction(clip, time, side?, { release? })` starts an action.
+  The clip is stretched over `time` (`Animator.play({ span })`, inside
+  `SPAN_RATE` 0.55-2.6x so it never smears or floats).
+- A weapon blow lands at its clip's share of the action (`CLIP_CONTACT`
+  0.32-0.4, a skill's own blow 0.35), at most `CONTACT_CAP` 0.5 s;
+  `player.contactIn` says when. The animator's `hit` event lands on it.
+- A spell or throw that should let go on its gesture: start the action with
+  `{ release: true }` and spawn inside `skillRunner.atRelease(player, fn)`.
+  Release is a third of the action, at most 0.25 s (`RELEASE_SHARE`,
+  `RELEASE_CAP`); `player.releaseIn` says when. A dodge or a new action
+  first cancels it. Without the flag a spell resolves on the press and its
+  gesture lets go within 0.1 s.
+- A rush, charge or leap: time the move with `travelTime(distance)`
+  (`RUSH_SPEED` 14 m/s, at least `RUSH_MIN_TIME` 0.15 s; 9 m is 0.64 s).
+
+**Item speed.** Item lines are on the curve f(v) = 40v / (v + 40) from the
+old numbers (table under "Item speed"): 3-20% on gear lines, up to 26% on
+the rare-only line, half on charms (`CHARM_SPEED_SHARE`). Save version 3
+moved owned items (`rescaleOldSpeed`). A new item speed line should sit in
+those sizes.
+
+**Icons.** Skill icons are painted in a 128-unit square and baked at 128 x
+`iconScale()` (128 to 307 px). The largest shown is 62 CSS px (248 screen
+pixels at UI 200% on a density-2 screen), so the bake is sharp everywhere.
+The hero's own icons are baked in idle time (`warmSkillIcons`). Keep one
+bake near 16 ms at 307 px.
+
+**Left for the class streams.**
+- sk-rogue: Flurry stacks reach +174% at rank 20; through the curve that
+  is x1.64 on its own, so a geared rogue sits at the 3.0 ceiling. Fine
+  under the cap, but Flurry's later ranks then buy nothing: give its ranks
+  another gain.
+- sk-shifter: forms swing at the weapon's pace (a staff, 1.0-1.1) times the
+  runner's factors; a form may want its own pace.
+- sk-paladin: `rushTo` in `paladin/Rites.ts` still times the run with
+  `contactIn * 0.9`; switch it to `travelTime`.
+- sk-mage, sk-paladin: opt spells and throws into the release hook.
+- Skill passives, buffs, boons and statuses that give speed were not
+  retuned (all of it goes through the curve and the ceiling).
+- Minion attack speed is outside this model.
+
