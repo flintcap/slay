@@ -72,9 +72,15 @@ Shared code:
 - [x] Dodging after the key press and before a spell lets go still spends the
   mana. Charge on release, or give it back when the cast is cancelled.
   (7d1be27: `SkillRunner.refund` gives mana and cooldown back.)
-- Skill passives, buffs, boons and statuses that give speed were not
+- [x] Skill passives, buffs, boons and statuses that give speed were not
   retuned by skillcore. Check every one fits under the ceilings in
-  `sim/Speed.ts`.
+  `sim/Speed.ts`. (They all do, by construction: gear, passives, buff and
+  boon statuses are summed into the hero's attack and cast percent
+  (`computeStats` clamps each to -75..200), Flurry's and Storm Fury's
+  stacks are added in `Player.attackSpeedPct`/`castSpeedPct`, and the
+  total goes through `speedMultiplier` (soft cap +100%) and the rate
+  ceilings in `basicTime`, `skillPace` and `castSeconds`. Nothing scales
+  an action's time on its own.)
 - [x] `check-curve` logs "[feel] hit report failed TypeError: Cannot convert
   object to primitive value" from `CombatFeel.onKill` about 1500 times a
   run. Find the cause and fix it. (e75c312: the sim's effects answer
@@ -82,9 +88,12 @@ Shared code:
 - [x] The curve bot dodges mid-swing, which cancels heavy blows. Make the bot
   fair (it is a test tool) so the curve reads true. (e75c312: a blow on its
   way lands first when the hit coming lands late enough.)
-- `check-economy` fails once on a seeded path ("shapeshifter: no set or
+- [x] `check-economy` fails once on a seeded path ("shapeshifter: no set or
   unique in a whole descent at depth 30"). Drop rates are unchanged. Find
-  out whether it is the seed or a real gap and fix the right one.
+  out whether it is the seed or a real gap and fix the right one. (The
+  seed: a deep descent yields about four, mean over 60 seeds, so one
+  descent comes up empty about one time in fifty. 08ec36e judges sets and
+  uniques over the last five descents; fewer than five there is a gap.)
 - Skill icons now bake in idle time 3 s after the town loads; never tested
   in a browser. Check the skill board opens with no stall.
 - [x] `check-skills` exits 1 when there is no `shots/` folder; make it create
@@ -103,8 +112,17 @@ Mage (sk-mage, done):
   crystals pushing up out of the floor across the wedge, near rows first.)
 - [x] Frozen Orb looks like a shard, not a round orb. (A new `orb` body:
   a faceted ball of ice, the shard's own ice, tumbling in the frost glow.)
-- The fire tree's icons need a deeper repaint. (sk-mage also: Sparkbolt
-  and Chain Lightning differ only by the arc.)
+- [x] The fire tree's icons need a deeper repaint. (sk-mage also: Sparkbolt
+  and Chain Lightning differ only by the arc.) (`art/MageGlyphs.ts`: one
+  picture per fire skill, no flame variants left: Firebolt's dart,
+  Fireball's great ball, Ember Nova's flung tongues, Scorch's melted
+  shield, Inferno Stream's jet, Kindling's crossed logs, Blast Wave's shock
+  rings, Pyroclasm's row of fountains, Combustion's cracked body, Heat
+  Shimmer's rising lines, Firestorm's meteors, Searing Core's rising
+  chevrons, Dragon's Breath's head and gout, Cataclysm's three blazes,
+  Annihilate's implosion, Ember Soul's flame over a drained crystal, the
+  fire rune for the mastery. Sparkbolt is a spark jinking along a broken
+  path.)
 - [x] Pyre Brand has no hit sound. (Its own sear, `skill.fire.brand`.)
 - [x] Splintering Frost may be too weak (20% of the dead enemy's life, +1% a
   rank). Compare it with skills in the same tier and make it worth taking.
@@ -121,8 +139,12 @@ Rogue (sk-rogue, done):
   Low, 0.6 Medium, 1 High, 1.4 Ultra) and the pressure valve, drops the
   `rich` smoke layer below High, and clips at the frame budget. About 90
   sprites at High for 2 s, 45 at Medium, 26 at Low.)
-- Seven Shadowcraft icons all show a hooded figure, and Silhouette is
-  close to The Unseen Blade. Make each one clearly its own.
+- [x] Seven Shadowcraft icons all show a hooded figure, and Silhouette is
+  close to The Unseen Blade. Make each one clearly its own. (Three keep a
+  hood, where the skill is the hood or the double: Veil, Vanish, Shadow
+  Clone. Shadow Legion is eyes at every depth of the dark, Mirror Gambit
+  a cracked mirror with a blade in the glass, Silhouette a knife through a
+  ring of smoke, The Unseen Blade a shut eye over a blade of light.)
 - `check-skillcost` never ran (it was stopped). Run it once.
 - [x] `check-unfinished` flags two statuses, `static` and `rent`, that no code
   applies (older than this wave). Wire them or remove them. (Removed:
