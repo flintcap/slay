@@ -1,6 +1,6 @@
 # Stream: sk-shifter (Wave 5: Shapeshifter skills remake)
 
-Status: in progress
+Status: done
 
 Class: Shapeshifter (code id `shapeshifter`). Trees: Feral, Teeth, Claw (`feral`, `teeth`, `claw`): the cat, the wolf, the bear. Port 4358.
 Fights with melee in beast forms (starts with a club in man form). Class color: rust orange (`0xc46a34`).
@@ -102,24 +102,21 @@ the first browser check.
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
   (sk-shifter: effects cost, no per-frame allocation, beast looks warmed)
-- [ ] 7. Check. `check-skills --classes=shapeshifter` once (one retry if it fails,
+- [x] 7. Check. `check-skills --classes=shapeshifter` once (one retry if it fails,
   then note it) and `check-curve --classes=shapeshifter` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+  (sk-shifter: check and handover, stream done)
+- [x] 8. Handover. Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
+  (sk-shifter: check and handover, stream done)
 
 ## Next up
 
-Milestones 1 to 6 are done (see "Milestone 6: effects cost" under "Notes
-for resume"). Next, milestone 7: `mkdir -p shots`, then
-`SLAY_PORT=4358 flock /tmp/slay-browser.lock timeout 3500 node
-tools/check-skills.mjs --classes=shapeshifter` once (one retry, then
-note it), then `check-curve --classes=shapeshifter` once, inside the lock.
-`get-chrome` is done this session. Then 8 (handover).
+Nothing: every milestone is done (see "Handover").
 
 ## Notes for resume
 
@@ -588,9 +585,60 @@ blow never comes quicker; damage per hit stays as it is.
   only; it meshes any form not built yet behind the curtain. Call the
   Pack's wolves were already warmed (`warmSummons`, `gorge_wolf`).
 
+### Milestone 7: check (2026-10-21)
+
+`check-curve --classes=shapeshifter`, run once, for information. "Before
+skillcore" and "after skillcore" are skillcore's numbers
+(`skillcore.md`); "now" is after this stream's build. No damage per hit
+was raised and no monster was touched.
+
+| depth | before skillcore | after skillcore | now |
+|---|---|---|---|
+| 1 | ok: packs 3/3, bosses 3/3 | FAIL: packs 2/3, bosses 0/3 | ok: packs 3/3 (19/8/6 s), bosses 2/3 (38/72/43 s) |
+| 5 | FAIL: packs 3/3, bosses 0/3 | FAIL: packs 3/3, bosses 0/3 | ok: packs 3/3 (7/8/5 s), bosses 1/3 (27/36/33 s) |
+| 12 | ok: packs 2/3, bosses 1/3 | FAIL: packs 1/3, bosses 0/3 | FAIL: packs 1/3 (19/22/17 s), bosses 0/3 (75/30/50 s) |
+| 25 | ok: packs 3/3, bosses 1/3 | ok: packs 3/3, bosses 1/3 | ok: packs 3/3 (17/16/74 s), bosses 1/3 (30/45/30 s) |
+| 40 | FAIL: packs 2/3, bosses 0/3 | FAIL: packs 2/3, bosses 0/3 | FAIL: packs 1/3 (37/15/18 s), bosses 0/3 (35/54/37 s) |
+
+- Walled at 12 and 40 now (2 of 5), against 1, 5, 12 and 40 right after
+  skillcore (4 of 5). Depths 1 and 5 pass again; 5 passes for the first
+  time. Depth 12 is the one wall skillcore added that is still there.
+- For the owner to decide. By the rule, damage per hit was not raised to
+  make up for any swing.
+- The run logs `[feel] hit report failed TypeError: Cannot convert object
+  to primitive value` 212 times, from `CombatFeel.onKill` (see "For
+  skillqa"). It is caught and only skips the kill's looks, so the numbers
+  above stand.
+
+`check-skills --classes=shapeshifter`, run once (first try, no retry
+needed): all 26 actives cast, none refused, none did nothing, none threw.
+Cat Form, Wolf Form, Slink, Night Hunt and Hunting Howl show no damage,
+as they should (a change, a step into the dark, a buff, a howl). Bear
+Form's damage is the change's thump plus the basic blows after it. The
+`sfx` column counts only bus sounds; the skill sounds play straight
+through `audio.play` (checked by `skillsound`).
+
 ## For the owner to test
 
-(empty)
+- Play a Shapeshifter. Change into the cat, the wolf and the bear. The
+  first change of a run should not stutter.
+- The cat swings fastest, the wolf bites quick, the bear swings slow and
+  wide. Tell me if one feels wrong.
+- Rake: three quick swipes, the last with both paws.
+- Pounce: the cat crouches, then leaps. The hit lands when it lands.
+- Lunge (wolf) and Overrun (bear): they run all the way and hit what they
+  reach. Overrun throws enemies to the side.
+- Worry: the wolf shakes an enemy three times, then throws it.
+- Ravening is new (it replaces Go for the Throat): five bites in a row.
+- Many Mouths is new (it replaces Scent of Weakness): you and your wolves
+  hit harder for each wolf you have out.
+- Call the Pack: each wolf comes up out of its own fog, eyes first.
+- Bear Hug: three squeezes. You heal only when a squeeze lands.
+- Every skill has its own picture. Each tree has its own colour: Feral
+  violet, Teeth red, Claw amber.
+- The Shapeshifter is walled at depths 12 and 40 in one curve run (it was
+  1, 5, 12 and 40 right after skillcore). No damage was raised. Play a run
+  there and tell me if he feels too weak.
 
 ## For skillqa
 
@@ -615,7 +663,53 @@ blow never comes quicker; damage per hit stays as it is.
   longer hitch (beast looks warmed in `DungeonScene.warmup()`); confirm on
   a real GPU with a fresh shapeshifter, first change of the run. On Medium
   and Low the garnish layers listed under milestone 6 are gone by design.
+- The character panel's attack speed (`CharacterPanel.ts`, `attackRate`)
+  shows the weapon's pace, not the beast's: the form pace (`FORM_PACE`,
+  `data/shifterPower.ts`) is read by the skill runner (`shiftHands`) and
+  the skill estimates (`ui/AttackEstimate.ts`), not by the panel.
+- `check-curve` floods its log with `[feel] hit report failed TypeError:
+  Cannot convert object to primitive value` from `CombatFeel.onKill`
+  (`this.effects.fxScale >= 0.9`, added in `70f9d91`): the headless effects
+  in `tools/sim-effects.ts` answer every read with a function, so the
+  comparison throws. Caught, looks only, any class with a melee kill; a
+  number answer for `fxScale` there would quiet it.
+- Not seen in motion in the real game: the claw scores, jaws, Reaping
+  Swipe's ring, Ursa Major's stars, the pack's fog and the four rushes.
+  Frame time not measured; the most at once is Bloodmoon, Bristle and
+  Slink's ticking bursts plus up to four claw trails and a Reaping ring
+  (all in the shared particle field and ribbon batch).
 
 ## Handover
 
-(empty)
+What exists now:
+
+- The kit: 54 Shapeshifter skills over Feral (the cat), Teeth (the wolf)
+  and Claw (the bear) in `src/data/classSkills/shapeshifter.ts`; two
+  replaced under new ids (Ravening for Go for the Throat, Many Mouths for
+  Scent of Weakness; old ranks refunded by `repairCharacter`), every other
+  tier, column and chain kept. Each skill grows every rank
+  (`src/data/shifterPower.ts`, `check-rankpower`); statuses in
+  `src/data/shifterStatuses.ts`.
+- Speed through skillcore's model: each blow skill times as an attack,
+  each howl, roar, buff and form as a cast; the beast swings at its
+  weapon's pace times its own (`FORM_PACE`: cat 1.25, wolf 1.1, bear
+  0.85). Damage per hit unchanged.
+- His casting: `src/scenes/ShifterRunner.ts` (handlers, blows on their
+  gesture keys, leaps and runs by distance, throws as real moves, Night
+  Hunt's free cost, Many Mouths' tick) and `src/entities/Shapeshift.ts`
+  (forms, trips, the FX ticker).
+- His bodies: `src/art/hero/forms/` (`BeastBody.ts` meshes, `FormBody.ts`
+  wears them; `standIns()` warms them for `DungeonScene.warmup()`).
+- His looks: `src/fx/shifter/ShifterFX.ts` (no per-frame allocation),
+  `emitters.ts` (garnish layers High and Ultra only) and `motifs.ts`.
+- His icons: `src/art/ShifterGlyphs.ts` and `src/art/icons/shifterIcons.ts`,
+  each tree in its own light (`TREE_LOOK.shapeshifter`); a `shapeshifter`
+  sheet in `tools/art-sheet-page.ts`.
+- His sounds: `skill.shift.*`, recorded from `tools/audio/shifter-takes.mjs`.
+
+Left for `finish` or the owner:
+
+- Walls at depths 12 and 40 in `check-curve` (owner's call; no damage was
+  raised, no monster touched).
+- The looks in motion and their frame time, the panel's speed readout and
+  the curve harness's log flood (see "For skillqa").
