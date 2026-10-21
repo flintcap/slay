@@ -385,6 +385,11 @@ revenant, ranger, shapeshifter. Then the static checkers, `check-perf
 - `check-curve` walled after the recovery commits: warden d1, d5, d12;
   revenant d12; ranger d5, d12; paladin d5, d12, d25; shapeshifter d12,
   d40. Mage and rogue clear.
+- Static checkers, last run (f39bce2, after the lead's fb675b9 and the
+  dodge fix): 84 pass, 2 fail. tactics 1 of 12 (monster AI, fails at
+  49ada73 too). curve 12 of 35 walled: the same eleven plus the Rogue at
+  depth 40 (bosses 0 of 3), first seen after walking and dodging stopped
+  bringing the next swing sooner.
 
 ## For the owner to test
 
