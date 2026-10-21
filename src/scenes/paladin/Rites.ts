@@ -226,7 +226,9 @@ function blow(r: RiteCast, host: RiteHost, t: Target, o: Blow = {}): DamagePacke
     look(r, host, 'lastBell', t);
     host.sound(TOLL_SOUND, t.root.position.x, t.root.position.z);
   }
-  if (main && pal.carryPct > 0 && rite?.grip === 'blade') carryOn(r, host, t, (o.mult ?? 1) * (pal.carryPct / 100));
+  // Saint's Reach carries a share of the cut, but not past double a plain
+  // cut's: Mercy Stroke's finishing x8 is for the one it finishes.
+  if (main && pal.carryPct > 0 && rite?.grip === 'blade') carryOn(r, host, t, Math.min(o.mult ?? 1, CARRY_MULT_CAP) * (pal.carryPct / 100));
   return landed;
 }
 
@@ -234,6 +236,9 @@ function blow(r: RiteCast, host: RiteHost, t: Target, o: Blow = {}): DamagePacke
  * Saint's Reach: the cut goes on through `t` into the nearest enemy behind it
  * (on the far side from the hero), within the passive's carry, for `mult`.
  */
+/** The most of a cut's own multiplier that Saint's Reach carries on. */
+const CARRY_MULT_CAP = 2;
+
 function carryOn(r: RiteCast, host: RiteHost, t: Target, mult: number): void {
   const me = r.player.position;
   const tp = t.root.position;

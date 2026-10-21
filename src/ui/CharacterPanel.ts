@@ -40,7 +40,8 @@ import {
 import { uiSfx } from './Sfx';
 import { estimateAttack, estimateSkill, type AttackEstimate } from './AttackEstimate';
 import { tr, trn, numText } from '../core/I18n';
-import { ATTACK_RATE_CAP, BASE_CAST_TIME, CAST_RATE_CAP, DUAL_SWING_RATE, speedReadout } from '../sim/Speed';
+import { ATTACK_RATE_CAP, BASE_CAST_TIME, CAST_RATE_CAP, DUAL_SWING_RATE, basicRate, handsOf, speedMultiplier, speedReadout } from '../sim/Speed';
+import { formHands } from '../data/shifterPower';
 import { castsOnly } from '../data/itemBases';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
@@ -68,9 +69,17 @@ function speedRow(key: 'attackSpeed' | 'castSpeed', st: Stats): { text: string; 
       ? tr('Your two weapons swing {0} times a second on their own, and two blades take turns, {1} times as often.', numText(r.weaponAps, 2), numText(DUAL_SWING_RATE, 1))
       : tr('Your weapon swings {0} times a second on its own.', numText(r.weaponAps, 2));
     const none = !!c && castsOnly(c.classId, c.equipment.mainHand?.baseId, c.equipment.offHand?.baseId);
+    // A Shapeshifter's beast swings the same weapon at its own pace (`FORM_PACE`).
+    let beasts = '';
+    if (c?.classId === 'shapeshifter') {
+      const hands = handsOf(c.equipment);
+      const am = speedMultiplier(st.attackSpeed);
+      const at = (form: 'cat' | 'wolf' | 'bear'): string => numText(basicRate(formHands(hands, form), am), 2);
+      beasts = tr('<p>As a beast the same weapon swings at the beast\'s pace: cat <b>{0}</b>, wolf <b>{1}</b>, bear <b>{2}</b> a second.</p>', at('cat'), at('wolf'), at('bear'));
+    }
     return {
       text: tr('{0} a second', numText(r.attackRate, 2)),
-      hint: (none ? tr('<p>A caster\'s weapon makes no basic attack. Attack skills swing <b>{0}</b> times a second.</p>', numText(r.attackRate, 2)) : tr('<p>You make <b>{0}</b> basic attacks a second.</p>', numText(r.attackRate, 2))) + tr('<p class="tt-explain-how">{0} Attack speed from gear and skills: {1}, worth {2} after diminishing returns: each point counts for less the more you have. No one attacks more than {3} times a second. An attack skill takes its own share of a swing.</p>', pace, pct(st.attackSpeed), pct(r.attackGain), numText(ATTACK_RATE_CAP, 1)),
+      hint: beasts + (none ? tr('<p>A caster\'s weapon makes no basic attack. Attack skills swing <b>{0}</b> times a second.</p>', numText(r.attackRate, 2)) : tr('<p>You make <b>{0}</b> basic attacks a second.</p>', numText(r.attackRate, 2))) + tr('<p class="tt-explain-how">{0} Attack speed from gear and skills: {1}, worth {2} after diminishing returns: each point counts for less the more you have. No one attacks more than {3} times a second. An attack skill takes its own share of a swing.</p>', pace, pct(st.attackSpeed), pct(r.attackGain), numText(ATTACK_RATE_CAP, 1)),
     };
   }
   return {

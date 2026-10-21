@@ -138,7 +138,7 @@ export const BATCH_E: UniqueDef[] = [
   U('uq.hallowedtread', tr('The Hallowed Tread'), 'boots.scarabshell', 33,
     tr('Plain grey boots, worn by the sisters who walked the bounds of the churchyard every dusk to keep the dead in it.'),
     [['vitality', 1], ['defense', 0.8], ['lightningResist', 0.8]],
-    { classId: 'paladin', bend: { skill: 'consecratedGround', more: 25, grow: { radius: 30, slow: 25, drag: 40 } },
+    { classId: 'paladin', bend: { skill: 'consecratedGround', grow: { radius: 40, slow: 35, drag: 50 }, names: { drag: tr('attack slow') } },
       look: D('metal.silver|0xb0b0a8', 'cloth.white', 'metal.gold', ['laurels', 'runes'], 0.3, {}) }),
 
   U('uq.frostfletcherstrail', tr("Frost-Fletcher's Trail"), 'boots.scarabshell', 30,
@@ -384,7 +384,7 @@ export const BATCH_E: UniqueDef[] = [
   U('uq.warcrier', tr('The War-Crier'), 'amulet.talisman', 32,
     tr('A brass horn the size of a thumb. The man who wore it was the one who shouted first and loudest, and the rest followed.'),
     [['strength', 1], ['life', 0.8], ['attackRating', 0.8]],
-    { classId: 'warden', bend: { skill: 'battleCry', more: 20, grow: { radius: 30, duration: 30, damagePct: 30 }, names: { damagePct: tr('war cry damage') } },
+    { classId: 'warden', bend: { skill: 'battleCry', grow: { radius: 40, duration: 40, damagePct: 40 }, names: { damagePct: tr('war cry damage') } },
       look: D('metal.brass', 'leather.fine', 'metal.iron', ['horns'], 0.5, { stone: 0xd08030 }) }),
 
   U('uq.cronestooth', tr("Crone's Tooth"), 'amulet.talisman', 29,
@@ -417,13 +417,13 @@ export const BATCH_E: UniqueDef[] = [
   U('uq.cursesreliquary', tr("The Curser's Reliquary"), 'amulet.reliquary', 52,
     tr('A bone box on a chain. The name written on the lid has been scratched out so many times there is a hole.'),
     [['energy', 1], ['mana', 0.8], ['arcaneResist', 0.8]],
-    { classId: 'revenant', bend: { skill: 'amplifyDamage', more: 20, grow: { radius: 30, duration: 30, amplify: 30 } },
+    { classId: 'revenant', bend: { skill: 'amplifyDamage', grow: { radius: 40, duration: 40, amplify: 40 } },
       look: D('bone.pale', 'metal.chain', 'metal.dark', ['skulls', 'runes'], 0.5, { stone: 0x8a40c0 }) }),
 
   U('uq.roarstone', tr('Roarstone'), 'amulet.sigil', 66,
     tr('A river stone worn smooth, with a single tooth mark in it. Something bit down on it and roared.'),
     [['strength', 1], ['life', 1], ['vitality', 0.8]],
-    { classId: 'shapeshifter', bend: { skill: 'rattlingRoar', more: 20, grow: { radius: 30, duration: 30, weaken: 40 } },
+    { classId: 'shapeshifter', bend: { skill: 'rattlingRoar', grow: { radius: 40, duration: 40, weaken: 50 } },
       look: D('stone.cavern|0x6a6050', 'leather.hide', undefined, ['teeth', 'claws'], 0.6, {}) }),
 
   U('uq.gulletcharm', tr('The Swallowed Key'), 'amulet.sigil', 70,

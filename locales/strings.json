@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9278,
+ "count": 9280,
  "strings": [
   {
    "key": "Beating iron…",
@@ -5613,7 +5613,7 @@
    ]
   },
   {
-   "key": "The long arm of a patient man. +1% critical chance per rank (toward 10%) and +18 attack rating per rank. Your Blade skills reach 0.4 metres further, and each Blade cut carries on into the nearest enemy behind its target, within 2 metres, for 30% of its damage (+2% per rank).",
+   "key": "The long arm of a patient man. +1% critical chance per rank (toward 10%) and +18 attack rating per rank. Your Blade skills reach 0.4 metres further, and each Blade cut carries on into the nearest enemy behind its target, within 2 metres, for 30% of its damage (+2% per rank). Any bonus past double a plain cut does not carry.",
    "files": [
     "data/classSkills/paladin.ts"
    ]
@@ -38734,6 +38734,12 @@
    ]
   },
   {
+   "key": "attack slow",
+   "files": [
+    "data/uniqueBatches/batchE.ts"
+   ]
+  },
+  {
    "key": "root enemies in place",
    "files": [
     "data/uniqueBatches/batchE.ts"
@@ -49135,6 +49141,12 @@
   },
   {
    "key": "<p>About <b>{0}</b> {1} damage a second to one target, one use every {2} s, crits counted.</p><p class=\"tt-explain-how\">Before the target's armour and resistances. Areas, chains and damage over time hit more than one target or keep hurting after, so they do more than this in a crowd.</p>",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "<p>As a beast the same weapon swings at the beast's pace: cat <b>{0}</b>, wolf <b>{1}</b>, bear <b>{2}</b> a second.</p>",
    "files": [
     "ui/CharacterPanel.ts"
    ]

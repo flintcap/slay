@@ -49,6 +49,8 @@ for (const u of UNIQUES) {
       // sim/Speed.ts bends the skill's timing fields through them.
       if (!(k in params) && k !== 'attackTime' && k !== 'castTime') problems.push(`${where}: ${u.bend.skill} has no knob "${k}" (it has ${Object.keys(params).join(', ') || 'none'})`);
     }
+    // More damage only reaches a skill's own blows: a buff, curse or ring has none.
+    if (u.bend.more && !s.damageScale && !s.damageType) problems.push(`${where}: gives ${u.bend.skill} more damage, but it deals none`);
     if (u.bend.applies && !getStatus(u.bend.applies.status)) problems.push(`${where}: leaves status ${u.bend.applies.status}, which does not exist`);
     if (!u.classId) problems.push(`${where}: a skill bender must be class-only`);
     else if (classOfSkill(u.bend.skill) !== u.classId) problems.push(`${where}: rolls for ${u.classId} but bends a ${classOfSkill(u.bend.skill)} skill`);

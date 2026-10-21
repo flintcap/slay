@@ -567,7 +567,7 @@ const BLADE = build('palBlade', [
   {
     id: 'saintsReach',
     name: tr("Saint's Reach"),
-    desc: tr('The long arm of a patient man. +1% critical chance per rank (toward 10%) and +18 attack rating per rank. Your Blade skills reach 0.4 metres further, and each Blade cut carries on into the nearest enemy behind its target, within 2 metres, for 30% of its damage (+2% per rank).'),
+    desc: tr('The long arm of a patient man. +1% critical chance per rank (toward 10%) and +18 attack rating per rank. Your Blade skills reach 0.4 metres further, and each Blade cut carries on into the nearest enemy behind its target, within 2 metres, for 30% of its damage (+2% per rank). Any bonus past double a plain cut does not carry.'),
     tier: 6,
     col: 2,
     icon: 'pl-saints-reach',
