@@ -811,8 +811,16 @@ export function installDebug(engine: Engine): Record<string, unknown> {
         const st = pl.status as { clear?: () => void } | undefined;
         st?.clear?.();
         (pl as unknown as { refreshStats?: () => void }).refreshStats?.();
+        // A skill struck from the veil (Umbral Ambush) gets the veil it asks
+        // for, as a corpse skill gets its body: with statuses cleared, the
+        // Veil cast before it no longer lends it one.
+        if (typeof s.params?.requiresStealth === 'number' && s.params.requiresStealth > 0) {
+          (pl as unknown as { applyStatus: (id: string, sec: number) => boolean }).applyStatus('veiled', 5);
+        }
         (pl.position as THREE.Vector3).copy(stage);
         (pl as unknown as { actionLock: number }).actionLock = 0;
+        // And nothing owed from an action walked or dodged out of.
+        (pl as unknown as { restLeft: number }).restLeft = 0;
         (pl as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
         const stats = pl.stats as Record<string, number>;
         pl.mana = stats.mana;
