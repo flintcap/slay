@@ -58,7 +58,7 @@ import { bountyText, heldBounties } from '../sim/TownServices';
 import { zoneInks, zoneInkAt, newKindInk, wayMarks } from './ZoneInk';
 import { FONT_UI } from './Fonts';
 import { onScreenRatio, uiRatio } from '../core/Screen';
-import { cssPx, hudScale, minimapScale } from '../core/UiScale';
+import { cssPx, hudScale, minimapScale, uiHeight, uiScale } from '../core/UiScale';
 import { tr, numText } from '../core/I18n';
 import { itemDisplayName } from '../sim/Loot';
 
@@ -569,6 +569,7 @@ export class HUD {
   private engine: Engine;
   private lifeOrb: Orb;
   private manaOrb: Orb;
+  private cmdBar: HTMLDivElement;
   private xpFill: HTMLDivElement;
   private xpText: HTMLSpanElement;
   private levelBadge: HTMLDivElement;
@@ -741,6 +742,7 @@ export class HUD {
 
     // --- bottom: command bar ---------------------------------------------
     const bar = div('cmdbar');
+    this.cmdBar = bar;
     this.lifeOrb = new Orb('life', 124);
     this.manaOrb = new Orb('mana', 124);
     // Dragged to a monitor of another sharpness, or the UI, HUD or minimap
@@ -750,6 +752,7 @@ export class HUD {
       this.lifeOrb.sharpen(r);
       this.manaOrb.sharpen(r);
       this.sharpenMinimap();
+      this.measureReach();
     }));
 
     const center = div('cmdbar-center');
@@ -919,6 +922,7 @@ export class HUD {
     this.root.style.display = '';
     requestAnimationFrame(() => this.root.classList.add('is-live'));
     this.refreshAll();
+    this.measureReach();
   }
 
   hide(): void {
@@ -931,6 +935,24 @@ export class HUD {
 
   get visible(): boolean {
     return this.shown;
+  }
+
+  /**
+   * How far up the screen the command bar reaches, the orbs' gilt wings
+   * included, put on the page as `--hud-reach` in the UI layer's own pixels.
+   * The side menus stop a gap above it, so they never cover the orbs, at
+   * any window size or UI and HUD scale.
+   */
+  private measureReach(): void {
+    if (!this.shown) return;
+    let top = Infinity;
+    for (const el of [this.cmdBar, ...this.cmdBar.querySelectorAll('.orb-wing, .orb-ring, .cmdbar-plate')]) {
+      const r = el.getBoundingClientRect();
+      if (r.height > 0) top = Math.min(top, r.top);
+    }
+    if (!Number.isFinite(top)) return;
+    const reach = Math.ceil(uiHeight() - top / uiScale());
+    document.documentElement.style.setProperty('--hud-reach', `${reach}px`);
   }
 
   // -- events --------------------------------------------------------------
@@ -986,6 +1008,10 @@ export class HUD {
     };
     window.addEventListener('keydown', onKey);
     this.offs.push(() => window.removeEventListener('keydown', onKey));
+    // A short window shrinks the bar (styles.css), so the menus measure again.
+    const onResize = (): void => this.measureReach();
+    window.addEventListener('resize', onResize);
+    this.offs.push(() => window.removeEventListener('resize', onResize));
     on('item:equipped', () => this.refreshAll());
     on('item:unequipped', () => this.refreshAll());
 

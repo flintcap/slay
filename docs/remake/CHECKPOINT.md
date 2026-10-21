@@ -675,6 +675,13 @@ Update this file and push it after every finished step.
   side panel ends above the action bar and none of them scrolls but the
   Character sheet. Static checks: 84 of 86 (curve and tactics, as under
   #173).
+- #180 Side menus cleared the orbs (owner: "They're overlapping the mana
+  and health bar"). The HUD measures how high the action bar reaches, the
+  orbs' gilt wings included, as `--hud-reach` (HUD `measureReach`, on show,
+  resize and scale changes), and side panels stop 16 px above it. Was a
+  fixed 152 px, 2 px short of the wings at 1080p. Equipment's hero picture
+  went from 0.72 to 0.68 so the panel still fits without scrolling. Real
+  frames: 1080p 16 px gap, nothing but Character scrolls; 1366x768 17 px gap.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

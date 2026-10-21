@@ -1242,8 +1242,9 @@ export function closeAllPanels(): void;
 
 ```ts
 /** PanelOpts.side: the screen edge the panel stands on. It fills that side
- *  from the top to the action bar (styles.css `.panel-side`), never moves,
- *  and opening one closes the other panel on the same side. */
+ *  from the top to a gap above the action bar (styles.css `.panel-side`,
+ *  sized from the HUD's measured `--hud-reach`), never moves, and opening
+ *  one closes the other panel on the same side. */
 side?: 'left' | 'right';
 export function isSideOpen(side: PanelSide, id?: string): boolean;
 /** Bus: what share of the window width each side covers, 0..1, on every change. */

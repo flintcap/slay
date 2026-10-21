@@ -1248,9 +1248,11 @@ input.slider::-moz-range-thumb {
 }
 
 /* Side panels (Panel `side`). Each stands on its own screen edge, from the
-   top down to the action bar, so the middle of the screen stays clear for the
-   hero. Flush to the edge, so the outer corners go square, and they slide in
-   from that edge rather than grow. */
+   top down to a gap above the action bar, so the middle of the screen stays
+   clear for the hero. The HUD measures how high the bar reaches, the orbs'
+   wings included, as `--hud-reach` (HUD `measureReach`). Flush to the edge,
+   so the outer corners go square, and they slide in from that edge rather
+   than grow. */
 .panel-wrap.panel-side {
   padding-top: 8px;
 }
@@ -1262,7 +1264,7 @@ input.slider::-moz-range-thumb {
 }
 .panel-side .panel {
   width: min(640px, 50cqw);
-  height: calc(100cqh - 8px - 152px * var(--hud-scale, 1));
+  height: calc(100cqh - 8px - var(--hud-reach, calc(156px * var(--hud-scale, 1))) - 16px);
   max-width: none;
   max-height: none;
 }
@@ -4765,7 +4767,7 @@ input.slider::-moz-range-thumb {
 }
 .inv-left .paperdoll {
   flex: none;
-  zoom: 0.72;
+  zoom: 0.68;
 }
 
 .paperdoll {
@@ -7220,14 +7222,10 @@ input.slider::-moz-range-thumb {
   overflow-y: auto;
 }
 
-/* Short screens (800 and 720 tall): the action bar shrinks, so the side
-   panels reach a little lower, and the board's tiers get shorter to fit
+/* Short screens (800 and 720 tall): the board's tiers get shorter to fit
    (SkillTreePanel `fitBoard`). Its text keeps its size: scaling the board as
    one piece took the labels under 8 px. */
 @container ui (max-height: 820px) {
-  .panel-side .panel {
-    height: calc(100cqh - 8px - 138px * var(--hud-scale, 1));
-  }
   .panel-skills .skill-detail {
     height: 132px;
   }
