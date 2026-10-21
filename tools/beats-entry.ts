@@ -6,16 +6,18 @@
  * row of real monsters, and everything it draws and plays is logged against
  * the clock. Each skill then has to show three beats:
  *
- *   cast    something seen and something heard the moment it goes off;
+ *   cast    something seen the moment it goes off (by its release or contact
+ *           frame) and something heard from the press;
  *   travel  for skills that reach out (bolts, chains, meteors, waves, leaps),
- *           something on screen for the whole time between the cast and the
- *           first blow landing, so nothing hits out of thin air;
+ *           something on screen for the whole time between the release (the
+ *           gesture's let-go frame; the wind-up before it is the hero's own)
+ *           and the first blow landing, so nothing hits out of thin air;
  *   impact  a picture and a sound where and when the first blow lands.
  *
  * Skills that never hit (buffs, heals, auras, summons, traps waiting for a
  * victim) only owe the cast beat; their families are declared in NO_IMPACT.
  *
- *   --only=fireball   one skill, with its timeline printed
+ *   --only=fireball   one skill (or a,b,c), with its timeline printed
  */
 import * as THREE from 'three';
 import { arena, shrug } from './combat-arena';
@@ -37,6 +39,7 @@ import type { Enemy } from '../src/entities/Enemy';
 
 declare const process: { argv: string[] };
 const only = process.argv.find((x) => x.startsWith('--only='))?.split('=')[1];
+const onlySet = only ? new Set(only.split(',')) : null;
 const DT = 1 / 30;
 
 /** Families whose skill reaches its target through the air or across ground. */
@@ -133,6 +136,8 @@ function sweep(skill: SkillDef): Beats {
     const e = a.spawn(def, x, z);
     e.maxLife = e.life = 1e7;
     e.rootTimer = 999;
+    // Every weapon blow lands: a miss is the dice, not a missing beat.
+    (e as unknown as { guard: () => number }).guard = () => 1;
     foes.push(e);
   }
   const player = new Player(heroFor(skill), 1);
@@ -188,6 +193,18 @@ function sweep(skill: SkillDef): Beats {
   if (/Veiled/.test(skill.desc)) player.applyStatus('veiled', 10, 1, 1);
   (player as unknown as { cooldowns?: Map<string, number> }).cooldowns?.clear();
   tick(0.6);
+  // What the prerequisites left running is theirs, not this skill's: let a
+  // guard's answer finish, and lift a stance that roots (Fortress Stance
+  // refuses Gatefall by design, which is not what is measured here).
+  for (let i = 0; i < 90 && player.isBusy; i++) tick(DT);
+  for (const st of player.status.list()) if (st.def.immobilises || st.def.incapacitates) player.status.remove(st.def.id);
+  player.refreshStats();
+  // A skill that bursts a body needs one on the floor by the aim.
+  if ((skill.effect ?? '').startsWith('corpse')) {
+    const body = a.spawn(def, 0.6, 3.6);
+    body.life = 0;
+    tick(DT * 2);
+  }
   player.position.set(0, 0, 0);
   player.faceTowards(0, 4);
 
@@ -198,12 +215,16 @@ function sweep(skill: SkillDef): Beats {
   hits.length = 0;
   live = [];
   const ok = runner.cast(skill.id, player, target, a.ctx, a.enemies, null);
+  // A spell or throw leaves the hand on its gesture's release frame, a blow
+  // on its contact frame; until then the hero's own wind-up is what is seen,
+  // so the cast beat and the travel count from there.
+  const leaves = now + Math.max(player.releaseIn, player.contactIn, 0);
   tick(3.5);
   runner.dispose();
 
   const family = (skill.effect ?? 'melee').split('.')[0] ?? 'melee';
   const within = (t: number, lo: number, hi: number): boolean => t >= lo - 1e-6 && t <= hi + 1e-6;
-  const cast = seen.some((s) => within(s.t, t0, t0 + 0.25));
+  const cast = seen.some((s) => within(s.t, t0, leaves + 0.25));
   // A weapon swing whooshes on the press; a spell may voice its gather a beat later.
   const castSound = heard.some((h) => within(h.t, t0, t0 + 0.6));
   const firstHit = hits.length ? hits[0]! : -1;
@@ -213,9 +234,9 @@ function sweep(skill: SkillDef): Beats {
   if (firstHit >= 0) {
     impact = seen.some((s) => within(s.t, firstHit - DT, firstHit + 0.12));
     impactSound = heard.some((h) => within(h.t, firstHit - DT, firstHit + 0.12));
-    if (TRAVELS.has(family) && firstHit - t0 > 0.2) {
-      // Every frame between the cast and the blow must have something live.
-      travel = live.filter((l) => l.t > t0 + DT && l.t < firstHit - DT).every((l) => l.n > 0);
+    if (TRAVELS.has(family) && firstHit - leaves > 0.2) {
+      // Every frame between the release and the blow must have something live.
+      travel = live.filter((l) => l.t > leaves + DT && l.t < firstHit - DT).every((l) => l.n > 0);
     }
   }
   const notes: string[] = [];
@@ -231,7 +252,7 @@ function sweep(skill: SkillDef): Beats {
 const rows: Array<{ id: string } & Beats> = [];
 for (const s of SKILLS) {
   if (s.targeting === 'passive') continue;
-  if (only && s.id !== only) continue;
+  if (onlySet && !onlySet.has(s.id)) continue;
   try {
     rows.push({ id: s.id, ...sweep(s) });
   } catch (err) {

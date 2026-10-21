@@ -166,7 +166,11 @@ Ranger (sk-ranger, done):
 - [x] sk-ranger traced the `check-curve` "hit report failed" line: a shared
   line in `CombatFeel.onKill` compares the test harness's stand-in
   `fxScale` to a number. Fix the stand-in or the compare. (e75c312.)
-- `check-beats` fails on other classes' skills. Run it and fix each.
+- [x] `check-beats` fails on other classes' skills. Run it and fix each.
+  (Every failure was the sweep, not a skill: it now counts the cast and
+  travel beats from the gesture's release or contact frame, waits out what
+  a prerequisite left running, lifts a rooting stance, lays a body for
+  Charnel Burst, and lets no blow miss. 203 of 203 pass.)
 
 Shapeshifter (sk-shifter, done):
 - [x] Game wide: knockback tooltips say metres, but `Enemy.takeHit` pushes
