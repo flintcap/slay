@@ -7,7 +7,6 @@ Remake: done (audio, maps, ground, heroes, items, creatures, props, npcs,
 vfx, finish). Published as version 29.
 
 Quality pass 2:
-Running: none
 Waiting: none
 Done: qa-looks, qa-bugs, qa-legend, qa-speed, fix-uisound, fix-gait, fix-skillsound
 Paused: no
@@ -27,9 +26,8 @@ Paused: no
 Wave 5 (skills remake, owner):
 Running: none
 Planned, waiting for a build slot: none
-Building: sk-shifter
-Waiting: then
-skillqa (alone, last)
+Building: none (all seven class streams done)
+Running: skillqa (alone, last)
 Done: skillcore, sk-mage, sk-rogue, sk-knight, sk-paladin, sk-revenant,
-sk-ranger
+sk-ranger, sk-shifter
 Paused: no

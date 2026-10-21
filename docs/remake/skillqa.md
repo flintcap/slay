@@ -152,6 +152,39 @@ Ranger (sk-ranger, done):
   `fxScale` to a number. Fix the stand-in or the compare.
 - `check-beats` fails on other classes' skills. Run it and fix each.
 
+Shapeshifter (sk-shifter, done):
+- Game wide: knockback tooltips say metres, but `Enemy.takeHit` pushes
+  knockback x 0.35, so every "knocks back N m" reads about three times too
+  far. Make the text and the push agree.
+- Bristle's HUD text shows the base 30% reflect, not the ranked number.
+- The character panel's attack speed shows the weapon's pace, not the
+  beast's (`FORM_PACE` in `data/shifterPower.ts` is read by the runner and
+  `ui/AttackEstimate.ts`, not by `CharacterPanel.ts`).
+- Rake's first swipe waits about 0.3 s (blow at 35% of the action): check
+  the cat's flurry feels quick. Killing Dance replays its gesture per
+  blow: look for a hitch between blows.
+- Worry's wrench and Reaping Swipe's pull: the end point is not checked
+  against props smaller than the step. Make sure a pulled body never ends
+  inside a wall or prop.
+- The first change into each form should no longer hitch (warmed in
+  `DungeonScene.warmup()`); confirm with a fresh shapeshifter.
+- The curve tool error: `tools/sim-effects.ts` answers every read with a
+  function, so `this.effects.fxScale >= 0.9` in `CombatFeel.onKill`
+  throws. Give the stand-in a number for `fxScale`.
+- Never seen in motion: claw scores, jaws, Reaping Swipe's ring, Ursa
+  Major's stars, the pack's fog, the four rushes. Frame time not measured
+  (Bloodmoon, Bristle and Slink's bursts plus four claw trails and a
+  Reaping ring at once).
+
+## check-skills results so far (from each stream, one run each)
+
+Mage 33/33, Rogue 25/25, Knight 25/26 (Gatefall refused by a leftover
+root, see above), Paladin 32/32, Revenant 30/30, Ranger 31/31,
+Shapeshifter 26/26. One class takes about 40 minutes. Do not rerun a class
+that passed unless your fixes touch its skills; then rerun only that class,
+once, after all your fixes for it. Run Gatefall on its own after the audit
+clears statuses between skills.
+
 ## Next up
 
 Wait for skillcore and the seven class streams. Then start milestone 1.
