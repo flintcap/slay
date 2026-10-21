@@ -2412,14 +2412,14 @@ const FROST = build('frost', [
   {
     id: 'splinteringFrost',
     name: tr('Splintering Frost'),
-    desc: tr('A Frozen or Brittle enemy you kill bursts into ice: 20% of its maximum life (+1% per rank) as cold damage to everything within 3m (+0.1m per rank), Chilling what it hits for 3s.'),
+    desc: tr('A Frozen or Brittle enemy you kill bursts into ice: 30% of its maximum life (+2% per rank) as cold damage to everything within 3.5m (+0.1m per rank), Chilling what it hits for 3s.'),
     tier: 5,
     col: 1,
     icon: 'splinter',
     req: ['coldMastery'],
     type: 'cold',
     fx: 'passive.shatter',
-    p: { lifePct: 20, perRank: 1, radius: 3, radiusPerRank: 0.1, chill: 3 },
+    p: { lifePct: 30, perRank: 2, radius: 3.5, radiusPerRank: 0.1, chill: 3 },
   },
   {
     id: 'wintersBreath',

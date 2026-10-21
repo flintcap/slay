@@ -17629,7 +17629,7 @@
    ]
   },
   {
-   "key": "A Frozen or Brittle enemy you kill bursts into ice: 20% of its maximum life (+1% per rank) as cold damage to everything within 3m (+0.1m per rank), Chilling what it hits for 3s.",
+   "key": "A Frozen or Brittle enemy you kill bursts into ice: 30% of its maximum life (+2% per rank) as cold damage to everything within 3.5m (+0.1m per rank), Chilling what it hits for 3s.",
    "files": [
     "data/skills.ts"
    ]

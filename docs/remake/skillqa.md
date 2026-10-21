@@ -101,8 +101,10 @@ Mage (sk-mage, done):
 - Frozen Orb looks like a shard, not a round orb.
 - The fire tree's icons need a deeper repaint.
 - [x] Pyre Brand has no hit sound. (Its own sear, `skill.fire.brand`.)
-- Splintering Frost may be too weak (20% of the dead enemy's life, +1% a
+- [x] Splintering Frost may be too weak (20% of the dead enemy's life, +1% a
   rank). Compare it with skills in the same tier and make it worth taking.
+  (Now 30% +2% a rank in 3.5m. Combustion, a tier lower, bursts on every
+  kill for 80% of a hit; Charnel Burst, an active, is 45% +4%.)
 - Spell looks in motion and real frame time were not checked.
 
 Rogue (sk-rogue, done):

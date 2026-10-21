@@ -769,8 +769,8 @@ const RULES: Record<string, Contribution> = {
     e.elementPct.cold = (e.elementPct.cold ?? 0) + param(id, 'damagePerRank', 9) * r;
   },
   splinteringFrost: (e, r, id) => {
-    e.shatterPct += param(id, 'lifePct', 20) + param(id, 'perRank', 1) * (r - 1);
-    e.shatterRadius = Math.max(e.shatterRadius, param(id, 'radius', 3) + param(id, 'radiusPerRank', 0.1) * (r - 1));
+    e.shatterPct += param(id, 'lifePct', 30) + param(id, 'perRank', 2) * (r - 1);
+    e.shatterRadius = Math.max(e.shatterRadius, param(id, 'radius', 3.5) + param(id, 'radiusPerRank', 0.1) * (r - 1));
     e.shatterChill = Math.max(e.shatterChill, param(id, 'chill', 3));
   },
   frostbite: (e, r, id) => {
