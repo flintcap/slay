@@ -1,7 +1,10 @@
 /**
  * Times the frame cost of casting each of a class's skills, one at a time.
  *
- *   SLAY_PORT=4309 node tools/check-skillcost.mjs [class] [--frames=20]
+ *   SLAY_PORT=4309 node tools/check-skillcost.mjs [class id] [--frames=20]
+ *
+ * The class is its id (`shadowblade` for the Rogue, `warden` for the Knight).
+ * The first row casts nothing; each skill also prints its excess over it.
  */
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
@@ -38,12 +41,23 @@ await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
 await page.waitForFunction(() => window.SLAY?.debug, null, { timeout: 420000, polling: 500 });
 
 const cls = process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'ranger';
-await page.evaluate(async (c) => {
+// `makeCharacter` falls back to the Knight for a name it does not know (the
+// Rogue is `shadowblade`), which timed the wrong class without a word.
+const made = await page.evaluate(async (c) => {
   localStorage.clear();
   window.SLAY.save.hardReset();
   window.SLAY.debug.makeCharacter(c, 40);
+  const got = window.SLAY.save.account.current?.classId;
+  if (got !== c) return got;
   await window.SLAY.engine.goTo('dungeon', { depth: 3 });
+  return got;
 }, cls);
+if (made !== cls) {
+  console.log(`ERROR: no class "${cls}" (got ${made}). Classes: warden, mage, shadowblade, revenant, ranger, shapeshifter, paladin.`);
+  await browser.close();
+  killServer();
+  process.exit(1);
+}
 await page.waitForFunction(() => window.SLAY.engine.currentSceneId === 'dungeon', null, { timeout: 300000, polling: 500 });
 await page.evaluate(() => window.SLAY.debug.godMode(true));
 
@@ -56,7 +70,11 @@ const ids = await page.evaluate(() => {
 if (!ids.length) console.log('ERROR: no player or no skills');
 const FRAMES = Number(process.argv.find((a) => a.startsWith('--frames='))?.split('=')[1] ?? 20);
 const rows = [];
-for (const id of ids) {
+// The same frames with nothing cast first: under software drawing a plain
+// dungeon frame is over a second, so a skill's cost is its excess over this.
+const BASE = '(no cast)';
+let base = 0;
+for (const id of [BASE, ...ids]) {
   const r = await page.evaluate(
     async ({ id, frames }) => {
       const scene = window.SLAY.engine.currentScene;
@@ -70,7 +88,7 @@ for (const id of ids) {
       let last = performance.now();
       // Cast repeatedly: a one-off allocation hides, a per-cast stall does not.
       for (let i = 0; i < frames; i++) {
-        if (i % 5 === 0) {
+        if (i % 5 === 0 && id !== '(no cast)') {
           pl.cooldowns.clear();
           pl.mana = pl.stats.mana;
           try {
@@ -87,11 +105,16 @@ for (const id of ids) {
     },
     { id, frames: FRAMES },
   );
+  if (id === BASE) {
+    base = r.worst;
+    console.log(String(r.worst).padStart(8) + 'ms  ' + r.id);
+    continue;
+  }
   rows.push(r);
-  console.log(String(r.worst).padStart(8) + 'ms  ' + r.id);
+  console.log(String(r.worst).padStart(8) + 'ms  ' + r.id + `  (+${Math.max(0, r.worst - base).toFixed(1)})`);
 }
 rows.sort((a, b) => b.worst - a.worst);
-console.log(`\nworst: ${rows.slice(0, 5).map((r) => `${r.id} ${r.worst}ms`).join(', ')}`);
+console.log(`\nworst: ${rows.slice(0, 5).map((r) => `${r.id} ${r.worst}ms (+${Math.max(0, r.worst - base).toFixed(1)})`).join(', ')}`);
 await browser.close();
 killServer();
 process.exit(0);
