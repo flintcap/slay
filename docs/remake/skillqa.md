@@ -99,7 +99,8 @@ Mage (sk-mage, done):
 - Dragon's Breath has no fire blast of its own; Winter's Breath has no
   crystal fan.
 - Frozen Orb looks like a shard, not a round orb.
-- The fire tree's icons need a deeper repaint.
+- The fire tree's icons need a deeper repaint. (sk-mage also: Sparkbolt
+  and Chain Lightning differ only by the arc.)
 - [x] Pyre Brand has no hit sound. (Its own sear, `skill.fire.brand`.)
 - [x] Splintering Frost may be too weak (20% of the dead enemy's life, +1% a
   rank). Compare it with skills in the same tier and make it worth taking.
@@ -147,7 +148,9 @@ Paladin (sk-paladin, done):
   x0.6 at 30%. The tooltip says so.)
 - Never seen in motion: every new swing, the rushes (Doorbreaker,
   Confession Thrust, Feint, Last Rites), The Last Hour's bell, Hurl the
-  Censer's chain. Frame time not measured.
+  Censer's chain. Frame time not measured. (sk-paladin fears Doorbreaker's
+  lane most, a dust look every 0.05 s while running, then the great bell's
+  landing.)
 
 Revenant (sk-revenant, done):
 - Never seen in motion: Bone Storm, Bone Cage, Gravewalk, Soul Cage, Soul
@@ -164,6 +167,9 @@ Revenant (sk-revenant, done):
   sound, and fix the checker rule if it is what stops it. (Each has a new
   cast take and plays its burst where it goes off; Doom's blast is its
   own take. `check-skillsound` allows a hit for these three effects.)
+- [x] (sk-revenant) Reassemble keeps a minion sound it can never play (the
+  checker asks every `minion` skill for one). (Row and take removed; the
+  checker no longer asks it of `minion.heal`, which raises nothing.)
 - [x] Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
   unused by any Revenant skill. Remove them if nothing else names them.
   (Removed; every skill's icon plan is the same before and after.)
@@ -175,6 +181,9 @@ Ranger (sk-ranger, done):
 - [x] sk-ranger traced the `check-curve` "hit report failed" line: a shared
   line in `CombatFeel.onKill` compares the test harness's stand-in
   `fxScale` to a number. Fix the stand-in or the compare. (e75c312.)
+- [x] (sk-ranger) `ASSETS.md` and `tools/audio/ledger.json` disagree on six
+  `player.female.hurt*` rows. (They agree now: both credit the same pack;
+  the audio build rewrites them from the ledger with no change.)
 - [x] `check-beats` fails on other classes' skills. Run it and fix each.
   (Every failure was the sweep, not a skill: it now counts the cast and
   travel beats from the gesture's release or contact frame, waits out what

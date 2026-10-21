@@ -146,7 +146,7 @@ export const SKILL_SOUNDS: Readonly<Record<string, SkillSound>> = {
   claySentinel: s('skill.clay.raise', null, 'skill.clay.slam'),
   boneCage: s('skill.bone.cage'),
   boneStorm: s('skill.bone.storm'),
-  reassemble: s('skill.bone.reassemble', null, 'skill.bone.hack'),
+  reassemble: s('skill.bone.reassemble'),
   boneNova: s('skill.bone.nova'),
   grandOssuary: s('skill.bone.host', null, 'skill.bone.horde'),
   weaken: s('skill.curse.weaken'),

@@ -351,7 +351,6 @@ export const SKILL_TAKES = {
   // Steel Waltz: a light step and the first two cuts; the fifth bites deep.
   'skill.swing.waltz': x('swish', 'swish-12.wav', { rate: 1.05, mix: [x('kr', 'cloth1.ogg', { gain: -7 }), x('swish', 'swish-5.wav', { delay: 150, rate: 1.1, gain: -1 })] }),
   'skill.hit.waltz': x('wpn', 'sword-knife-clash-22.wav', { mix: [x('kr', 'knifeSlice2.ogg', { delay: 60, rate: 1.1, gain: -3 })] }),
-  'skill.bone.hack': x('swish', 'swish-11.wav', { rate: 0.9, mix: [x('mw', 'wood_cracking_04.ogg', { rate: 1.3, hp: 400, gain: -4 }), x('r80', 'wood_03.ogg', { rate: 1.3, gain: -3 })] }),
   'skill.bone.horde': x('swish', 'swish-6.wav', { rate: 0.8, mix: [x('r80', 'stones_02.ogg', { rate: 1.4, gain: -5 }), x('ki', 'impactPunch_medium_003.ogg', { delay: 60, gain: -5 })] }),
   'skill.arrow.cripple': x('ki', 'impactWood_light_004.ogg', { rate: 0.8, mix: [x('mw', 'wood_cracking_01.ogg', { rate: 1.4, hp: 500, gain: -6 })] }),
   'skill.arrow.twin': x('ki', 'impactWood_light_001.ogg', { rate: 1.05, mix: [x('ki', 'impactWood_light_003.ogg', { delay: 90, rate: 0.95, gain: -2 })] }),

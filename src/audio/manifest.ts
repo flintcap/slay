@@ -227,7 +227,6 @@ export const SAMPLE_COUNTS: Record<string, number> = {
   "skill.bone.armor": 1,
   "skill.bone.bolt": 1,
   "skill.bone.cage": 1,
-  "skill.bone.hack": 1,
   "skill.bone.horde": 1,
   "skill.bone.host": 1,
   "skill.bone.mage": 1,

@@ -895,7 +895,6 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.bone.armor/01.ogg | https://opengameart.org/content/bones-rattle | congusbongus + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) | CC0 |
 | sounds/skill.bone.bolt/01.ogg | https://opengameart.org/content/sand-spell | qubodup | CC0 |
 | sounds/skill.bone.cage/01.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + congusbongus (opengameart.org/content/bones-rattle) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
-| sounds/skill.bone.hack/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/100-cc0-metal-and-wood-sfx) + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) | CC0 |
 | sounds/skill.bone.horde/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-rpg-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.bone.host/01.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + congusbongus (opengameart.org/content/bones-rattle) + cinameng (opengameart.org/content/rumble-fx) | CC0 |
 | sounds/skill.bone.mage/01.ogg | https://opengameart.org/content/bones-rattle | congusbongus + qubodup (opengameart.org/content/earth-element-magic-spell) + qubodup (opengameart.org/content/ghost-breath) | CC0 |
