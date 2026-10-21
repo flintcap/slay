@@ -280,14 +280,24 @@ const mgfireball: Glyph = (x, t) => {
 
 /** Inferno Stream: a jet of fire pouring from a bright source and widening. */
 const mgstream: Glyph = (x, t) => {
-  glow(x, 70, 58, 58, t.glow, 0.55);
-  const dir = Math.PI * 0.32;
-  // Three layered tongues, the outer ones fanned, all from the one mouth.
-  tongue(x, t, 22, 96, 0.82, dir - 0.2, 1.6, 0.35);
-  tongue(x, t, 22, 96, 0.82, dir + 0.2, 1.6, 0.35);
-  tongue(x, t, 22, 96, 0.9, dir, 1.75, 0.4);
-  energy(x, circleP(22, 98, 13), t, 22, 98, 15, 0.8);
-  glint(x, 22, 98, 15, 0xffffff, 1);
+  glow(x, 76, 52, 58, t.glow, 0.55);
+  // A wedge of fire, narrow at the mouth and widening as it pours out, its
+  // far edge breaking into licks of flame.
+  const ox = 18;
+  const oy = 104;
+  const ang = -Math.PI * 0.25;
+  const P = (d: number, side: number): Pt => [ox + Math.cos(ang) * d - Math.sin(ang) * side, oy + Math.sin(ang) * d + Math.cos(ang) * side];
+  const edge: Pt[] = [P(4, -5)];
+  for (let i = 0; i <= 6; i++) {
+    const k = i / 6;
+    edge.push(P(92 + (i % 2 ? 14 : 0) - Math.abs(k - 0.5) * 20, -40 + 80 * k));
+  }
+  edge.push(P(4, 5));
+  energy(x, smoothP(edge, 0.35), t, ox + 14, oy - 14, 110, 0.32);
+  // The core of the stream, hotter, down its middle.
+  energy(x, smoothP([P(6, -3), P(70, -14), P(84, 0), P(70, 14), P(6, 3)], 0.4), t, ox + 10, oy - 10, 80, 0.5);
+  energy(x, circleP(ox, oy, 11), t, ox, oy, 13, 0.8);
+  glint(x, ox, oy, 14, 0xffffff, 1);
 };
 
 /** Kindling: two crossed logs just catching, a crit spark flaring off them. */
@@ -428,8 +438,8 @@ const mgcore: Glyph = (x, t) => {
 const mgdragon: Glyph = (x, t) => {
   glow(x, 84, 70, 52, t.glow, 0.55);
   // The gout first, so the jaws sit over its root.
-  tongue(x, t, 56, 76, 0.66, Math.PI / 2 - 0.12, 1.3, 0.4);
-  tongue(x, t, 56, 80, 0.5, Math.PI / 2 + 0.22, 1.25, 0.45);
+  tongue(x, t, 54, 76, 0.8, Math.PI / 2 - 0.14, 1.3, 0.4);
+  tongue(x, t, 54, 80, 0.62, Math.PI / 2 + 0.24, 1.25, 0.45);
   // Horns swept back.
   obj(x, smoothP([[26, 40], [10, 16], [8, 8], [20, 20], [38, 36]], 0.4), HORN, t, [8, 8], [38, 40], 0.5);
   obj(x, smoothP([[36, 34], [30, 12], [32, 4], [40, 18], [46, 32]], 0.4), HORN, t, [30, 4], [46, 34], 0.5);
@@ -458,7 +468,7 @@ const mgdragon: Glyph = (x, t) => {
 /** Cataclysm: three blazes, each lit from the last by an arc of fire. */
 const mgchain: Glyph = (x, t) => {
   glow(x, 64, 64, 58, t.glow, 0.5);
-  const spots: readonly [number, number, number][] = [[30, 92, 0.52], [70, 64, 0.4], [100, 30, 0.3]];
+  const spots: readonly [number, number, number][] = [[30, 96, 0.62], [70, 68, 0.48], [102, 36, 0.38]];
   for (let i = 0; i < spots.length - 1; i++) {
     const [ax, ay] = spots[i]!;
     const [bx, by] = spots[i + 1]!;
