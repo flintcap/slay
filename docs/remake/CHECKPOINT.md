@@ -619,6 +619,25 @@ Update this file and push it after every finished step.
   and unique elemental damage multiplies with the skill pool (Stormbound
   Sigil alone x2.4). Monsters unchanged. potions, levels, starter-power,
   setpower, passives, economy, rankpower, controls pass.
+- #172 Too-easy cells and the depth-12 Ranger (owner: "Apply the fixes",
+  weaken the Mage combo). Mage combo, three cuts: energy's elemental bonus
+  joins the gear pool instead of multiplying it (`Stats.computeStats`);
+  energy past 60 points buys it at strength's rate (`enrElementalFull`,
+  `energyElementalPct`); a set piece's added elemental damage lifts no
+  higher than a unique's top roll at its level, the rest of its worth going
+  to its other lines (`Loot.lineFill`, per line now; owned pieces follow
+  through `refreshFixedLines`). Depth-40 Mage: top skill 5.2M to 1.3M a
+  second, bosses 1/1/1s to 8/2/5s; still 2x the next class (Revenant,
+  Ranger, Paladin 0.6-0.7M). Ranger: War Bow level 16 to 12 (no bow a
+  Ranger can draw sat between the Long Bow at 8 and 16, so depth 12 fought
+  with half a melee weapon); depth 12 packs 111/40/36s to 22/8/8s, bosses
+  0-1/3 to 2/3. check-curve bot: fills cooldowns with its best skill that
+  has none (Pierce Shot, Inferno) before the basic attack; casters used to
+  stand idle. That alone moved Mage 25 from 57/25/11s to 11/8/3s. Chase
+  curve after: 31 of 35, nothing walled; untouched Mage 25 and 40, Revenant
+  5 and 40 (lowest life 87-90%, the line is 85%). Monsters unchanged.
+  Static checks: 85 of 86 pass. check-tactics fails "big telegraphs are
+  staggered" (1 of 16 lands within 0.2s of another) on 1260e83 too: older.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

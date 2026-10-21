@@ -383,7 +383,10 @@ wpn('bow.shadow', tr('Shadow Bow'), 'bow', 2, 58, 30, 96, 41, 79, 1.35, 'bow.lon
   imp: [{ stat: 'critChance', min: 4, max: 8 }],
 });
 
-wpn('bow.war', tr('War Bow'), 'bow', 2, 16, 18, 40, 16, 32, 1.25, 'bow.war', 'wood.ash');
+// Level 12, not 16: no other bow a Ranger can draw sits between the Long Bow
+// (8) and here, and the depth-12 Ranger fought with half a melee hero's
+// weapon (check-curve). Its damage matches the Great Sword of the same level.
+wpn('bow.war', tr('War Bow'), 'bow', 2, 12, 18, 40, 16, 32, 1.25, 'bow.war', 'wood.ash');
 wpn('bow.double', tr('Double Bow'), 'bow', 2, 41, 30, 72, 35, 67, 1.25, 'bow.war', 'metal.steel', { ornate: 0.24 });
 wpn('bow.diamond', tr('Diamond Bow'), 'bow', 2, 66, 42, 108, 53, 103, 1.25, 'bow.war', 'crystal.gem', {
   ornate: 0.42,

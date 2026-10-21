@@ -829,27 +829,52 @@ export function rareRoll(stat: StatKey, L: number): number {
 /** A set piece, before its bonuses, is worth this many usual rare lines. */
 export const SET_PIECE_LINES = 7;
 
+/** Added elemental damage: every spell carries it, times every damage bonus. */
+const ADDED_ELEMENTAL = new Set<StatKey>(['fireDamage', 'coldDamage', 'lightningDamage', 'poisonDamage', 'arcaneDamage']);
+
 /**
- * How much an item's good written lines are lifted so they are worth `target`
- * usual rare lines at their own item level. Never below 1: a strong item keeps
- * its numbers.
+ * How much each of an item's good written lines is lifted so the item is
+ * worth `target` usual rare lines at its own item level. Never below 1: a
+ * strong item keeps its numbers. Skill levels stay as written. Added
+ * elemental damage lifts no higher than a unique's top roll at that level
+ * (`statCurve`); what it cannot take goes to the other lines. Lifted past it,
+ * one set amulet more than doubled a deep caster's damage (check-curve).
  */
-const LINE_FILL = new Map<string, number>();
-function lineFill(id: string, mods: ReadonlyArray<{ stat: StatKey; min: number; max: number }>, ilvl: number, target: number): number {
-  let f = LINE_FILL.get(id);
-  if (f !== undefined) return f;
+const LINE_FILL = new Map<string, number[]>();
+function lineFill(id: string, mods: ReadonlyArray<{ stat: StatKey; min: number; max: number }>, ilvl: number, target: number): number[] {
+  let fills = LINE_FILL.get(id);
+  if (fills) return fills;
   let fixed = 0;
-  let grow = 0;
-  for (const m of mods) {
+  const grow: Array<{ i: number; lines: number; cap: number }> = [];
+  mods.forEach((m, i) => {
     const mid = (m.min + m.max) / 2;
-    if (mid <= 0) continue;
+    if (mid <= 0) return;
     const lines = mid / rareRoll(m.stat, ilvl);
     if (m.stat === 'skillLevels') fixed += lines;
-    else grow += lines;
+    else grow.push({ i, lines, cap: ADDED_ELEMENTAL.has(m.stat) ? Math.max(1, statCurve(m.stat, ilvl) / m.max) : Infinity });
+  });
+  // Lines that hit their cap stop at it; the rest share what is left.
+  let f = 1;
+  for (let pass = 0; pass <= grow.length; pass++) {
+    let capped = 0;
+    let free = 0;
+    for (const g of grow) {
+      if (g.cap < f) capped += g.lines * g.cap;
+      else free += g.lines;
+    }
+    const next = free > 0 ? Math.max(1, (target - fixed - capped) / free) : 1;
+    if (next === f) break;
+    f = next;
   }
-  f = grow > 0 ? Math.max(1, (target - fixed) / grow) : 1;
-  LINE_FILL.set(id, f);
-  return f;
+  fills = mods.map(() => 1);
+  for (const g of grow) fills[g.i] = Math.min(f, g.cap);
+  LINE_FILL.set(id, fills);
+  return fills;
+}
+
+/** A written line's value after its lift. */
+function liftLine(stat: StatKey, value: number, fill: number): number {
+  return stat !== 'skillLevels' && value > 0 ? Math.max(1, Math.round(value * fill)) : value;
 }
 
 /**
@@ -866,10 +891,9 @@ export function buildSetPiece(piece: SetPieceDef, rng: Rng): Item {
   item.setId = piece.setId;
   item.uniqueId = piece.id;
   item.mods = rollImplicits(base, rng);
-  const fill = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
+  const fills = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
   piece.mods.forEach((mod: { stat: StatKey; min: number; max: number }, i: number) => {
-    let value = rollValue(mod.min, mod.max, rng);
-    if (mod.stat !== 'skillLevels' && value > 0) value = Math.max(1, Math.round(value * fill));
+    const value = liftLine(mod.stat, rollValue(mod.min, mod.max, rng), fills[i]);
     item.mods.push({ affixId: `set.${piece.id}.${i}`, stat: mod.stat, value, tier: 0, kind: 'prefix' });
   });
   (EXTRA_LINES[piece.id] ?? []).forEach(([stat, min, max], i) => item.mods.push(fixedLine(`set.${piece.id}.x${i}`, stat, min, max, rng)));
@@ -893,14 +917,13 @@ function fixedSpecs(item: Item): { specs: FixedSpec[]; ilvl: number; rarity: Ite
   if (item.setId) {
     const piece = getSetPiece(item.uniqueId);
     if (!piece) return null;
-    const fill = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
-    const lift = (stat: StatKey, v: number): number => (stat !== 'skillLevels' && v > 0 ? Math.max(1, Math.round(v * fill)) : v);
+    const fills = lineFill(`set:${piece.id}`, piece.mods, piece.ilvl, SET_PIECE_LINES);
     const specs: FixedSpec[] = piece.mods.map((m: { stat: StatKey; min: number; max: number }, i: number) => ({
       affixId: `set.${piece.id}.${i}`,
       stat: m.stat,
       kind: 'prefix' as const,
-      lo: lift(m.stat, m.min),
-      hi: lift(m.stat, m.max),
+      lo: liftLine(m.stat, m.min, fills[i]),
+      hi: liftLine(m.stat, m.max, fills[i]),
     }));
     (EXTRA_LINES[piece.id] ?? []).forEach(([stat, lo, hi], i) => specs.push({ affixId: `set.${piece.id}.x${i}`, stat, kind: 'prefix', lo, hi }));
     return { specs, ilvl: piece.ilvl, rarity: 'set', sockets: piece.sockets ?? 0 };

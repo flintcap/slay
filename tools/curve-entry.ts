@@ -14,7 +14,8 @@
  * runner, real monsters and real minions.
  *
  * The hero plays like a decent player: it alternates its two best skills (so
- * combos land), keeps a summoner's army up, falls back on the basic attack,
+ * combos land), keeps a summoner's army up, fills their cooldowns with its
+ * best skill that has none (or the basic attack, if that hits harder),
  * steps out of markers that are about to land (into a safe ring when there is
  * one), backs off when something reaches a caster, and drinks one of five
  * potions (35% of life, 5s apart) when low.
@@ -602,6 +603,16 @@ function fight(
   const owned = SKILLS.filter((s) => (player.character.skills[s.id] ?? 0) > 0 && isDamageActive(s))
     .sort((x, y) => y.tier - x.tier || (player.character.skills[y.id] ?? 0) - (player.character.skills[x.id] ?? 0));
   const rotation = owned.slice(0, 2);
+  // Between the rotation's cooldowns a player spams its best skill that has
+  // none (an archer's Pierce Shot), not the basic attack, when it hits harder.
+  const est = (s: SkillDef): number => estimateSkill(player.character, player.stats, s.id)?.dps ?? 0;
+  // The plain weapon attack, not whatever sits on right click.
+  const plain = estimateAttack({ ...player.character, primaryAttack: null }, player.stats)?.dps ?? 0;
+  const filler =
+    owned
+      .filter((s) => !rotation.includes(s) && !((s.cooldown?.(player.character.skills[s.id] ?? 1) ?? 0) > 0))
+      .sort((x, y) => est(y) - est(x))
+      .find((s) => est(s) > plain) ?? null;
   const pets = SKILLS.filter((s) => (player.character.skills[s.id] ?? 0) > 0 && isPet(s));
   let nextPet = 0;
   let kiteCd = 0;
@@ -753,6 +764,10 @@ function fight(
         acts.cast++;
       }
     }
+    if (!acted && filler && nd <= reachOf(filler) + reachPad && runner.cast(filler.id, player, target, a.ctx, a.enemies, null)) {
+      acted = true;
+      acts.cast++;
+    }
     // The basic attack: a swing with a blade, a shot or a bolt with anything else.
     const basicReach = weaponStyle(player) === 'melee' ? 2.1 : 9;
     if (!acted && nd <= basicReach + reachPad) {
@@ -778,7 +793,7 @@ function fight(
   player.dispose();
   if (trace) {
     const st = player.stats;
-    const owned = rotation.map((r) => `${r.id}:${player.character.skills[r.id]}`).join(',');
+    const owned = [...rotation, ...(filler ? [filler] : [])].map((r) => `${r.id}:${player.character.skills[r.id]}`).join(',');
     console.error(`  L${player.character.level} life ${Math.round(st.life)} def ${Math.round(st.defense)} res f${Math.round(st.fireResist)} dmg ${Math.round(st.minDamage)}-${Math.round(st.maxDamage)} | rot ${owned} | acts ${JSON.stringify(acts)} combos ${combos} | biggest hit ${Math.round(biggest)} total ${Math.round(taken)} in ${t.toFixed(1)}s [${[...byAbility].sort((x, y) => y[1] - x[1]).slice(0, 4).map(([k, v]) => `${k} ${Math.round(v)}`).join(', ')}] | foes ${a.enemies.length} left ${a.enemies.filter((e) => e.alive).map((e) => `${e.monsterId}@${Math.round(e.life)}/${Math.round(e.maxLife)}:${Math.round(Math.hypot(e.root.position.x - player.position.x, e.root.position.z - player.position.z))}m`).join(' ')} life ${a.enemies.slice(0, 3).map((e) => Math.round(e.maxLife)).join('/')}`);
   }
   return {

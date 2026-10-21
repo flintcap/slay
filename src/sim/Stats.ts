@@ -117,6 +117,13 @@ export const DERIVE = {
    * (1.3 until Wave 4; raised with the Mage's curve fix, check-curve.)
    */
   enrElementalPct: 1.6,
+  /**
+   * Energy past this many points buys elemental damage at strength's rate
+   * (`strDamagePct`). The high rate is for the young mage whose wand does
+   * nothing; a deep caster stacking energy on sets and uniques multiplied it
+   * into one-second boss kills (check-curve, depth 40).
+   */
+  enrElementalFull: 60,
   /** Base attack rating everyone has. */
   baseAttackRating: 20,
   /** Base unarmed damage. */
@@ -549,12 +556,12 @@ export function computeStats(c: Character): Stats {
     status.enhancedDamage,
     strengthDamage,
   );
-  const energyDamage = out.energy * DERIVE.enrElementalPct;
+  // Energy's bonus shares the gear pool: the two added, they no longer
+  // multiply into each other (check-curve, the depth-40 Mage).
   out.elementalDamagePct = combinePercent(
-    gear.elementalDamagePct,
+    gear.elementalDamagePct + energyElementalPct(out.energy),
     skills.elementalDamagePct,
     status.elementalDamagePct,
-    energyDamage,
   );
   const defPct = combinePercent(gear.enhancedDefense, skills.enhancedDefense, status.enhancedDefense);
   out.enhancedDefense = defPct;
@@ -587,6 +594,12 @@ export function computeStats(c: Character): Stats {
   out.skillLevels = Math.round(out.skillLevels);
 
   return out;
+}
+
+/** Elemental damage percent from energy: the full rate up to `enrElementalFull` points, strength's rate past it. */
+export function energyElementalPct(energy: number): number {
+  const full = Math.max(0, Math.min(energy, DERIVE.enrElementalFull));
+  return full * DERIVE.enrElementalPct + Math.max(0, energy - full) * DERIVE.strDamagePct;
 }
 
 /** Movement speed in world units per second, from the percentage stat. */
