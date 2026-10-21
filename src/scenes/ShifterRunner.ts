@@ -903,6 +903,8 @@ const reapingSwipe: Handler = (k, c) => {
       // Struck from beyond it, so its flinch goes in with the drag.
       if (!k.hit(t, () => c.makePacket(bonus), 'heavy', q.x + dx / d, q.z + dz / d)) continue;
       any = true;
+      // Blood thrown on round the way the paws went.
+      beastImpact(k.effects, 'bear', q, new THREE.Vector3(dz / d, 0, -dx / d), false);
       const go = Math.min(pull, d - (1 + t.hitRadius));
       if (go > 0.1) fling(k, t, -dx, -dz, go, 0.2, 0);
     }

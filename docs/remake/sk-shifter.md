@@ -76,7 +76,7 @@ the first browser check.
   skill. Owner rule: damage per hit never
   changes because of speed. A skill you slow down keeps the damage per hit
   it has today.
-- [ ] 4. Build. Make the changes, replacements and new skills from the
+- [x] 4. (sk-shifter: build, blows on their keys, runs by distance, Ravening and Many Mouths) Build. Make the changes, replacements and new skills from the
   plan. Every skill, old and new:
   - works, with its tooltip telling the truth (`check-skillparams`,
     `check-stattext`)
@@ -112,17 +112,17 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 3 are done (audit, kit plan, speed table under "Notes for
-resume"; every active has its `timing` / `attackTime` / `castTime`, the
-beast pace is `FORM_PACE` in `data/shifterPower.ts`, read through
-`shiftHands` in `SkillRunner.cast` / `basicAttack` and `formHands` in
-`ui/AttackEstimate.paceFor`). Next, milestone 4 build order: multi-hit on
-gesture keys (Rake, Worry, Bear Hug: `cuts` on their gestures and a
-`cuts` helper on the `ShiftKit`), Killing Dance (crowd, runs), Pounce /
-Lunge / Overrun by distance (`travelTime`), Alpha and Call the Pack, Slink
-and Night Hunt (free cost in `SkillRunner.cast`), Hammerfall and Reaping
-Swipe flat (+ pull), then Ravening and Many Mouths (old ids refunded by
-`repairCharacter`), then beast basic sounds, reach and impacts.
+Milestones 1 to 4 are done (see "Milestone 4: what was built" under
+"Notes for resume"). Next, milestone 5 icons: repaint every `ss-*` plan in
+`src/art/icons/shifterIcons.ts` so no two skills in the game share a
+picture (the audit's exact copies: Hamstring = gash, Stalker = footprints,
+Feral Grace = speed, Night Hunt = moon^aura like Vespers, Pack Blood =
+siphon, Alpha = crown-shield, Thick Hide = crest, Fat Reserves = undying,
+Bruiser = fist, Scar Tissue = scar, Old Scars = crack-cold; and the two new
+keys `ss-ravening`, `ss-manymouths`), each tree's own accent, sharp at
+icon size; `check-iconmatch`. Then milestone 6 (`clawTrails` allocates a
+vector a frame; warmup stand-ins for `ss.impact.*` and `ss.raven.spray`),
+7 (check-skills and check-curve once each), 8 (handover).
 
 ## Notes for resume
 
@@ -492,6 +492,53 @@ Multi-hit skills (Rake, Killing Dance, Worry, Ravening, Bear Hug) take
 longer when a rank or a unique adds hits (time x hits / base hits), so a
 blow never comes quicker; damage per hit stays as it is.
 
+### Milestone 4: what was built
+
+- Kit (`SkillRunner.shiftKit`): `swing` returns how many it hit; `area`
+  can land `flat`; `hit` strikes one body from a chosen side; `cuts` reads
+  the gesture's later blows (`cutTimes`); `raise` brings a wolf with no
+  summoning circle (`addTurret` `extra.quiet`). `meleeSwing` returns its
+  hit count.
+- In a form the hero's weapon sound is `claw` (`weaponSoundOf`;
+  `CombatFeel` lands it as `hit.flesh`): the basic attack whooshes as the
+  beast (`beastWhoosh`: cat `swing.light`, wolf `monster.beast.attack`,
+  bear `swing.heavy`), every beast blow draws `beastImpact` (blood and the
+  beast's hair, `ss.impact.<form>`) instead of the metal spark, and the
+  bear's basic attack is 2.0 rad wide and 2.7 m long (`formSwing`).
+- Multi-blow skills land each blow on its gesture key (`blowTimes`: the
+  contact frame, then `Spec.cuts`, extras at the gesture's spacing) and
+  stretch with added blows (`stretched`). Gestures with cuts: Rake (third
+  blow both paws crossed), Worry (three shakes and the throw), Bear Hug
+  (three squeezes), Ravening (five bites).
+- Leaps and runs go by distance (`travelTime`): Pounce coils, then leaps
+  at 14 m/s; Lunge runs at 18 m/s (`WOLF_RUN`); Overrun charges at 14 m/s
+  and strikes each body as the bear reaches it, thrown off its side of the
+  lane; Killing Dance runs to each spot (dash capped near 20 m/s by a
+  shorter step round). A dodge stops a trip where it is
+  (`Shapeshift.travel` `id`). The motif lands with the landing
+  (`ShiftCast.lands`).
+- Throws are real moves (`fling`, the monster's `motionOverride`, wall
+  checked, bosses / objects / juggernauts / moving bodies untouched): Lunge
+  1.5 m back, Worry's wrenches and its 2.5 m throw, Overrun 3 m aside,
+  Reaping Swipe's pull 1.2 m (+0.04 a rank, new params `pull` / `pullR`).
+  The packet's own knockback is dropped on those blows.
+- Slink: only a Feral strike (not Slink, Night Hunt or Shadowcat) uses it:
+  +60% (+8% a rank) and a sure critical strike. Night Hunt: the cost is
+  skipped where it is taken (`shiftFree` in `SkillRunner.cast`), no refund.
+- Call the Pack: the share grows once (`BURST_POWER.callThePack`, the
+  handler reads the base share), Alpha's damage and life go on, each wolf
+  rises out of its own fog with its eyes first (`TeethFX.wolfRise`).
+- Hammerfall lands flat to its edge. Bear Hug heals only on a squeeze that
+  lands. Hamstring, Throat Tear and Snap draw their look only on a hit.
+- Ravening replaces Go for the Throat (sounds renamed
+  `skill.shift.ravening(.hit)` in place, with `manifest.ts`, the ledger,
+  `shifter-takes.mjs` and `ASSETS.md`); Many Mouths replaces Scent of
+  Weakness (`PassiveEffects.manyMouthsPct`, the status `ss.manyMouths`
+  kept by `tickShiftPack` from `SkillRunner.update`). Old ranks refund
+  through `repairCharacter` (drops unknown ids and their hotbar keys).
+  grep goForTheThroat / scentOfWeakness / ss-gofor / ss-scent in src, tools,
+  locales, public, ASSETS.md: 0.
+
 ## For the owner to test
 
 (empty)
@@ -502,6 +549,15 @@ blow never comes quicker; damage per hit stays as it is.
   `Enemy.takeHit` pushes knockback x 0.35, so every "knocks back N m" reads
   about three times too far.
 - HUD text for Bristle shows the base 30% reflect, not the ranked magnitude.
+- A Shapeshifter skill's blow lands at 35% of its action (skillcore's
+  `SKILL_BLOW_CONTACT`), so Rake's first swipe waits about 0.3 s: look at
+  whether the cat's flurry feels quick enough in motion.
+- Killing Dance replays its gesture per blow (`animator.play` with the
+  blow's own span); look for a hitch between blows.
+- Worry's wrench (0.35 m) and Reaping Swipe's pull use the monster's
+  `motionOverride`: look that a pulled or wrenched body never ends inside a
+  wall or prop (the path is checked with `wallStop`, the end point is not
+  checked against props smaller than the step).
 
 ## Handover
 
