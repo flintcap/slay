@@ -31,7 +31,7 @@
  *   --seeds=3                 tries per cell (default 3)
  *   --trace                   the hero's sheet, build and what hurt it
  *   --blame                   with --trace: what each worn piece adds to the top skill and life
- *   --hp=1.15:1.17:1.1:1.12   try other hero power rates: damage, life, early damage, early life (sim/HeroPower.ts)
+ *   --hp=1.1525:1.17:1.1015:1.12   try other hero power rates: damage, life, early damage, early life (sim/HeroPower.ts)
  *   --dmg=2 --life=2          scale the hero outright, to see what a cell needs
  *   --kit=rare                rares and the milestone caches only, no sets, uniques
  *                             or charms found on the way (the old model)

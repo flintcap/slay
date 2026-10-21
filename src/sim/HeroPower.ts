@@ -31,8 +31,13 @@ import type { Stats } from '../types';
 
 /** The full rates count from here. */
 export const FROM_LEVEL = 7;
-/** Damage multiplier per level past `FROM_LEVEL`. */
-export let DAMAGE_PER = 1.15;
+/**
+ * Damage multiplier per level past `FROM_LEVEL`. Raised from 1.15 when every
+ * percent bonus went into one pile (`Combat.addBonus`): the bonuses stopped
+ * compounding, and the classes got the damage back here, not from weaker
+ * monsters (check-curve: total fight time back under the old).
+ */
+export let DAMAGE_PER = 1.1525;
 /** Life multiplier per level past `FROM_LEVEL`. */
 export let LIFE_PER = 1.17;
 /**
@@ -42,7 +47,7 @@ export let LIFE_PER = 1.17;
  * much a level from the start. The full rates pass these near level 20 (damage) and 23
  * (life) and rule from there, so the deep curve is the same.
  */
-export let EARLY_DAMAGE_PER = 1.1;
+export let EARLY_DAMAGE_PER = 1.1015;
 export let EARLY_LIFE_PER = 1.12;
 
 /** For tuning tools only: try other rates. */

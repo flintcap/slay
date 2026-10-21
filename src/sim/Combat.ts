@@ -143,6 +143,11 @@ export interface RollOpts {
    * added to `elementalDamagePct`. Ignored on physical packets.
    */
   elemPct?: number;
+  /**
+   * More damage for this skill alone (a skill-bending unique), joining the
+   * hit's one pile on both halves.
+   */
+  morePct?: number;
 }
 
 const ELEMENTAL_FLAT: ReadonlyArray<[DamageType, keyof Stats]> = [
@@ -164,8 +169,9 @@ export function flatElementalTotal(stats: Stats): number {
  * Rolls a damage packet from an attacker's stats.
  *
  * Physical hits carry their flat elemental adds along as one number; elemental
- * skills convert the whole swing to their element and then apply
- * `elementalDamagePct` once to the combined value.
+ * skills convert the whole swing to their element. Every percent bonus sits
+ * in one pile (`bonusPiles`) and the packet remembers it (`pile`), so a bonus
+ * added later on the way to the target adds to it (`addBonus`).
  */
 export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamagePacket {
   const scale = opts.scale ?? 1;
@@ -173,29 +179,23 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
 
   const min = Math.max(0, stats.minDamage);
   const max = Math.max(min, stats.maxDamage);
-  const weapon = rng.range(min, max + 1) * (1 + stats.enhancedDamage / 100);
+  const raw = rng.range(min, max + 1);
   const flatElem = flatElementalTotal(stats);
-  const elemPct = 1 + (stats.elementalDamagePct + (type === 'physical' ? 0 : opts.elemPct ?? 0)) / 100;
-
-  let amount: number;
+  const piles = bonusPiles(stats, type, opts.elemPct ?? 0, (opts.area ? stats.areaDamagePct : 0) + (opts.morePct ?? 0));
+  let amount = raw * piles.weapon + flatElem * piles.flat;
+  const pile = raw + flatElem > 0 ? amount / (raw + flatElem) : 1;
   let parts: DamagePacket['parts'];
-  if (type === 'physical') {
-    amount = weapon + flatElem * elemPct;
+  if (type === 'physical' && flatElem > 0 && amount > 0) {
     // The elemental adds ride on the swing as one packet, but they are still
     // fire, cold or poison: remember their share so the number can say so.
     // Shares do not change with scale or crit, so they are taken here.
-    if (flatElem > 0 && amount > 0) {
-      for (const [el, key] of ELEMENTAL_FLAT) {
-        const v = stats[key] ?? 0;
-        if (v > 0) (parts ??= {})[el] = (v * elemPct) / amount;
-      }
+    for (const [el, key] of ELEMENTAL_FLAT) {
+      const v = stats[key] ?? 0;
+      if (v > 0) (parts ??= {})[el] = (v * piles.flat) / amount;
     }
-  } else {
-    amount = (weapon + flatElem) * elemPct;
   }
 
   amount *= scale;
-  if (opts.area) amount *= 1 + stats.areaDamagePct / 100;
 
   const critChance = Math.max(0, Math.min(95, stats.critChance + (opts.bonusCrit ?? 0)));
   const crit = opts.forceCrit ?? rng.chance(critChance / 100);
@@ -209,6 +209,7 @@ export function rollDamage(stats: Stats, rng: Rng, opts: RollOpts = {}): DamageP
     type,
     crit,
     source: opts.source ?? 'player',
+    pile,
   };
   if (opts.ability) packet.ability = opts.ability;
   if (opts.knockback) packet.knockback = opts.knockback;
@@ -245,15 +246,38 @@ export function skillDamageScale(skills: Record<string, number>, skillLevels: nu
 export function damageRange(stats: Stats, scale: number, type: DamageType, elemPct = 0): { min: number; max: number } {
   const min = Math.max(0, stats.minDamage);
   const max = Math.max(min, stats.maxDamage);
-  const ed = 1 + stats.enhancedDamage / 100;
   const flat = flatElementalTotal(stats);
-  const elem = 1 + (stats.elementalDamagePct + (type === 'physical' ? 0 : elemPct)) / 100;
-  const at = (w: number): number => {
-    const weapon = w * ed;
-    const amount = type === 'physical' ? weapon + flat * elem : (weapon + flat) * elem;
-    return Math.max(1, amount * scale);
-  };
+  const piles = bonusPiles(stats, type, elemPct, 0);
+  const at = (w: number): number => Math.max(1, (w * piles.weapon + flat * piles.flat) * scale);
   return { min: at(min), max: at(max) };
+}
+
+/**
+ * The one pile of percent bonuses on each half of a hit, as multipliers.
+ * Every bonus adds into it; none multiplies another. The weapon's damage
+ * takes enhanced damage, and elemental damage too when the hit is an
+ * element; flat elemental adds take elemental damage. The skill's own
+ * element bonus (`elemPct`, a mastery) and `bothPct` (area damage, a unique's
+ * more damage to the skill) join both halves.
+ */
+export function bonusPiles(stats: Stats, type: DamageType, elemPct: number, bothPct: number): { weapon: number; flat: number } {
+  const elem = stats.elementalDamagePct + (type === 'physical' ? 0 : elemPct);
+  return {
+    weapon: Math.max(0, 1 + (stats.enhancedDamage + (type === 'physical' ? 0 : elem) + bothPct) / 100),
+    flat: Math.max(0, 1 + (elem + bothPct) / 100),
+  };
+}
+
+/**
+ * Adds a "+pct% damage" bonus to a hit already rolled: into its one pile
+ * (`DamagePacket.pile`), not on top of it. +50% on a hit whose sheet gives
+ * +100% makes it 2.5 times its raw damage, not 3. Returns the new amount and
+ * pile; a pile never falls under a hundredth.
+ */
+export function addBonus(amount: number, pile: number, pct: number): { amount: number; pile: number } {
+  if (!pct) return { amount, pile };
+  const next = Math.max(0.01, pile + pct / 100);
+  return { amount: (amount * next) / Math.max(0.01, pile), pile: next };
 }
 
 /**

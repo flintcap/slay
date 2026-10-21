@@ -12,11 +12,10 @@
  *                        passives and active statuses, summed into one pool.
  *   3. Derivation        attributes become life, mana, attack rating, crit and
  *                        the strength damage bonus.
- *   4. Percentage layer  percentages are ADDITIVE inside a source pool (all
- *                        gear enhanced-defense adds together) and MULTIPLICATIVE
- *                        across pools (gear x skills x statuses). This is what
- *                        stops three 100% buffs from being a 4x and keeps late
- *                        game scaling smooth instead of explosive.
+ *   4. Percentage layer  one pile per bonus: gear, skills, statuses and the
+ *                        attribute bonuses all ADD (owner's rule). Three 100%
+ *                        bonuses make 4x, never 8x. A hit's later "more damage
+ *                        when..." bonuses join the same pile (`Combat.addBonus`).
  *
  * `enhancedDamage` is left as a combined percentage rather than being folded
  * into min/max damage, because `Combat.rollDamage` owns the damage roll and
@@ -445,11 +444,15 @@ export function skillPassiveStats(
 // The recompute
 // ---------------------------------------------------------------------------
 
-/** Combine additive-within-pool percentages multiplicatively across pools. */
+/**
+ * One pile: gear, skills, statuses and attributes all add together (owner's
+ * rule). They used to multiply across sources, which let a deep hero's
+ * bonuses compound into each other.
+ */
 function combinePercent(...pools: number[]): number {
-  let mul = 1;
-  for (const p of pools) mul *= 1 + p / 100;
-  return (mul - 1) * 100;
+  let sum = 0;
+  for (const p of pools) sum += p;
+  return sum;
 }
 
 /**
@@ -548,7 +551,7 @@ export function computeStats(c: Character): Stats {
   out.maxDamage += DERIVE.baseMaxDamage;
 
   // --- percentage pools -----------------------------------------------------
-  // Additive inside a pool, multiplicative across pools, plus strength.
+  // One pile each: every source adds, strength and energy too.
   const strengthDamage = out.strength * DERIVE.strDamagePct;
   out.enhancedDamage = combinePercent(
     gear.enhancedDamage,
@@ -556,10 +559,9 @@ export function computeStats(c: Character): Stats {
     status.enhancedDamage,
     strengthDamage,
   );
-  // Energy's bonus shares the gear pool: the two added, they no longer
-  // multiply into each other (check-curve, the depth-40 Mage).
   out.elementalDamagePct = combinePercent(
-    gear.elementalDamagePct + energyElementalPct(out.energy),
+    gear.elementalDamagePct,
+    energyElementalPct(out.energy),
     skills.elementalDamagePct,
     status.elementalDamagePct,
   );

@@ -19,6 +19,7 @@ import type { Player } from '../../entities/Player';
 import type { HitKind } from '../../fx/CombatFeel';
 import type { School } from '../../fx/Effects';
 import { tr } from '../../core/I18n';
+import { addBonus } from '../../sim/Combat';
 import { rainVolley, shatter, splinterFly, thicketStand, clearThickets } from '../../fx/ranger/RangerFX';
 import { EXTRA, PIERCE_ALL, type RangerCast, type RangerHost, type RangerWorld, type Target } from './RangerTypes';
 
@@ -136,27 +137,29 @@ export function arrowHit(v: Volley, t: Target, pk: DamagePacket, o: HitOpts): Da
   const e = v.player.passives;
   const g = e.rgr;
   const arrow = o.arrow !== false;
-  let mult = 1;
-  if (v.bow) mult *= 1 + e.rgr.bowPct / 100;
-  if (v.multi) mult *= 1 + g.multiPct / 100;
-  if (v.trap) mult *= 1 + g.trapPct / 100;
+  // His bonuses add into the hit's one pile (`addBonus`), never on top of it.
+  let bonus = 0;
+  if (v.bow) bonus += e.rgr.bowPct;
+  if (v.multi) bonus += g.multiPct;
+  if (v.trap) bonus += g.trapPct;
   // Long Eye: further is harder, up to its cap.
   if (arrow && g.longPerM > 0) {
     const d = flat(v.player.position, t.root.position) - t.hitRadius;
-    mult *= 1 + Math.min(g.longCap, g.longPerM * Math.max(0, d - g.longFrom)) / 100;
+    bonus += Math.min(g.longCap, g.longPerM * Math.max(0, d - g.longFrom));
   }
   // Through and Through: each enemy already passed drives it harder.
-  if (g.pierceAll > 0 && (o.passes ?? 0) > 0) mult *= 1 + Math.min(g.passCap, g.passPct * (o.passes ?? 0)) / 100;
+  if (g.pierceAll > 0 && (o.passes ?? 0) > 0) bonus += Math.min(g.passCap, g.passPct * (o.passes ?? 0));
   // Close Grouping: arrows of one use after the first into the same enemy.
   if (g.groupPct > 0 && v.id) {
     const n = v.hits.get(t) ?? 0;
-    if (n > 0) mult *= 1 + g.groupPct / 100;
+    if (n > 0) bonus += g.groupPct;
     v.hits.set(t, n + 1);
   }
   const whole = t.life >= t.maxLife * 0.999;
-  if (v.fullLife > 0 && whole) mult *= 1 + v.fullLife / 100;
+  if (v.fullLife > 0 && whole) bonus += v.fullLife;
 
-  let amount = pk.amount * mult;
+  const piled = addBonus(pk.amount, pk.pile ?? 1, bonus);
+  let amount = piled.amount;
   let crit = pk.crit;
   const force = (): void => {
     if (crit) return;
@@ -180,7 +183,7 @@ export function arrowHit(v: Volley, t: Target, pk: DamagePacket, o: HitOpts): Da
   if (crit && more > 0) amount *= (v.critX + more / 100) / v.critX;
 
   const before = t.life;
-  const landed = v.host.land(t, amount === pk.amount && crit === pk.crit ? pk : { ...pk, amount, crit }, o.kind ?? 'projectile', o.fromX, o.fromZ, v.world, o.sure);
+  const landed = v.host.land(t, amount === pk.amount && crit === pk.crit ? pk : { ...pk, amount, crit, pile: piled.pile }, o.kind ?? 'projectile', o.fromX, o.fromZ, v.world, o.sure);
   if (landed.amount > 0 && !v.heard) {
     v.heard = true;
     v.host.sound(v.hitSound, t.root.position.x, t.root.position.z);

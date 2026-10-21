@@ -1353,6 +1353,13 @@ export interface DamagePacket {
    * long anything it carries can hold the hero.
    */
   fair?: number;
+  /**
+   * The hit's one pile of percent bonuses, as a multiplier (1 + every bonus
+   * / 100): the sheet's, area damage, and every "more damage when..." added
+   * since. A bonus added later joins it rather than multiplying it
+   * (`addBonus` in sim/Combat.ts). Absent: no bonus yet (1).
+   */
+  pile?: number;
 }
 
 export interface StatusApplication {

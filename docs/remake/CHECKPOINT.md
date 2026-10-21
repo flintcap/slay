@@ -638,6 +638,26 @@ Update this file and push it after every finished step.
   5 and 40 (lowest life 87-90%, the line is 85%). Monsters unchanged.
   Static checks: 84 of 86 pass (curve as above). check-tactics fails "big telegraphs are
   staggered" (1 of 16 lands within 0.2s of another) on 1260e83 too: older.
+- #173 One bonus pile (owner: "It should be one pile"). Every percent
+  damage and defence bonus adds into one pile: gear, skill passives,
+  statuses, strength and energy (`Stats.combinePercent` sums; it used to
+  multiply across sources). A hit carries its pile (`DamagePacket.pile`);
+  each "more damage when..." added on the way to the target joins it
+  (`Combat.addBonus`) instead of multiplying: passives and Hex Upon Hex
+  (`SkillRunner.tune`, `skillEdge`), item powers and Life Tap
+  (`PowerRuntime.outgoing`), combos, the Ranger's shot bonuses, the
+  Paladin's Toll, a unique's skill bend (`RollOpts.morePct`), area damage.
+  The Knight's Tide Leap bleed adds too. Still multiplying on purpose:
+  crits, the skill's own damage and synergies, resist piercing, falloff,
+  minion stats, item-power trade-offs. Loss measured on the old and new
+  code (every class at 12/25/40): about 2% more fight time overall, up to
+  10-14% on some bosses (Revenant, Ranger 40, Knight 25). Made up on the
+  class side: `DAMAGE_PER` 1.15 to 1.1525, `EARLY_DAMAGE_PER` 1.1 to 1.1015
+  (+2% at L16, +5% at L28, +8% at L41); total fight time ends 1% under the
+  old. Chase curve after: 31 of 35, nothing walled; untouched Mage 25 and
+  40, Revenant 40, Ranger 25 (90-91%; Revenant 5 is challenged now).
+  Monsters unchanged. Static checks: 84 of 86 pass (curve as above;
+  tactics, the older failure noted under #172).
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

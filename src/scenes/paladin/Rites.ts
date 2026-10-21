@@ -37,6 +37,7 @@ import { SELF_POWER } from '../../data/skillPower';
 import { paladinFX, riteLook, type RiteMark } from '../../fx/paladin/RiteLooks';
 import { skillSound } from '../../audio/SkillSounds';
 import { tr } from '../../core/I18n';
+import { addBonus } from '../../sim/Combat';
 
 type Target = Enemy | Boss;
 
@@ -199,19 +200,18 @@ function blow(r: RiteCast, host: RiteHost, t: Target, o: Blow = {}): DamagePacke
   const pal = r.player.passives.pal;
   const rite = RITES[r.def.id];
   const main = o.main ?? true;
-  let m = o.mult ?? 1;
+  const m = o.mult ?? 1;
   const riders = o.riders ? [...o.riders] : [];
   let toll = false;
   if (main && pal.tollEvery > 0 && r.def.treeId === 'palMace') {
     const n = (tolls.get(r.player) ?? 0) + 1;
     toll = n >= pal.tollEvery;
     tolls.set(r.player, toll ? 0 : n);
-    if (toll) {
-      m *= 1 + pal.tollPct / 100;
-      riders.push(status('rung', pal.tollRingSec));
-    }
+    if (toll) riders.push(status('rung', pal.tollRingSec));
   }
   const p = r.packet(m);
+  // The Toll's bonus joins the hit's one pile rather than multiplying it.
+  if (toll) ({ amount: p.amount, pile: p.pile } = addBonus(p.amount, p.pile ?? 1, pal.tollPct));
   const opens = o.opens ?? 0;
   if (opens > 0) riders.push(opened(r, p.amount, opens));
   if (riders.length) p.applies = [...(p.applies ?? []), ...riders];

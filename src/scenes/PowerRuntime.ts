@@ -24,7 +24,7 @@ import type { Boss } from '../entities/Boss';
 import type { EffectSystem } from '../fx/Effects';
 import type { FXSystem } from '../fx/Particles';
 import type { DecalSystem } from '../fx/Decals';
-import { rollDamage, expectedMitigated } from '../sim/Combat';
+import { rollDamage, expectedMitigated, addBonus } from '../sim/Combat';
 import { powerEffects, powerHooks, emptyPowerEffects, weaponKind, type PowerEffects } from '../sim/ItemPowers';
 import { getBase } from '../sim/Loot';
 import type { MonsterRank } from '../types';
@@ -181,24 +181,27 @@ export class PowerRuntime {
     if (p.vsStaggeredPct > 0 && target.hasStatus('stunned')) more += p.vsStaggeredPct;
     if (this.crown > 0) more += p.crownPct;
 
-    let mul = 1 + more / 100;
+    // Every "more damage when..." joins the hit's one pile; a crit multiplies.
+    let { amount, pile } = addBonus(packet.amount, packet.pile ?? 1, more);
     // Out of the soot: the first blow is a critical strike.
     let crit = packet.crit;
     if (this.nextCrit && !PROC_ABILITIES.has(packet.ability ?? '')) {
       this.nextCrit = false;
       if (!crit) {
         crit = true;
-        mul *= 1 + Math.max(50, this.host.player().stats.critDamage ?? 0) / 100;
+        amount *= 1 + Math.max(50, this.host.player().stats.critDamage ?? 0) / 100;
       }
     }
     let tap = 0;
     if (p.lifeTapChance > 0 && !PROC_ABILITIES.has(packet.ability ?? '') && ctx.rng.chance(Math.min(1, p.lifeTapChance / 100))) {
-      mul *= 1 + p.lifeTapPct / 100;
-      tap = p.lifeTapPct / (100 + p.lifeTapPct);
+      const before = amount;
+      ({ amount, pile } = addBonus(amount, pile, p.lifeTapPct));
+      // The share of the hit the tap added, paid back as life.
+      tap = amount > 0 ? 1 - before / amount : 0;
     }
     const knock = p.knockback > 0 ? Math.max(packet.knockback ?? 0, p.knockback) : packet.knockback;
-    if (type === packet.type && mul === 1 && knock === packet.knockback && tap === 0 && crit === packet.crit) return packet;
-    const out: DamagePacket = { ...packet, type, crit, amount: Math.max(0, packet.amount * mul) };
+    if (type === packet.type && amount === packet.amount && knock === packet.knockback && tap === 0 && crit === packet.crit) return packet;
+    const out: DamagePacket = { ...packet, type, crit, amount: Math.max(0, amount), pile };
     if (knock !== undefined) out.knockback = knock;
     if (tap > 0) this.tapped.set(out, tap);
     return out;

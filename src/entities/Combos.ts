@@ -16,6 +16,7 @@
 import { SKILLS, TREE_BY_ID } from '../data/skills';
 import type { CharClassId, DamagePacket, SkillDef, StatusApplication } from '../types';
 import { tr } from '../core/I18n';
+import { addBonus } from '../sim/Combat';
 
 /** Seconds a hit stays open for a different skill to combo off it. */
 export const COMBO_WINDOW = 4;
@@ -155,14 +156,16 @@ export function resolveCombo(packet: DamagePacket, mem: ComboMemory, now: number
   const combo = comboForSkill(skill);
   if (!combo) return null;
   const bonusPct = comboBonusPct(skill);
-  let amount = packet.amount * (1 + bonusPct / 100);
+  // The combo's bonus joins the hit's one pile; the crit it forces multiplies.
+  const piled = addBonus(packet.amount, packet.pile ?? 1, bonusPct);
+  let amount = piled.amount;
   let crit = packet.crit;
   if (combo.crit && !crit) {
     crit = true;
     amount *= 1.5;
   }
   const applies = combo.applies ? [...(packet.applies ?? []), ...combo.applies] : packet.applies;
-  const out: DamagePacket = { ...packet, amount, crit };
+  const out: DamagePacket = { ...packet, amount, crit, pile: piled.pile };
   if (applies) out.applies = applies;
   return { combo, setup: prev, payoff: skill, bonusPct, packet: out };
 }

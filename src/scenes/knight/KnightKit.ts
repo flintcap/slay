@@ -832,7 +832,7 @@ export class KnightKit {
     const bleed: StatusApplication[] = [{
       id: 'bleeding',
       duration: 6 + e.dotDurationSec,
-      magnitude: (1 + e.dotDamagePct / 100) * (1 + e.tideLeapPct / 100),
+      magnitude: 1 + (e.dotDamagePct + e.tideLeapPct) / 100,
       stacks,
       maxStacks: Math.floor(e.dotMaxStacks),
       tickScale: 1 + e.dotTickPct / 100,

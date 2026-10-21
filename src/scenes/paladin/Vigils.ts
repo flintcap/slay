@@ -285,8 +285,8 @@ function reachOf(player: Player, ctx: CombatContext, num: (k: string, d: number)
 
 /** A packet for a vigil's blows, rolled at the hero's numbers now (a bend's more damage on top). */
 function packetOf(player: Player, def: SkillDef, ctx: CombatContext, mult: number, bend: SkillBend | null): DamagePacket {
-  const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) * mult * (1 + (bend?.more ?? 0) / 100);
-  return rollDamage(player.stats, ctx.rng, { scale, type: def.damageType ?? 'physical', ability: def.name, source: 'player' });
+  const scale = skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) * mult;
+  return rollDamage(player.stats, ctx.rng, { scale, type: def.damageType ?? 'physical', ability: def.name, source: 'player', morePct: bend?.more ?? 0 });
 }
 
 /**

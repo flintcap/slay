@@ -8,7 +8,7 @@ import { audio } from '../audio/Audio';
 import { heroBark } from '../audio/HeroVoice';
 import { skillSound } from '../audio/SkillSounds';
 import { SKILLS, SKILL_BY_ID, classOfSkill, synergyPct } from '../data/skills';
-import { resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
+import { addBonus, resistAgainst, rollDamage, rollHit, skillDamageScale } from '../sim/Combat';
 import { skillRank } from '../sim/Character';
 import { basicTime, handsOf, skillPace, speedMultiplier } from '../sim/Speed';
 
@@ -826,14 +826,14 @@ export class SkillRunner {
     };
     const scale =
       skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) *
-      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num)) *
-      (1 + (bend?.more ?? 0) / 100);
+      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num));
+    const morePct = bend?.more ?? 0;
     const type: DamageType = def.damageType ?? 'physical';
     const color = shiftHue(ELEMENTS[schoolOf(def)]?.body ?? 0xc9a070, hashId(def.id));
     let riders: StatusApplication[] | null = null;
     return (mult = 1) => {
       const p = rollDamage(player.stats, ctx.rng, {
-        scale: scale * mult, type, ability: def.name, source: 'player', elemPct: player.passives.elementPct[type],
+        scale: scale * mult, type, ability: def.name, source: 'player', elemPct: player.passives.elementPct[type], morePct,
       });
       const prev = this.caster;
       this.caster = player;
@@ -1174,8 +1174,9 @@ export class SkillRunner {
     // still hits harder a rank: `data/skillPower.ts` says how much.
     const scale =
       skillDamageScale(player.character.skills, player.stats.skillLevels, def.id) *
-      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num)) *
-      (1 + (bend?.more ?? 0) / 100);
+      (def.damageScale ? 1 : burstGrowth(def.id, Math.max(0, rank - 1), num));
+    // The bend's more damage joins the hit's one pile (`RollOpts.morePct`).
+    const morePct = bend?.more ?? 0;
     const type: DamageType = def.damageType ?? 'physical';
     // Every skill of a damage type used the one element colour, so a whole
     // tree of fire skills was the same orange on screen. Shift it by a hash of
@@ -1210,6 +1211,7 @@ export class SkillRunner {
         knockback: num('knockback', 0) || undefined,
         // A Mage mastery raises its own element's hits only.
         elemPct: player.passives.elementPct[type],
+        morePct,
       });
       if (banked > 0) p.amount += banked;
       const r = rider();
@@ -1614,7 +1616,7 @@ export class SkillRunner {
             const spent = player.life * num('lifeCostPct', 20) / 100;
             player.life -= spent;
             const dealt = this.areaDamage(player.position, radius, () => ({
-              amount: spent * (num('scale', 400) / 100) * scale, type, crit: false, source: 'player', ability: def.name,
+              amount: spent * (num('scale', 400) / 100) * scale * (1 + morePct / 100), type, crit: false, source: 'player', ability: def.name,
             }), ctx, enemies, boss);
             player.heal(dealt * num('leechPct', 0) / 100);
             hitAt(player.position);
@@ -2123,7 +2125,7 @@ export class SkillRunner {
             // A share of the target's own life a second, or the skill's damage a second.
             const hit = drain > 0
               ? (): DamagePacket => ({
-                  amount: t.maxLife * (drain / 100) * every * scale * (t.isBoss ? bossShare : 1),
+                  amount: t.maxLife * (drain / 100) * every * scale * (1 + morePct / 100) * (t.isBoss ? bossShare : 1),
                   type, crit: false, source: 'player', ability: def.name,
                 })
               : (): DamagePacket => makePacket(every);
@@ -2988,19 +2990,22 @@ export class SkillRunner {
 
   /**
    * Hex Upon Hex: every Revenant curse on the target past the first makes it
-   * take more damage. One when the passive is not taken.
+   * take more damage. The percent it adds to a blow; 0 when the passive is not
+   * taken.
    */
-  private hexMul(t: Target): number {
+  private hexPct(t: Target): number {
     const pct = this.caster?.passives.hexPct ?? 0;
-    if (pct <= 0) return 1;
+    if (pct <= 0) return 0;
     const n = t.countStatuses(HEXES);
-    return n > 1 ? 1 + ((n - 1) * pct) / 100 : 1;
+    return n > 1 ? (n - 1) * pct : 0;
   }
 
   /** A melee minion's blow, which skips `tune`, still pays Hex Upon Hex. */
   private hexed(packet: DamagePacket, t: Target): DamagePacket {
-    const m = this.hexMul(t);
-    return m === 1 ? packet : { ...packet, amount: packet.amount * m };
+    const pct = this.hexPct(t);
+    if (pct === 0) return packet;
+    const b = addBonus(packet.amount, packet.pile ?? 1, pct);
+    return { ...packet, amount: b.amount, pile: b.pile };
   }
 
   /**
@@ -3009,7 +3014,8 @@ export class SkillRunner {
    * This is the single choke point for "more damage when...". Executioner,
    * Blood Scent, Ember Soul, Hemotoxin and Flurry all land here, because all
    * of them need the attacker and the victim at the same moment and nowhere
-   * else in the pipeline has both.
+   * else in the pipeline has both. Each one adds into the hit's one pile of
+   * percent bonuses (`addBonus`), never on top of it.
    */
   private tune(packet: DamagePacket, t: Target): DamagePacket {
     const p = this.caster;
@@ -3044,13 +3050,18 @@ export class SkillRunner {
       packet.type,
     );
     const st = p.passiveState;
-    let amount = packet.amount * mul * this.hexMul(t);
+    let amount = packet.amount;
+    let pile = packet.pile ?? 1;
+    const more = (pct: number): void => {
+      ({ amount, pile } = addBonus(amount, pile, pct));
+    };
+    more((mul - 1) * 100 + this.hexPct(t));
     let applies = packet.applies;
     // The Paladin's Crushing Weight and Red Rosary: every blow of his, not
     // only a rite's (`sim/passives/paladin.ts`).
     const pal = e.pal;
-    if (pal.vsBrokenPct > 0 && (t.hasStatus('staggered') || t.hasStatus('rung') || t.stacksOf('dented') > 0)) amount *= 1 + pal.vsBrokenPct / 100;
-    if (pal.vsOpenedPct > 0 && t.hasStatus('opened')) amount *= 1 + pal.vsOpenedPct / 100;
+    if (pal.vsBrokenPct > 0 && (t.hasStatus('staggered') || t.hasStatus('rung') || t.stacksOf('dented') > 0)) more(pal.vsBrokenPct);
+    if (pal.vsOpenedPct > 0 && t.hasStatus('opened')) more(pal.vsOpenedPct);
 
     // The Fifth Verse: every Nth blow is a guaranteed critical, and hits harder
     // for being one. Counted per landed blow, not per press, so a whirlwind
@@ -3061,7 +3072,7 @@ export class SkillRunner {
       if (st.swings >= e.guaranteedCritEvery) {
         st.swings = 0;
         crit = true;
-        amount *= 1 + e.guaranteedCritBonusPct / 100;
+        more(e.guaranteedCritBonusPct);
       }
     }
     // Blood Toxin: poison ignores a share of the target's poison resistance.
@@ -3114,7 +3125,7 @@ export class SkillRunner {
     // sat behind an early return, so any other passive touching the hit
     // skipped it.)
     if (st.retribution > 0 && e.retributionPctPerBlock > 0) {
-      amount *= 1 + st.retribution / 100;
+      more(st.retribution);
       this.knight.spendRetribution(p, t, st.retribution);
       st.retribution = 0;
     }
@@ -3123,7 +3134,7 @@ export class SkillRunner {
       applies = [...(applies ?? []), { id: 'opened', duration: 5, magnitude: 1, stacks: pal.critOpens, power: amount * 0.12 }];
     }
     if (crit === packet.crit && amount === packet.amount && applies === packet.applies) return packet;
-    return { ...packet, amount, crit, applies };
+    return { ...packet, amount, crit, applies, pile };
   }
 
   /**
@@ -3140,12 +3151,16 @@ export class SkillRunner {
     const n = (key: string): number => (typeof params[key] === 'number' ? (params[key] as number) : 0);
     const k = Math.max(0, skillRank(p.character, def.id) - 1);
     let amount = packet.amount;
-    let crit = packet.crit;
-    if (n('vsBleeding') > 0 && t.isBleeding) amount *= 1 + n('vsBleeding') / 100;
-    if (n('vsBurning') > 0 && (t.hasStatus('burning') || t.hasStatus('immolated'))) amount *= 1 + n('vsBurning') / 100;
-    if (n('vsCursed') > 0 && t.hasStatusTag('curse')) amount *= 1 + n('vsCursed') / 100;
+    let pile = packet.pile ?? 1;
+    // "More against..." settings join the hit's one pile of bonuses.
+    let bonus = 0;
+    if (n('vsBleeding') > 0 && t.isBleeding) bonus += n('vsBleeding');
+    if (n('vsBurning') > 0 && (t.hasStatus('burning') || t.hasStatus('immolated'))) bonus += n('vsBurning');
+    if (n('vsCursed') > 0 && t.hasStatusTag('curse')) bonus += n('vsCursed');
     const lifePct = (t.life / Math.max(1, t.maxLife)) * 100;
-    if (n('executeThreshold') > 0 && lifePct < n('executeThreshold')) amount *= 1 + n('executeBonus') / 100;
+    if (n('executeThreshold') > 0 && lifePct < n('executeThreshold')) bonus += n('executeBonus');
+    ({ amount, pile } = addBonus(amount, pile, bonus));
+    let crit = packet.crit;
     if (n('executeBelow') > 0 && lifePct < n('executeBelow') && !crit) {
       crit = true;
       amount *= Math.max(100, p.stats.critDamage) / 100;
@@ -3169,7 +3184,7 @@ export class SkillRunner {
     roll(n('sunderChance'), 'sundered');
     roll(n('plagueChance'), 'plagued');
     if (amount === packet.amount && crit === packet.crit && !riders.length) return packet;
-    return { ...packet, amount, crit, ...(riders.length ? { applies: [...(packet.applies ?? []), ...riders] } : {}) };
+    return { ...packet, amount, crit, pile, ...(riders.length ? { applies: [...(packet.applies ?? []), ...riders] } : {}) };
   }
 
   /**

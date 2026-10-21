@@ -785,7 +785,16 @@ export function skillRank(c: Character, skillId: string): number;
  * elemental adds carries their shares in `parts` (drawn as their own numbers;
  * `enemy:damaged` passes them on).
  */
-export function rollDamage(stats: Stats, rng: Rng, opts?: { scale?: number; type?: DamageType; ability?: string; source?: string }): DamagePacket;
+export function rollDamage(stats: Stats, rng: Rng, opts?: RollOpts): DamagePacket;
+/**
+ * One pile (owner's rule): every percent damage bonus adds into one pile per
+ * hit, never multiplies another. The packet carries it (`DamagePacket.pile`);
+ * a "more damage when..." added after the roll joins it through `addBonus`.
+ * Crits, the skill's own scale and synergies, resist piercing and falloff
+ * still multiply.
+ */
+export function addBonus(amount: number, pile: number, pct: number): { amount: number; pile: number };
+export function bonusPiles(stats: Stats, type: DamageType, elemPct: number, bothPct: number): { weapon: number; flat: number };
 /** Applies block, resistances, armour and damage reduction (a percent, to DR_CAP). Returns damage actually taken. */
 export function mitigate(packet: DamagePacket, defender: Stats, rng: Rng): { amount: number; blocked: boolean; type: DamageType };
 export function drFraction(defender: Stats): number; // 0 to DR_CAP / 100
