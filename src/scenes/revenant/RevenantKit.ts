@@ -121,8 +121,8 @@ export class RevenantKit {
     this.dooms = this.dooms.filter((d) => d.t !== t);
     this.dooms.push({
       t, at: this.time + fuse, leap, world: s.world, color: s.color, school: s.school, rank: boostRank(),
-      // The burst is heard as the brand's own toll: the cast's recording again.
-      sound: skillSound(s.def.id).cast,
+      // The burst has its own blast, heard where it goes off.
+      sound: skillSound(s.def.id).hit,
       // The burst does not brand again.
       packet: () => {
         const p = s.packet();

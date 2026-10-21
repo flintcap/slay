@@ -1616,6 +1616,7 @@ export class SkillRunner {
               amount: spent * (num('scale', 400) / 100) * scale, type, crit: false, source: 'player', ability: def.name,
             }), ctx, enemies, boss);
             player.heal(dealt * num('leechPct', 0) / 100);
+            hitAt(player.position);
             break;
           }
           if ((def.effect ?? '').includes('consumeShield')) {
@@ -2270,6 +2271,7 @@ export class SkillRunner {
               amount: body.maxLife * share, type, crit: false, source: 'player', ability: def.name,
               ...(spread.length ? { applies: spread } : {}),
             }), ctx, enemies, boss);
+            hitAt(spot);
             break;
           }
           const radius = num('radius', family === 'point' ? 1.2 : 4);

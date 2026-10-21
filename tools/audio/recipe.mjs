@@ -210,6 +210,8 @@ export const SKILL_TAKES = {
   'skill.fire.bolt': x('r80', 'spell_fire_01.ogg'),
   'skill.fire.hit': x('r80', 'spell_fire_03.ogg', { t: 0.8 }),
   'skill.fire.nova': x('bang', 'bang_06.ogg', { lp: 4000, mix: [x('crackle', 'fire-1.ogg', { t: 1.2, gain: -5 })] }),
+  // Pyre Brand landing: the ember sears in and catches.
+  'skill.fire.brand': x('ignite', 'ignition.flac', { t: 0.8, rate: 0.85, fadeOut: 0.35, mix: [x('steam', steam(3), { t: 0.5, rate: 1.2, fadeOut: 0.2, gain: -6 }), x('crackle', 'fire-1.ogg', { ss: 2, t: 0.8, fadeOut: 0.4, gain: -7 })] }),
   'skill.fire.lance': x('fball', FB, { rate: 1.2, t: 1.2, mix: [x('flame', 'flame.ogg', { gain: -2 })] }),
   'skill.fire.ball': x('fball', FB, { t: 1.2 }),
   'skill.fire.blast': x('boom', 'explosion.wav', { lp: 3000, mix: [x('crackle', 'fire-1.ogg', { t: 1, gain: -6 })] }),
@@ -285,16 +287,22 @@ export const SKILL_TAKES = {
   'skill.blight.hit': x('water', 'splash_06.ogg', { mix: [x('steam', steam(4), { t: 0.5, gain: -4 })] }),
   'skill.blight.nova': x('water', 'splash_01.ogg', { rate: 0.8, mix: [x('water', 'loop_bubbles_1.ogg', { t: 1.2, gain: -6 }), x('steam', steam(2), { t: 1, gain: -5 })] }),
   'skill.blight.aura': x('water', 'loop_bubbles_02.ogg', { t: 1.5, fadeOut: 0.5, mix: [x('creat', 'burble_01.ogg', { rate: 0.7, gain: -3 })] }),
+  // Charnel Burst's cast: the hand closes and a dead body swells to bursting.
+  'skill.corpse.call': x('mud', 'mud_14.ogg', { rate: 0.6, t: 0.7, fadeOut: 0.3, mix: [x('bones', '2.ogg', { rate: 0.8, gain: -5 }), x('chant', 'chant3.wav', { t: 0.7, rate: 0.5, fadeOut: 0.3, gain: -9 })] }),
   'skill.corpse.burst': x('water', 'splash_09.ogg', { rate: 0.7, mix: [x('bang', 'bang_03.ogg', { lp: 2000, gain: -2 }), x('bonebreak', brk(9), { t: 0.5, gain: -3 })] }),
   'skill.curse.weaken': x('moan', moan(3), { t: 1.2, rate: 0.8, fadeOut: 0.4 }),
   'skill.curse.amplify': x('chant', 'chant18.wav', { ss: 3, t: 1.4, rate: 0.6, fadeIn: 0.15, fadeOut: 0.5 }),
   'skill.curse.terror': x('creat', 'scream_01.ogg', { rate: 0.6, mix: [x('ghost', 'ghost.wav', { t: 1.2, gain: -4 })] }),
+  // Doom going off on its victim: a deep blast under a dying moan.
+  'skill.curse.doomBurst': x('boom', 'explosion.wav', { rate: 0.7, lp: 2200, t: 1.3, fadeOut: 0.5, mix: [x('moan', moan(2), { t: 0.9, rate: 0.7, fadeOut: 0.4, gain: -6 }), x('ki', 'impactSoft_heavy_004.ogg', { rate: 0.6, gain: -3 })] }),
   'skill.curse.doom': x('moan', moan(4), { t: 1.5, rate: 0.6, fadeOut: 0.5, mix: [x('ki', 'impactSoft_heavy_002.ogg', { rate: 0.5, gain: -2 })] }),
   'skill.curse.confuse': x('chant', 'chant7.wav', { t: 1.4, rev: true, rate: 0.8, fadeIn: 0.2, fadeOut: 0.4 }),
   'skill.curse.lower': x('ghost', 'ghost.wav', { t: 1.4, rate: 0.75, fadeOut: 0.5 }),
   'skill.drain.siphon': x('gbreath', 'ghostbreath.flac', { t: 1.2, rev: true, fadeIn: 0.2, mix: [x('wwoosh', WW, { t: 1.2, rate: 0.6, rev: true, gain: -6 })] }),
   'skill.drain.blood': x('creat', 'eat_02.ogg', { rate: 0.7, mix: [x('water', 'loop_water_01.ogg', { t: 1, rate: 0.6, gain: -6 }), x('gbreath', 'ghostbreath.flac', { t: 1, rev: true, gain: -6 })] }),
   'skill.blood.pact': x('kr', 'knifeSlice2.ogg', { rate: 0.8, mix: [x('chant', 'chant11.wav', { rate: 0.55, delay: 150, fadeOut: 0.4, gain: -3 })] }),
+  // Sanguine Nova's cast: the price, a heartbeat torn out of the chest.
+  'skill.blood.spend': x('heart', 'heartbeat_slow_0.wav', { t: 0.7, rate: 0.85, fadeOut: 0.25, mix: [x('mud', 'mud_21.ogg', { rate: 0.8, t: 0.6, gain: -5 }), x('gbreath', 'ghostbreath.flac', { t: 0.6, rate: 0.7, fadeOut: 0.3, gain: -9 })] }),
   'skill.blood.nova': x('mud', 'mud_11.ogg', { rate: 0.7, mix: [x('farboom', FAR, { t: 1.5, fadeOut: 0.5, gain: -2 }), x('water', 'splash_09.ogg', { rate: 0.6, gain: -4 })] }),
   'skill.cold.grave': x('freeze', 'freeze.wav', { t: 1.2, fadeOut: 0.4, mix: [x('moan', moan(5), { t: 1.2, rate: 0.7, gain: -6 })] }),
 

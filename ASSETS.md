@@ -891,6 +891,7 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.blight.nova/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + bart (opengameart.org/content/steam-release-sounds) | CC0 |
 | sounds/skill.blood.nova/01.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck + NenadSimic (opengameart.org/content/muffled-distant-explosion) + rubberduck (opengameart.org/content/40-cc0-water-splash-slime-sfx) | CC0 |
 | sounds/skill.blood.pact/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
+| sounds/skill.blood.spend/01.ogg | https://opengameart.org/content/heartbeat-sounds | bart + rubberduck (opengameart.org/content/25-cc0-mud-sfx) + qubodup (opengameart.org/content/ghost-breath) | CC0 |
 | sounds/skill.bone.armor/01.ogg | https://opengameart.org/content/bones-rattle | congusbongus + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) | CC0 |
 | sounds/skill.bone.bolt/01.ogg | https://opengameart.org/content/sand-spell | qubodup | CC0 |
 | sounds/skill.bone.cage/01.ogg | https://opengameart.org/content/deep-bone-crackbreak-sfx | Zane Little Music + congusbongus (opengameart.org/content/bones-rattle) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
@@ -953,9 +954,11 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.cold.spikeHit/01.ogg | https://opengameart.org/content/ice-breakingshattering | IgnasD + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
 | sounds/skill.cold.step/01.ogg | https://opengameart.org/content/100-cc0-sfx-2 | rubberduck + bart (opengameart.org/content/ice-spells) | CC0 |
 | sounds/skill.corpse.burst/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/25-cc0-bang-firework-sfx) + Zane Little Music (opengameart.org/content/deep-bone-crackbreak-sfx) | CC0 |
+| sounds/skill.corpse.call/01.ogg | https://opengameart.org/content/25-cc0-mud-sfx | rubberduck + congusbongus (opengameart.org/content/bones-rattle) + OwlishMedia (opengameart.org/content/creepy-incoherent-chanting) | CC0 |
 | sounds/skill.curse.amplify/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |
 | sounds/skill.curse.confuse/01.ogg | https://opengameart.org/content/creepy-incoherent-chanting | OwlishMedia | CC0 |
 | sounds/skill.curse.doom/01.ogg | https://opengameart.org/content/ghost-monster-voice-moaning-growling | qubodup + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.curse.doomBurst/01.ogg | https://opengameart.org/content/explosion-0 | TinyWorlds + qubodup (opengameart.org/content/ghost-monster-voice-moaning-growling) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.curse.lower/01.ogg | https://opengameart.org/content/ghost | Ogrebane | CC0 |
 | sounds/skill.curse.terror/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Ogrebane (opengameart.org/content/ghost) | CC0 |
 | sounds/skill.curse.weaken/01.ogg | https://opengameart.org/content/ghost-monster-voice-moaning-growling | qubodup | CC0 |
@@ -966,6 +969,7 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.fire.ball/01.ogg | https://opengameart.org/content/fireball-1 | diligentcircle | CC0 |
 | sounds/skill.fire.blast/01.ogg | https://opengameart.org/content/explosion-0 | TinyWorlds + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/skill.fire.bolt/01.ogg | https://opengameart.org/content/80-cc0-rpg-sfx | rubberduck | CC0 |
+| sounds/skill.fire.brand/01.ogg | https://opengameart.org/content/flare-ignition | qubodup + bart (opengameart.org/content/steam-release-sounds) + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/skill.fire.breath/01.ogg | https://opengameart.org/content/fireball-1 | diligentcircle + themightyglider (opengameart.org/content/catching-fire) | CC0 |
 | sounds/skill.fire.burst/01.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + AntumDeluge (opengameart.org/content/fire-crackling) | CC0 |
 | sounds/skill.fire.erupt/01.ogg | https://opengameart.org/content/25-cc0-bang-firework-sfx | rubberduck + AntumDeluge (opengameart.org/content/fire-crackling) + cinameng (opengameart.org/content/rumble-fx) | CC0 |
@@ -1082,8 +1086,6 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.shift.callThePack.bite/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/skill.shift.callThePack/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/skill.shift.catForm/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
-| sounds/skill.shift.ravening.hit/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.shift.ravening/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + TinyWorlds (opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | CC0 |
 | sounds/skill.shift.hammerfall.hit/01.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.shift.hammerfall/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
 | sounds/skill.shift.hamstring.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) + TinyWorlds (opengameart.org/content/5-hit-sounds-dying) | CC0 |
@@ -1103,6 +1105,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.shift.rake.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) | CC0 |
 | sounds/skill.shift.rake/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude + rubberduck (opengameart.org/content/80-cc0-creature-sfx) | CC0 |
 | sounds/skill.shift.rattlingRoar/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + Darsycho (opengameart.org/content/big-scary-troll-sounds) + rubberduck (opengameart.org/content/75-cc0-breaking-falling-hit-sfx) | CC0 |
+| sounds/skill.shift.ravening.hit/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.ravening/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + TinyWorlds (opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | CC0 |
 | sounds/skill.shift.reapingSwipe.hit/01.ogg | https://kenney.nl/assets/impact-sounds | Kenney + Kenney (kenney.nl/assets/rpg-audio) | CC0 |
 | sounds/skill.shift.reapingSwipe/01.ogg | https://opengameart.org/content/swishes-sound-pack | artisticdude | CC0 |
 | sounds/skill.shift.slink/01.ogg | https://opengameart.org/content/ghost-breath | qubodup + Kenney (kenney.nl/assets/rpg-audio) | CC0 |

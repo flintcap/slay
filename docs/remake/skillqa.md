@@ -99,7 +99,7 @@ Mage (sk-mage, done):
   crystal fan.
 - Frozen Orb looks like a shard, not a round orb.
 - The fire tree's icons need a deeper repaint.
-- Pyre Brand has no hit sound.
+- [x] Pyre Brand has no hit sound. (Its own sear, `skill.fire.brand`.)
 - Splintering Frost may be too weak (20% of the dead enemy's life, +1% a
   rank). Compare it with skills in the same tier and make it worth taking.
 - Spell looks in motion and real frame time were not checked.
@@ -112,8 +112,9 @@ Rogue (sk-rogue, done):
 - Seven Shadowcraft icons all show a hooded figure, and Silhouette is
   close to The Unseen Blade. Make each one clearly its own.
 - `check-skillcost` never ran (it was stopped). Run it once.
-- `check-unfinished` flags two statuses, `static` and `rent`, that no code
-  applies (older than this wave). Wire them or remove them.
+- [x] `check-unfinished` flags two statuses, `static` and `rent`, that no code
+  applies (older than this wave). Wire them or remove them. (Removed:
+  nothing named them.)
 
 Knight (sk-knight, done):
 - Gatefall was refused in `check-skills` only because the audit keeps
@@ -150,9 +151,11 @@ Revenant (sk-revenant, done):
   the same way unless the status means to hold the body. (e75c312: only
   holds that incapacitate or immobilise pin; blind stops a monster finding
   you past arm's length, silence leaves only its plain blow.)
-- Corpse Explosion and Sanguine Nova have no hit sound (the sound checker
+- [x] Corpse Explosion and Sanguine Nova have no hit sound (the sound checker
   forbids one); Doom's burst replays its cast sound. Give each a real
-  sound, and fix the checker rule if it is what stops it.
+  sound, and fix the checker rule if it is what stops it. (Each has a new
+  cast take and plays its burst where it goes off; Doom's blast is its
+  own take. `check-skillsound` allows a hit for these three effects.)
 - Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
   unused by any Revenant skill. Remove them if nothing else names them.
 

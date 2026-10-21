@@ -2408,6 +2408,11 @@
   "kr",
   "chant"
  ],
+ "sounds/skill.blood.spend/01.ogg": [
+  "heart",
+  "mud",
+  "gbreath"
+ ],
  "sounds/skill.bone.armor/01.ogg": [
   "bones",
   "bonebreak"
@@ -2666,6 +2671,11 @@
   "bang",
   "bonebreak"
  ],
+ "sounds/skill.corpse.call/01.ogg": [
+  "mud",
+  "bones",
+  "chant"
+ ],
  "sounds/skill.curse.amplify/01.ogg": [
   "chant"
  ],
@@ -2673,6 +2683,11 @@
   "chant"
  ],
  "sounds/skill.curse.doom/01.ogg": [
+  "moan",
+  "ki"
+ ],
+ "sounds/skill.curse.doomBurst/01.ogg": [
+  "boom",
   "moan",
   "ki"
  ],
@@ -2714,6 +2729,11 @@
  ],
  "sounds/skill.fire.bolt/01.ogg": [
   "r80"
+ ],
+ "sounds/skill.fire.brand/01.ogg": [
+  "ignite",
+  "steam",
+  "crackle"
  ],
  "sounds/skill.fire.breath/01.ogg": [
   "fball",
@@ -3220,15 +3240,6 @@
   "creat",
   "wwoosh"
  ],
- "sounds/skill.shift.ravening.hit/01.ogg": [
-  "water",
-  "creat",
-  "ki"
- ],
- "sounds/skill.shift.ravening/01.ogg": [
-  "creat2",
-  "dsteps"
- ],
  "sounds/skill.shift.hammerfall.hit/01.ogg": [
   "bfh",
   "ki"
@@ -3305,6 +3316,15 @@
   "creat",
   "troll",
   "bfh"
+ ],
+ "sounds/skill.shift.ravening.hit/01.ogg": [
+  "water",
+  "creat",
+  "ki"
+ ],
+ "sounds/skill.shift.ravening/01.ogg": [
+  "creat2",
+  "dsteps"
  ],
  "sounds/skill.shift.reapingSwipe.hit/01.ogg": [
   "ki",
