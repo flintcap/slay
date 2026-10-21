@@ -592,6 +592,15 @@ Update this file and push it after every finished step.
   `Character`; camp news stays on the account (`news`). Save v4 copies the
   old shared block onto heroes that already existed. check-story and
   check-save pass.
+- #162 Wave 5 done (skillqa 8e0687b). All seven class streams and skillqa
+  pushed. check-skills: 203 of 203 active skills pass. Walking (fb675b9) or
+  dodging (f8f4350) out of a landed blow owes the rest of the action
+  (`Player.restLeft`), so neither speeds attacks. Frame rate holds against
+  49ada73 (within 0.3 ms). check-frames fails 8 targets from 18 Oct on the
+  old build too (map draws 137 to 198, boss triangles 555k to 952k): older
+  than skillqa, cause not found. Walls (curve, information only): Knight
+  1, 5, 12; Rogue 40; Revenant 12; Ranger 5, 12; Paladin 5, 12, 25;
+  Shapeshifter 12, 40; Mage none. Owner tests in `skillqa.md`.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
