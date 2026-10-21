@@ -52,6 +52,7 @@ import { BURST_POWER, FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } fro
 import { uiSfx } from './Sfx';
 import { tr, trn, numText } from '../core/I18n';
 import { uiHeight } from '../core/UiScale';
+import { edgeFalloffNote } from '../data/areaFalloff';
 
 const CELL_W = 132;
 const TIERS = 6;
@@ -705,6 +706,9 @@ export class SkillTreePanel {
     this.detail.appendChild(hd);
 
     this.detail.appendChild(div('skdetail-desc', s.desc));
+    // A blast that weakens toward its rim says so (`data/areaFalloff.ts`).
+    const edge = edgeFalloffNote(s.id);
+    if (edge) this.detail.appendChild(div('skdetail-note', edge));
 
     // --- current vs next ---------------------------------------------------
     const rows = rankRows(s, rank);

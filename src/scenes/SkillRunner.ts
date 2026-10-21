@@ -45,6 +45,7 @@ import { KnightKit, knightBlow, knightUnlit, type KnightCast } from './knight/Kn
 import { basicShot, castRanger, clearRanger, RANGER_BOW, RANGER_MOVES, tickRanger } from './ranger/RangerMoves';
 import type { RangerHost } from './ranger/RangerTypes';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
+import { AREA_EDGE_SHARE } from '../data/areaFalloff';
 import { atRank, boostRank } from '../fx/kit/Boost';
 import { tr } from '../core/I18n';
 
@@ -1510,7 +1511,10 @@ export class SkillRunner {
 
         case 'projectile':
         case 'bolt': {
-          player.beginAction(clip, actTime);
+          // Shield Throw is a throw timed as an attack: it leaves the hand on
+          // its gesture's release frame, not on the press.
+          const bounce = (def.effect ?? '').includes('bounce');
+          player.beginAction(clip, actTime, undefined, bounce && released ? { release: true } : undefined);
           const range = num('range', 18);
           // "Five blades (+1 per 7 ranks)", fanned across the skill's arc.
           const many = Math.max(1, Math.floor(perRanks(num('count', 1), num('countPerRanks', 0), rank)));
@@ -1520,9 +1524,21 @@ export class SkillRunner {
           const pierce = Math.floor(num('pierce', 0));
           const splash = num('splash', 0) > 0 ? num('splash', 0) + num('radiusPerRank', 0) * (rank - 1) : 0;
           // Shield Throw: the shield ricochets on to further targets.
-          if ((def.effect ?? '').includes('bounce')) {
+          if (bounce) {
             const bounces = perRanks(num('bounces', 1), num('bouncesPerRanks', 0), rank);
-            this.chainLightning(player, target, 1 + bounces, num('range', 8), makePacket, ctx, enemies, boss, type, color, sound.hit, THROWN_SHAPES[def.id] ?? 'arrow');
+            const aim = target.clone();
+            this.atRelease(player, () => {
+              const live = this.tickCtx;
+              this.effects.beginQuiet();
+              try {
+                this.chainLightning(
+                  player, aim, 1 + bounces, num('range', 8), makePacket, live?.ctx ?? ctx, live?.enemies ?? enemies, live ? live.boss : boss,
+                  type, color, sound.hit, THROWN_SHAPES[def.id] ?? 'arrow',
+                );
+              } finally {
+                this.effects.endQuiet();
+              }
+            });
             break;
           }
 
@@ -2354,8 +2370,9 @@ export class SkillRunner {
       // The Rogue's own looks over his family's drawing (`rogue/RogueMoves.ts`).
       rogueLook(this.rogueHost, { def, player, aim: target, dir, actTime, num });
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
-      // A Rogue throw's motif lands with the throw, on its release frame.
-      const lands = shiftLands ?? (ROGUE_MOVES.has(def.id) || RANGER_MOVES.has(def.id) ? Math.max(player.contactIn, player.releaseIn) : player.contactIn);
+      // A motif lands with the blow on its contact frame, or with a throw or
+      // a cast on its release frame (a melee action has no release frame).
+      const lands = shiftLands ?? Math.max(player.contactIn, player.releaseIn);
       this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, lands, num('radius', 2.5));
     } finally {
       this.effects.endQuiet();
@@ -3381,7 +3398,8 @@ export class SkillRunner {
       if (d > radius + t.hitRadius) continue;
       // Falloff so the centre of a nova genuinely rewards positioning.
       const p = packet();
-      if (falloff) p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * 0.35;
+      // The skill board says so under each skill that does this (`data/areaFalloff.ts`).
+      if (falloff) p.amount *= 1 - Math.min(1, d / (radius + t.hitRadius)) * (1 - AREA_EDGE_SHARE);
       const ap = this.tune(p, t);
       // Knocked away from the middle of the blast.
       if (!this.strike(t, ap, ctx, kind, center.x, center.z)) continue;

@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { arena, caseLog } from './combat-arena';
 import { SKILLS, TREE_BY_ID } from '../src/data/skills';
 import { FOE_POWER, SELF_POWER, burstGrowth, minionLifeGrowth } from '../src/data/skillPower';
+import { EDGE_FALLOFF } from '../src/data/areaFalloff';
 import { SkillRunner } from '../src/scenes/SkillRunner';
 import { Player } from '../src/entities/Player';
 import { createCharacter, equipItem } from '../src/sim/Character';
@@ -20,6 +21,17 @@ import type { CharClassId, DamagePacket } from '../src/types';
 import type { Enemy } from '../src/entities/Enemy';
 
 const { cases, check } = caseLog();
+
+// Which skills land a blast that weakens toward its edge, seen as they are
+// cast below: the skill board's note (`data/areaFalloff.ts`) must match.
+let casting = '';
+const fallsOff = new Set<string>();
+const runnerProto = SkillRunner.prototype as unknown as { areaDamage: (...a: unknown[]) => number };
+const realArea = runnerProto.areaDamage;
+runnerProto.areaDamage = function (this: unknown, ...a: unknown[]): number {
+  if (casting && a[7] !== false) fallsOff.add(casting);
+  return realArea.apply(this, a);
+};
 const DT = 1 / 60;
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
 const only = env.RANK_ONLY ? new Set(env.RANK_ONLY.split(',')) : null;
@@ -177,7 +189,9 @@ for (const s of SKILLS) {
   try {
     lo = measure(cls, s.id, 1);
     two = measure(cls, s.id, 2);
+    casting = s.id;
     hi = measure(cls, s.id, top);
+    casting = '';
   } catch (err) {
     check(`${s.id} casts`, false, String(err).slice(0, 120));
     continue;
@@ -243,5 +257,14 @@ for (const s of SKILLS) {
   if (!grew) stale.push(s.id);
 }
 check('a standing summon grows when you spend a point', stale.length === 0, stale.length ? `stuck: ${stale.join(', ')}` : 'all grow in place');
+if (!only) {
+  const unsaid = [...fallsOff].filter((id) => !EDGE_FALLOFF.has(id));
+  const untrue = [...EDGE_FALLOFF].filter((id) => !fallsOff.has(id));
+  check(
+    'the skill board names every blast that weakens at its edge',
+    unsaid.length === 0 && untrue.length === 0,
+    unsaid.length || untrue.length ? `add to EDGE_FALLOFF: ${unsaid.join(', ') || '-'}; drop: ${untrue.join(', ') || '-'}` : `${fallsOff.size} skills, all named`,
+  );
+}
 check('the top rank is far past rank 1', weak.length === 0, weak.length ? `weak: ${weak.join(', ')}` : 'all grow');
 console.log(JSON.stringify({ cases }));

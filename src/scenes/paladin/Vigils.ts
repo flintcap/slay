@@ -179,16 +179,20 @@ interface Act {
 }
 
 const ACTS: Record<string, Act> = {
+  // A vow takes hold as the hand lets go (`SkillRunner.atRelease`): a dodge
+  // before then cancels it and gives back what it cost.
   anoint: {
     clip: 'cast',
-    run(r) {
-      selfPower(r, 'anointed');
+    release: true,
+    run(r, host) {
+      host.atRelease(r.player, () => selfPower(r, 'anointed'));
     },
   },
   martyrsVow: {
     clip: 'cast',
-    run(r) {
-      selfPower(r, 'martyred');
+    release: true,
+    run(r, host) {
+      host.atRelease(r.player, () => selfPower(r, 'martyred'));
     },
   },
   censure: {
