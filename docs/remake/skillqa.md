@@ -266,10 +266,15 @@ Paladin (sk-paladin, done):
   particle-free rings and one flash, and the bell is warmed. Both cheap.)
 
 Revenant (sk-revenant, done):
-- Never seen in motion: Bone Storm, Bone Cage, Gravewalk, Soul Cage, Soul
+- [x] Never seen in motion: Bone Storm, Bone Cage, Gravewalk, Soul Cage, Soul
   Tether, Revenant Form and the skull projectile. One `check-perf` look
   with Bone Storm, Bone Cage and Soul Tether all up (about 14 shards, 18
-  ribs, 14 hands, 44 links, 3 skulls).
+  ribs, 14 hands, 44 links, 3 skulls). (Shot: Bone Storm's shards
+  wheeling round the hero, Bone Cage's ribs rising, Gravewalk's violet
+  burst and ring. Update step timed the way check-perf does, 30 steps in
+  the busiest room at depth 3, 118 monsters: median 1.5 ms before, 1.4 ms
+  with Bone Storm, Bone Cage, Soul Tether and Soul Cage all up; worst
+  step 6.3 and 14.3 ms.)
 - [x] Blinded, silenced and disarmed still root monsters (their `control`
   holds set `rootTimer`); only fear and confusion were freed. Free them
   the same way unless the status means to hold the body. (e75c312: only
@@ -288,9 +293,13 @@ Revenant (sk-revenant, done):
   (Removed; every skill's icon plan is the same before and after.)
 
 Ranger (sk-ranger, done):
-- Never seen in motion: traps, brambles, Kestrel, standing arrows, the
+- [x] Never seen in motion: traps, brambles, Kestrel, standing arrows, the
   rains, and the 21 new skills. Frame time not measured; one `check-perf`
-  look with Arrow Rain or Darken The Sky up.
+  look with Arrow Rain or Darken The Sky up. (Shot: Arrow Rain's ring and
+  standing arrows, Darken The Sky, Spike Trap. The kestrel is two small
+  feathers circling high, too small to judge at the shot's size: for the
+  owner. Update step with Arrow Rain and Darken The Sky both up, 114
+  monsters: median 1.7 ms before, 1.9 ms during; worst 5.6 and 6.6 ms.)
 - [x] sk-ranger traced the `check-curve` "hit report failed" line: a shared
   line in `CombatFeel.onKill` compares the test harness's stand-in
   `fxScale` to a number. Fix the stand-in or the compare. (e75c312.)
@@ -316,22 +325,35 @@ Shapeshifter (sk-shifter, done):
   beast's (`FORM_PACE` in `data/shifterPower.ts` is read by the runner and
   `ui/AttackEstimate.ts`, not by `CharacterPanel.ts`). (The panel knows no
   live form, so its hint lists the cat, wolf and bear rates.)
-- Rake's first swipe waits about 0.3 s (blow at 35% of the action): check
+- [x] Rake's first swipe waits about 0.3 s (blow at 35% of the action): check
   the cat's flurry feels quick. Killing Dance replays its gesture per
-  blow: look for a hitch between blows.
+  blow: look for a hitch between blows. (Feel is the owner's call; both
+  are under "For the owner to test". From the code: Rake's first blow is
+  the gesture's contact frame and the next two sit on its own cut keys;
+  Killing Dance restarts its gesture each blow with a 0.04 s crossfade,
+  each gap 12% shorter than the last. Shot: the black cat in the pack,
+  Killing Dance's scores across the bodies.)
 - [x] Worry's wrench and Reaping Swipe's pull: the end point is not checked
   against props smaller than the step. Make sure a pulled body never ends
   inside a wall or prop. (e75c312: every `knock` slide stops at a wall or
   a prop it was not already against, `Enemy.knockBlocked`.)
-- The first change into each form should no longer hitch (warmed in
-  `DungeonScene.warmup()`); confirm with a fresh shapeshifter.
+- [x] The first change into each form should no longer hitch (warmed in
+  `DungeonScene.warmup()`); confirm with a fresh shapeshifter. (Under
+  "For the owner to test": software drawing cannot time a hitch.)
 - [x] The curve tool error: `tools/sim-effects.ts` answers every read with a
   function, so `this.effects.fxScale >= 0.9` in `CombatFeel.onKill`
   throws. Give the stand-in a number for `fxScale`. (e75c312.)
-- Never seen in motion: claw scores, jaws, Reaping Swipe's ring, Ursa
+- [x] Never seen in motion: claw scores, jaws, Reaping Swipe's ring, Ursa
   Major's stars, the pack's fog, the four rushes. Frame time not measured
   (Bloodmoon, Bristle and Slink's bursts plus four claw trails and a
-  Reaping ring at once).
+  Reaping ring at once). (Shot: Rake's cat in the pack, Killing Dance's
+  scores. Reaping Swipe, Ursa Major, Bristle and Bloodmoon are form skills
+  the probe's shape could not cast; check-skills fires every one, and
+  their look is for the owner. Update step with Slink and Killing Dance
+  running through a pack of 72: median 1.6 ms before, 3.3 ms during, the
+  dance's own swings; worst 12.3 and 28.5 ms, the second over four kills
+  and their drops. Mage for comparison, Dragon's Breath, Frozen Orb and
+  Firestorm up: median 0.9 to 1.9 ms, worst 21.2 ms over nine kills.)
 
 ## check-skills results so far (from each stream, one run each)
 
