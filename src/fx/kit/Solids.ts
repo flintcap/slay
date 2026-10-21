@@ -22,6 +22,8 @@ export const SOLID = {
   // The Revenant's (`fx/revenant/RevenantFX.ts`): a hunting skull, a cage
   // rib, a grave-hand and a chain link.
   skull: 16, rib: 17, claw: 18, link: 19,
+  // The Mage's Frozen Orb: a faceted ball of ice.
+  orb: 20,
 } as const;
 export type SolidShape = keyof typeof SOLID;
 
@@ -67,6 +69,23 @@ function arrowGeo(): THREE.BufferGeometry {
 function shardGeo(): THREE.BufferGeometry {
   const g = new THREE.OctahedronGeometry(0.5, 0);
   g.scale(0.22, 0.22, 1);
+  return g;
+}
+
+/**
+ * A ball of ice, faceted like cut glass. Each corner is pushed out or in by
+ * where it sits, so corners shared by several faces stay together.
+ */
+function iceOrbGeo(): THREE.BufferGeometry {
+  const g = new THREE.IcosahedronGeometry(0.5, 1);
+  const p = g.getAttribute('position') as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const h = Math.abs(Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453) % 1;
+    const k = 0.9 + 0.2 * h;
+    p.setXYZ(i, x * k, y * k, z * k);
+  }
+  g.computeVertexNormals();
   return g;
 }
 
@@ -451,7 +470,9 @@ export class SolidPool {
       mats[2]!,
       new THREE.MeshStandardMaterial({ color: 0x4a4448, emissive: 0x8a1a2a, emissiveIntensity: 0.55, roughness: 0.45, metalness: 0.7 }),
     );
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo(), skullGeo(), ribGeo(), clawGeo(), linkGeo()];
+    // The Frozen Orb is the ice shard's own ice.
+    mats.push(mats[1]!);
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo(), skullGeo(), ribGeo(), clawGeo(), linkGeo(), iceOrbGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

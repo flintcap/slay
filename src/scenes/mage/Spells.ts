@@ -204,6 +204,8 @@ export class MageSpells {
     y?: number;
     jink?: number;
     flare?: boolean;
+    /** The flying body's shape, when the school's own is not the one. */
+    shape?: 'orb';
     onStrike?: (t: Target, x: number, z: number) => void;
     onEnd?: (x: number, z: number) => void;
   }): void {
@@ -216,6 +218,7 @@ export class MageSpells {
       color: s.color,
       size: o.size * s.sig.size,
       shed: s.sig.trail,
+      shape: o.shape,
       carried: true,
       flare: (o.flare ?? true) && !s.released,
       maxLife: length / Math.max(1, o.speed) + 0.5,
@@ -728,6 +731,7 @@ const frozenOrb: Spell = (s, m) => {
     reach: s.num('radius', 1.6),
     size: s.num('size', 0.75),
     y: 0.8,
+    shape: 'orb',
     hits: Infinity,
     kind: 'area',
     packet: () => s.packet(),

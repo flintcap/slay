@@ -98,7 +98,8 @@ Shared code:
 Mage (sk-mage, done):
 - Dragon's Breath has no fire blast of its own; Winter's Breath has no
   crystal fan.
-- Frozen Orb looks like a shard, not a round orb.
+- [x] Frozen Orb looks like a shard, not a round orb. (A new `orb` body:
+  a faceted ball of ice, the shard's own ice, tumbling in the frost glow.)
 - The fire tree's icons need a deeper repaint. (sk-mage also: Sparkbolt
   and Chain Lightning differ only by the arc.)
 - [x] Pyre Brand has no hit sound. (Its own sear, `skill.fire.brand`.)
