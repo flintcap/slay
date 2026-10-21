@@ -324,12 +324,30 @@ function casterOnBar() {
   w.step(3);
   const earlyLocked = w.player.isBusy;
   w.step(15);
-  const freed = !w.player.isBusy && w.player.position.x > 0.05;
+  const freed = w.player.position.x > 0.05;
   check(
     'movement cancels only the recovery',
     earlyLocked && freed,
     `locked early: ${earlyLocked}, walking by 0.3s: ${freed}`,
   );
+}
+
+// 12b. Walking out of swings never makes them come faster: holding a move key
+// with the attack button held swings at the same pace as standing still.
+{
+  const swings = (move: boolean): number => {
+    const w = world();
+    setPrimaryAttack(w.c, null);
+    w.input.worldPoint.set(0, 0, 3);
+    w.input.mouseRight = true;
+    w.input.mouseRightPressed = true;
+    if (move) w.input.hold('KeyD');
+    w.step(180);
+    return w.log.basics.length;
+  };
+  const still = swings(false);
+  const walking = swings(true);
+  check('a held move key does not speed up swings', walking <= still, `${still} swings standing, ${walking} walking in 3s`);
 }
 
 // 13. A hit during the dash is evaded and announced.

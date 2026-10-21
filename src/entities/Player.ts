@@ -196,6 +196,12 @@ export class Player {
   private actionLock = 0;
   /** Full length of the current action, so its recovery tail can be cancelled. */
   private actionTotal = 0;
+  /**
+   * What was left of an action the hero walked out of. The feet are free, but
+   * the next attack or cast waits it out, so steering never makes the hands
+   * faster than the action's full time.
+   */
+  private restLeft = 0;
   /** Bumped by every new action and every dodge, so a queued blow can tell it was cut off. */
   private actionSerial = 0;
   /**
@@ -396,7 +402,7 @@ export class Player {
   }
 
   get isBusy(): boolean {
-    return this.actionLock > 0 || this.incapacitated;
+    return this.actionLock > 0 || this.restLeft > 0 || this.incapacitated;
   }
 
   /**
@@ -463,6 +469,7 @@ export class Player {
    */
   beginAction(clip: string, duration: number, side?: 'L' | 'R', opts: { release?: boolean; releaseShare?: number } = {}): void {
     if (this.keepAction && this.actionLock > 0) return;
+    this.restLeft = 0;
     this.carryLeft = 0;
     this.spinLeft = 0;
     this.actionLock = duration;
@@ -584,7 +591,8 @@ export class Player {
    * Fraction of an action after which movement may cut it short. Every hit in
    * the game resolves by then (melee at its contact frame, `CLIP_CONTACT`, at
    * most 40% in), so what remains is follow-through; letting a move order take it back is what makes the
-   * controls feel instant without letting anyone attack faster.
+   * controls feel instant. The rest of the action is still owed before the
+   * next attack or cast (`restLeft`), so walking never makes anyone attack faster.
    */
   static readonly RECOVERY_CANCEL_AT = 0.55;
 
@@ -597,6 +605,7 @@ export class Player {
   /** Ends the current action early if it is in its recovery tail. */
   cancelRecovery(): boolean {
     if (!this.inRecovery) return false;
+    this.restLeft = this.actionLock;
     this.actionLock = 0;
     this.actionTotal = 0;
     return true;
@@ -908,6 +917,7 @@ export class Player {
     }
 
     if (this.actionLock > 0) this.actionLock = Math.max(0, this.actionLock - dt);
+    if (this.restLeft > 0) this.restLeft = Math.max(0, this.restLeft - dt);
 
     // Statuses tick before regen so a heal-over-time lands this frame.
     const res = this.status.update(dt, this.stats.life);
