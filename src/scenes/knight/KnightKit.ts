@@ -137,6 +137,8 @@ const STANDARD_REACH = 6;
 /** Taunting Roar drags at this speed, and stops this far short of the hero (plus the body). */
 const PULL_SPEED = 16;
 const PULL_STOP = 1.4;
+/** Seconds between the lights Retribution keeps on the shield (each lives about 0.13 s, so it follows a running Knight). */
+const HALO_EVERY = 0.08;
 /** Earthshatter's wave runs this fast, and breaks the floor every this many metres. */
 const WAVE_SPEED = 18;
 const WAVE_CRACK = 1.2;
@@ -227,6 +229,9 @@ export class KnightKit {
   /** Burst options reused by the per-frame looks, so a frame allocates nothing. */
   private readonly dustOpts = { count: 4, scale: 0.9, color: DUST };
   private readonly glintOpts = { count: 3, scale: 0.6, color: KNIGHT_GOLD };
+  /** Seconds to the next light on the shield while Retribution holds. */
+  private halo = 0;
+  private readonly haloOpts = { count: 3, scale: 0.7 };
   private readonly crackDust = { count: 6, scale: 1.1, color: DUST };
   private readonly crackChips = { count: 5 };
 
@@ -853,20 +858,34 @@ export class KnightKit {
     return this.v.set(player.position.x + fx * 0.4 + fz * 0.3, 1.15, player.position.z + fz * 0.4 - fx * 0.3);
   }
 
-  /** Stored Retribution glints at the shield, faster and brighter as it fills. */
+  /**
+   * Stored Retribution reads at a glance: the shield's face holds a warm gold
+   * light, larger and brighter as it fills, with sparks lifting off the rim,
+   * and glints at the shield, faster as it fills.
+   */
   private glow(dt: number): void {
     const p = this.keeper;
     if (!p) return;
     const stored = p.passiveState.retribution;
     if (stored <= 0 || !p.alive) return;
+    this.halo -= dt;
     this.glint -= dt;
-    if (this.glint > 0) return;
+    if (this.halo > 0 && this.glint > 0) return;
     const fill = Math.min(1, stored / 300);
-    this.glint = 0.55 - 0.4 * fill;
     const s = this.shieldAt(p);
-    this.glintOpts.count = 2 + Math.round(6 * fill);
-    this.glintOpts.scale = 0.5 + 0.6 * fill;
-    this.host.effects.fx.burst('block', s.x, s.y, s.z, this.glintOpts);
+    if (this.halo <= 0) {
+      // Each light outlives the gap to the next, so the shield never goes dark.
+      this.halo = HALO_EVERY;
+      this.haloOpts.scale = 0.6 + 0.9 * fill;
+      this.haloOpts.count = 2 + 10 * fill;
+      this.host.effects.fx.burst('kn.retribution', s.x, s.y, s.z, this.haloOpts);
+    }
+    if (this.glint <= 0) {
+      this.glint = 0.55 - 0.4 * fill;
+      this.glintOpts.count = 2 + Math.round(6 * fill);
+      this.glintOpts.scale = 0.5 + 0.6 * fill;
+      this.host.effects.fx.burst('block', s.x, s.y, s.z, this.glintOpts);
+    }
   }
 
   // ---------------------------------------------------------------------------

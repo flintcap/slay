@@ -15,15 +15,49 @@
  *    finial and a cloth in the class gold, with a scorched line on the
  *    floor where its ring ends.
  *
+ * Retribution's stored charge glows at the shield through one particle
+ * emitter, `kn.retribution`.
+ *
  * `knightStandIns` gives the scene's warmup one of each, so their shaders are
  * linked behind the loading curtain and not on the first cast.
  */
 import * as THREE from 'three';
 import { mergeGeometries } from '../../art/Meshes';
+import { SPRITE } from '../kit/Atlas';
+import { registerEmitters, type Layer } from '../kit/Emitters';
 
 /** The Knight's gold, and the pale steel of a blade's edge. */
 export const KNIGHT_GOLD = 0xd8a640;
 export const STEEL = 0xdfe6ee;
+
+// ---------------------------------------------------------------------------
+// Particles (the shared field, so on the quality ladder)
+// ---------------------------------------------------------------------------
+
+const KN_DEFAULTS: Layer = {
+  sprite: SPRITE.glow, variants: 1, count: 10, speed: [1, 3], spread: 1, up: 0, radius: 0.05, disc: false,
+  life: [0.3, 0.6], size: [0.15, 0.25], grow: 0.5, ramp: 'school', emit: 1, occl: 0.15, heat: [1, 0.3],
+  gravity: 0, drag: 2, turb: 0, spin: 0, stretch: 0, flat: false, fade: 1.5, stagger: 0, ground: false, bounce: 0.32,
+  converge: false, tint: true,
+};
+const KL = (o: Partial<Layer>): Layer => ({ ...KN_DEFAULTS, ...o });
+/** Hot gold: a white heart, the class gold, a burnt edge. */
+const HOT_GOLD = [0xfff4d0, 0xe8b040, 0x6a3a08] as const;
+
+registerEmitters({
+  /**
+   * Retribution held in the shield: a warm light on its face and a few
+   * sparks lifting off the rim. Fired again and again while it holds, so the
+   * light stays; `scale` grows it and `count` thickens the sparks as it fills.
+   */
+  'kn.retribution': {
+    school: 'physical',
+    layers: [
+      KL({ sprite: SPRITE.glow, count: 1, ramp: HOT_GOLD, speed: [0, 0], radius: 0, size: [0.4, 0.44], grow: 1.1, life: [0.12, 0.15], heat: [0.9, 0.6], emit: 0.85, occl: 0, fade: 1, tint: false }),
+      KL({ sprite: SPRITE.mote, count: 2, ramp: HOT_GOLD, speed: [0.2, 0.6], spread: 0.6, up: 1, radius: 0.22, disc: true, size: [0.03, 0.05], grow: 0.6, life: [0.35, 0.6], heat: [1, 0.4], emit: 1.1, occl: 0, gravity: 0.8, drag: 1.5, tint: false }),
+    ],
+  },
+});
 
 const SEGMENTS = 48;
 

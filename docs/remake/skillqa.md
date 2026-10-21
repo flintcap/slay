@@ -132,8 +132,11 @@ Knight (sk-knight, done):
 - Never seen in motion: every new Knight gesture, the Whirlwind walk, the
   Shield Charge run, the Gatefall arc and landing, Massacre's five cuts,
   the standard, the steel arcs, Sworn Brother's ghost look.
-- Retribution's stored charge shows only as gold glints at the shield.
-  Give it a clear look that reads at a glance.
+- [x] Retribution's stored charge shows only as gold glints at the shield.
+  Give it a clear look that reads at a glance. (A warm gold light now
+  holds on the shield's face, growing with the charge, with sparks lifting
+  off the rim; the glints stay. One new emitter, `kn.retribution`, in the
+  shared particle field.)
 - [x] Frame time not measured. Watch the standard (three see-through lit
   materials that cast shadows) and Earthshatter (a crack decal and two
   bursts every metre of its 12 m line). (The standard is one per Knight;
