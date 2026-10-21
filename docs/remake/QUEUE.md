@@ -25,7 +25,7 @@ Paused: no
 
 Wave 5 (skills remake, owner):
 Building: none (all seven class streams done)
-Running: skillqa (alone, last)
+Running: none
 Done: skillcore, sk-mage, sk-rogue, sk-knight, sk-paladin, sk-revenant,
-sk-ranger, sk-shifter
+sk-ranger, sk-shifter, skillqa
 Paused: no

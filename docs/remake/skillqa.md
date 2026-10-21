@@ -1,6 +1,6 @@
 # Stream: skillqa (Wave 5: quality pass over every class's skills)
 
-Status: in progress
+Status: done
 
 Goal (owner): after skillcore and all seven class streams are done, send
 everything through quality checks: AAA quality, every skill working, and
@@ -90,7 +90,7 @@ sheet per class only where a "For skillqa" note asks for a look. Run
   fixed: the breaths (a slab, now a wedge with their own jets), Frozen Orb
   (a shard, now a ball), Retribution's charge (glints, now a light), the
   Knight's standard (five meshes, now three).)
-- [ ] 5. Frame rate. Every new effect has a `warmup()` stand-in; no
+- [x] 5. Frame rate. Every new effect has a `warmup()` stand-in; no
   allocation in per-frame code; particle counts follow the quality ladder.
   After numbers from `check-perf` and `check-frames`, same scene and
   settings as before. Frame rate must not drop; make it faster where you
@@ -121,8 +121,17 @@ sheet per class only where a "For skillqa" note asks for a look. Run
   same scene with the heap sampler off: median 2.6 old, 2.9 new; mean 3.38
   and 3.65. The 0.27 ms is spread over systems no skillqa change touches
   (pack draws +0.10, name plates +0.05) as much as the particle field
-  (+0.14): the fight's own spread, not a drop.)
-- [ ] 6. Handover. List what was fixed, the before and after frame numbers,
+  (+0.14): the fight's own spread, not a drop.
+
+  `check-frames` on the published bundle, this build and the old build
+  (49ada73) back to back with the same tool: both fail the same 8 checks
+  against the baseline of 18 October (`tools/perf-frames.json`, not
+  re-saved). Draw calls: town 255 and 255, map 194 (198 old), boss 141
+  (147 old); triangles the same; pipelines made while playing the same
+  (the hero's eyes, mouth and shorts in town, four monster pack
+  materials on the map); uploads the same. Update p50 town 1.4 (1.3),
+  map 5.1 (4.4), boss 4.0 (3.2): one run each, the same spread as above.)
+- [x] 6. Handover. List what was fixed, the before and after frame numbers,
   and "For the owner to test" (one line per class: what to try and what
   should happen). Set `Status: done`, push.
 
@@ -410,10 +419,7 @@ Revenant 30/30, Ranger 31/31, Shapeshifter 26/26.
 
 ## Next up
 
-Milestone 5: `check-perf --preview` after (running on the build of
-851d52f, output `perf-after.txt` in the scratchpad), then
-`node tools/bundle-artifact.mjs` and `check-frames`, compare with the
-before table, then the handover (milestone 6).
+Nothing: every milestone is ticked and the stream is done.
 
 ## Notes for resume
 
@@ -495,10 +501,25 @@ commit is named beside each):
 Not fixed, and why (one line each):
 - `check-tactics` 1 of 12: monster AI, fails at 49ada73 too, not a skill.
 - `check-perf` budgets over (depth 1 shadow lights, allocation at every
-  dungeon depth): older than this wave, the same before and after.
+  dungeon depth): present at 49ada73, before skillqa, and the same after.
+- `check-frames` fails 8 against its 18 October baseline (map draws 137
+  to 198, boss 112 to 147, boss triangles 555k to 952k, map uploads 990
+  to 3173 KB, monster pack and hero pipelines made while playing): the
+  same at 49ada73, before skillqa, so not from this stream; the baseline
+  is older than the speed stream's last work and every Wave 5 stream, and
+  which change moved each number was not traced here (for the lead).
 
 Walled heroes (`check-curve`, information for the owner; damage and
 monsters untouched): Knight d1, d5, d12; Rogue d40; Revenant d12; Ranger
 d5, d12; Paladin d5, d12, d25; Shapeshifter d12, d40; Mage clear.
 
-Frame numbers before and after: see milestone 5.
+Frame numbers (tables under milestones 1 and 5): allocation, programs,
+textures, lights and draws the same or lower after; the update step read
+higher at some depths and lower at others, and the old build run again
+beside it swings as far (depth 32: 4.3 then 9.9 ms on the same build).
+Split by system in the same scene, the update step is within 0.3 ms of
+the old build, in systems skillqa did not touch as much as in ones it
+did. `check-frames`: the same 8 failures as the old build (see above).
+
+Left for `finish`: the owner's tests above, the owner's call on the
+walled heroes, and the lead's look at the `check-frames` numbers.
