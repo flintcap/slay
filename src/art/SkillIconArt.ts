@@ -24,6 +24,7 @@ import { KNIGHT_ICONS } from './icons/knightIcons';
 import { REVENANT_ICONS } from './icons/revenantIcons';
 import { PALADIN_ICONS } from './icons/paladinIcons';
 import { RANGER_ICONS } from './icons/rangerIcons';
+import { MAGE_ICONS } from './icons/mageIcons';
 import { GLYPHS, type Glyph, type Tone, GLYPH_MATS, paintRay, paintEnergy, dropPath } from './Glyphs';
 import {
   type Ctx,
@@ -189,6 +190,7 @@ const ICON_MAP: Record<string, string> = {
   ...REVENANT_ICONS,
   ...PALADIN_ICONS,
   ...RANGER_ICONS,
+  ...MAGE_ICONS,
 };
 
 /** Effect family -> pictogram, for names nobody mapped. */

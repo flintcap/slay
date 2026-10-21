@@ -49,6 +49,7 @@ import { SHIFTER_GLYPHS } from './ShifterGlyphs';
 import { KNIGHT_GLYPHS } from './KnightGlyphs';
 import { REVENANT_GLYPHS } from './RevenantGlyphs';
 import { RANGER_GLYPHS } from './RangerGlyphs';
+import { MAGE_GLYPHS } from './MageGlyphs';
 
 export interface Tone {
   /** White-hot core. */
@@ -1630,6 +1631,7 @@ export const GLYPHS: Record<string, Glyph> = {
   ...ROGUE_GLYPHS,
   ...REVENANT_GLYPHS,
   ...RANGER_GLYPHS,
+  ...MAGE_GLYPHS,
 };
 
 export { obj as paintObject, energy as paintEnergy, ray as paintRay };

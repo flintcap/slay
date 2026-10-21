@@ -27,10 +27,12 @@
  *   rgmiasma   v0 a cloud with a skull's face, v1 poisoned footprints, v2 a
  *              heart in a ring of smoke.
  *   rghood     the hood, face on. v0 no hood, only a hunter's eyes in the
- *              dark; v1 the cloak drawn across, v2 dissolving, v3 eyes shut
- *              behind a raised blade.
- *   rgtwin     hooded figures. v0 one and its shadow, v1 three, v2 two facing
- *              across a crack, v3 a knife passing clean through his shadow.
+ *              dark; v1 the cloak drawn across, v2 dissolving.
+ *   rgtwin     a hooded figure and its shadow, side by side.
+ *   rglegion   pairs of eyes in the dark at every depth.
+ *   rgmirror   a cracked mirror, a blade in the glass and one before it.
+ *   rgsilhouette a thrown knife through a ring of smoke.
+ *   rgunseen   a shut eye above a blade of light.
  *   rgbomb     a smoke bomb with its fuse lit.
  *   rgeclipse  v0 a black sun whose light falls like a curtain, v1 a crescent
  *              round an hourglass, v2 a crescent crossed by a dagger.
@@ -1140,24 +1142,6 @@ const rghood: Glyph = (x, t, v) => {
       }
       return;
     }
-    case 3: {
-      // The Unseen Blade: eyes shut, the blade raised before the face.
-      glow(x, 64, 60, 50, t.glow, 0.25);
-      hoodBust(x, t);
-      x.save();
-      x.strokeStyle = css(t.glow, 0.8);
-      x.lineWidth = 1.8;
-      x.lineCap = 'round';
-      for (const sg of [-1, 1]) {
-        x.beginPath();
-        x.arc(64 + sg * 11, 52, 5, 0.3, Math.PI - 0.3);
-        x.stroke();
-      }
-      x.restore();
-      knife(x, t, 64, 70, 0, 66);
-      glint(x, 64, 24, 10, t.core, 1);
-      return;
-    }
     default: {
       // Night Eyes: no hood at all, a hunter's eyes opening in the dark,
       // slit pupils, under a brow of smoke and over a bank of it.
@@ -1250,53 +1234,111 @@ function figure(x: Ctx, t: Tone, cx: number, foot: number, h: number, o: FigureO
   x.restore();
 }
 
-const rgtwin: Glyph = (x, t, v) => {
-  switch (v) {
-    case 1: {
-      // Shadow Legion: three of him.
-      figure(x, t, 30, 108, 70, { ghost: true, a: 0.85 });
-      figure(x, t, 98, 108, 70, { ghost: true, a: 0.85, flip: true });
-      figure(x, t, 64, 120, 92, {});
-      return;
-    }
-    case 2: {
-      // Mirror Gambit: he and his shadow face each other across a crack.
-      const crack = polyP([[64, 6], [60, 30], [68, 52], [60, 76], [67, 98], [63, 122]], false);
-      x.save();
-      x.strokeStyle = 'rgba(0,0,0,.9)';
-      x.lineWidth = 5;
-      x.stroke(crack);
-      x.restore();
-      ray(x, crack, t, 2);
-      figure(x, t, 34, 116, 84, { blade: 1 });
-      figure(x, t, 94, 116, 84, { ghost: true, flip: true, blade: -1 });
-      return;
-    }
-    case 3: {
-      // Silhouette: a thrown knife goes clean through him; there was only
-      // shadow where it passed, the shadow parting round it in a ring.
-      figure(x, t, 64, 122, 104, { ghost: true, eyes: false });
-      const streak = new Path2D();
-      streak.moveTo(124, 60);
-      streak.lineTo(70, 64);
-      x.save();
-      x.globalAlpha = 0.55;
-      ray(x, streak, t, 2.2);
-      x.restore();
-      x.save();
-      x.globalAlpha = 0.9;
-      ray(x, ellipseP(62, 64, 7, 15), t, 1.8);
-      x.restore();
-      smoke(x, t, [[54, 56, 6], [52, 72, 6], [46, 64, 5]], SMOKE, 0.7);
-      knifeAt(x, t, 7, 67, -Math.PI / 2 - 0.06, 32);
-      return;
-    }
-    default: {
-      // Shadow Clone: one of flesh and one of shadow, side by side.
-      figure(x, t, 82, 112, 88, { ghost: true });
-      figure(x, t, 48, 120, 96, {});
+/** Shadow Clone: one of flesh and one of shadow, side by side. */
+const rgtwin: Glyph = (x, t) => {
+  figure(x, t, 82, 112, 88, { ghost: true });
+  figure(x, t, 48, 120, 96, {});
+};
+
+// ---------------------------------------------------------------------------
+// Shadowcraft's other pictures: no hood among them
+// ---------------------------------------------------------------------------
+
+/** Shadow Legion: the dark full of watchers, pairs of eyes at every depth. */
+const rglegion: Glyph = (x, t) => {
+  smoke(x, t, [[14, 34, 18], [42, 24, 20], [80, 22, 20], [112, 32, 18], [18, 70, 18], [64, 62, 16], [108, 68, 18]], SMOKE, 0.9);
+  smoke(x, t, [[16, 110, 18], [48, 116, 20], [84, 116, 20], [114, 106, 16]], SMOKE, 0.85);
+  // Far to near: small, dim and high to big, bright and low.
+  const pairs: readonly (readonly [number, number, number])[] = [[30, 36, 0.55], [98, 34, 0.55], [64, 40, 0.6], [24, 68, 0.78], [104, 66, 0.78], [64, 92, 1]];
+  for (const [cx, cy, s] of pairs) {
+    for (const sg of [-1, 1]) {
+      const ex = cx + sg * 10 * s;
+      glow(x, ex, cy, 14 * s, t.glow, 0.45 + 0.5 * s);
+      x.fillStyle = css(t.core, 0.5 + 0.5 * s);
+      x.fill(ellipseP(ex, cy, 6 * s, 2.8 * s, -sg * 0.2));
     }
   }
+};
+
+/** Mirror Gambit: a cracked mirror; in the glass his shadow strikes as he does. */
+const rgmirror: Glyph = (x, t) => {
+  const frame = ellipseP(64, 60, 40, 52);
+  obj(x, frame, DARKSTEEL, t, [24, 8], [104, 112], 1.4);
+  const glass = ellipseP(64, 60, 32, 44);
+  x.save();
+  const g = x.createRadialGradient(56, 46, 4, 64, 60, 46);
+  g.addColorStop(0, css(mixC(t.glow, 0x0a0812, 0.6)));
+  g.addColorStop(1, '#030206');
+  x.fillStyle = g;
+  x.fill(glass);
+  x.clip(glass);
+  // In the glass: his shadow's blade, striking the mirror way.
+  ghostKnife(x, t, 74, 60, -0.7, 52, 0.95);
+  // The crack, running out from where the glass was struck.
+  const hx = 50;
+  const hy = 38;
+  const c = new Path2D();
+  for (const [ex, ey] of [[22, 30], [42, 8], [74, 14], [98, 44], [88, 96], [46, 106], [22, 72]] as const) {
+    c.moveTo(hx, hy);
+    c.lineTo((hx + ex) / 2 + 3, (hy + ey) / 2 - 2);
+    c.lineTo(ex, ey);
+  }
+  x.strokeStyle = 'rgba(0,0,0,.85)';
+  x.lineWidth = 3;
+  x.stroke(c);
+  ray(x, c, t, 1.3);
+  x.restore();
+  innerEdge(x, glass, 'rgba(0,0,0,.8)', 6, 0, 3, 3);
+  // Before the glass: his own blade, striking the other way.
+  knife(x, t, 30, 94, 0.7, 46);
+  glint(x, hx, hy, 10, 0xffffff, 0.9);
+};
+
+/** Silhouette: a thrown knife passes clean through a ring of smoke; nobody was there. */
+const rgsilhouette: Glyph = (x, t) => {
+  const ring: Puff[] = [];
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ring.push([64 + Math.cos(a) * 30, 62 + Math.sin(a) * 38, 11 + (i % 3) * 2]);
+  }
+  smoke(x, t, ring, SMOKE, 0.95);
+  glow(x, 64, 62, 24, t.glow, 0.35);
+  const streak = new Path2D();
+  streak.moveTo(124, 58);
+  streak.lineTo(36, 64);
+  x.save();
+  x.globalAlpha = 0.6;
+  ray(x, streak, t, 2.4);
+  x.restore();
+  knifeAt(x, t, 8, 66, -Math.PI / 2 - 0.06, 34);
+  for (const [mx, my, r] of [[58, 40, 2.4], [74, 84, 2], [52, 78, 1.8], [80, 46, 1.6]] as const) glint(x, mx, my, r * 2.4, t.core, 0.8);
+};
+
+/** The Unseen Blade: an eye shut above a blade that is only its edge of light. */
+const rgunseen: Glyph = (x, t) => {
+  glow(x, 64, 70, 54, t.glow, 0.35);
+  smoke(x, t, [[14, 22, 16], [42, 14, 16], [86, 14, 16], [114, 22, 16]], SMOKE, 0.85);
+  // The shut eye: one lid, the lashes hanging from it.
+  const p0: Pt = [18, 24];
+  const pc: Pt = [64, 50];
+  const p1: Pt = [110, 24];
+  const lid = new Path2D();
+  lid.moveTo(p0[0], p0[1]);
+  lid.quadraticCurveTo(pc[0], pc[1], p1[0], p1[1]);
+  ray(x, lid, t, 3.6);
+  for (let i = 0; i < 6; i++) {
+    const k = 0.18 + (i / 5) * 0.64;
+    const lx = (1 - k) * (1 - k) * p0[0] + 2 * (1 - k) * k * pc[0] + k * k * p1[0];
+    const ly = (1 - k) * (1 - k) * p0[1] + 2 * (1 - k) * k * pc[1] + k * k * p1[1];
+    const l = new Path2D();
+    l.moveTo(lx, ly + 1);
+    l.lineTo(lx + (k - 0.5) * 8, ly + 9);
+    ray(x, l, t, 1.8);
+  }
+  // The blade, seen only by its light, point down, and the strike it makes.
+  ghostKnife(x, t, 64, 84, Math.PI, 46, 1);
+  energy(x, starP(64, 117, 4, 4, 13, 0), t, 64, 117, 13, 0.6);
+  glint(x, 64, 117, 12, 0xffffff, 1);
 };
 
 // ---------------------------------------------------------------------------
@@ -1662,6 +1704,10 @@ export const ROGUE_GLYPHS: Record<string, Glyph> = {
   rgmiasma,
   rghood,
   rgtwin,
+  rglegion,
+  rgmirror,
+  rgsilhouette,
+  rgunseen,
   rgbomb,
   rgeclipse,
   rgblink,
