@@ -479,6 +479,14 @@ export class DungeonScene extends GameScene {
     if (this.player.character.classId === 'paladin') list.push(vigilStandIn(), ...paladinStandIns());
     // A Knight's steel arcs and standard, for the first cut and the first banner.
     if (this.player.character.classId === 'warden') list.push(...knightStandIns());
+    // A Shapeshifter's pelts, claws, eyes and tails, for the first change.
+    if (this.player.character.classId === 'shapeshifter') {
+      try {
+        list.push(...this.player.formStandIns());
+      } catch {
+        /* the first change links them, as before */
+      }
+    }
     if (!list.length) return null;
     const g = new THREE.Group();
     g.name = 'warmup';

@@ -372,6 +372,12 @@ export class DressedHero {
     this.formBody.prewarm();
   }
 
+  /** Shown copies of the beasts' looks, for the scene's warm-up (`FormBody.standIns`). */
+  formStandIns(): THREE.Object3D[] {
+    this.formBody ??= new FormBody(this.body, this.animator);
+    return this.formBody.standIns();
+  }
+
   /** The form's swell and tail; call once a frame after the animator. */
   updateForm(dt: number): void {
     this.formBody?.update(dt);

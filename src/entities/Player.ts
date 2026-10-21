@@ -1096,6 +1096,11 @@ export class Player {
     return { root, animator };
   }
 
+  /** A Shapeshifter's beast looks, linked behind the curtain rather than on the first change. */
+  formStandIns(): THREE.Object3D[] {
+    return this.hero.formStandIns();
+  }
+
   /** The shadow material's programs, linked behind the curtain rather than on first cast. */
   shadowStandIns(): THREE.Object3D[] {
     const out: THREE.Object3D[] = [];

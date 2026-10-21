@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import type { EffectSystem } from '../Effects';
 import type { RibbonHandle } from '../kit/Ribbons';
+import type { BurstOpts } from '../Particles';
 import type { BeastForm } from '../../art/hero/forms/BeastBody';
 import { events } from '../../core/Events';
 import './emitters';
@@ -64,6 +65,10 @@ const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _x = new THREE.Vector3();
+/** Scratch direction for what runs every frame (bursts read it at once and keep nothing). */
+const _d = new THREE.Vector3();
+/** Reaping Swipe's dust options, filled in place each puff. */
+const reapOpts: BurstOpts = {};
 
 /**
  * Claw scores that follow a paw for `dur` seconds: `n` thin trails, spread
@@ -82,12 +87,12 @@ function clawTrails(fx: EffectSystem, bones: Bones, side: 'L' | 'R', o: { n: num
     () => {
       hand.getWorldPosition(_a);
       tip.getWorldPosition(_b);
-      const dir = _b.clone().sub(_a).normalize();
+      _d.subVectors(_b, _a).normalize();
       hand.getWorldQuaternion(_q);
       _x.set(1, 0, 0).applyQuaternion(_q);
       for (let i = 0; i < o.n; i++) {
         const off = (i - (o.n - 1) / 2) * spread;
-        fx.ribbons.pushPoint(rib[i]!, _b.x + dir.x * len + _x.x * off, _b.y + dir.y * len + _x.y * off, _b.z + dir.z * len + _x.z * off);
+        fx.ribbons.pushPoint(rib[i]!, _b.x + _d.x * len + _x.x * off, _b.y + _d.y * len + _x.y * off, _b.z + _d.z * len + _x.z * off);
       }
     },
     () => rib.forEach((h) => fx.ribbons.retire(h)),
@@ -107,7 +112,7 @@ function boneTrail(fx: EffectSystem, bone: THREE.Bone | undefined, dur: number, 
       acc += dt;
       if (o.puff && acc >= (o.every ?? 0.04)) {
         acc = 0;
-        fx.fx.burst(o.puff, _a.x, _a.y, _a.z, {});
+        fx.fx.burst(o.puff, _a.x, _a.y, _a.z);
       }
     },
     () => fx.ribbons.retire(h),
@@ -222,7 +227,7 @@ export const FeralFX = {
       const pel = bones.pelvis;
       if (pel) pel.getWorldPosition(_a);
       else _a.copy(follow.position);
-      fx.fx.burst('ss.slink.wisp', _a.x, 0.35, _a.z, {});
+      fx.fx.burst('ss.slink.wisp', _a.x, 0.35, _a.z);
     });
   },
   /** Hamstring: one long low score at knee height and a spray along the floor. */
@@ -263,7 +268,7 @@ export const FeralFX = {
       acc += dt;
       if (acc < 0.09) return;
       acc = 0;
-      fx.fx.burst('ss.night.trail', follow.position.x, 0.9, follow.position.z, {});
+      fx.fx.burst('ss.night.trail', follow.position.x, 0.9, follow.position.z);
     });
   },
 };
@@ -373,8 +378,8 @@ export const TeethFX = {
       if (acc < 1.2) return;
       acc = 0;
       const q = follow.position;
-      fx.fx.burst('ss.moon.disc', q.x, 3.3, q.z, {});
-      fx.fx.burst('ss.moon.rain', q.x, 2.8, q.z, {});
+      fx.fx.burst('ss.moon.disc', q.x, 3.3, q.z);
+      fx.fx.burst('ss.moon.rain', q.x, 2.8, q.z);
     });
   },
 };
@@ -384,6 +389,8 @@ export const TeethFX = {
 // ---------------------------------------------------------------------------
 
 const BEAR_CLAW = 0xf0e0c0;
+/** Bristle's smaller burst each second it lasts. */
+const BRISTLE_AGAIN: BurstOpts = { count: 5 };
 
 export const ClawFX = {
   /** Maul: four wide scores and grit thrown off the swing. */
@@ -423,7 +430,7 @@ export const ClawFX = {
       acc += dt;
       if (acc < 1) return;
       acc = 0;
-      fx.fx.burst('ss.bristle.spines', follow.position.x, 1.4, follow.position.z, { count: 5 });
+      fx.fx.burst('ss.bristle.spines', follow.position.x, 1.4, follow.position.z, BRISTLE_AGAIN);
     });
   },
   /** Overrun: the dust wake and a furrow down the floor. */
@@ -454,7 +461,8 @@ export const ClawFX = {
         fx.ribbons.pushPoint(h, x, 1.0, z);
         if (u - last > 0.12) {
           last = u;
-          fx.fx.burst('ss.reap.ring', x, 0.3, z, { dir: new THREE.Vector3(Math.sin(a), 0, Math.cos(a)) });
+          reapOpts.dir = _d.set(Math.sin(a), 0, Math.cos(a));
+          fx.fx.burst('ss.reap.ring', x, 0.3, z, reapOpts);
         }
       },
       () => fx.ribbons.retire(h),

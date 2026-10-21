@@ -207,6 +207,39 @@ export class FormBody {
     else for (const f of BEAST_FORMS) this.build(f);
   }
 
+  /**
+   * A shown copy of each look the beasts wear (pelt, claws, eyes, tail), for
+   * the scene's warm-up. The forms hang hidden on the hero and a hidden mesh
+   * is never linked, so the first change in a fight linked their programs on
+   * its own frame. Meshes any form not built yet: behind the curtain, where
+   * the time does not show. The copies share geometry, material and skeleton.
+   */
+  standIns(): THREE.Object3D[] {
+    const out: THREE.Object3D[] = [];
+    const seen = new Set<string>();
+    for (const f of BEAST_FORMS) {
+      let w: Worn;
+      try {
+        w = this.build(f);
+      } catch {
+        continue;
+      }
+      w.group.traverse((o) => {
+        const m = o as THREE.SkinnedMesh;
+        if (!m.isSkinnedMesh) return;
+        const mat = m.material as THREE.Material;
+        const key = `${mat.uuid}|${m.skeleton.bones.length}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const copy = m.clone(false) as THREE.SkinnedMesh;
+        copy.visible = true;
+        copy.frustumCulled = false;
+        out.push(copy);
+      });
+    }
+    return out;
+  }
+
   /** Root scale and the tail. Call once a frame after the animator. */
   update(dt: number): void {
     const target = this.form ? BEAST_BUILD[this.form].scale * this.extra : 1;

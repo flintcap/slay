@@ -3,7 +3,10 @@
  * spray and the dark of the cat. Registered into the kit's emitter library
  * on import (`registerEmitters`), so `effects.fx.burst('ss.…')` finds them.
  *
- * Every id starts `ss.` and no other skill in the game fires one.
+ * Every id starts `ss.` and no other skill in the game fires one. Counts
+ * scale with the quality's `fxScale`; the garnish layers (lingering smoke,
+ * stray motes, the slow second fall of hair) are `rich`, drawn on High and
+ * Ultra only, so a low setting keeps each effect's shape and drops its dust.
  */
 import { SPRITE } from '../kit/Atlas';
 import { registerEmitters, type Emitter, type Layer } from '../kit/Emitters';
@@ -60,7 +63,7 @@ const EM: Record<string, Emitter> = {
     layers: [
       L({ sprite: SPRITE.smoke, count: 14, ramp: SHADOW, converge: true, radius: 1.3, speed: [2, 3], life: [0.3, 0.45], size: [0.4, 0.6], grow: 0.4, heat: [0.4, 0], emit: 0.3, occl: 0.7, fade: 1.2, tint: false }),
       fur(CAT_FUR, 46, [2.5, 5.5], 0.5, { stagger: 0.12 }),
-      L({ sprite: SPRITE.smoke, count: 6, ramp: SHADOW, speed: [0.6, 1.4], radius: 0.4, size: [0.5, 0.8], grow: 2.2, life: [0.8, 1.3], heat: [0.2, 0], emit: 0.15, occl: 0.65, gravity: 0.3, drag: 2, turb: 0.4, stagger: 0.1, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 6, ramp: SHADOW, speed: [0.6, 1.4], radius: 0.4, size: [0.5, 0.8], grow: 2.2, life: [0.8, 1.3], heat: [0.2, 0], emit: 0.15, occl: 0.65, gravity: 0.3, drag: 2, turb: 0.4, stagger: 0.1, tint: false, rich: true }),
     ],
   },
   // The wolf: grey hair bursts out low in a ring, dust under it.
@@ -69,7 +72,7 @@ const EM: Record<string, Emitter> = {
     layers: [
       fur(WOLF_FUR, 56, [3, 6.5], 0.25, { disc: true, radius: 0.45 }),
       L({ sprite: SPRITE.smoke, count: 8, ramp: DUST, disc: true, radius: 0.3, speed: [1.5, 3], up: -0.1, size: [0.35, 0.5], grow: 2.4, life: [0.7, 1.1], heat: [0.2, 0], emit: 0.2, occl: 0.5, drag: 2.5, turb: 0.3, tint: false }),
-      fur(WOLF_FUR, 18, [0.6, 1.6], 1, { gravity: -2.5, life: [1.0, 1.6], stagger: 0.25 }),
+      fur(WOLF_FUR, 18, [0.6, 1.6], 1, { gravity: -2.5, life: [1.0, 1.6], stagger: 0.25, rich: true }),
     ],
   },
   // The bear: a thump that throws a ring of dust and stone, brown hair in it.
@@ -158,7 +161,7 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.smoke, count: 10, ramp: SHADOW, disc: true, flat: true, radius: 0.7, speed: [0.2, 0.6], size: [0.7, 1.0], grow: 1.6, life: [1.2, 1.8], heat: [0.2, 0], emit: 0.1, occl: 0.75, drag: 2, turb: 0.2, tint: false }),
-      L({ sprite: SPRITE.mote, count: 10, ramp: SHADOW, radius: 0.6, speed: [0.2, 0.6], up: 0.3, size: [0.04, 0.07], grow: 0.6, life: [0.8, 1.4], heat: [1, 0.4], emit: 0.8, occl: 0, drag: 1.5, turb: 0.6, tint: false }),
+      L({ sprite: SPRITE.mote, count: 10, ramp: SHADOW, radius: 0.6, speed: [0.2, 0.6], up: 0.3, size: [0.04, 0.07], grow: 0.6, life: [0.8, 1.4], heat: [1, 0.4], emit: 0.8, occl: 0, drag: 1.5, turb: 0.6, tint: false, rich: true }),
     ],
   },
   // Slink: what drifts off the slinking cat as it goes.
@@ -187,7 +190,7 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.smoke, count: 4, ramp: SHADOW, radius: 0.3, speed: [0.1, 0.3], up: 0.1, size: [0.55, 0.8], grow: 1.2, life: [0.3, 0.45], heat: [0.4, 0], emit: 0.25, occl: 0.7, drag: 3, tint: false }),
-      L({ sprite: SPRITE.mote, count: 3, ramp: EYE_CAT, radius: 0.2, speed: [0.1, 0.4], up: 0.5, size: [0.04, 0.06], grow: 0.4, life: [0.3, 0.5], heat: [1, 0.5], emit: 1.2, occl: 0, tint: false }),
+      L({ sprite: SPRITE.mote, count: 3, ramp: EYE_CAT, radius: 0.2, speed: [0.1, 0.4], up: 0.5, size: [0.04, 0.06], grow: 0.4, life: [0.3, 0.5], heat: [1, 0.5], emit: 1.2, occl: 0, tint: false, rich: true }),
     ],
   },
   // Night Hunt: the dark rising off the body like smoke off a wick.
@@ -195,7 +198,7 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.smoke, count: 16, ramp: SHADOW, radius: 0.5, speed: [0.6, 1.6], up: 1.2, size: [0.45, 0.7], grow: 2.4, life: [0.9, 1.5], heat: [0.3, 0], emit: 0.15, occl: 0.7, gravity: 1.5, drag: 1.6, turb: 0.5, stagger: 0.2, tint: false }),
-      L({ sprite: SPRITE.mote, count: 18, ramp: SHADOW, radius: 0.7, speed: [0.4, 1.2], up: 1, size: [0.04, 0.07], grow: 0.5, life: [0.8, 1.4], heat: [1, 0.4], emit: 1, occl: 0, gravity: 1, drag: 1.2, turb: 0.7, tint: false }),
+      L({ sprite: SPRITE.mote, count: 18, ramp: SHADOW, radius: 0.7, speed: [0.4, 1.2], up: 1, size: [0.04, 0.07], grow: 0.5, life: [0.8, 1.4], heat: [1, 0.4], emit: 1, occl: 0, gravity: 1, drag: 1.2, turb: 0.7, tint: false, rich: true }),
     ],
   },
   'ss.night.trail': {
@@ -242,7 +245,7 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.smoke, count: 14, ramp: BLOOD, converge: true, radius: 2.2, speed: [3, 4.5], life: [0.45, 0.65], size: [0.35, 0.5], grow: 0.5, heat: [0.5, 0], emit: 0.4, occl: 0.45, fade: 1.2, tint: false }),
-      L({ sprite: SPRITE.mote, count: 16, ramp: BLOOD, converge: true, radius: 2.6, speed: [4, 6], life: [0.4, 0.6], size: [0.05, 0.08], grow: 0.4, heat: [1, 0.5], emit: 1.1, occl: 0, tint: false }),
+      L({ sprite: SPRITE.mote, count: 16, ramp: BLOOD, converge: true, radius: 2.6, speed: [4, 6], life: [0.4, 0.6], size: [0.05, 0.08], grow: 0.4, heat: [1, 0.5], emit: 1.1, occl: 0, tint: false, rich: true }),
     ],
   },
   // Ravening: blood and grey hair thrown off the side the head wrenched to.
@@ -329,7 +332,7 @@ const EM: Record<string, Emitter> = {
     school: 'physical',
     layers: [
       L({ sprite: SPRITE.flare, count: 1, ramp: [0xffffff, 0xfff0c0, 0x8a7040], speed: [0, 0], radius: 0, size: [0.3, 0.34], grow: 0.8, life: [1.3, 1.5], heat: [1, 0.7], emit: 1.6, occl: 0, fade: 3, spin: 0.6, tint: false }),
-      L({ sprite: SPRITE.mote, count: 3, ramp: [0xffffff, 0xfff0c0, 0x8a7040], radius: 0.05, speed: [0.05, 0.2], size: [0.03, 0.05], grow: 0.4, life: [0.8, 1.2], heat: [1, 0.5], emit: 1.2, occl: 0, tint: false }),
+      L({ sprite: SPRITE.mote, count: 3, ramp: [0xffffff, 0xfff0c0, 0x8a7040], radius: 0.05, speed: [0.05, 0.2], size: [0.03, 0.05], grow: 0.4, life: [0.8, 1.2], heat: [1, 0.5], emit: 1.2, occl: 0, tint: false, rich: true }),
     ],
   },
   'ss.ursa.rise': {

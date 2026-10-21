@@ -96,11 +96,12 @@ the first browser check.
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
   (sk-shifter: icons, a picture of his own for every skill, each tree its own light)
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost. Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
+  (sk-shifter: effects cost, no per-frame allocation, beast looks warmed)
 - [ ] 7. Check. `check-skills --classes=shapeshifter` once (one retry if it fails,
   then note it) and `check-curve --classes=shapeshifter` once, for
   information. If a depth is walled that was not before, do not raise
@@ -113,15 +114,12 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 5 are done (see "Milestone 5: icons" under "Notes for
-resume"). Next, milestone 6: `clawTrails` in `src/fx/shifter/ShifterFX.ts`
-allocates a vector a frame (`_b.clone().sub(_a)`): reuse a scratch vector;
-check the other shifter FX for per-frame allocation; particle counts on
-the quality ladder; `warmup()` stand-ins in `src/scenes/DungeonScene.ts`
-for `ss.impact.cat`, `ss.impact.wolf`, `ss.impact.bear`, `ss.raven.spray`
-and any shifter effect not yet warmed. Then 7 (`get-chrome` is done this
-session; check-skills and check-curve once each, inside the lock), 8
-(handover).
+Milestones 1 to 6 are done (see "Milestone 6: effects cost" under "Notes
+for resume"). Next, milestone 7: `mkdir -p shots`, then
+`SLAY_PORT=4358 flock /tmp/slay-browser.lock timeout 3500 node
+tools/check-skills.mjs --classes=shapeshifter` once (one retry, then
+note it), then `check-curve --classes=shapeshifter` once, inside the lock.
+`get-chrome` is done this session. Then 8 (handover).
 
 ## Notes for resume
 
@@ -566,6 +564,30 @@ blow never comes quicker; damage per hit stays as it is.
   `tools/art-sheet-page.ts`, seconds, no game boot) at 96 px and 40 px.
   Weakest at hotbar size: Immovable Bulk, Ravening (bite marks), Lithe.
 
+### Milestone 6: effects cost
+
+- No allocation left in what runs every frame: `clawTrails` reuses a
+  scratch direction (`_d`) instead of `_b.clone()`; Reaping Swipe's dust
+  fills one options object in place; the ticking bursts (Slink, Night Hunt,
+  Bloodmoon, Bristle, the run trails of Lunge and Overrun) pass no new
+  options object. Once-per-cast vectors are left as they are.
+- Quality ladder: every `ss.` layer already scales with `fxScale` and the
+  per-frame ceiling (`fx/Particles.ts`). The garnish layers are now `rich`
+  (High and Ultra only): the cat change's lingering smoke, the wolf
+  change's slow second fall of hair, the motes of Slink's pool, Killing
+  Dance, Night Hunt and Blood Howl, and the motes round Ursa Major's stars.
+- Warm-up: every shifter effect draws through the shared systems (one
+  particle field, the ribbon batch, the decals, the light pool), which are
+  in the scene from the start, so `ss.impact.*` and `ss.raven.spray` need
+  no stand-in of their own. What was not warmed was the beast itself: the
+  forms hang hidden on the hero and a hidden mesh is never linked, so the
+  first change in a fight linked the pelt, claws, eyes and tail (the tail
+  on its own five-bone skeleton) on that frame. `FormBody.standIns()`
+  (through `DressedHero.formStandIns()` and `Player.formStandIns()`) now
+  hands `DungeonScene.warmup()` one shown copy of each, for a Shapeshifter
+  only; it meshes any form not built yet behind the curtain. Call the
+  Pack's wolves were already warmed (`warmSummons`, `gorge_wolf`).
+
 ## For the owner to test
 
 (empty)
@@ -589,6 +611,10 @@ blow never comes quicker; damage per hit stays as it is.
   Immovable Bulk (a bear sat face on), Ravening (three bite marks) and
   Lithe (the cat walking, tail curled); the shifter status chips now use
   the same glyphs at 17 px (`ss-snap` is Pack Frenzy's chip, a side-on jaw).
+- Effects cost (milestone 6): the first change into each form should no
+  longer hitch (beast looks warmed in `DungeonScene.warmup()`); confirm on
+  a real GPU with a fresh shapeshifter, first change of the run. On Medium
+  and Low the garnish layers listed under milestone 6 are gone by design.
 
 ## Handover
 
