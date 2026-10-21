@@ -29,7 +29,7 @@ import { tr } from '../../core/I18n';
 import { clearRangerFX, feathers, glint, leaves, markSpark, tickRangerFX } from '../../fx/ranger/RangerFX';
 import {
   bowHand, castShot, clearShots, disengageArrow, draw, flat, hiddenCrit, nearestTo, quiet, setHiddenCrit, setQuiverArrows,
-  targets, tickShots, volleyOf, type Volley,
+  targets, targetsInto, tickShots, volleyOf, type Volley,
 } from './Shots';
 import { clearTraps, footTrap, kestrel, setTrap, thornBarrier, tickTraps, wholeFloor } from './Traps';
 import { MULTI, RANGER_BOW, RANGER_MOVES, TRAPPY, type RangerCast, type RangerHost, type Target } from './RangerTypes';
@@ -175,6 +175,9 @@ function follow(host: RangerHost, t: Target, jump: number, riders: StatusApplica
   marks.push({ t, left: t.statusLeft('marked'), jump, riders, player });
 }
 
+/** Where a mark may jump, kept so a frame allocates nothing. */
+const _unmarked: Target[] = [];
+
 /** Marks that outlive what they marked jump to the nearest enemy unmarked. */
 function tickMarks(host: RangerHost, dt: number): void {
   const live = host.live();
@@ -192,7 +195,7 @@ function tickMarks(host: RangerHost, dt: number): void {
     const at = m.t.root.position;
     let next: Target | null = null;
     let best = Infinity;
-    for (const t of targets(live)) {
+    for (const t of targetsInto(live, _unmarked)) {
       if (t.hasStatus('marked')) continue;
       const d = flat(t.root.position, at);
       if (d <= m.jump + t.hitRadius && d < best) {

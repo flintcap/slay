@@ -160,6 +160,7 @@ const _v = new THREE.Vector3();
 /** Burst options for the bursts made from a tick, kept so none allocates. */
 const SWARM_OPTS: BurstOpts = { count: 10, scatter: 1 };
 const GLINT_OPTS: BurstOpts = { count: 12 };
+const STRIKE_OPTS: BurstOpts = { count: 6 };
 
 const BARK_GLOW = 0x8a6a3e;
 const AMBER_GLOW = 0xd89a2a;
@@ -176,15 +177,16 @@ const RAIN_DROP = 0.26;
 
 /**
  * A volley loosed high that comes down across (x, z) within `radius`,
- * `fall` seconds from now. `quality` scales how many shafts are seen.
+ * `fall` seconds from now. `density` is how thick it falls (1 a rain); the
+ * particle field trims the shafts to the quality ladder on its own.
  */
-export function rainVolley(effects: EffectSystem, x: number, z: number, radius: number, quality: number, fall: number, color: number): void {
+export function rainVolley(effects: EffectSystem, x: number, z: number, radius: number, density: number, fall: number, color: number): void {
   const r = Math.max(0.5, radius);
   // Where it will land, drawn the moment it is loosed.
   effects.decals.glow('auraRing', x, z, r, fall + 0.12, color, 0.7);
   // The sky darkens over a great volley.
   if (fall >= 0.6) effects.decals.glow('shadow', x, z, r * 1.1, fall + 0.9, 0x000000, 0);
-  const shafts = Math.round(Math.min(36, Math.max(10, r * 3.2 * Math.max(0.4, quality))));
+  const shafts = Math.round(Math.min(36, Math.max(10, r * 3.2 * Math.max(0.4, density))));
   effects.delay(Math.max(0, fall - RAIN_DROP), () => {
     effects.fx.burst('rn.rain', x, RAIN_Y, z, { count: shafts, dir: DOWN, scatter: r * 0.85 });
   });
@@ -593,7 +595,7 @@ function birdTick(effects: EffectSystem, dt: number): void {
       const u = bird.stoop / STOOP;
       bird.pos.lerpVectors(bird.from, bird.prey, u * u);
     } else if (bird.stoop < STOOP + CLIMB) {
-      if (bird.stoop - dt < STOOP) effects.fx.burst('rn.feather', bird.prey.x, 1.1, bird.prey.z, { count: 6 });
+      if (bird.stoop - dt < STOOP) effects.fx.burst('rn.feather', bird.prey.x, 1.1, bird.prey.z, STRIKE_OPTS);
       const u = (bird.stoop - STOOP) / CLIMB;
       bird.pos.set(bird.prey.x + (cx - bird.prey.x) * u, bird.prey.y + (CIRCLE_Y - bird.prey.y) * u, bird.prey.z + (cz - bird.prey.z) * u);
     } else bird.stoop = -1;

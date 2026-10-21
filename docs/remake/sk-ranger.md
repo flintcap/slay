@@ -98,7 +98,7 @@ the first browser check.
 - [x] 5. Icons. ("sk-ranger: icons") Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
-- [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
+- [x] 6. Effects quality and cost. ("sk-ranger: effects cost") Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
@@ -115,7 +115,8 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 5 are done (audit, plan, speed table, build, icons). The
+Milestones 1 to 6 are done (audit, plan, speed table, build, icons,
+effects cost). The
 Ranger's skills live in `src/data/classSkills/ranger.ts`; what they do is
 in `src/scenes/ranger/` (`RangerMoves.ts` the switch, `Shots.ts` every bow
 shot, `Traps.ts` traps, brambles and the kestrel), their effects in
@@ -123,9 +124,30 @@ shot, `Traps.ts` traps, brambles and the kestrel), their effects in
 `tools/audio/rangerTakes.mjs`. On resume:
 
 1. Setup as in `PROTOCOL.md`.
-2. Milestone 6: effects quality and cost (no per-frame allocation in
-   `src/fx/ranger/` and the trap ticks, the quality ladder, `warmup()`
-   stand-ins in `DungeonScene.ts`).
+2. Milestone 7: `check-skills --classes=ranger` once, then `check-curve
+   --classes=ranger` once; numbers under "Notes for resume".
+
+### Milestone 6 notes (2026-10-21)
+
+- Per frame, nothing allocates now: the trap, thicket and mark ticks read
+  the living targets into a kept list (`targetsInto`), a thicket makes its
+  slow once, and the kestrel's strike burst uses kept options. The FX
+  pools (stuck shafts 14, spikes 18, thorns 16, trap looks 14, one bird)
+  are fixed; past a pool the oldest piece goes.
+- Quality ladder: every Ranger burst goes through the particle field,
+  which scales it by `fxScale` and drops `rich` layers below High. The
+  rains were scaled by `fxScale` a second time (a Low rain was an eighth
+  of an Ultra one); now `rainVolley` takes a density (1 a rain, 3 Darken
+  The Sky) and the field alone trims it. Multi-arrow skills stop at 24
+  arrows a loose (`arrowsOf`).
+- Warm-up: nothing to add. The Ranger owns no mesh or material; he draws
+  through the shared pools (particles, solids, ground glows, beams for the
+  wire, ribbons for trails, cores for Explosive Tip). Solids, beams and
+  cores have stand-ins in `EffectSystem.standIns()`; the hidden pools are
+  shown for the compile in `Engine.prime`.
+- Checkers: rankpower, skillparams, stattext, i18n, skillsound,
+  skilldepth, passives, vfx, hits, feel pass; beats fails only on other
+  classes' lines.
 
 ### Milestone 5 notes (2026-10-20)
 

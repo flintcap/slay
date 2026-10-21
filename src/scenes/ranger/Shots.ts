@@ -36,6 +36,14 @@ export function targets(world: { enemies: RangerWorld['enemies']; boss: RangerWo
   return list;
 }
 
+/** Every living target, into `out` (cleared first): for per-frame code, which must not allocate. */
+export function targetsInto(world: { enemies: RangerWorld['enemies']; boss: RangerWorld['boss'] }, out: Target[]): Target[] {
+  out.length = 0;
+  for (const e of world.enemies) if (e.life > 0) out.push(e);
+  if (world.boss && world.boss.life > 0) out.push(world.boss);
+  return out;
+}
+
 /** Runs `fn` with the effects silent: a skill sounds only its own recordings. */
 export function quiet<T>(host: RangerHost, fn: () => T): T {
   host.effects.beginQuiet();
@@ -648,7 +656,8 @@ interface Thicket {
   radius: number;
   left: number;
   acc: number;
-  slow: number;
+  /** The slow it lays, made once with the thicket. */
+  readonly slowing: StatusApplication[];
 }
 
 function thicket(v: Volley, x: number, z: number, radius: number): void {
@@ -656,7 +665,8 @@ function thicket(v: Volley, x: number, z: number, radius: number): void {
   if (g.thicketSec <= 0) return;
   const thickets = shotsOf(v.host).thickets;
   if (thickets.length >= 8) thickets.shift();
-  thickets.push({ x, z, radius, left: g.thicketSec, acc: 1, slow: g.thicketSlow });
+  const slowing: StatusApplication[] = [{ id: 'slowed', duration: 0.8, magnitude: 1, stacks: 1, mods: { moveSpeed: -g.thicketSlow } }];
+  thickets.push({ x, z, radius, left: g.thicketSec, acc: 1, slowing });
   thicketStand(v.host.effects, x, z, radius, g.thicketSec);
 }
 
@@ -664,8 +674,11 @@ function thicket(v: Volley, x: number, z: number, radius: number): void {
 const RAIN_FALL = 0.45;
 const SKY_FALL = 0.75;
 
-/** Arrow Rain and Darken The Sky: loosed high, a beat later the volley comes down across the circle. */
-function rain(v: Volley, r: RangerCast, fall: number, quality: number): void {
+/**
+ * Arrow Rain and Darken The Sky: loosed high, a beat later the volley comes
+ * down across the circle. `density` is how thick the fall looks (1 a rain).
+ */
+function rain(v: Volley, r: RangerCast, fall: number, density: number): void {
   const reach = r.num('range', 20);
   const radius = r.num('radius', 4.5);
   const p = r.player.position;
@@ -674,7 +687,7 @@ function rain(v: Volley, r: RangerCast, fall: number, quality: number): void {
   const x = p.x + dir.x * d;
   const z = p.z + dir.z * d;
   draw(r, v.host, () => {
-    rainVolley(v.host.effects, x, z, radius, quality, fall, r.color);
+    rainVolley(v.host.effects, x, z, radius, density, fall, r.color);
     v.host.later(fall, () => quiet(v.host, () => {
       // It is heard where it comes down, on something or not.
       v.host.sound(r.hitSound, x, z);
@@ -777,10 +790,6 @@ export function disengageArrow(v: Volley, r: RangerCast, dir: THREE.Vector3): vo
 
 /** Runs one of the bow skills. False when `id` is not one. */
 export function castShot(v: Volley, r: RangerCast): boolean {
-  // The quality ladder's share of effects; a stand-in effect system (the
-  // headless checkers) may not carry one.
-  const scale: unknown = v.host.effects.fxScale;
-  const lo = typeof scale === 'number' ? scale : 1;
   switch (r.def.id) {
     case 'pierceShot': lineShot(v, r); return true;
     case 'oneShot': lineShot(v, r, GRAVE_RELEASE); return true;
@@ -805,8 +814,9 @@ export function castShot(v: Volley, r: RangerCast): boolean {
     }
     case 'suppressing': suppressing(v, r); return true;
     case 'explosiveTip': explosiveTip(v, r); return true;
-    case 'arrowRain': rain(v, r, RAIN_FALL, Math.min(1.4, lo)); return true;
-    case 'darkenTheSky': rain(v, r, SKY_FALL, 3 * Math.min(1.4, lo)); return true;
+    // The particle field trims both to the quality ladder.
+    case 'arrowRain': rain(v, r, RAIN_FALL, 1); return true;
+    case 'darkenTheSky': rain(v, r, SKY_FALL, 3); return true;
     case 'creepingBarrage': creepingBarrage(v, r); return true;
     case 'ricochet': carom(v, r); return true;
   }
@@ -851,6 +861,9 @@ export function hiddenCrit(host: RangerHost, player: Player): number {
 // Every frame
 // ---------------------------------------------------------------------------
 
+/** The thickets' list of who stands in them, kept so a frame allocates nothing. */
+const _inThicket: Target[] = [];
+
 /** The thickets slow what stands in them. */
 export function tickShots(host: RangerHost, dt: number): void {
   const live = host.live();
@@ -861,10 +874,9 @@ export function tickShots(host: RangerHost, dt: number): void {
     th.acc += dt;
     if (live && th.acc >= 0.5) {
       th.acc = 0;
-      const slow: StatusApplication = { id: 'slowed', duration: 0.8, magnitude: 1, stacks: 1, mods: { moveSpeed: -th.slow } };
-      for (const t of targets(live)) {
+      for (const t of targetsInto(live, _inThicket)) {
         if (Math.hypot(t.root.position.x - th.x, t.root.position.z - th.z) > th.radius + t.hitRadius) continue;
-        t.applyStatuses([slow], live.ctx);
+        t.applyStatuses(th.slowing, live.ctx);
       }
     }
     if (th.left <= 0) thickets.splice(i, 1);

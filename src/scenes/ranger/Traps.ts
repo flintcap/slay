@@ -23,7 +23,7 @@ import { skillRank } from '../../sim/Character';
 import {
   brambleTouch, brambleWall, kestrelDown, kestrelStoop, kestrelUp, STOOP, swarm, trapArmed, trapEnd, trapLook, trapSpring, type TrapKind,
 } from '../../fx/ranger/RangerFX';
-import { arrowHit, draw, flat, quiet, rainBlow, targets, type Volley } from './Shots';
+import { arrowHit, draw, flat, quiet, rainBlow, targets, targetsInto, type Volley } from './Shots';
 import type { RangerCast, RangerHost, RangerWorld, Target } from './RangerTypes';
 
 const _a = new THREE.Vector3();
@@ -387,6 +387,9 @@ export function wholeFloor(host: RangerHost, r: RangerCast, v: Volley): void {
   });
 }
 
+/** Who might walk into a trap this frame, kept so a frame allocates nothing. */
+const _near: Target[] = [];
+
 /** The traps' waits, the swarms, the brambles and the bird. */
 export function tickTraps(host: RangerHost, dt: number): void {
   const live = host.live();
@@ -408,7 +411,7 @@ export function tickTraps(host: RangerHost, dt: number): void {
     }
     if (!live) continue;
     let caught = false;
-    for (const t of targets(live)) {
+    for (const t of targetsInto(live, _near)) {
       const d = tr.kind === 'wire'
         ? toSegment(t.root.position.x, t.root.position.z, tr.x, tr.z, tr.dirX, tr.dirZ, tr.len)
         : flat(t.root.position, tr);
