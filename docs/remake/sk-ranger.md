@@ -1,6 +1,6 @@
 # Stream: sk-ranger (Wave 5: Ranger skills remake)
 
-Status: in progress
+Status: done
 
 Class: Ranger (code id `ranger`). Trees: Marksman, Wildcraft, Volley (`marksman`, `wildcraft`, `volley`). Port 4356.
 Fights with ranged: bows with a quiver (starts with a short bow). Class color: moss green (`0x7fc46a`).
@@ -103,29 +103,50 @@ the first browser check.
   particle counts follow the quality ladder; every new effect pipeline has
   a stand-in in `warmup()` in `src/scenes/DungeonScene.ts`, so nothing
   compiles on first cast.
-- [ ] 7. Check. `check-skills --classes=ranger` once (one retry if it fails,
+- [x] 7. Check. ("sk-ranger: check and handover, stream done") `check-skills --classes=ranger` once (one retry if it fails,
   then note it) and `check-curve --classes=ranger` once, for
   information. If a depth is walled that was not before, do not raise
   damage per hit to make up for slower speed and never touch monsters:
   write the before and after numbers under "Notes for resume" for the
   owner to decide.
-- [ ] 8. Handover. Fill "For skillqa" (what you could not check: looks in
+- [x] 8. Handover. ("sk-ranger: check and handover, stream done") Fill "For skillqa" (what you could not check: looks in
   motion, real frame time, any effect you fear is costly) and "For the
   owner to test". Set `Status: done`, push.
 
 ## Next up
 
-Milestones 1 to 6 are done (audit, plan, speed table, build, icons,
-effects cost). The
+All eight milestones are done; see "Handover" at the end. The
 Ranger's skills live in `src/data/classSkills/ranger.ts`; what they do is
 in `src/scenes/ranger/` (`RangerMoves.ts` the switch, `Shots.ts` every bow
 shot, `Traps.ts` traps, brambles and the kestrel), their effects in
 `src/fx/ranger/`, their sounds in `src/audio/RangerSounds.ts` and
-`tools/audio/rangerTakes.mjs`. On resume:
+`tools/audio/rangerTakes.mjs`. Nothing is left to do on resume.
 
-1. Setup as in `PROTOCOL.md`.
-2. Milestone 7: `check-skills --classes=ranger` once, then `check-curve
-   --classes=ranger` once; numbers under "Notes for resume".
+### Milestone 7 notes (2026-10-21)
+
+`check-curve --classes=ranger`, run once, for information. Before and
+after skillcore are skillcore's numbers (commit `c8203db`); "now" is after
+this stream's build. No damage was raised and no monster touched.
+
+| depth | before skillcore | after skillcore | now |
+|---|---|---|---|
+| 1 | ok: packs 3/3, bosses 3/3 | ok: packs 2/3, bosses 3/3 | ok: packs 2/3 (8/4/3 s), bosses 1/3 (42/63/26 s) |
+| 5 | FAIL: packs 3/3, bosses 0/3 | FAIL: packs 2/3, bosses 0/3 | FAIL: packs 2/3 (11/8/11 s), bosses 0/3 (28/39/18 s) |
+| 12 | FAIL: packs 1/3, bosses 0/3 | FAIL: packs 0/3, bosses 0/3 | FAIL: packs 0/3 (6/10/20 s), bosses 0/3 (64/15/42 s) |
+| 25 | ok: packs 3/3, bosses 1/3 | ok: packs 3/3, bosses 1/3 | ok: packs 3/3 (9/5/16 s), bosses 1/3 (15/21/9 s) |
+| 40 | ok: packs 1/3, bosses 1/3 | FAIL: packs 1/3, bosses 0/3 | FAIL: packs 1/3 (25/8/9 s), bosses 0/3 (18/44/41 s) |
+
+- Walled at 5, 12 and 40, the same depths as right after skillcore;
+  nothing newly walled. Depth 1 still passes but wins 1 boss of 3, not 3.
+- For the owner to decide. By the rule, I did not raise damage per hit to
+  make up for the slower draws.
+
+`check-skills --classes=ranger`, run once (first try, no retry needed):
+all 31 actives cast, none refused, none did nothing, none threw. Hunter's
+Mark, Roll Away and Snare Trap show no damage, as they should (a mark, a
+roll, a root). The `sfx` column counts only bus sounds; the Ranger's own
+recordings play straight through `audio.play` (checked by `skillsound`
+and `beats`).
 
 ### Milestone 6 notes (2026-10-21)
 
@@ -694,12 +715,68 @@ second and third leave on their gesture's later looses (`cuts`).
 
 ## For the owner to test
 
-(empty)
+- Play a Ranger with a bow. Every arrow now hits when it reaches the enemy,
+  not when you press the key.
+- Set a Snare Trap, a Spike Trap, a Tripwire and a Wasp Nest in a room,
+  then pull a pack over them. Each goes off when a monster steps on it.
+- Cast The Whole Floor Is A Trap with traps out: they all go off at once.
+- Cast Kestrel: a bird circles you and dives on enemies, marked ones
+  first.
+- Cast Arrow Rain, Creeping Barrage and Darken The Sky. With Thicket of
+  Shafts, arrows stay standing in the floor and slow what walks in.
+- Cast Hunter's Mark, then kill the marked enemy: the mark jumps to the
+  next one.
+- Camouflage: stand still a moment and you vanish. Your first shot from
+  hiding is a critical hit.
+- Aimed Shot, One Shot, One Grave and Quarry's End have a slow, heavy
+  draw. Tell me if any feels too slow.
+- The Ranger was walled at depths 5, 12 and 40 in one curve run, the same
+  as right after skillcore (numbers under "Milestone 7 notes"). No damage
+  was raised. Play a run there and tell me if he feels too weak.
 
 ## For skillqa
 
-(empty)
+- Not seen in motion in the real game: the trap bodies (noose, plate,
+  wire on stakes, nest), the bramble wall, the kestrel, the standing
+  shafts and the rains. The icons were checked on one still sheet only.
+- Frame time not measured. The most at once: 14 standing shafts, 18
+  spikes, 16 thorns, 14 trap looks and one bird, all in the shared solid
+  pool; up to 24 arrows a loose (`arrowsOf`) and 12 Murmuration splits
+  in the air. Worth one `check-perf` look with Darken The Sky, Thicket of
+  Shafts and Arrow Wheel up at once.
+- `check-curve`: every kill logs `[feel] hit report failed TypeError:
+  Cannot convert object to primitive value` from `CombatFeel.onKill`
+  (`this.effects.fxScale >= 0.9` on the headless stand-in effects). Not
+  Ranger code; the fight goes on, but the log is noisy for every class.
+- The old shared icon keys (`arrow`, `target`, `quiver` ...) stay in
+  `ICON_MAP` for statuses and panels; no Ranger skill uses them.
+- `ASSETS.md` and `tools/audio/ledger.json` disagree on six
+  `player.female.hurt*` credit rows (not Ranger files; I kept ASSETS.md's).
 
 ## Handover
 
-(empty)
+What exists now:
+
+- The kit: 54 Ranger skills over Marksman, Wildcraft and Volley (9 kept,
+  24 changed, 21 new, none removed, so old saves keep every rank), in
+  `src/data/classSkills/ranger.ts`, each growing every rank
+  (`src/data/skillPower.ts`), speeds from skillcore's model.
+- His own casting in `src/scenes/ranger/`: `RangerMoves.ts` (the switch,
+  footwork, marks, Camouflage, Bolt-Hole), `Shots.ts` (every bow shot:
+  arrows struck on arrival, pierce, banks, Murmuration splits, the rains),
+  `Traps.ts` (traps, brambles, the kestrel). State is per runner, so test
+  arenas and old floors never leak in. Passives in
+  `src/sim/passives/ranger.ts`.
+- His own looks: `src/fx/ranger/RangerFX.ts` (fixed pools, no per-frame
+  allocation) and `motifs.ts`.
+- His own sounds: `src/audio/RangerSounds.ts`, recorded from
+  `tools/audio/rangerTakes.mjs`.
+- His own icons: `src/art/RangerGlyphs.ts` and
+  `src/art/icons/rangerIcons.ts`, each tree in its own light; a `ranger`
+  sheet in `tools/art-sheet-page.ts`.
+
+Left for `finish` or the owner:
+
+- Walls at depths 5, 12 and 40 in `check-curve` (owner's call; no damage
+  was raised, no monster touched).
+- The new looks in motion and their frame time (see "For skillqa").
