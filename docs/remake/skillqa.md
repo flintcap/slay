@@ -392,9 +392,9 @@ before table, then the handover (milestone 6).
 
 - Recovery: 7d1be27 and e75c312 (an earlier skillqa run) were read
   against the code; every change is sound and its items are ticked above.
-- A scratch probe (`tools/press-entry.ts`, not committed, delete at the
-  end) casts every active skill in the sim and lists what lands on the
-  key press. Only press families (rush, leap, blink, channel, form) plus
+- A scratch probe (`tools/press-entry.ts`, never committed, now deleted)
+  cast every active skill in the sim and listed what lands on the key
+  press. Only press families (rush, leap, blink, channel, form) plus
   Vanish (an escape) still do.
 - Static checkers, first run (after the recovery commits): curve 11 of 35
   walled (information only), economy (shapeshifter depth 30), beats
@@ -436,4 +436,42 @@ before table, then the handover (milestone 6).
 
 ## Handover
 
-(empty)
+Fixed (every Known issue and "For skillqa" note above is ticked; the
+commit is named beside each):
+- Shared: release frames for every class, mana and cooldown back on a
+  cancelled cast, the audit clears statuses (7d1be27); knockback slides as
+  far as it says and stops at walls and props, blind and silence leave
+  monsters their legs, live buff tooltips (e75c312); Shield Throw and the
+  vows on release, area falloff named on the board (bb6a734); falloff list
+  matches the runner, two dead statuses removed (b616597); four uniques'
+  dead damage lines, Saint's Reach capped, beast pace on the character
+  panel (732194b).
+- Speed: walking (the lead's fb675b9) and now dodging (f8f4350) out of a
+  landed blow owe the rest of the action, so neither brings the next
+  attack sooner. Damage per hit unchanged.
+- Looks: the breaths pour their own jets and fan as a wedge (52abbb1,
+  7f31199); Frozen Orb is a ball (b381812); Retribution's light (7c8b34e);
+  the Knight's standard in three meshes (5e6b2e2).
+- Icons: the fire tree, Sparkbolt, Inferno Stream and four Shadowcraft
+  icons repainted (69f77df, b9efa9d); the skill board's icons bake off the
+  main thread before it opens (e3b1f9c).
+- Sound: Charnel Burst, Sanguine Nova, Doom and Pyre Brand sound where
+  they land (f7405f7); Reassemble's dead minion sound gone (397d852).
+- Numbers: Splintering Frost worth a tier five point (be7e7d9).
+- Tools: the beats sweep reads release frames and fair setups, 203 of 203
+  (eb5cf6d); economy judges sets and uniques over five descents (08ec36e);
+  the curve's hit-report error and the fair bot (e75c312);
+  `check-skillcost` refuses an unknown class (7195d72, 189a81a); the skill
+  audit veils the hero for Umbral Ambush (851d52f); old Revenant icon
+  names removed (7995efa).
+
+Not fixed, and why (one line each):
+- `check-tactics` 1 of 12: monster AI, fails at 49ada73 too, not a skill.
+- `check-perf` budgets over (depth 1 shadow lights, allocation at every
+  dungeon depth): older than this wave, the same before and after.
+
+Walled heroes (`check-curve`, information for the owner; damage and
+monsters untouched): Knight d1, d5, d12; Rogue d40; Revenant d12; Ranger
+d5, d12; Paladin d5, d12, d25; Shapeshifter d12, d40; Mage clear.
+
+Frame numbers before and after: see milestone 5.
