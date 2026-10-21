@@ -44,7 +44,7 @@ const MARKSMAN = build('marksman', [
     desc: tr('Down on one knee for a slow, full draw. One heavy arrow into the first enemy on its line: a critical hit against anything below half life, and the target is shoved back 1.5m.'),
     tier: 2, col: 0, icon: 'rn-aimed-shot', req: ['pierceShot'], t: 'enemy',
     mana: [7, 0.5], cd: [4, 0.12, 1.4], dmg: [3.0, 0.36], type: 'physical',
-    fx: 'projectile.aimed', p: { speed: 46, executeBelow: 50, knockback: 1.5, range: 24 },
+    fx: 'projectile.aimed', p: { speed: 46, executeBelow: 50, knockback: 4.3, range: 24 },
     attackTime: 1.4,
   },
   {
@@ -300,7 +300,7 @@ const VOLLEY = build('volley', [
     id: 'scattershot', name: tr('Scattershot'),
     desc: tr('A snap from the hip: 6 short arrows sprayed across a cone 8m deep, each striking the first enemy it meets. What they strike is shoved back 1.5m and Blinded for 2s.'),
     tier: 1, col: 2, icon: 'rn-scattershot', t: 'direction', mana: [7, 0.5], cd: [5, 0.15, 2],
-    dmg: [0.65, 0.08], type: 'physical', fx: 'cone.scatter', p: { arc: 0.8, range: 8, arrows: 6, knockback: 1.5, duration: 2 },
+    dmg: [0.65, 0.08], type: 'physical', fx: 'cone.scatter', p: { arc: 0.8, range: 8, arrows: 6, knockback: 4.3, duration: 2 },
     attackTime: 0.9,
   },
   // --------------------------------------------------------------- tier 2

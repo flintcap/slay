@@ -1463,7 +1463,7 @@ export class HUD {
 
   private updateStatuses(player: Record<string, unknown> | null | undefined): void {
     const raw = player?.statuses;
-    const list: Array<{ id: string; remaining: number; duration: number; stacks: number }> = [];
+    const list: Array<{ id: string; remaining: number; duration: number; stacks: number; live?: LiveStatus }> = [];
     if (Array.isArray(raw)) {
       for (const s of raw as Array<Record<string, unknown>>) {
         if (!s || typeof s.id !== 'string') continue;
@@ -1472,6 +1472,11 @@ export class HUD {
           remaining: Number(s.remaining ?? s.timeLeft ?? s.duration ?? 0),
           duration: Number(s.duration ?? s.total ?? s.remaining ?? 1),
           stacks: Number(s.stacks ?? 1),
+          live: {
+            magnitude: Number(s.magnitude ?? 1),
+            mods: (s.mods as Partial<Record<StatKey, number>> | undefined) ?? undefined,
+            absorb: Number(s.absorb ?? 0),
+          },
         });
       }
     } else if (raw instanceof Map) {
@@ -1492,7 +1497,7 @@ export class HUD {
 
     // Signature comparison keeps us from rebuilding the strip every frame.
     const sig =
-      list.map((s) => `${s.id}:${s.stacks}`).join(',') +
+      list.map((s) => `${s.id}:${s.stacks}:${s.live?.magnitude ?? 1}`).join(',') +
       '|' +
       pets.map((p) => `${p.skillId}:${p.count}`).join(',');
     if (sig !== this.buffStrip.dataset.sig) {
@@ -1516,7 +1521,7 @@ export class HUD {
         chip.dataset.id = s.id;
         // A shrine blessing that lasts two minutes and says nothing about what
         // it does is a mystery, not a reward. Hovering now spells it out.
-        tip(chip, def?.name ?? s.id, statusTooltip(s.id, s.stacks));
+        tip(chip, def?.name ?? s.id, statusTooltip(s.id, s.stacks, s.live));
         this.buffStrip.appendChild(chip);
       }
 
@@ -2220,17 +2225,29 @@ function skillSlotTitle(def: SkillDef, rank: number, skills: Record<string, numb
  * lasts two minutes and tells you nothing about what it does is a mystery
  * rather than a reward.
  */
-function statusTooltip(id: string, stacks: number): string {
+/** What one application of a status really gives: a skill's rank sets its numbers. */
+interface LiveStatus {
+  magnitude: number;
+  mods?: Partial<Record<StatKey, number>>;
+  absorb: number;
+}
+
+function statusTooltip(id: string, stacks: number, live?: LiveStatus): string {
   const def = attempt(() => getStatus(id) ?? null, null);
   if (!def) return tr('<p>No description.</p>');
   const out: string[] = [];
   if (def.desc) out.push(`<p>${def.desc}</p>`);
 
-  // The numbers as they actually apply right now, stacks included.
-  const mods = Object.entries(def.mods ?? {}).filter(([, v]) => typeof v === 'number' && v !== 0);
+  // The numbers as they actually apply right now: the application's own
+  // (a ranked buff carries its rank's), stacks included, the way
+  // `StatusContainer.statMods` counts them.
+  const own = !!live?.mods;
+  const magnitude = live?.magnitude ?? 1;
+  const scale = (own ? 1 : magnitude) * Math.max(1, stacks);
+  const mods = Object.entries(live?.mods ?? def.mods ?? {}).filter(([, v]) => typeof v === 'number' && v !== 0);
   if (mods.length > 0) {
     const rows = mods.map(([k, v]) => {
-      const value = (v as number) * Math.max(1, stacks);
+      const value = (v as number) * scale;
       const label = STAT_LABEL[k as StatKey] ?? k;
       return `<li>${value >= 0 ? '+' : ''}${fmt(value)} ${label}</li>`;
     });
@@ -2239,8 +2256,9 @@ function statusTooltip(id: string, stacks: number): string {
   if (def.dot) out.push(tr('<p>{0} {1} damage per second.</p>', fmt(def.dot.perSecond * Math.max(1, stacks)), def.dot.type));
   if (def.hot) out.push(tr('<p>Restores {0} life per second.</p>', fmt(def.hot * Math.max(1, stacks))));
   if (def.manaPerSecond) out.push(tr('<p>Restores {0} mana per second.</p>', fmt(def.manaPerSecond * Math.max(1, stacks))));
-  if (def.absorb) out.push(tr('<p>Absorbs {0} damage before it breaks.</p>', fmt(def.absorb * Math.max(1, stacks))));
-  if (def.reflect) out.push(tr('<p>Reflects {0}% of damage taken.</p>', Math.round(def.reflect * 100 * Math.max(1, stacks))));
+  if (live && live.absorb > 0) out.push(tr('<p>Absorbs {0} damage before it breaks.</p>', fmt(live.absorb)));
+  else if (def.absorb) out.push(tr('<p>Absorbs {0} damage before it breaks.</p>', fmt(def.absorb * Math.max(1, stacks))));
+  if (def.reflect) out.push(tr('<p>Reflects {0}% of damage taken.</p>', Math.round(def.reflect * 100 * magnitude)));
   if (def.incapacitates) out.push(tr('<p>You cannot act while this lasts.</p>'));
   else if (def.immobilises) out.push(tr('<p>You cannot move while this lasts.</p>'));
   if (stacks > 1) out.push(tr('<p class="tip-dim">{0} stacks.</p>', stacks));

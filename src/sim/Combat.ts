@@ -117,6 +117,9 @@ export function armorReduction(defense: number, incoming: number): number {
 // Damage rolls
 // ---------------------------------------------------------------------------
 
+/** Metres a monster of ordinary size is shoved per point of `DamagePacket.knockback`. */
+export const KNOCKBACK_METRES = 0.35;
+
 export interface RollOpts {
   /** Skill damage multiplier. 1 is a plain weapon swing. */
   scale?: number;

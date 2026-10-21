@@ -30,7 +30,7 @@ import { events } from '../core/Events';
 import { emptyStats } from '../sim/Stats';
 import { depthCurve } from '../sim/Difficulty';
 import { payoutIlvl } from '../sim/Payout';
-import { rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
+import { KNOCKBACK_METRES, rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
 import { buildMonsterModel, creatureDetail, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
 import { AIBrain, resetPacks } from './AI';
 import {
@@ -75,8 +75,6 @@ import { powerHooks } from '../sim/ItemPowers';
 import { resolveCombo, type ComboHit } from './Combos';
 import { tr } from '../core/I18n';
 
-/** Holds the brain walks through (it runs, or turns on its own kind): they never pin the body. */
-const STEERED_HOLDS: ReadonlySet<string> = new Set(['feared', 'confused']);
 
 /** Fastest a monster may move while backing away from the hero (base hero speed is 5.4). */
 const RETREAT_SPEED_CAP = 3.4;
@@ -1041,8 +1039,16 @@ export class Enemy implements Combatant {
     m.t += dt;
     const k = clamp(m.t / m.duration, 0, 1);
     const p = this.root.position;
-    p.x = m.fromX + (m.toX - m.fromX) * k;
-    p.z = m.fromZ + (m.toZ - m.fromZ) * k;
+    const nx = m.fromX + (m.toX - m.fromX) * k;
+    const nz = m.fromZ + (m.toZ - m.fromZ) * k;
+    // A shove, a throw or a drag stops where a wall or a prop is in the way,
+    // so a body never ends inside one, however short the move.
+    if (m.kind === 'knock' && this.knockBlocked(p.x, p.z, nx, nz, ctx)) {
+      this.motionOverride = null;
+      return;
+    }
+    p.x = nx;
+    p.z = nz;
     p.y = this.groundY + (m.arc > 0 ? Math.sin(k * Math.PI) * m.arc : 0);
     if (m.trample && !m.trample.hit) {
       const d = dist(p.x, p.z, ctx.playerPos.x, ctx.playerPos.z);
@@ -1061,6 +1067,26 @@ export class Enemy implements Combatant {
       if (m.kind === 'leap') events.emit('sfx', { id: 'land', x: p.x, z: p.z, pitch: 1 / Math.max(0.7, Math.min(1.6, this.sizeScale)) });
       land?.(this, ctx);
     }
+  }
+
+  /** True when a body moving from (x, z) to (nx, nz) would meet a wall or end inside a prop. */
+  private knockBlocked(x: number, z: number, nx: number, nz: number, ctx: CombatContext): boolean {
+    try {
+      if (!ctx.nav.lineOfSight(x, z, nx, nz)) return true;
+    } catch {
+      /* no grid: nothing to stop it */
+    }
+    const bl = ctx.blockers;
+    if (!bl) return false;
+    const r = this.hitRadius * 0.5;
+    for (let i = 0; i < bl.length; i++) {
+      const b = bl[i]!;
+      const hw = b.w * 0.5 + r;
+      const hd = b.d * 0.5 + r;
+      // Into a prop it was not already against.
+      if (Math.abs(nx - b.x) < hw && Math.abs(nz - b.z) < hd && !(Math.abs(x - b.x) < hw && Math.abs(z - b.z) < hd)) return true;
+    }
+    return false;
   }
 
   /** True when any status with this tag is running. Used by passive queries. */
@@ -1201,9 +1227,11 @@ export class Enemy implements Combatant {
       const def = statusDef(raw.id);
       if (!def) continue;
       const hold = isHold(def);
-      // Fear and confusion are holds (they wear off by the hold rule) that the
-      // brain walks: the body runs or turns on its own, so they never pin it.
-      const pins = hold && !STEERED_HOLDS.has(def.id);
+      // Only a hold that stops the body (a stun, a freeze, a root, a fall)
+      // pins it. Fear and confusion the brain walks (it runs, or turns on its
+      // own kind); blind, silence and disarm take its eyes, its spells or its
+      // weapon, and leave its legs (`AI.think`, `AI.chooseAbility`).
+      const pins = hold && (!!def.incapacitates || !!def.immobilises);
       if (this.isImmuneToControl && hold) continue;
       if (hold && this.absorbControl(raw, ctx)) continue;
       const duration = hold ? this.controlFor(durationOf(def, raw)) : durationOf(def, raw);
@@ -1544,10 +1572,21 @@ export class Enemy implements Combatant {
     this.ai?.onDamaged(ctx);
     this.interrupt(ctx);
     if (this.action !== 'attack' && !this.busy) this.setAction('hit', 0.28);
-    if (working.knockback && !this.isImmuneToControl && !this.isBoss) {
-      const a = angleTo(ctx.playerPos.x, ctx.playerPos.z, this.root.position.x, this.root.position.z);
-      const push = clamp(working.knockback, 0, 6) / Math.max(0.6, this.sizeScale);
-      this.moveBy(Math.sin(a) * push * 0.35, Math.cos(a) * push * 0.35, ctx);
+    // Shoved: a quick slide away from where the blow came from, as far as
+    // it says (`KNOCKBACK_METRES` a point), stopped by walls and props
+    // (`tickMotion`). A body already sliding is not shoved again, so a spray
+    // of arrows shoves it once, as its tooltip says.
+    if (working.knockback && !this.isImmuneToControl && !this.isBoss && !this.motionOverride) {
+      const from = working.from ?? ctx.playerPos;
+      const a = angleTo(from.x, from.z, this.root.position.x, this.root.position.z);
+      const push = (clamp(working.knockback, 0, 6) * KNOCKBACK_METRES) / Math.max(0.6, this.sizeScale);
+      const p = this.root.position;
+      if (push > 0.05) {
+        this.motionOverride = {
+          kind: 'knock', fromX: p.x, fromZ: p.z, toX: p.x + Math.sin(a) * push, toZ: p.z + Math.cos(a) * push,
+          t: 0, duration: 0.1 + push * 0.07, arc: 0,
+        };
+      }
     }
     if (working.applies?.length) this.applyStatuses(venomOf(working, working.applies), ctx);
 

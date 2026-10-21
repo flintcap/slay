@@ -338,12 +338,16 @@ export class Player {
    * 'held' status is renewed for as long as its vigil burns, so it reads as
    * endless (no timer winding down and back up twice a second).
    */
-  get statuses(): Array<{ id: string; remaining: number; duration: number; stacks: number }> {
+  get statuses(): Array<{ id: string; remaining: number; duration: number; stacks: number; magnitude: number; mods?: Partial<Stats>; absorb: number }> {
     return this.status.list().map((a) => ({
       id: a.id,
       remaining: a.def.tags?.includes('held') ? Infinity : a.remaining,
       duration: a.duration,
       stacks: a.stacks,
+      // What this application really gives (a skill's rank sets these), for the chip's tooltip.
+      magnitude: a.magnitude,
+      ...(a.mods ? { mods: a.mods } : {}),
+      absorb: a.absorb,
     }));
   }
 

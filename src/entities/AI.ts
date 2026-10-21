@@ -694,7 +694,9 @@ export class AIBrain {
     // Gating perception alone would have left everything that had already
     // noticed you walking straight at your back.
     // A summon it is already fighting is not hidden by your Veil.
-    if (ctx.playerHidden && this.anchorId === null && d > HIDDEN_NOTICE) {
+    // Blinded: it cannot find you past arm's length either, and stands where
+    // it is until the sight comes back or you walk into it.
+    if ((ctx.playerHidden || self.hasStatus('blinded')) && this.anchorId === null && d > HIDDEN_NOTICE) {
       this.computeSeparation(ctx);
       this.desired.copy(p);
       return;
@@ -1215,6 +1217,7 @@ export class AIBrain {
     const reach = this.def.attackRange + self.hitRadius;
     if (this.holdingForSwarm && d > reach) return null;
     const speed = Math.max(0.35, self.stats.attackSpeed);
+    const silenced = self.hasStatus('silenced');
     let best: AbilityDef | null = null;
     let bestScore = 0.12; // don't act at all below this
 
@@ -1223,6 +1226,8 @@ export class AIBrain {
       if (!a) continue;
       if (a.tags?.includes('ondeath')) continue;
       if (this.specialRest > 0 && !isBasic(a)) continue;
+      // Silenced: no spells, only the plain blow.
+      if (silenced && !isBasic(a)) continue;
       if (!self.abilityReady(id, ctx)) continue;
       if (a.belowLife !== undefined && lifeFrac > a.belowLife) continue;
       if (a.aboveLife !== undefined && lifeFrac < a.aboveLife) continue;

@@ -235,7 +235,9 @@ function fling(k: ShiftKit, t: ShiftTarget, dx: number, dz: number, dist: number
   const ux = dx / len;
   const uz = dz / len;
   const q = t.root.position;
-  const far = Math.min(dist / Math.max(0.8, t.sizeScale), k.wallStop(q, _fling.set(ux, 0, uz), dist, t.hitRadius));
+  // The wall test runs to the very point it would end on (`Enemy.tickMotion`
+  // also stops it at a wall or prop on the way).
+  const far = k.wallStop(q, _fling.set(ux, 0, uz), dist / Math.max(0.8, t.sizeScale), t.hitRadius);
   if (far < 0.1) return;
   t.motionOverride = { kind: 'knock', fromX: q.x, fromZ: q.z, toX: q.x + ux * far, toZ: q.z + uz * far, t: 0, duration: time, arc };
 }

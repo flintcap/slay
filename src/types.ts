@@ -1329,7 +1329,12 @@ export interface DamagePacket {
   source: string;
   /** Skill or ability that produced it. */
   ability?: string;
-  /** Knockback impulse in world units. Below zero pulls toward `from`. */
+  /**
+   * How hard the blow shoves. A monster slides `knockback * KNOCKBACK_METRES`
+   * metres (`sim/Combat.ts`, less for a big body) away from `from`, or from
+   * the hero. A tooltip that names the distance names those metres.
+   * Below zero pulls toward `from` (the hero's own shoves).
+   */
   knockback?: number;
   /** Where the blow came from, so a knockback pushes away from it. */
   from?: { x: number; z: number };
