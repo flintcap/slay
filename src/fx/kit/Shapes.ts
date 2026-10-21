@@ -330,8 +330,11 @@ export function makeBeams(capacity: number): InstancedPool {
   const len = max(length(ab), 1e-3);
   const p0 = a.add(ab.mul(pg.y)).toVar();
   const side = normalize(cross(ab, cameraPosition.sub(p0)).add(vec3(1e-5)));
-  // Width swells a touch in the middle and pinches at the emitter.
-  const w = A.w.mul(mix(0.55, 1.0, smoothstep(0.0, 0.08, pg.y)));
+  // Width swells a touch in the middle and pinches at the emitter. `B.w`
+  // (0..1) fans it instead, for a breath: narrow at the mouth and full
+  // width at the far end, a wedge rather than a slab.
+  const fan = mix(1.0, mix(0.12, 1.0, pg.y), clamp(B.w, 0.0, 1.0));
+  const w = A.w.mul(mix(0.55, 1.0, smoothstep(0.0, 0.08, pg.y))).mul(fan);
   const wp = p0.add(side.mul(pg.x).mul(w));
   const vQ = vary(vec2(pg.x.mul(2.0), pg.y));
   const vLen = vary(len);

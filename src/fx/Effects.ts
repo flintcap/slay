@@ -1309,8 +1309,11 @@ export class EffectSystem {
     const env = Math.min(1, p * 6) * (1 - Math.max(0, (p - 0.6) / 0.4));
     if (e.slot) {
       const len = e.radius * Math.min(1, p * 5);
-      this.beams.set(e.slot, 0, e.a.x, e.a.y + 0.1, e.a.z, Math.max(0.3, Math.sin(e.half) * e.radius * 1.6));
-      this.beams.set(e.slot, 1, e.a.x + e.d.x * len, e.a.y + 0.1, e.a.z + e.d.z * len, 0);
+      // A wedge (the last value fans it): narrow at the mouth, as wide as
+      // the cone at its far end, so the breath reads as a cone and not as a
+      // slab the width of its far end all the way back to the hands.
+      this.beams.set(e.slot, 0, e.a.x, e.a.y + 0.1, e.a.z, Math.max(0.3, Math.sin(e.half) * len * 1.8));
+      this.beams.set(e.slot, 1, e.a.x + e.d.x * len, e.a.y + 0.1, e.a.z + e.d.z * len, 1);
       this.beams.put(e.slot, 3, 1, env);
     }
     if (e.light) this.lights.set(e.light, 10 * env);
