@@ -366,11 +366,10 @@ clears statuses between skills.
 
 ## Next up
 
-Known issues still open: Rogue's check-skillcost run; Knight's Gatefall
-run alone (`check-skills --classes=warden --skills=gatefall`); then the
-"never seen in motion" looks per class (a few screenshots each). Then
-check-skills reruns for classes the fixes touched, check-perf after, and
-the handover.
+Milestone 2: `check-skills` on the build of 4ac72fd, one class a run
+(timeout 3500 each), in this order: mage, warden, shadowblade, paladin,
+revenant, ranger, shapeshifter. Then the static checkers, `check-perf
+--preview` after, `check-frames`, and the handover (milestone 6).
 
 ## Notes for resume
 
