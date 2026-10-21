@@ -78,18 +78,23 @@ const FORMS: Record<string, Spec> = {
 // ---------------------------------------------------------------------------
 
 const FERAL: Record<string, Spec> = {
-  /** Right paw, left paw, right again: three short flat rakes, low and fast. */
+  /**
+   * Right paw, left paw, then both up and dragged down crossed: three short
+   * rakes, low and fast, one blow on each (`cuts`).
+   */
   rake: {
     hit: true,
     keys: [
       [0.06, { R: PAW_HIGH, L: PAW_LOW, turn: -0.35, lean: 0.35, down: 0.25, fistR: 0 }, true],
       [0.12, { R: PAW_THROUGH, L: PAW_HIGH, turn: 0.3, lean: 0.42, down: 0.28, fistR: 0, fistL: 0 }],
       [0.22, { R: PAW_HIGH, L: PAW_THROUGH, turn: -0.3, lean: 0.42, down: 0.28, fistL: 0 }],
-      [0.32, { R: PAW_THROUGH, L: PAW_LOW, turn: 0.35, lean: 0.45, down: 0.3, fistR: 0 }],
+      [0.27, { ...both(PAW_HIGH), turn: 0, lean: 0.3, down: 0.22, head: -0.15, fistR: 0, fistL: 0 }],
+      [0.34, { ...both(PAW_THROUGH), turn: 0, lean: 0.55, down: 0.36, head: 0.1, fistR: 0, fistL: 0 }],
     ],
-    steps: [step('R', 0.04, 0.25)],
+    steps: [step('R', 0.04, 0.25), step('L', 0.3, 0.12)],
     contact: 0.12,
-    end: 0.55,
+    cuts: [0.22, 0.34],
+    end: 0.58,
   },
   /** Coiled right down on the haunches, then both paws thrown forward and up into the leap. */
   pounce: {
@@ -215,6 +220,8 @@ const TEETH: Record<string, Spec> = {
       [0.78, { R: WIDE, L: HOOK, turn: -0.7, roll: -0.15, lean: 0.25, head: 0.2 }],
     ],
     contact: 0.16,
+    // Three more shakes, then the throw.
+    cuts: [0.3, 0.46, 0.62, 0.78],
     end: 1.05,
   },
   /** Crouched, one arm sweeping the dark round in a beckon, then a short bark at the floor. */
@@ -240,16 +247,25 @@ const TEETH: Record<string, Spec> = {
     contact: 0.42,
     end: 1.1,
   },
-  /** Drops flat to the floor, then springs up and in with the jaws first and the arms back. */
-  goForTheThroat: {
+  /**
+   * Down low and turning: the head snaps in to the right, the left, the right,
+   * the left, then straight in, the shoulders turning with each bite and the
+   * paws hooked to hold. One bite on each (`cuts`).
+   */
+  ravening: {
     hit: true,
     keys: [
-      [0.12, { ...both(FLOOR), lean: 0.8, down: 0.7, head: -0.35 }, true],
-      [0.24, { ...both([-0.4, 0.5, 0.0, 0.4, 0.4]), lean: 0.1, down: -0.15, fwd: 0.35, head: 0.55 }],
-      [0.4, { ...both(HOOK), lean: 0.35, down: 0.1, fwd: 0.2, head: 0.45, fistR: 0.6, fistL: 0.6 }],
+      [0.08, { ...both([0.5, 0.5, 0.15, 1.0, 0.4]), lean: 0.6, down: 0.42, head: -0.25 }, true],
+      [0.14, { R: HOOK, L: [0.6, 0.6, 0.2, 0.9, 0.4], turn: 0.5, roll: 0.14, lean: 0.75, down: 0.45, fwd: 0.18, head: 0.5, fistR: 0.6 }],
+      [0.26, { R: [0.6, 0.6, 0.2, 0.9, 0.4], L: HOOK, turn: -0.5, roll: -0.14, lean: 0.75, down: 0.45, fwd: 0.18, head: 0.5, fistL: 0.6 }],
+      [0.38, { R: HOOK, L: [0.6, 0.6, 0.2, 0.9, 0.4], turn: 0.55, roll: 0.16, lean: 0.78, down: 0.47, fwd: 0.2, head: 0.55, fistR: 0.6 }],
+      [0.5, { R: [0.6, 0.6, 0.2, 0.9, 0.4], L: HOOK, turn: -0.55, roll: -0.16, lean: 0.78, down: 0.47, fwd: 0.2, head: 0.55, fistL: 0.6 }],
+      [0.62, { ...both(HOOK), turn: 0, roll: 0, lean: 0.85, down: 0.5, fwd: 0.28, head: 0.6, fistR: 0.7, fistL: 0.7 }],
     ],
-    contact: 0.24,
-    end: 0.75,
+    steps: [step('L', 0.1, 0.2, 0.1), step('R', 0.34, 0.15, -0.1), step('L', 0.58, 0.2)],
+    contact: 0.14,
+    cuts: [0.26, 0.38, 0.5, 0.62],
+    end: 0.9,
   },
   /** Arms raised to the sky as if to pull the moon down, then dragged down red to the chest. */
   bloodmoon: {
@@ -342,18 +358,23 @@ const CLAW: Record<string, Spec> = {
     contact: 0.22,
     end: 0.8,
   },
-  /** Arms open wide, then wrapped round and squeezed, the back bowing with each squeeze. */
+  /**
+   * Arms open wide, then wrapped round: three squeezes, the back bowing back
+   * with each one and easing between. One crush on each (`cuts`).
+   */
   bearHug: {
     hit: true,
     keys: [
       [0.1, { ...both(WIDE), lean: 0.15, head: -0.15 }, true],
-      [0.2, { ...both([1.3, -0.3, 1.0, 1.7, 0.4, 0.4]), lean: 0.3, fwd: 0.15, fistR: 0.6, fistL: 0.6 }],
-      [0.4, { ...both([1.25, -0.45, 1.1, 1.9, 0.4, 0.4]), lean: -0.2, fwd: 0.05, head: -0.2 }],
-      [0.6, { ...both([1.3, -0.3, 1.0, 1.7, 0.4, 0.4]), lean: 0.3, fwd: 0.1 }],
-      [0.8, { ...both([1.25, -0.45, 1.1, 1.9, 0.4, 0.4]), lean: -0.2, fwd: 0.05, head: -0.2 }],
+      [0.2, { ...both([1.25, -0.45, 1.1, 1.9, 0.4, 0.4]), lean: -0.2, fwd: 0.12, head: -0.2, fistR: 0.6, fistL: 0.6 }],
+      [0.35, { ...both([1.3, -0.3, 1.0, 1.7, 0.4, 0.4]), lean: 0.3, fwd: 0.1 }],
+      [0.5, { ...both([1.25, -0.45, 1.1, 1.9, 0.4, 0.4]), lean: -0.25, fwd: 0.05, head: -0.25 }],
+      [0.65, { ...both([1.3, -0.3, 1.0, 1.7, 0.4, 0.4]), lean: 0.3, fwd: 0.1 }],
+      [0.8, { ...both([1.2, -0.5, 1.15, 2.0, 0.4, 0.4]), lean: -0.32, fwd: 0.05, head: -0.3 }],
     ],
     contact: 0.2,
-    end: 1.15,
+    cuts: [0.5, 0.8],
+    end: 1.1,
   },
   /** Fists to the floor, then up and up, arms raised to the stars as the bear grows. */
   ursaMajor: {

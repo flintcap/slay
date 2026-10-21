@@ -42,6 +42,8 @@ interface Trip {
   ease: number;
   step?: (at: THREE.Vector3, u: number) => void;
   land?: () => void;
+  /** The action that carries the hero: a dodge or a new action stops the trip where it is, unlanded. */
+  id?: number;
 }
 
 /** The skill that is each form. */
@@ -203,9 +205,11 @@ export class Shapeshift {
   /**
    * Carries the hero to `to` over `time` seconds, `height` metres up at the
    * top of the arc. `step` runs each frame on the way, `land` once at the end.
-   * A new trip replaces one under way (its `land` still runs).
+   * A new trip replaces one under way (its `land` still runs). With `id`
+   * (the action's `actionId`), a dodge out of it stops the hero where he is,
+   * and nothing lands.
    */
-  travel(to: THREE.Vector3, time: number, height: number, o: { ease?: number; step?: (at: THREE.Vector3, u: number) => void; land?: () => void } = {}): void {
+  travel(to: THREE.Vector3, time: number, height: number, o: { ease?: number; step?: (at: THREE.Vector3, u: number) => void; land?: () => void; id?: number } = {}): void {
     this.finishTrip();
     this.trip = {
       from: this.player.position.clone(),
@@ -216,6 +220,7 @@ export class Shapeshift {
       ease: o.ease ?? 0,
       step: o.step,
       land: o.land,
+      id: o.id,
     };
     this.player.faceTowards(to.x, to.z);
   }
@@ -238,6 +243,12 @@ export class Shapeshift {
   private moveTrip(dt: number): void {
     const t = this.trip;
     if (!t) return;
+    if (t.id !== undefined && this.player.actionId !== t.id) {
+      // Dodged out of: down where he is, and the blow at the end never comes.
+      this.trip = null;
+      this.hero.root.position.y = 0;
+      return;
+    }
     t.t += dt;
     const u = Math.min(1, t.t / t.time);
     const e = t.ease > 0 ? 1 - (1 - u) * (1 - u) : t.ease < 0 ? u * u : u;

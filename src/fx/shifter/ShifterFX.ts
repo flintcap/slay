@@ -163,6 +163,22 @@ export function formChange(fx: EffectSystem, at: THREE.Vector3, dir: THREE.Vecto
 }
 
 // ---------------------------------------------------------------------------
+// A beast's blow
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a beast's blow lands (the basic attack in a form, and every shift
+ * blow): blood thrown along the blow and the beast's own hair, not the metal
+ * spark of a weapon. A critical strike throws twice the blood and leaves it
+ * on the floor.
+ */
+export function beastImpact(fx: EffectSystem, form: BeastForm, p: { x: number; z: number }, dir: THREE.Vector3, crit: boolean): void {
+  const y = form === 'bear' ? 1.2 : 1.05;
+  fx.fx.burst(`ss.impact.${form}`, p.x, y, p.z, crit ? { dir, count: 24 } : { dir });
+  if (crit) fx.decals.add('blood', p.x + dir.x * 0.4, p.z + dir.z * 0.4, 0.4, Math.atan2(dir.x, dir.z));
+}
+
+// ---------------------------------------------------------------------------
 // Feral
 // ---------------------------------------------------------------------------
 
@@ -311,10 +327,32 @@ export const TeethFX = {
     fx.fx.burst('ss.worry.flick', p.x, 1.2, p.z, { dir: flick });
     fx.decals.add('blood', p.x + flick.x * 0.7, p.z + flick.z * 0.7, 0.3);
   },
-  /** Call the Pack: fog lies down round the hero and eyes open in it. */
+  /** Worry's throw: the jaws let go, blood slung after the body, a smear where it lands. */
+  worryThrow(fx: EffectSystem, p: { x: number; z: number }, dir: THREE.Vector3, side: 1 | -1): void {
+    const sling = new THREE.Vector3(-dir.z * side + dir.x * 0.5, 0.35, dir.x * side + dir.z * 0.5).normalize();
+    fx.fx.burst('ss.worry.flick', p.x, 1.25, p.z, { dir: sling, count: 22 });
+    fx.decals.add('blood', p.x + sling.x * 1.8, p.z + sling.z * 1.8, 0.55, Math.atan2(sling.x, sling.z));
+    fx.delay(0.3, () => fx.decals.add('dust', p.x + sling.x * 2.4, p.z + sling.z * 2.4, 0.8));
+    shake(0.1, 0.15);
+  },
+  /** Call the Pack: fog lies down round the hero. */
   callFog(fx: EffectSystem, p: { x: number; z: number }): void {
     fx.fx.burst('ss.pack.fog', p.x, 0.05, p.z, {});
-    fx.delay(0.25, () => fx.fx.burst('ss.eyes.wolf', p.x, 0.65, p.z, {}));
+  },
+  /** One wolf coming up out of the fog: a smaller fog where it stands, and its eyes open in it, one wolf after another. */
+  wolfRise(fx: EffectSystem, p: { x: number; z: number }, i: number): void {
+    fx.delay(0.06 * i, () => fx.fx.burst('ss.pack.fog', p.x, 0.05, p.z, { count: 6, scale: 0.6 }));
+    fx.delay(0.2 + 0.1 * i, () => fx.fx.burst('ss.eyes.wolf', p.x, 0.65, p.z, {}));
+  },
+  /** Ravening: one bite, the jaws turned with the head, blood thrown off the side it wrenched to. */
+  ravenBite(fx: EffectSystem, p: { x: number; z: number }, dir: THREE.Vector3, turn: 1 | -1): void {
+    const s = Math.sin(0.45 * turn);
+    const co = Math.cos(0.45 * turn);
+    const bite = new THREE.Vector3(dir.x * co - dir.z * s, 0, dir.x * s + dir.z * co);
+    jaws(fx, at(p, 1.15), bite, 0.3, 0.09);
+    const off = new THREE.Vector3(-dir.z * turn, 0.3, dir.x * turn).normalize();
+    fx.fx.burst('ss.raven.spray', p.x, 1.15, p.z, { dir: off });
+    fx.decals.add('blood', p.x + off.x * 0.6, p.z + off.z * 0.6, 0.35, Math.atan2(off.x, off.z));
   },
   /** Blood Howl: red mist drawn in from the air, and a red ring at the feet. */
   bloodHowl(fx: EffectSystem, p: THREE.Vector3): void {
@@ -322,17 +360,6 @@ export const TeethFX = {
     fx.fx.burst('ss.breath', p.x, 1.85, p.z, { dir: new THREE.Vector3(0, 0.6, 0.4).normalize() });
     floorRing(fx, p.x, p.z, 3.0, 0xa01818, 0.8, 1.1);
     fx.flash(p.x, 1.4, p.z, 0xc02020, 5, 6, 0.3);
-  },
-  /** Go for the Throat: the spring up, a fountain of blood at the top of it. */
-  throatSpring(fx: EffectSystem, bones: Bones, time: number): void {
-    boneTrail(fx, bones.head, time, { color: 0xb0a090, width: 0.25, life: 0.22, emit: 0.3 });
-  },
-  throatHit(fx: EffectSystem, p: { x: number; z: number }, dir: THREE.Vector3): void {
-    const c = at(p, 1.6);
-    jaws(fx, c, dir, 0.5, 0.14);
-    fx.fx.burst('ss.throat.fountain', c.x, c.y, c.z, {});
-    fx.decals.add('gore', p.x, p.z, 0.8);
-    shake(0.16, 0.2);
   },
   /** Bloodmoon: a red moon over the head, red light falling from it while it lasts. */
   bloodmoon(fx: EffectSystem, follow: THREE.Object3D, dur: number): void {

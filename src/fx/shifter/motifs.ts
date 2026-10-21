@@ -31,7 +31,7 @@ export const SHIFTER_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   worry: { shape: 'blood spray', motion: 'zigzag' },
   callThePack: { shape: 'eyes', motion: 'scatter' },
   bloodHowl: { shape: 'blood spray', motion: 'spiral' },
-  goForTheThroat: { shape: 'fangs', motion: 'arch' },
+  ravening: { shape: 'fangs', motion: 'zigzag' },
   bloodmoon: { shape: 'crescents', motion: 'rain' },
   maul: { shape: 'claw rakes', motion: 'fan' },
   rattlingRoar: { shape: 'shockfronts', motion: 'fan' },

@@ -88,6 +88,8 @@ export interface PassiveEffects {
   minionLifePct: number;
   minionCapBonus: number;
   minionDurationPct: number;
+  /** Many Mouths: % more damage for you and your wolves, for each wolf standing (`ShifterRunner.tickShiftPack`). */
+  manyMouthsPct: number;
 
   // --- auras and ground effects ------------------------------------------
   auraStrengthPct: number;
@@ -419,6 +421,7 @@ function emptyEffects(): PassiveEffects {
     minionLifePct: 0,
     minionCapBonus: 0,
     minionDurationPct: 0,
+    manyMouthsPct: 0,
     auraStrengthPct: 0,
     auraRadiusM: 0,
     groundDurationPct: 0,

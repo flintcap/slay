@@ -65,8 +65,8 @@ export interface FeelTarget {
   hasStatus?(id: string): boolean;
 }
 
-/** The weapon a melee blow came from, for its sound. */
-export type WeaponSound = 'blade' | 'axe' | 'blunt' | 'pierce' | 'fist';
+/** The weapon a melee blow came from, for its sound (`claw`: a Shapeshifter's beast, whatever it holds). */
+export type WeaponSound = 'blade' | 'axe' | 'blunt' | 'pierce' | 'fist' | 'claw';
 
 export interface HitReport {
   kind: HitKind;
@@ -155,6 +155,7 @@ const WEAPON_SOUND: Record<WeaponSound, string> = {
   blunt: 'hit.blunt',
   pierce: 'hit.pierce',
   fist: 'hit.fist',
+  claw: 'hit.flesh',
 };
 
 /** The burst a kill throws, by the element that delivered it. */

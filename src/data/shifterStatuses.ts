@@ -36,6 +36,8 @@ export const PACK_FRENZY = buff('ss.packFrenzy', tr('Pack Frenzy'), 0xc08a3a, 's
 });
 export const HUNTING_HOWL = buff('ss.huntingHowl', tr('Hunting Howl'), 0xd0a050, 'ss-huntinghowl', tr('The hunt is called: more damage and a surer bite.'));
 export const BLOOD_HOWL = buff('ss.bloodHowl', tr('Blood Howl'), 0xa02020, 'ss-bloodhowl', tr('Every hit drinks.'));
+/** Many Mouths: put on and kept while wolves of yours stand, its damage set by how many (`ShifterRunner.tickShiftPack`). */
+export const MANY_MOUTHS = buff('ss.manyMouths', tr('Many Mouths'), 0x9a948a, 'ss-manymouths', tr('Your wolves stand with you: you and they deal more damage for each one.'), { baseDuration: 1.2 });
 export const BLOODMOON = buff('ss.bloodmoon', tr('Bloodmoon'), 0xc01818, 'ss-bloodmoon', tr('Pack Frenzy held full, more damage, and every hit drinks deep.'));
 export const BRISTLE = buff('ss.bristle', tr('Bristling'), 0x8a5a2e, 'ss-bristle', tr('Spines up: less damage taken, and melee attackers bleed for it.'), { reflect: 0.3 });
 export const URSA_MAJOR = buff('ss.ursaMajor', tr('Ursa Major'), 0xd0a060, 'ss-ursamajor', tr('The great bear of the old stories: bigger, harder, wider swipes.'));

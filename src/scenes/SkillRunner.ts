@@ -35,7 +35,7 @@ import { Random } from '../core/RNG';
 import { damageMultiplier } from '../sim/Passives';
 import { gestureCuts, releasesAt, skillAction, weaponSwing } from '../art/hero/gestures';
 import { SPAN_RATE } from '../art/hero/Animator';
-import { formRefusal, runShift, shiftHands, SHIFTER_MINIONS, type ShiftKit } from './ShifterRunner';
+import { beastWhoosh, clawHit, formRefusal, formSwing, runShift, shiftFree, shiftHands, SHIFTER_MINIONS, tickShiftPack, type ShiftCast, type ShiftKit } from './ShifterRunner';
 import { castRite, riteRefusal, type RiteCast, type RiteHost } from './paladin/Rites';
 import { castVigil, snuffVigil, tickVigils, type VigilCast, type VigilHost } from './paladin/Vigils';
 import { MageSpells, type SpellCast, type SpellWorld } from './mage/Spells';
@@ -552,6 +552,8 @@ export function casterOffHand(player: Player): boolean {
 
 /** What the main hand sounds like when it lands. */
 export function weaponSoundOf(player: Player): WeaponSound {
+  // A beast's claws and teeth, whatever its hidden hands hold.
+  if (player.shape?.form) return 'claw';
   const item = player.character.equipment.mainHand;
   if (!item) return 'fist';
   try {
@@ -1127,7 +1129,7 @@ export class SkillRunner {
     const every = player.passives.freeShotEvery;
     const shot = every > 0 && (effect.startsWith('projectile') || effect.startsWith('bolt') || RANGER_BOW.has(def.id)) && weaponStyle(player) === 'ranged';
     const free = shot && (this.shots + 1) % every === 0;
-    const cost = def.manaCost && !hop && !free && !held ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
+    const cost = def.manaCost && !hop && !free && !held && !shiftFree(def, player) ? def.manaCost(rank) * (1 - Math.min(90, cut) / 100) : 0;
     if (cost > 0 && !player.spendMana(cost)) {
       // Say so. A skill that silently refuses reads as a broken button, which
       // is exactly how being out of mana was being reported as a bug.
@@ -1313,6 +1315,8 @@ export class SkillRunner {
         num, color, time: actTime, clip, hitSound: sound.hit,
       }
       : null;
+    // When a Shapeshifter skill's blow lands later than its contact frame (a leap's landing).
+    let shiftLands: number | undefined;
     try {
       if (kc && this.knight.cast(kc)) {
         // The Knight's kit ran it whole (`knight/KnightKit.ts`).
@@ -2267,9 +2271,11 @@ export class SkillRunner {
 
         // The Shapeshifter's skills (scenes/ShifterRunner.ts).
         case 'shift': {
-          runShift(this.shiftKit(player, ctx, enemies, boss, type, sound.hit, def, num, color, rank), {
+          const shc: ShiftCast = {
             def, rank, player, target, dir, origin, ctx, type, color, clip, attackTime, castTime, makePacket, num, hitAt,
-          });
+          };
+          runShift(this.shiftKit(player, ctx, enemies, boss, type, sound.hit, def, num, color, rank), shc);
+          shiftLands = shc.lands;
           break;
         }
 
@@ -2328,7 +2334,7 @@ export class SkillRunner {
       rogueLook(this.rogueHost, { def, player, aim: target, dir, actTime, num });
       // The skill's own drawing on top of its family's (`fx/SkillLooks.ts`).
       // A Rogue throw's motif lands with the throw, on its release frame.
-      const lands = ROGUE_MOVES.has(def.id) || RANGER_MOVES.has(def.id) ? Math.max(player.contactIn, player.releaseIn) : player.contactIn;
+      const lands = shiftLands ?? (ROGUE_MOVES.has(def.id) || RANGER_MOVES.has(def.id) ? Math.max(player.contactIn, player.releaseIn) : player.contactIn);
       this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, lands, num('radius', 2.5));
     } finally {
       this.effects.endQuiet();
@@ -2413,7 +2419,9 @@ export class SkillRunner {
     const side = dual ? (this.swingParity === 0 ? 'R' : 'L') : undefined;
     player.beginAction(this.swingParity === 0 ? 'attack1' : 'attack2', time, side);
     const blow = dual ? (mult = 1): DamagePacket => packet(mult * DUAL_BLOW_DAMAGE) : packet;
-    this.meleeSwing(player, dir, 1.5, 2.4, blow, ctx, enemies, boss, 'physical');
+    // A beast swings its own reach (the bear wider and further).
+    const beast = formSwing(player);
+    this.meleeSwing(player, dir, beast?.arc ?? 1.5, beast?.reach ?? 2.4, blow, ctx, enemies, boss, 'physical');
     return true;
   }
 
@@ -2839,7 +2847,7 @@ export class SkillRunner {
     /** A single-target skill hits this many, nearest `focus` first. */
     maxTargets = Infinity,
     focus: { x: number; z: number } | null = null,
-  ): void {
+  ): number {
     const origin = player.position;
     const half = arc * 0.5;
     let hits = 0;
@@ -2849,7 +2857,8 @@ export class SkillRunner {
     // The swing is heard whether or not it connects: whoosh, then impact.
     // A skill's swing is its own cast sound instead (audio/SkillSounds.ts).
     if (playVisual && !this.atContact && !this.casting) {
-      audio.play(kind === 'heavy' ? 'swing.heavy' : `swing.${this.weaponSound}`, {
+      const whoosh = kind === 'heavy' ? 'swing.heavy' : this.weaponSound === 'claw' ? beastWhoosh(player) : `swing.${this.weaponSound}`;
+      audio.play(whoosh, {
         x: origin.x, z: origin.z, volume: 0.9,
       });
     }
@@ -2870,7 +2879,7 @@ export class SkillRunner {
           }
         },
       });
-      return;
+      return 0;
     }
 
     let caught = this.allTargets(enemies, boss).filter((t) => {
@@ -2898,8 +2907,10 @@ export class SkillRunner {
       if (!this.strike(t, mp, ctx, kind, origin.x, origin.z)) continue;
       this.afterHit(mp, t, ctx, enemies, boss);
       // Sound and camera come from the feel layer, which knows the weapon and
-      // the body it met; the impact here is the picture only.
-      this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
+      // the body it met; the impact here is the picture only. A beast's blow
+      // throws blood and hair, not a weapon's sparks.
+      if (this.weaponSound === 'claw') clawHit(this.effects, player, t.root.position, facing, !!mp.crit);
+      else this.effects.meleeHit(t.root.position.x, 1.0, t.root.position.z, {
         dir: facing, element: this.swingSchool, sfx: null, shake: 0, crit: mp.crit,
       });
       if (hits === 0) {
@@ -2911,6 +2922,7 @@ export class SkillRunner {
 
     // A skill blow that connects is heard once, at the first body it met.
     if (hits > 0 && hitSfx) audio.play(hitSfx, { x: firstX, z: firstZ });
+    return hits;
   }
 
   /**
@@ -3818,6 +3830,8 @@ export class SkillRunner {
     if (this.growIn <= 0) {
       this.growIn = 0.5;
       this.growSummons();
+      // Many Mouths counts the Shapeshifter's wolves standing.
+      if (this.caster) tickShiftPack(this.caster, this.countSummons('callThePack'));
     }
 
     for (let i = this.turrets.length - 1; i >= 0; i--) {
@@ -4291,8 +4305,8 @@ export class SkillRunner {
     tauntHold = Infinity,
     /** What a rank buys it, so a point spent later grows it where it stands. */
     grow: SummonGrowth | null = null,
-    /** A Skeletal Knight, and whether its blows cleave. */
-    extra: { elite?: boolean; cleave?: boolean } = {},
+    /** A Skeletal Knight, and whether its blows cleave; `quiet` raises it with no circle (it brings its own look). */
+    extra: { elite?: boolean; cleave?: boolean; quiet?: boolean } = {},
   ): void {
     // How to raise this one again, for Reassemble.
     const again = (ax: number, az: number): void =>
@@ -4314,8 +4328,8 @@ export class SkillRunner {
     }
     // The circle marks the raising. A creature walks off it and lives on, so
     // its circle fades after the arrival; only a totem keeps its ring.
-    const fx = this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, Number.isFinite(duration) ? duration : 1.6, color);
-    this.effects.teleportIn(x, 0.1, z, color);
+    const fx = extra.quiet ? null : this.effects.summonCircle(x, z, melee ? 0.7 : 0.55, Number.isFinite(duration) ? duration : 1.6, color);
+    if (!extra.quiet) this.effects.teleportIn(x, 0.1, z, color);
 
     // Give it a body if the skill names one.
     let body: THREE.Object3D | null = null;
@@ -4548,16 +4562,27 @@ export class SkillRunner {
           this.atContact = true;
           this.caster = player;
         }
+        // The form as it is now: a man's first press changed shape after the cast began.
+        this.weaponSound = weaponSoundOf(player);
         try {
-          this.meleeSwing(player, facing, arc, reach, packet, ctx, enemies, boss, type, o.visual ?? true, o.kind ?? 'melee', hitSfx, o.most ?? Infinity, o.focus ?? null);
+          return this.meleeSwing(player, facing, arc, reach, packet, ctx, enemies, boss, type, o.visual ?? true, o.kind ?? 'melee', hitSfx, o.most ?? Infinity, o.focus ?? null);
         } finally {
           this.atContact = prev;
         }
       },
-      area: (center, radius, packet, kind) => {
+      area: (center, radius, packet, kind, flat = false) => {
         this.caster = player;
-        this.areaDamage(center, radius, packet, ctx, enemies, boss, kind);
+        return this.areaDamage(center, radius, packet, ctx, enemies, boss, kind, !flat);
       },
+      hit: (t, packet, kind = 'melee', fromX = player.position.x, fromZ = player.position.z) => {
+        this.caster = player;
+        if (t.life <= 0) return false;
+        const mp = this.tune(packet(), t);
+        if (!this.strike(t, mp, ctx, kind, fromX, fromZ)) return false;
+        this.afterHit(mp, t, ctx, enemies, boss);
+        return true;
+      },
+      cuts: (span, first) => cutTimes(def.id, span, first),
       line: (origin, dir, length, width, packet, kind) => {
         this.caster = player;
         this.lineDamage(origin, dir, length, width, packet, ctx, enemies, boss, kind);
@@ -4584,7 +4609,7 @@ export class SkillRunner {
       buff: () => this.applyBuff(player, def as { id: string; name: string; params?: Record<string, number | number[]> }, rank, num, color),
       raise: (x, z, o) => {
         this.caster = player;
-        this.addTurret(x, z, Infinity, o.rate, o.range, o.packet, type, color, true, def.id, o.life, false, Infinity, o.grow ?? null);
+        this.addTurret(x, z, Infinity, o.rate, o.range, o.packet, type, color, true, def.id, o.life, false, Infinity, o.grow ?? null, { quiet: true });
       },
       pack: () => this.countSummons(def.id),
       trim: (keep) => this.trimSummons(def.id, keep),

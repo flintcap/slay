@@ -269,6 +269,8 @@ export const BURST_POWER: Record<string, (k: number, n: Num) => number> = {
   skeletalMage: (k, n) => ratio(n('damagePct', 60), n('perRank', 7), k),
   claySentinel: (k, n) => ratio(n('damagePct', 70), 4, k),
   grandOssuary: (k) => 1 + 0.06 * k,
+  // A wolf bites for its share of the weapon, +3% a rank: the share grows here, once.
+  callThePack: (k, n) => ratio(n('minionScale', 0.45) * 100, n('minionScaleR', 0.03) * 100, k),
 };
 
 function ratio(base: number, per: number, k: number): number {

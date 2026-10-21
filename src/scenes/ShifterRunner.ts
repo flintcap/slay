@@ -22,9 +22,9 @@ import type { EffectSystem } from '../fx/Effects';
 import type { HitKind } from '../fx/CombatFeel';
 import type { BeastForm } from '../art/hero/forms/BeastBody';
 import { FORM_OF_TREE, FORM_SKILL } from '../entities/Shapeshift';
-import { ClawFX, FeralFX, TeethFX, formChange } from '../fx/shifter/ShifterFX';
+import { ClawFX, FeralFX, TeethFX, beastImpact, formChange } from '../fx/shifter/ShifterFX';
 import { SHIFTER_SELF_POWER, beastOfSkill, bristleReflect, formHands, ursaLifePct } from '../data/shifterPower';
-import type { Hands } from '../sim/Speed';
+import { travelTime, type Hands } from '../sim/Speed';
 import { getSkill } from '../data/skills';
 import { effectiveSkillRank } from '../sim/Character';
 import { heroPower } from '../sim/HeroPower';
@@ -42,8 +42,10 @@ export const SHIFTER_MINIONS: Readonly<Record<string, string>> = { callThePack: 
 export interface ShiftKit {
   effects: EffectSystem;
   /**
-   * A weapon-style blow in an arc. `now` lands it this frame (a later beat of
-   * a multi-blow skill); otherwise it waits for the clip's contact frame.
+   * A blow in an arc. `now` lands it this frame (on a beat the handler timed);
+   * otherwise it waits for the clip's contact frame. Returns how many it hit
+   * (0 while it waits). In a form it lands as the beast's claws or teeth
+   * (blood and hair, `clawHit`), not a weapon's sparks.
    */
   swing(
     facing: THREE.Vector3,
@@ -51,9 +53,17 @@ export interface ShiftKit {
     reach: number,
     packet: (m?: number) => DamagePacket,
     opts?: { kind?: HitKind; most?: number; focus?: { x: number; z: number } | null; now?: boolean; visual?: boolean },
-  ): void;
-  /** Everything within `radius` of `center`, with falloff. */
-  area(center: THREE.Vector3, radius: number, packet: () => DamagePacket, kind?: HitKind): void;
+  ): number;
+  /** Everything within `radius` of `center`, with falloff; `flat` lands it the same to the edge. Returns the damage dealt. */
+  area(center: THREE.Vector3, radius: number, packet: () => DamagePacket, kind?: HitKind, flat?: boolean): number;
+  /** One body struck now, as if from (fromX, fromZ) (the side its flinch goes from). True when it landed. */
+  hit(t: ShiftTarget, packet: () => DamagePacket, kind?: HitKind, fromX?: number, fromZ?: number): boolean;
+  /**
+   * Seconds after the first blow at which the skill's gesture lands its later
+   * blows (`Spec.cuts`), played over `span` seconds with the first at `first`.
+   * Null for a gesture without cuts.
+   */
+  cuts(span: number, first: number): number[] | null;
   /** Everything in a strip `width` wide and `length` long. */
   line(origin: THREE.Vector3, dir: THREE.Vector3, length: number, width: number, packet: () => DamagePacket, kind?: HitKind): void;
   /** The nearest one target within `radius` of `at`. */
@@ -68,8 +78,11 @@ export interface ShiftKit {
   statuses(riderOnly: boolean): StatusApplication[];
   /** Puts this skill's buff on at its rank (`SELF_POWER`), with its heal if it has one. */
   buff(): void;
-  /** Raises one of this skill's creatures at (x, z): it bites with `packet` and has `life`. */
-  /** `grow` lets a point spent later strengthen the ones already standing. */
+  /**
+   * Raises one of this skill's creatures at (x, z): it bites with `packet` and
+   * has `life`. `grow` lets a point spent later strengthen the ones already
+   * standing. No summoning circle: the handler draws its own coming.
+   */
   raise(x: number, z: number, o: { packet: (m?: number) => DamagePacket; life: number; rate: number; range: number; grow?: SummonGrowth }): void;
   /** How many of this skill's creatures stand now. */
   pack(): number;
@@ -103,6 +116,12 @@ export interface ShiftCast {
   num: (k: string, d: number) => number;
   /** Plays the skill's hit sound at a point. */
   hitAt: (p: { x: number; z: number }) => void;
+  /**
+   * Set by a handler whose blow lands later than the action's contact frame
+   * (a leap's landing, the end of a run): seconds from the press, so the
+   * skill's motif lands with it.
+   */
+  lands?: number;
 }
 
 type Handler = (k: ShiftKit, c: ShiftCast) => void;
@@ -164,6 +183,94 @@ function rankOf(c: ShiftCast, id: string): number {
 
 const st = (id: string, duration: number, stacks = 1, magnitude = 1): StatusApplication => ({ id, duration, magnitude, stacks });
 
+/** A count param as the skill is written (rank 1, no unique), to stretch a use that gains blows. */
+function baseNum(c: ShiftCast, key: string, d: number): number {
+  const v = c.def.params?.[key];
+  return typeof v === 'number' && v > 0 ? v : d;
+}
+
+/**
+ * How long a multi-blow use takes: its own `attackTime`, longer by the same
+ * share when a rank or a unique adds blows, so a blow never comes quicker
+ * (damage per blow stays as written).
+ */
+function stretched(c: ShiftCast, n: number, base: number): number {
+  return c.attackTime * Math.max(1, n / Math.max(1, base));
+}
+
+/**
+ * Seconds from the press at which each of `n` blows lands. The first is the
+ * action's contact frame; the next sit on the gesture's own cut keys
+ * (`Spec.cuts`), so each lands on its own swipe, bite or squeeze; any past
+ * them (a rank's or a unique's extra) follow at the gesture's own spacing.
+ * Call it right after `beginAction`.
+ */
+function blowTimes(k: ShiftKit, c: ShiftCast, total: number, n: number): number[] {
+  const first = c.player.contactIn;
+  const cuts = k.cuts(total, first) ?? [];
+  const step = cuts.length > 0 ? cuts[cuts.length - 1]! / cuts.length : Math.max(0.08, ((total - first) * 0.5) / Math.max(1, n));
+  const at = [first];
+  for (let i = 1; i < n; i++) at.push(i - 1 < cuts.length ? first + cuts[i - 1]! : at[i - 1]! + step);
+  return at;
+}
+
+const _fling = new THREE.Vector3();
+
+/**
+ * Throws a body `dist` metres along (dx, dz) over `time` seconds, `arc`
+ * metres up at the top, stopping short of a wall; a big body goes less far.
+ * Bosses, the unstoppable and the furniture hold their ground, and a body
+ * already being moved is left to it.
+ */
+function fling(k: ShiftKit, t: ShiftTarget, dx: number, dz: number, dist: number, time: number, arc: number): void {
+  if (!t.alive || t.isBoss || t.def.object || t.motionOverride) return;
+  if (t.affixes.some((a) => a.behavior === 'juggernaut')) return;
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-4 || dist <= 0) return;
+  const ux = dx / len;
+  const uz = dz / len;
+  const q = t.root.position;
+  const far = Math.min(dist / Math.max(0.8, t.sizeScale), k.wallStop(q, _fling.set(ux, 0, uz), dist, t.hitRadius));
+  if (far < 0.1) return;
+  t.motionOverride = { kind: 'knock', fromX: q.x, fromZ: q.z, toX: q.x + ux * far, toZ: q.z + uz * far, t: 0, duration: time, arc };
+}
+
+/**
+ * The next body a crowd skill (Killing Dance, Ravening) goes for: the one it
+ * is on until a blow lands on it, then the nearest within `crowd` metres of
+ * that one that has not been struck yet and can be reached; round again
+ * (anyone near but the last) when all have been. Alone, the same one again.
+ * Null with nothing in reach at all.
+ */
+function nextInCrowd(k: ShiftKit, c: ShiftCast, last: ShiftTarget | null, done: Set<ShiftTarget>, crowd: number, max: number): ShiftTarget | null {
+  const base = last && last.alive ? last : prey(k, c, max);
+  if (!base) return null;
+  if (!done.has(base)) return base;
+  const h = c.player.position;
+  const b = base.root.position;
+  const pick = (skip: (t: ShiftTarget) => boolean): ShiftTarget | null => {
+    let best: ShiftTarget | null = null;
+    let bd = Infinity;
+    for (const t of k.targets()) {
+      if (!t.alive || t === base || skip(t)) continue;
+      const q = t.root.position;
+      const d = Math.hypot(q.x - b.x, q.z - b.z);
+      if (d > crowd + t.hitRadius || d >= bd) continue;
+      // Not through a wall.
+      const run = Math.hypot(q.x - h.x, q.z - h.z);
+      _fling.set(q.x - h.x, 0, q.z - h.z).normalize();
+      if (k.wallStop(h, _fling, run, 0.35) < run - 1) continue;
+      best = t;
+      bd = d;
+    }
+    return best;
+  };
+  const fresh = pick((t) => done.has(t));
+  if (fresh) return fresh;
+  done.clear();
+  return pick(() => false) ?? base;
+}
+
 // ---------------------------------------------------------------------------
 // Changing shape
 // ---------------------------------------------------------------------------
@@ -202,66 +309,83 @@ const form: Handler = (k, c) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Rake: three quick swipes at the one enemy you aimed at, paws turn about.
- * The third opens it up and leaves it Bleeding.
+ * Rake: three quick swipes at the one enemy you aimed at: right paw, left
+ * paw, then both crossed, each on its own swipe of the gesture. The last
+ * opens it up and leaves it Bleeding.
  */
 const rake: Handler = (k, c) => {
+  const p = c.player;
   const hits = Math.max(1, Math.floor(c.num('hits', 3)));
   const reach = c.num('reach', 2.4);
-  const time = c.attackTime;
-  c.player.beginAction(c.clip, time);
-  const focus = { x: c.target.x, z: c.target.z };
-  const facing = c.dir.clone();
+  const total = stretched(c, hits, baseNum(c, 'hits', 3));
+  p.beginAction(c.clip, total);
+  const at = blowTimes(k, c, total, hits);
+  const t = prey(k, c, reach + 0.6);
+  const focus = () => (t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z });
   const bleed = st('bleeding', c.num('duration', 4));
   const fx = k.effects;
-  const bones = c.player.bones;
-  const first = c.player.contactIn;
-  const gap = Math.min(0.11, (time * 0.7) / hits);
-  const blow = (i: number) => {
-    const side = i % 2 === 0 ? 'R' : 'L';
-    FeralFX.rakeStroke(fx, bones, side, 0.12);
-    const packet = (m = 1): DamagePacket => {
-      const p = c.makePacket(m);
-      return i === hits - 1 ? withStatus(p, bleed) : p;
-    };
-    k.swing(facing, 1.4, reach, packet, { most: 1, focus, now: i > 0 });
-    const t = prey(k, c, reach + 0.6);
-    if (t) FeralFX.rakeHit(fx, t.root.position, facing, side);
-  };
-  k.later(Math.max(0, first - 0.08), () => FeralFX.rakeStroke(fx, bones, 'R', 0.12));
-  k.swing(facing, 1.4, reach, (m = 1) => (hits === 1 ? withStatus(c.makePacket(m), bleed) : c.makePacket(m)), { most: 1, focus });
-  k.later(first, () => {
-    const t = prey(k, c, reach + 0.6);
-    if (t) FeralFX.rakeHit(fx, t.root.position, facing, 'R');
-  });
-  for (let i = 1; i < hits; i++) k.later(first + gap * i, () => blow(i));
+  for (let i = 0; i < hits; i++) {
+    const last = i === hits - 1;
+    // Right, left, and the last with both paws.
+    const both = last && hits >= 3;
+    const side: 'L' | 'R' = i % 2 === 0 ? 'R' : 'L';
+    // The scores run with the paw from just before the blow.
+    k.later(Math.max(0, at[i]! - 0.08), () => {
+      if (both || side === 'R') FeralFX.rakeStroke(fx, p.bones, 'R', 0.14);
+      if (both || side === 'L') FeralFX.rakeStroke(fx, p.bones, 'L', 0.14);
+    });
+    k.later(at[i]!, () => {
+      const f = focus();
+      const dir = toward(c, f);
+      const packet = (m = 1): DamagePacket => (last ? withStatus(c.makePacket(m), bleed) : c.makePacket(m));
+      if (k.swing(dir, 1.4, reach, packet, { most: 1, focus: f, now: true }) <= 0) return;
+      FeralFX.rakeHit(fx, f, dir, side);
+      if (both) FeralFX.rakeHit(fx, f, dir, 'L');
+    });
+  }
 };
 
+/** Where a leap or a rush at `t` (or the aim point) ends: `short` metres before the body, never through a wall. */
+function lane(k: ShiftKit, c: ShiftCast, t: ShiftTarget | null, range: number, short: number): { dir: THREE.Vector3; dist: number; to: THREE.Vector3 } {
+  const aim = t && t.alive ? flat(t.root.position) : flat(c.target);
+  const dir = toward(c, aim);
+  const h = c.player.position;
+  const want = Math.max(0, Math.hypot(aim.x - h.x, aim.z - h.z) - (t ? short : 0));
+  const dist = Math.max(0, Math.min(want, range, k.wallStop(h, dir, range, 0.4)));
+  return { dir, dist, to: h.clone().addScaledVector(dir, dist) };
+}
+
 /**
- * Pounce: a leap of up to 9m in an arc onto one enemy, claws first. Lands
- * with the blow and a short stun.
+ * Pounce: the cat coils where it stands, then leaps up to 9m in an arc onto
+ * one enemy at a leap's speed (`travelTime`), and lands claws first: the
+ * landing is the gesture's blow. A short stun.
  */
 const pounce: Handler = (k, c) => {
+  const p = c.player;
   const range = c.num('range', 9);
   const t = prey(k, c, range);
-  const aim = t ? flat(t.root.position) : flat(c.target);
-  const dir = toward(c, aim);
-  const want = Math.max(0, Math.hypot(aim.x - c.player.position.x, aim.z - c.player.position.z) - (t ? 0.9 : 0));
-  const dist = Math.min(want, range, k.wallStop(c.player.position, dir, range, 0.4));
-  const time = 0.22 + dist * 0.03;
-  c.player.beginAction(c.clip, time + 0.3);
+  const coil = Math.min(0.22, c.attackTime * 0.4);
+  const flight = travelTime(lane(k, c, t, range, 0.9).dist);
+  const total = c.attackTime + flight;
+  p.beginAction(c.clip, total);
+  // The claws land when the body does.
+  p.animator.play(c.clip, { fade: 0.06, span: total, restart: true, contact: coil + flight });
+  c.lands = coil + flight;
   const fx = k.effects;
-  FeralFX.pounceLeap(fx, c.player.bones, time);
-  const to = c.player.position.clone().addScaledVector(dir, dist);
-  c.player.shape.travel(to, time, 0.6 + dist * 0.08, {
-    ease: 1,
-    land: () => {
-      if (!c.player.alive) return;
-      const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: to.x + dir.x, z: to.z + dir.z };
-      k.swing(dir, 1.8, c.num('reach', 1.8) + 0.4, (m = 1) => withStatus(c.makePacket(m), st('stunned', c.num('stun', 0.8))), { most: 1, focus, now: true });
-      FeralFX.pounceLand(fx, focus, dir);
-      c.hitAt(focus);
-    },
+  k.later(coil, () => {
+    // Aimed again at the spring: it may have stepped while the cat coiled.
+    const l = lane(k, c, t, range, 0.9);
+    p.steadyLeft = Math.max(p.steadyLeft, flight);
+    FeralFX.pounceLeap(fx, p.bones, flight);
+    p.shape.travel(l.to, flight, 0.5 + l.dist * 0.08, {
+      id: p.actionId,
+      land: () => {
+        if (!p.alive) return;
+        const f = t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: l.to.x + l.dir.x, z: l.to.z + l.dir.z };
+        k.swing(l.dir, 1.8, c.num('reach', 1.8) + 0.4, (m = 1) => withStatus(c.makePacket(m), st('stunned', c.num('stun', 0.8))), { most: 1, focus: f, now: true });
+        FeralFX.pounceLand(fx, f, l.dir);
+      },
+    });
   });
 };
 
@@ -277,11 +401,18 @@ const hamstring: Handler = (k, c) => {
   const reach = c.num('reach', 2.2);
   c.player.beginAction(c.clip, c.attackTime);
   const t = prey(k, c, reach + 1);
-  const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
+  const focus = () => (t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z });
   const dur = c.num('duration', 4);
-  FeralFX.hamstringStroke(k.effects, c.player.bones, c.player.contactIn + 0.12);
-  k.swing(c.dir, 1.2, reach, (m = 1) => withStatus(c.makePacket(m), st('crippled', dur), st('bleeding', dur, Math.max(1, Math.floor(c.num('bleed', 2))))), { most: 1, focus });
-  k.later(c.player.contactIn, () => FeralFX.hamstringHit(k.effects, focus, c.dir));
+  const bleed = Math.max(1, Math.floor(c.num('bleed', 2)));
+  const contact = c.player.contactIn;
+  k.later(Math.max(0, contact - 0.1), () => FeralFX.hamstringStroke(k.effects, c.player.bones, 0.2));
+  k.later(contact, () => {
+    const f = focus();
+    const dir = toward(c, f);
+    if (k.swing(dir, 1.2, reach, (m = 1) => withStatus(c.makePacket(m), st('crippled', dur), st('bleeding', dur, bleed)), { most: 1, focus: f, now: true }) > 0) {
+      FeralFX.hamstringHit(k.effects, f, dir);
+    }
+  });
 };
 
 /**
@@ -292,60 +423,78 @@ const throatTear: Handler = (k, c) => {
   const reach = c.num('reach', 2);
   c.player.beginAction(c.clip, c.attackTime);
   const t = prey(k, c, reach + 1);
-  const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
-  const dir = toward(c, focus);
   const line = c.num('execute', 30) / 100;
   // Read at the bite, not the cast: a target that dropped under the line on the way in still counts.
   const exec = () => !!t && t.alive && t.lifeFraction <= line;
-  k.swing(dir, 1.1, reach + 0.3, (m = 1) => {
-    if (!exec()) return c.makePacket(m);
-    return withStatus(c.makePacket(m * c.num('executeMult', 2.5)), st('hemorrhage', c.num('duration', 5)));
-  }, { most: 1, focus });
-  const executing = exec();
-  k.later(c.player.contactIn, () => FeralFX.throatTear(k.effects, focus, dir, executing));
+  k.later(c.player.contactIn, () => {
+    const f = t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
+    const dir = toward(c, f);
+    const executing = exec();
+    const n = k.swing(dir, 1.1, reach + 0.3, (m = 1) => {
+      if (!executing) return c.makePacket(m);
+      return withStatus(c.makePacket(m * c.num('executeMult', 2.5)), st('hemorrhage', c.num('duration', 5)));
+    }, { most: 1, focus: f, now: true });
+    if (n > 0) FeralFX.throatTear(k.effects, f, dir, executing);
+  });
 };
 
 /**
- * Killing Dance: the cat circles one enemy, striking from a new side each
- * time, faster and faster. Leaves a shadow where it was.
+ * Killing Dance: the cat runs round its prey and strikes from a new side
+ * each time, faster and faster: a real run to each spot, the swipe on
+ * arrival. With other enemies within 3m, each blow goes to the next one not
+ * struck yet, so in a pack it cuts through them. A shadow where it was.
  */
 const killingDance: Handler = (k, c) => {
+  const p = c.player;
   const reach = c.num('reach', 2.4);
-  const t = prey(k, c, reach + 2);
   const hits = Math.max(1, Math.floor(c.num('hits', 6) + Math.floor(c.rank / Math.max(1, c.num('perRanks', 5)))));
   const ring = c.num('radius', 1.5);
-  const gaps: number[] = [];
-  let gap = Math.max(0.09, c.attackTime * 0.5);
-  let total = c.player.contactIn;
-  for (let i = 0; i < hits; i++) {
-    gaps.push(total);
-    total += gap;
-    gap = Math.max(0.06, gap * 0.86);
-  }
-  c.player.beginAction(c.clip, total + 0.2);
+  const crowd = c.num('crowd', 3);
+  const total = stretched(c, hits, baseNum(c, 'hits', 6));
+  p.beginAction(c.clip, total);
+  // Each gap a step shorter than the last; a short recovery after the end.
+  const R = 0.88;
+  const g0 = (total * 0.9 * (1 - R)) / (1 - Math.pow(R, hits));
+  c.lands = g0 * 0.6;
   const fx = k.effects;
-  const bones = c.player.bones;
-  const centre = () => (t && t.alive ? flat(t.root.position) : flat(c.target));
-  const start = Math.atan2(c.player.position.x - centre().x, c.player.position.z - centre().z);
+  const done = new Set<ShiftTarget>();
+  let on: ShiftTarget | null = null;
+  let start = 0;
   for (let i = 0; i < hits; i++) {
-    k.later(gaps[i]!, () => {
-      const m = centre();
-      // Round the target, a little over a third of the circle a step.
-      const a = start + i * 2.3;
+    const gap = g0 * Math.pow(R, i);
+    const run = gap * 0.6;
+    const side: 'L' | 'R' = i % 2 === 0 ? 'R' : 'L';
+    k.later(start, () => {
+      const was = on;
+      const t = nextInCrowd(k, c, on, done, crowd, reach + 2);
+      on = t;
+      const m = t ? flat(t.root.position) : flat(c.target);
+      // Round the same one a little over a third of the circle a step (less
+      // when quick, so the run never blurs past ~20 m/s); to a new one, in
+      // from the near side.
+      const step = t && t === was ? Math.min(2.3, 2 * Math.asin(Math.min(1, (20 * run) / (2 * ring)))) : i % 2 === 0 ? 0.9 : -0.9;
+      const a = Math.atan2(p.position.x - m.x, p.position.z - m.z) + step;
       const out = new THREE.Vector3(Math.sin(a), 0, Math.cos(a));
-      const r = Math.min(ring, k.wallStop(m, out, ring, 0.35));
-      FeralFX.dancePoint(fx, c.player.position.clone());
-      const side = i % 2 === 0 ? 'R' : 'L';
-      FeralFX.danceStroke(fx, bones, side, 0.1);
+      const want = ring + (t ? t.hitRadius * 0.5 : 0);
+      const r = Math.min(want, k.wallStop(m, out, want, 0.35));
       const to = m.clone().addScaledVector(out, r);
-      c.player.shape.travel(to, 0.05, 0.1, {
+      FeralFX.dancePoint(fx, p.position.clone());
+      FeralFX.danceStroke(fx, p.bones, side, run + 0.08);
+      // The gesture again for this blow, its swipe on the landing.
+      p.animator.play(c.clip, { fade: 0.04, span: gap, restart: true, contact: run });
+      p.shape.travel(to, run, 0.12, {
+        id: p.actionId,
         land: () => {
-          c.player.faceTowards(m.x, m.z);
-          const dir = toward(c, m);
-          k.swing(dir, 1.4, reach, (q = 1) => c.makePacket(q), { most: 1, focus: { x: m.x, z: m.z }, now: true });
+          const f = t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: m.x, z: m.z };
+          p.faceTowards(f.x, f.z);
+          const dir = toward(c, f);
+          if (k.swing(dir, 1.4, reach, (q = 1) => c.makePacket(q), { most: 1, focus: f, now: true }) <= 0) return;
+          if (t) done.add(t);
+          FeralFX.rakeHit(fx, f, dir, side);
         },
       });
     });
+    start += gap;
   }
 };
 
@@ -359,6 +508,9 @@ const nightHunt: Handler = (k, c) => {
 // ---------------------------------------------------------------------------
 // Teeth (the grey wolf: bite, and feed the pack's frenzy)
 // ---------------------------------------------------------------------------
+
+/** The wolf's run, metres a second (a leap or the bear's charge go at `RUSH_SPEED`). */
+const WOLF_RUN = 18;
 
 /** How many Pack Frenzy stacks the hero can hold: Snap's own, and one more every few ranks of Blood Frenzy. */
 function frenzyCap(c: ShiftCast): number {
@@ -386,10 +538,11 @@ const snap: Handler = (k, c) => {
   const reach = c.num('reach', 2.2);
   c.player.beginAction(c.clip, c.attackTime);
   const t = prey(k, c, reach + 0.8);
-  const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
-  const dir = toward(c, focus);
-  k.swing(dir, 1.0, reach, (m = 1) => c.makePacket(m), { most: 1, focus });
-  k.later(c.player.contactIn, () => TeethFX.snap(k.effects, focus, dir));
+  k.later(c.player.contactIn, () => {
+    const f = t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
+    const dir = toward(c, f);
+    if (k.swing(dir, 1.0, reach, (m = 1) => c.makePacket(m), { most: 1, focus: f, now: true }) > 0) TeethFX.snap(k.effects, f, dir);
+  });
   frenzy(c, 1, c.num('duration', 6));
 };
 
@@ -400,64 +553,89 @@ const huntingHowl: Handler = (k, c) => {
   TeethFX.howl(k.effects, c.player.position, c.num('radius', 10));
 };
 
-/** Lunge: a straight rush, bite at the end, and the thing bitten thrown back. */
+/**
+ * Lunge: a straight rush, low the whole way at a run's speed, the bite on
+ * arrival and the thing bitten thrown back.
+ */
 const lunge: Handler = (k, c) => {
+  const p = c.player;
   const range = c.num('range', 8);
   const t = prey(k, c, range);
-  const aim = t ? flat(t.root.position) : flat(c.target);
-  const dir = toward(c, aim);
-  const want = Math.hypot(aim.x - c.player.position.x, aim.z - c.player.position.z) - (t ? 0.8 : 0);
-  const dist = Math.max(0, Math.min(want, range, k.wallStop(c.player.position, dir, range, 0.45)));
-  const time = 0.1 + dist / 24;
-  c.player.beginAction(c.clip, time + 0.25);
-  TeethFX.lungeRun(k.effects, c.player.bones, time);
-  const to = c.player.position.clone().addScaledVector(dir, dist);
-  c.player.shape.travel(to, time, 0.12, {
-    ease: -1,
-    land: () => {
-      if (!c.player.alive) return;
-      const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: to.x + dir.x, z: to.z + dir.z };
-      k.swing(dir, 1.1, c.num('reach', 2) + 0.3, (m = 1) => {
-        const p = c.makePacket(m);
-        p.knockback = Math.max(p.knockback ?? 0, c.num('knockback', 1.5));
-        return p;
-      }, { most: 1, focus, now: true });
-      TeethFX.lungeBite(k.effects, focus, dir);
-    },
+  const l = lane(k, c, t, range, 0.8);
+  const run = travelTime(l.dist, WOLF_RUN);
+  const lead = Math.min(0.08, c.attackTime * 0.25);
+  const total = c.attackTime + run;
+  p.beginAction(c.clip, total);
+  // Held in the run, the jaws thrown forward as it arrives.
+  p.animator.play(c.clip, { fade: 0.05, span: total, restart: true, contact: lead + run });
+  c.lands = lead + run;
+  const fx = k.effects;
+  k.later(lead, () => {
+    TeethFX.lungeRun(fx, p.bones, run);
+    p.shape.travel(l.to, run, 0.12, {
+      id: p.actionId,
+      land: () => {
+        if (!p.alive) return;
+        const f = t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: l.to.x + l.dir.x, z: l.to.z + l.dir.z };
+        const n = k.swing(l.dir, 1.1, c.num('reach', 2) + 0.3, (m = 1) => {
+          const pk = c.makePacket(m);
+          // The throw below is the knockback, not the blow's own shove.
+          delete pk.knockback;
+          return pk;
+        }, { most: 1, focus: f, now: true });
+        TeethFX.lungeBite(fx, f, l.dir);
+        if (n > 0 && t) fling(k, t, l.dir.x, l.dir.z, c.num('knockback', 1.5), 0.25, 0.3);
+      },
+    });
   });
 };
 
-/** Worry: clamp on, hold it, shake it side to side, throw it away. */
+/**
+ * Worry: clamp on (the first shake holds it), shake it on each of the
+ * gesture's wrenches, its body going with the head, then fling it aside on
+ * the throw, to the side of the last wrench.
+ */
 const worry: Handler = (k, c) => {
+  const p = c.player;
   const reach = c.num('reach', 2);
   const shakes = Math.max(1, Math.floor(c.num('shakes', 4)));
+  const total = stretched(c, shakes, baseNum(c, 'shakes', 4));
+  p.beginAction(c.clip, total);
+  // The shakes, and the throw after them.
+  const at = blowTimes(k, c, total, shakes + 1);
   const t = prey(k, c, reach + 0.8);
   const focus = () => (t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z });
-  const gap = 0.17;
-  c.player.beginAction(c.clip, c.player.contactIn + gap * shakes + 0.15);
-  const hold = st('stunned', c.num('stun', 1.2));
+  const hold = st('stunned', Math.max(c.num('stun', 1.2), at[shakes]! - at[0]! + 0.15));
+  let held = false;
+  let side: 1 | -1 = 1;
   for (let i = 0; i < shakes; i++) {
-    const last = i === shakes - 1;
-    const beat = () => {
+    k.later(at[i]!, () => {
       const f = focus();
       const dir = toward(c, f);
-      k.swing(dir, 1.0, reach + 0.4, (m = 1) => {
-        const p = c.makePacket(m);
-        if (i === 0) withStatus(p, hold);
-        if (last) p.knockback = Math.max(p.knockback ?? 0, c.num('knockback', 2.5));
-        return p;
-      }, { most: 1, focus: f, now: i > 0 });
-      TeethFX.worryShake(k.effects, f, dir, i % 2 === 0 ? 1 : -1);
-    };
-    if (i === 0) {
-      beat();
-    } else {
-      k.later(c.player.contactIn + gap * i, beat);
-    }
+      const n = k.swing(dir, 1.0, reach + 0.4, (m = 1) => {
+        const pk = c.makePacket(m);
+        delete pk.knockback;
+        return i === 0 ? withStatus(pk, hold) : pk;
+      }, { most: 1, focus: f, now: true });
+      if (n <= 0) return;
+      if (i === 0) held = true;
+      side = i % 2 === 0 ? 1 : -1;
+      TeethFX.worryShake(k.effects, f, dir, side);
+      // The body goes with the head: a short wrench to that side.
+      if (t) fling(k, t, -dir.z * side, dir.x * side, 0.35, 0.1, 0);
+    });
   }
+  k.later(at[shakes]!, () => {
+    if (!held || !t || !t.alive) return;
+    const f = focus();
+    const dir = toward(c, f);
+    // Off to the side it was last wrenched to, and a little away.
+    fling(k, t, -dir.z * side + dir.x * 0.5, dir.x * side + dir.z * 0.5, c.num('knockback', 2.5), 0.32, 0.5);
+    TeethFX.worryThrow(k.effects, f, dir, side);
+  });
 };
 
-/** Call the Pack: grey wolves out of the fog to fight beside you. */
+/** Call the Pack: grey wolves come up out of a low fog, eyes first, to fight beside you. */
 const callThePack: Handler = (k, c) => {
   c.player.beginAction(c.clip, c.castTime);
   const count = Math.max(1, Math.floor(c.num('count', 2) + Math.floor(c.rank / Math.max(1, c.num('perRanks', 6)))));
@@ -467,13 +645,20 @@ const callThePack: Handler = (k, c) => {
     k.trim(count - 1);
     room = 1;
   }
-  const share = rk(c, 'minionScale', 0.45);
-  const life = Math.max(20, (c.player.stats.life * rk(c, 'lifePct', 30)) / 100);
+  const mp = c.player.passives;
+  // The bite's rank share is in the packet already (`BURST_POWER.callThePack`);
+  // Alpha's damage and life on top.
+  const share = c.num('minionScale', 0.45) * (1 + mp.minionDamagePct / 100);
+  const life = Math.max(20, ((c.player.stats.life * rk(c, 'lifePct', 30)) / 100) * (1 + mp.minionLifePct / 100));
   const p = c.player.position;
-  TeethFX.callFog(k.effects, p);
+  const fx = k.effects;
+  TeethFX.callFog(fx, p);
   for (let i = 0; i < room; i++) {
     const a = Math.atan2(c.dir.x, c.dir.z) + Math.PI + (i - (room - 1) / 2) * 0.9;
-    k.raise(p.x + Math.sin(a) * 1.6, p.z + Math.cos(a) * 1.6, {
+    const x = p.x + Math.sin(a) * 1.6;
+    const z = p.z + Math.cos(a) * 1.6;
+    TeethFX.wolfRise(fx, { x, z }, i);
+    k.raise(x, z, {
       packet: (m = 1) => c.makePacket(m * share),
       life,
       rate: c.num('attackRate', 1.0),
@@ -493,33 +678,54 @@ const bloodHowl: Handler = (k, c) => {
   TeethFX.bloodHowl(k.effects, c.player.position);
 };
 
-/** Go for the Throat: drop low and spring at the throat. Hemorrhage, and Weakened. */
-const goForTheThroat: Handler = (k, c) => {
-  const range = c.num('range', 4);
-  const t = prey(k, c, range + 0.5);
-  const aim = t ? flat(t.root.position) : flat(c.target);
-  const dir = toward(c, aim);
-  const want = Math.hypot(aim.x - c.player.position.x, aim.z - c.player.position.z) - (t ? 0.8 : 0);
-  const dist = Math.max(0, Math.min(want, range, k.wallStop(c.player.position, dir, range, 0.4)));
-  // A crouch first, then the spring.
-  const crouch = 0.14;
-  const time = 0.16 + dist * 0.035;
-  c.player.beginAction(c.clip, crouch + time + 0.3);
+/**
+ * Ravening: down low and turning, the wolf tears into everything near: each
+ * bite on its own snap of the gesture, at the next enemy within 3m not
+ * bitten yet (a short step in when it is out of reach). Every bite that
+ * lands feeds Pack Frenzy.
+ */
+const ravening: Handler = (k, c) => {
+  const p = c.player;
+  const reach = c.num('reach', 2.2);
+  const crowd = c.num('crowd', 3);
+  const bites = Math.max(1, Math.floor(c.num('bites', 5) + Math.floor(c.rank / Math.max(1, c.num('perRanks', 5)))));
+  const total = stretched(c, bites, baseNum(c, 'bites', 5));
+  p.beginAction(c.clip, total);
+  const at = blowTimes(k, c, total, bites);
+  const snapTime = getSkill('snap')?.params?.duration;
+  const keep = typeof snapTime === 'number' ? snapTime : 6;
+  const done = new Set<ShiftTarget>();
+  let on: ShiftTarget | null = null;
   const fx = k.effects;
-  const to = c.player.position.clone().addScaledVector(dir, dist);
-  k.later(crouch, () => {
-    TeethFX.throatSpring(fx, c.player.bones, time);
-    c.player.shape.travel(to, time, 0.9, {
-      ease: 1,
-      land: () => {
-        if (!c.player.alive) return;
-        const focus = t ? { x: t.root.position.x, z: t.root.position.z } : { x: to.x + dir.x, z: to.z + dir.z };
-        k.swing(dir, 1.0, 1.9, (m = 1) => withStatus(c.makePacket(m), st('hemorrhage', c.num('duration', 6)), st('weakened', c.num('weaken', 4))), { most: 1, focus, now: true });
-        TeethFX.throatHit(fx, focus, dir);
-        c.hitAt(focus);
-      },
+  for (let i = 0; i < bites; i++) {
+    const turn: 1 | -1 = i % 2 === 0 ? 1 : -1;
+    k.later(at[i]!, () => {
+      const t = nextInCrowd(k, c, on, done, crowd, reach + 2);
+      on = t;
+      const bite = () => {
+        const f = t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z };
+        const dir = toward(c, f);
+        p.faceTowards(f.x, f.z);
+        if (k.swing(dir, 1.1, reach, (m = 1) => c.makePacket(m), { most: 1, focus: f, now: true }) <= 0) return;
+        if (t) done.add(t);
+        frenzy(c, 1, keep);
+        TeethFX.ravenBite(fx, f, dir, turn);
+      };
+      if (t) {
+        const q = t.root.position;
+        const gapTo = Math.hypot(q.x - p.position.x, q.z - p.position.z) - t.hitRadius;
+        if (gapTo > reach * 0.8) {
+          const dir = toward(c, q);
+          const go = Math.min(gapTo - reach * 0.6, 1.6, k.wallStop(p.position, dir, 1.6, 0.4));
+          if (go > 0.15) {
+            p.shape.travel(p.position.clone().addScaledVector(dir, go), 0.08, 0.05, { id: p.actionId, land: bite });
+            return;
+          }
+        }
+      }
+      bite();
     });
-  }, true);
+  }
 };
 
 /** Bloodmoon: Pack Frenzy goes full and stays full; more damage; every hit drinks deep. */
@@ -567,7 +773,7 @@ const rattlingRoar: Handler = (k, c) => {
   }, true);
 };
 
-/** Hammerfall: both paws up and down on the floor ahead. Knocks down what is near. */
+/** Hammerfall: both paws up and down on the floor ahead, the same to the ring's edge. Knocks down what is near. */
 const hammerfall: Handler = (k, c) => {
   const range = c.num('range', 3.5);
   const radius = c.num('radius', 3.2) * ursaReach(c);
@@ -577,7 +783,7 @@ const hammerfall: Handler = (k, c) => {
   const at = p.clone().addScaledVector(c.dir, Math.max(1.2, len)).setY(0);
   c.player.beginAction(c.clip, c.attackTime);
   k.later(c.player.contactIn, () => {
-    k.area(at, radius, () => withStatus(c.makePacket(), st('knockedDown', c.num('knockdown', 0.8))), 'heavy');
+    k.area(at, radius, () => withStatus(c.makePacket(), st('knockedDown', c.num('knockdown', 0.8))), 'heavy', true);
     ClawFX.hammerfall(k.effects, at, c.dir, radius);
     c.hitAt(at);
   });
@@ -593,83 +799,137 @@ const bristle: Handler = (k, c) => {
   ClawFX.bristle(k.effects, c.player.root, rk(c, 'duration', 8));
 };
 
-/** Overrun: a charge on all fours, everything in the way run down and thrown aside. */
+/**
+ * Overrun: a charge on all fours at a charge's speed (`travelTime`). Each
+ * body in the lane is run down as the bear reaches it, once a charge, and
+ * thrown off the side of the lane it stood on.
+ */
 const overrun: Handler = (k, c) => {
+  const p = c.player;
   const range = c.num('range', 8);
-  const width = c.num('width', 1.8) * ursaReach(c);
-  const from = c.player.position.clone().setY(0);
+  const half = (c.num('width', 1.8) * ursaReach(c)) / 2;
+  const from = p.position.clone().setY(0);
   const dir = c.dir.clone();
   const dist = Math.max(0.5, Math.min(range, k.wallStop(from, dir, range, 0.5)));
-  const time = 0.12 + dist / 15;
-  c.player.beginAction(c.clip, time + 0.3);
-  ClawFX.overrunRun(k.effects, c.player.bones, time);
+  const lead = Math.min(0.12, c.attackTime * 0.3);
+  const charge = travelTime(dist);
+  const total = c.attackTime + charge;
+  p.beginAction(c.clip, total);
+  // The pumping run held over the charge, the wide finish after it.
+  p.animator.play(c.clip, { fade: 0.05, span: total, restart: true, contact: lead + charge });
+  c.lands = lead;
   const to = from.clone().addScaledVector(dir, dist);
-  const seg = 2;
-  let done = 0;
-  const hit = (upTo: number) => {
-    while (done + 1e-3 < upTo) {
-      const a = done;
-      const b = Math.min(upTo, done + seg);
-      const o = from.clone().addScaledVector(dir, a);
-      k.line(o, dir, b - a, width, () => {
-        const p = c.makePacket();
-        p.knockback = Math.max(p.knockback ?? 0, c.num('knockback', 3));
-        return p;
-      }, 'heavy');
-      ClawFX.overrunToss(k.effects, from.clone().addScaledVector(dir, b));
-      done = b;
-    }
+  const toss = c.num('knockback', 3);
+  const fx = k.effects;
+  const packet = (): DamagePacket => {
+    const pk = c.makePacket();
+    // The throw is the knockback, not the blow's own shove.
+    delete pk.knockback;
+    return pk;
   };
-  c.player.shape.travel(to, time, 0, {
-    ease: -1,
-    step: (_at, u) => {
-      // Hits land as the bear gets there, a stride at a time.
-      if (u * dist - done >= seg) hit(Math.floor((u * dist) / seg) * seg);
-    },
-    land: () => {
-      hit(dist);
-      c.hitAt(to);
-      ClawFX.overrunFurrow(k.effects, from, to);
-    },
+  k.later(lead, () => {
+    const pool = k.targets();
+    const hit = new Set<ShiftTarget>();
+    let heard = false;
+    ClawFX.overrunRun(fx, p.bones, charge);
+    p.steadyLeft = Math.max(p.steadyLeft, charge);
+    p.shape.travel(to, charge, 0, {
+      ease: -1,
+      id: p.actionId,
+      step: (at) => {
+        const done = (at.x - from.x) * dir.x + (at.z - from.z) * dir.z;
+        for (let i = 0; i < pool.length; i++) {
+          const t = pool[i]!;
+          if (!t.alive || hit.has(t)) continue;
+          const q = t.root.position;
+          const dx = q.x - from.x;
+          const dz = q.z - from.z;
+          const along = dx * dir.x + dz * dir.z;
+          // Struck as the bear's head reaches it.
+          if (along < -0.5 || along > done + 1 + t.hitRadius) continue;
+          let sx = dx - dir.x * along;
+          let sz = dz - dir.z * along;
+          const off = Math.hypot(sx, sz);
+          if (off > half + t.hitRadius) continue;
+          hit.add(t);
+          if (off < 0.05) {
+            // Dead ahead: left and right in turn.
+            const flip = hit.size % 2 ? 1 : -1;
+            sx = -dir.z * flip;
+            sz = dir.x * flip;
+          } else {
+            sx /= off;
+            sz /= off;
+          }
+          if (!k.hit(t, packet, 'heavy', q.x - sx * 0.8 - dir.x * 0.5, q.z - sz * 0.8 - dir.z * 0.5)) continue;
+          fling(k, t, sx + dir.x * 0.35, sz + dir.z * 0.35, toss, 0.3, 0.6);
+          ClawFX.overrunToss(fx, q);
+          if (!heard) {
+            heard = true;
+            c.hitAt(q);
+          }
+        }
+      },
+      land: () => ClawFX.overrunFurrow(fx, from, to),
+    });
   });
 };
 
-/** Reaping Swipe: a full turn with both paws out. More for every enemy it catches. */
+/**
+ * Reaping Swipe: a full turn with both paws out. The same to everything in
+ * reach (the paws are the edge), more for every enemy it catches, and all
+ * of it dragged in toward the bear.
+ */
 const reapingSwipe: Handler = (k, c) => {
   const radius = c.num('radius', 3.4) * ursaReach(c);
-  const time = c.attackTime;
-  c.player.beginAction(c.clip, time);
+  c.player.beginAction(c.clip, c.attackTime);
   const start = Math.atan2(c.dir.x, c.dir.z);
+  const pull = rk(c, 'pull', 1.2);
   k.later(Math.max(0, c.player.contactIn - 0.12), () => ClawFX.reap(k.effects, c.player.position.clone(), radius, 0.26, start));
   k.later(c.player.contactIn, () => {
-    const at = c.player.position.clone().setY(0);
-    let n = 0;
-    for (const t of k.targets()) if (t.alive && t.root.position.distanceTo(at) <= radius) n++;
-    const bonus = 1 + (c.num('perTarget', 8) * Math.min(n, c.num('maxTargets', 5))) / 100;
-    k.area(at, radius, () => c.makePacket(bonus), 'heavy');
-    if (n > 0) c.hitAt(at);
+    const at = c.player.position;
+    const caught: ShiftTarget[] = [];
+    for (const t of k.targets()) {
+      const q = t.root.position;
+      if (t.alive && Math.hypot(q.x - at.x, q.z - at.z) <= radius + t.hitRadius) caught.push(t);
+    }
+    const bonus = 1 + (c.num('perTarget', 8) * Math.min(caught.length, c.num('maxTargets', 5))) / 100;
+    let any = false;
+    for (const t of caught) {
+      const q = t.root.position;
+      const dx = q.x - at.x;
+      const dz = q.z - at.z;
+      const d = Math.hypot(dx, dz) || 1;
+      // Struck from beyond it, so its flinch goes in with the drag.
+      if (!k.hit(t, () => c.makePacket(bonus), 'heavy', q.x + dx / d, q.z + dz / d)) continue;
+      any = true;
+      const go = Math.min(pull, d - (1 + t.hitRadius));
+      if (go > 0.1) fling(k, t, -dx, -dz, go, 0.2, 0);
+    }
+    if (any) c.hitAt(at);
   });
 };
 
-/** Bear Hug: one enemy held and crushed. Each squeeze heals you. */
+/** Bear Hug: one enemy held and crushed, each squeeze on its own squeeze of the gesture. A squeeze that lands heals you. */
 const bearHug: Handler = (k, c) => {
+  const p = c.player;
   const reach = c.num('reach', 2);
   const squeezes = Math.max(1, Math.floor(c.num('squeezes', 3)));
+  const total = stretched(c, squeezes, baseNum(c, 'squeezes', 3));
+  p.beginAction(c.clip, total);
+  const at = blowTimes(k, c, total, squeezes);
   const t = prey(k, c, reach + 0.8);
   const focus = () => (t && t.alive ? { x: t.root.position.x, z: t.root.position.z } : { x: c.target.x, z: c.target.z });
-  const gap = 0.32;
-  c.player.beginAction(c.clip, c.player.contactIn + gap * squeezes + 0.2);
-  const hold = st('stunned', c.num('stun', 2));
+  const hold = st('stunned', Math.max(c.num('stun', 2), at[squeezes - 1]! - at[0]! + 0.3));
   const heal = c.num('heal', 2) / 100;
   for (let i = 0; i < squeezes; i++) {
-    const beat = () => {
+    k.later(at[i]!, () => {
       const f = focus();
-      k.swing(toward(c, f), 1.0, reach + 0.4, (m = 1) => (i === 0 ? withStatus(c.makePacket(m), hold) : c.makePacket(m)), { most: 1, focus: f, now: i > 0 });
-      if (t && t.alive) c.player.heal(c.player.stats.life * heal);
+      const n = k.swing(toward(c, f), 1.0, reach + 0.4, (m = 1) => (i === 0 ? withStatus(c.makePacket(m), hold) : c.makePacket(m)), { most: 1, focus: f, now: true });
+      if (n <= 0) return;
+      p.heal(p.stats.life * heal);
       ClawFX.hug(k.effects, f);
-    };
-    if (i === 0) beat();
-    else k.later(c.player.contactIn + gap * i, beat);
+    });
   }
 };
 
@@ -709,7 +969,7 @@ const HANDLERS: Record<string, Handler> = {
   worry,
   callThePack,
   bloodHowl,
-  goForTheThroat,
+  ravening,
   bloodmoon,
   maul,
   rattlingRoar,
@@ -747,6 +1007,67 @@ export function shiftHands(player: Player, hands: Hands, def?: SkillDef): Hands 
   return formHands(hands, def ? beastOfSkill(def) : (player.shape?.form ?? null));
 }
 
+/**
+ * Night Hunt: Feral skills cost no mana while it lasts. Read where the cost
+ * is taken (`SkillRunner.cast`), so the pool never needs the mana at all.
+ */
+export function shiftFree(def: SkillDef, player: Player): boolean {
+  return def.treeId === 'feral' && def.id !== 'nightHunt' && !!def.effect?.startsWith('shift.') && player.status.has('ss.nightHunt');
+}
+
+/** What each beast's basic attack sounds like in the air (its blows land as flesh, `hit.flesh`). */
+const BEAST_WHOOSH: Readonly<Record<BeastForm, string>> = { cat: 'swing.light', wolf: 'monster.beast.attack', bear: 'swing.heavy' };
+
+/** The sound of a beast's swing, for the form the hero is in. */
+export function beastWhoosh(player: Player): string {
+  const f = player.shape?.form;
+  return f ? BEAST_WHOOSH[f] : 'swing.fist';
+}
+
+/** Each beast's basic attack: its arc (radians) and reach (metres). The bear's is wide and long. */
+const FORM_SWING: Readonly<Record<BeastForm, { arc: number; reach: number }>> = {
+  cat: { arc: 1.5, reach: 2.4 },
+  wolf: { arc: 1.5, reach: 2.4 },
+  bear: { arc: 2.0, reach: 2.7 },
+};
+
+/** The basic attack's arc and reach in the form the hero is in; null as a man. */
+export function formSwing(player: Player): { arc: number; reach: number } | null {
+  const f = player.shape?.form;
+  return f ? FORM_SWING[f] : null;
+}
+
+/** Where a beast's blow lands on a body: blood and the beast's own hair. */
+export function clawHit(fx: EffectSystem, player: Player, at: { x: number; z: number }, dir: THREE.Vector3, crit: boolean): void {
+  beastImpact(fx, player.shape?.form ?? 'wolf', at, dir, crit);
+}
+
+/**
+ * Many Mouths: you and your wolves deal more for each wolf standing (up to
+ * its `most`). Kept on as a short status, refreshed twice a second from the
+ * runner's tick with the wolves it counts (`SkillRunner.update`), so it shows
+ * on the sheet and the wolves' bites (rolled from your sheet) carry it.
+ */
+export function tickShiftPack(player: Player, wolves: number): void {
+  const pct = player.passives?.manyMouthsPct ?? 0;
+  const s = player.status;
+  const had = s.get('ss.manyMouths');
+  const most = getSkill('manyMouths')?.params?.most;
+  const want = pct > 0 ? Math.round(pct * Math.min(wolves, typeof most === 'number' ? most : 3) * 10) / 10 : 0;
+  if (want <= 0) {
+    if (had) {
+      s.remove('ss.manyMouths');
+      player.refreshStats();
+    }
+    return;
+  }
+  if (had && had.mods?.enhancedDamage === want) {
+    had.remaining = Math.max(had.remaining, 1.2);
+    return;
+  }
+  player.applyStatus('ss.manyMouths', 1.2, 1, 1, { mods: { enhancedDamage: want } });
+}
+
 /** Runs one Shapeshifter skill. Returns false for an effect with no handler. */
 export function runShift(k: ShiftKit, c: ShiftCast): boolean {
   const sub = (c.def.effect ?? '').split('.')[1] ?? '';
@@ -756,27 +1077,34 @@ export function runShift(k: ShiftKit, c: ShiftCast): boolean {
   const want = FORM_OF_TREE[c.def.treeId];
   if (sub !== 'form' && want && c.player.shape.form !== want) change(k, c.player, c.dir, want, true);
   let cast = c;
-  if (c.def.treeId === 'feral' && sub !== 'form') {
-    const s = c.player.status;
-    // Night Hunt: Feral skills cost nothing while it lasts.
-    if (sub !== 'nightHunt' && s.has('ss.nightHunt')) {
-      const cost = c.def.manaCost ? c.def.manaCost(c.rank) : 0;
-      c.player.mana = Math.min(c.player.stats.mana, c.player.mana + cost);
-    }
-    // Slink: the next Feral skill is an ambush, and the slink ends.
-    if (sub !== 'slink' && s.has('ss.slink')) {
-      const slinkDef = getSkill('slink');
-      const sr = Math.max(1, rankOf(c, 'slink'));
-      const p = slinkDef?.params ?? {};
-      const base = typeof p.ambush === 'number' ? p.ambush : 60;
-      const step = typeof p.ambushR === 'number' ? p.ambushR : 8;
-      const amb = 1 + (base + step * (sr - 1)) / 100;
-      const make = c.makePacket;
-      cast = { ...c, makePacket: (m = 1) => make(m * amb) };
-      s.remove('ss.slink');
-      c.player.refreshStats();
-    }
+  // Slink: the next Feral skill that strikes is an ambush (more damage, and
+  // a sure critical strike), and the slink ends. Slink itself, Night Hunt
+  // and the cat's own change strike nothing and leave it be.
+  const s = c.player.status;
+  if (c.def.treeId === 'feral' && c.def.targeting !== 'self' && s.has('ss.slink')) {
+    const p = getSkill('slink')?.params ?? {};
+    const sr = Math.max(1, rankOf(c, 'slink'));
+    const base = typeof p.ambush === 'number' ? p.ambush : 60;
+    const step = typeof p.ambushR === 'number' ? p.ambushR : 8;
+    const amb = 1 + (base + step * (sr - 1)) / 100;
+    const make = c.makePacket;
+    const player = c.player;
+    cast = {
+      ...c,
+      makePacket: (m = 1) => {
+        const pk = make(m * amb);
+        if (!pk.crit) {
+          pk.crit = true;
+          pk.amount *= Math.max(100, player.stats.critDamage) / 100;
+        }
+        return pk;
+      },
+    };
+    s.remove('ss.slink');
+    c.player.refreshStats();
   }
   h(k, cast);
+  // The ambush ran on a copy; what it set goes back to the cast.
+  c.lands = cast.lands;
   return true;
 }

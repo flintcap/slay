@@ -47,8 +47,8 @@ export const SHIFTER_RULES: Record<string, Rule> = {
     e.minionDamagePct += param(id, 'damagePerRank', 8) * r;
     e.minionLifePct += param(id, 'lifePerRank', 6) * r;
   },
-  scentOfWeakness: (e, r, id) => {
-    e.vsDebuffedPct += param(id, 'pctPerRank', 3) * r;
+  manyMouths: (e, r, id) => {
+    e.manyMouthsPct += param(id, 'pctPerRank', 1) * r;
   },
   lastWolf: (e, r, id) => {
     e.lowLifeThreshold = Math.max(e.lowLifeThreshold, param(id, 'threshold', 35));

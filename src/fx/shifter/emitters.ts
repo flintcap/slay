@@ -104,6 +104,32 @@ const EM: Record<string, Emitter> = {
     layers: [L({ sprite: SPRITE.gore, variants: 4, count: 12, ramp: BLOOD, speed: [3, 7], spread: 0.5, up: 0.35, size: [0.04, 0.08], grow: 0.7, life: [0.35, 0.7], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1.2, stretch: 1.4, ground: true, bounce: 0, tint: false })],
   },
 
+  // A beast's blow landing (the basic attack and every shift blow in a form):
+  // blood off the claws or teeth and a few of the beast's own hairs, in
+  // place of the metal spark a weapon throws.
+  'ss.impact.cat': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.gore, variants: 4, count: 9, ramp: BLOOD, speed: [3.5, 6.5], spread: 0.45, up: 0.25, size: [0.03, 0.06], grow: 0.6, life: [0.25, 0.5], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -15, drag: 1.1, stretch: 1.8, ground: true, bounce: 0, tint: false }),
+      fur(CAT_FUR, 4, [1, 2.2], 0.3, { radius: 0.08, life: [0.35, 0.7] }),
+    ],
+  },
+  'ss.impact.wolf': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.gore, variants: 4, count: 10, ramp: BLOOD, speed: [3, 6], spread: 0.55, up: 0.35, size: [0.035, 0.065], grow: 0.6, life: [0.3, 0.55], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 1.1, stretch: 1.5, ground: true, bounce: 0, tint: false }),
+      fur(WOLF_FUR, 4, [1, 2.2], 0.3, { radius: 0.08, life: [0.35, 0.7] }),
+    ],
+  },
+  'ss.impact.bear': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.gore, variants: 4, count: 12, ramp: BLOOD, speed: [3, 6], spread: 0.7, up: 0.4, size: [0.04, 0.08], grow: 0.6, life: [0.35, 0.6], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -15, drag: 1, stretch: 1.4, ground: true, bounce: 0, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 3, ramp: DUST, radius: 0.2, speed: [1, 2.2], spread: 0.6, up: 0.1, size: [0.3, 0.42], grow: 2, life: [0.4, 0.7], heat: [0.2, 0], emit: 0.2, occl: 0.5, drag: 2.6, tint: false }),
+      fur(BEAR_FUR, 3, [1, 2], 0.3, { radius: 0.1, life: [0.35, 0.7] }),
+    ],
+  },
+
   // --- Feral -------------------------------------------------------------------
   // Rake: three streaks of blood flung off to the side of the stroke.
   'ss.rake.hit': {
@@ -219,12 +245,12 @@ const EM: Record<string, Emitter> = {
       L({ sprite: SPRITE.mote, count: 16, ramp: BLOOD, converge: true, radius: 2.6, speed: [4, 6], life: [0.4, 0.6], size: [0.05, 0.08], grow: 0.4, heat: [1, 0.5], emit: 1.1, occl: 0, tint: false }),
     ],
   },
-  // Go for the Throat: blood thrown up in a fountain from the spring.
-  'ss.throat.fountain': {
+  // Ravening: blood and grey hair thrown off the side the head wrenched to.
+  'ss.raven.spray': {
     school: 'physical',
     layers: [
-      L({ sprite: SPRITE.gore, variants: 4, count: 26, ramp: BLOOD, speed: [4, 8], spread: 0.3, up: 2, radius: 0.06, size: [0.045, 0.09], grow: 0.6, life: [0.6, 1.0], heat: [0.3, 0], emit: 0.1, occl: 0.95, gravity: -14, drag: 0.6, stretch: 1.8, ground: true, bounce: 0, tint: false }),
-      L({ sprite: SPRITE.smoke, count: 5, ramp: DUST, disc: true, radius: 0.3, speed: [1.5, 3], up: -0.1, size: [0.3, 0.45], grow: 2.2, life: [0.5, 0.8], heat: [0.2, 0], emit: 0.2, occl: 0.5, drag: 2.5, tint: false }),
+      L({ sprite: SPRITE.gore, variants: 4, count: 14, ramp: BLOOD, speed: [3.5, 7], spread: 0.3, up: 0.45, size: [0.035, 0.07], grow: 0.6, life: [0.3, 0.6], heat: [0.3, 0], emit: 0.1, occl: 0.9, gravity: -14, drag: 0.9, stretch: 1.9, ground: true, bounce: 0, tint: false }),
+      fur(WOLF_FUR, 5, [1.2, 2.6], 0.35, { radius: 0.1, life: [0.4, 0.8] }),
     ],
   },
   // Bloodmoon: a red moon hung over the head, and red motes falling from it.
