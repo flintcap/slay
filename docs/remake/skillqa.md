@@ -56,9 +56,17 @@ sheet per class only where a "For skillqa" note asks for a look. Run
 - [ ] 2. Working. `check-skills` for all seven classes. Every skill fires,
   hits, costs mana, and grows each rank. Read the code behind each failure
   before fixing it.
-- [ ] 3. Speed. Spot check, from the code, that every class's basic attack
+- [x] 3. Speed. Spot check, from the code, that every class's basic attack
   and skill times follow skillcore's model (no stray hard-coded seconds,
   nothing faster than the ceiling, caster weapons have no basic attack).
+  (Every source sums into one attack and one cast percent, then
+  `speedMultiplier` and the ceilings in `basicTime`, `skillPace` and
+  `castSeconds`; see the speed item under Known issues. The only fixed
+  action times left are the shared leap's 0.34 s and blink's 0.26 s,
+  movement like the dodge, on purpose. Class runners time every action
+  from `attackTime`, `castTime` or their contact frame. `basicAttack`
+  refuses a wand, staff, orb or a focus in bare hands, as `castsOnly`
+  does; a Paladin's scepter is a mace.)
 - [ ] 4. Quality. Work through every "For skillqa" note. Icons: unique per
   skill, sharp, class colors (`check-iconmatch`). Melee: own swing per
   skill. Ranged and spells: own projectile and effect. Fix what is below a
@@ -172,7 +180,15 @@ Rogue (sk-rogue, done):
   Clone. Shadow Legion is eyes at every depth of the dark, Mirror Gambit
   a cracked mirror with a blade in the glass, Silhouette a knife through a
   ring of smoke, The Unseen Blade a shut eye over a blade of light.)
-- `check-skillcost` never ran (it was stopped). Run it once.
+- [x] `check-skillcost` never ran (it was stopped). Run it once. (Ran once
+  for the Rogue, 28 skills, software drawn: a plain frame is about 1.3 s,
+  every skill's worst frame 1.24 to 2.28 s, no single cast stands out. The
+  six Shadowcraft rows after Shadow Clone run about 0.7 s heavier: the
+  tool recasts every 5 frames, so up to four clones (cap 6, warmed) are
+  still walking through the next rows. The checker fell back to the Knight
+  without a word when given `rogue` (the id is `shadowblade`); it now
+  refuses an unknown class and times each skill against a no-cast row,
+  first and last.)
 - [x] `check-unfinished` flags two statuses, `static` and `rent`, that no code
   applies (older than this wave). Wire them or remove them. (Removed:
   nothing named them.)

@@ -4,7 +4,8 @@
  *   SLAY_PORT=4309 node tools/check-skillcost.mjs [class id] [--frames=20]
  *
  * The class is its id (`shadowblade` for the Rogue, `warden` for the Knight).
- * The first row casts nothing; each skill also prints its excess over it.
+ * The first and last rows cast nothing; the summary gives the worst five
+ * skills' excess over the quieter of the two.
  */
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
@@ -70,11 +71,13 @@ const ids = await page.evaluate(() => {
 if (!ids.length) console.log('ERROR: no player or no skills');
 const FRAMES = Number(process.argv.find((a) => a.startsWith('--frames='))?.split('=')[1] ?? 20);
 const rows = [];
-// The same frames with nothing cast first: under software drawing a plain
-// dungeon frame is over a second, so a skill's cost is its excess over this.
+// The same frames with nothing cast, first and last: under software drawing
+// a plain dungeon frame is over a second, so a skill's cost is its excess
+// over the quieter of the two (the first can still be settling after the
+// load). Summons outlive their row and weigh on the rows after it.
 const BASE = '(no cast)';
-let base = 0;
-for (const id of [BASE, ...ids]) {
+const bases = [];
+for (const id of [BASE, ...ids, BASE]) {
   const r = await page.evaluate(
     async ({ id, frames }) => {
       const scene = window.SLAY.engine.currentScene;
@@ -105,14 +108,12 @@ for (const id of [BASE, ...ids]) {
     },
     { id, frames: FRAMES },
   );
-  if (id === BASE) {
-    base = r.worst;
-    console.log(String(r.worst).padStart(8) + 'ms  ' + r.id);
-    continue;
-  }
-  rows.push(r);
-  console.log(String(r.worst).padStart(8) + 'ms  ' + r.id + `  (+${Math.max(0, r.worst - base).toFixed(1)})`);
+  console.log(String(r.worst).padStart(8) + 'ms  ' + r.id);
+  if (id === BASE) bases.push(r.worst);
+  else rows.push(r);
 }
+const base = Math.min(...bases);
+console.log(`\nno cast: ${base}ms`);
 rows.sort((a, b) => b.worst - a.worst);
 console.log(`\nworst: ${rows.slice(0, 5).map((r) => `${r.id} ${r.worst}ms (+${Math.max(0, r.worst - base).toFixed(1)})`).join(', ')}`);
 await browser.close();
