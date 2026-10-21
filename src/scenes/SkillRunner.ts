@@ -407,9 +407,21 @@ const RELEASE_CLIPS = new Set(['cast', 'point', 'hurl', 'plant', 'roar', 'blink'
  * (`beginAction(..., { release: true })`, then `atRelease`) instead of on
  * the key press. A class joins once its spells are timed for it.
  */
-const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage', 'warden', 'revenant']);
+const RELEASE_CLASSES: ReadonlySet<string> = new Set(['mage', 'warden', 'revenant', 'shadowblade', 'ranger']);
 /** Families that never wait for a release frame: a channel runs from the press, a move goes at once. */
 const PRESS_FAMILIES: ReadonlySet<string> = new Set(['channel', 'teleport', 'dash', 'leap', 'shift', 'rite', 'vigil']);
+/** Skills that go on the press whatever their family: an escape must not wait for a gesture. */
+const PRESS_SKILLS: ReadonlySet<string> = new Set(['vanish']);
+
+/** What a cast paid on its press, given back if its release never comes (a dodge, a stun). */
+interface CastCharge {
+  player: Player;
+  skillId: string;
+  mana: number;
+  cooled: boolean;
+  /** Spent or given back: either happens once. */
+  settled: boolean;
+}
 
 /**
  * Families whose handler in `cast` plays a clip of its own rather than the one
@@ -1142,6 +1154,8 @@ export class SkillRunner {
 
     const cd = def.cooldown ? def.cooldown(rank) : 0;
     if (cd > 0 && !hop && !held) player.startCooldown(skillId, cd);
+    // A release this cast waits for (`atRelease`) gives this back if it never comes.
+    this.charge = held ? null : { player, skillId, mana: cost, cooled: cd > 0 && !hop, settled: false };
 
     player.faceTowards(target.x, target.z);
     if (!held) events.emit('skill:cast', { skillId: def.id, type: def.damageType ?? 'physical' });
@@ -1275,19 +1289,24 @@ export class SkillRunner {
     // release frame: its action starts now, and the rest of this cast runs
     // again on that frame (`held`), aimed where it was aimed now. Its own
     // branch then keeps the running action (`keepAction`).
-    if (!held && released && !blow && pace.timing === 'spell' && !PRESS_FAMILIES.has(family)
+    if (!held && released && !blow && pace.timing === 'spell' && !PRESS_FAMILIES.has(family) && !PRESS_SKILLS.has(def.id)
       && bodyClip(def.effect, holding, def.id) === clip && RELEASE_CLASSES.has(classOfSkill(def.id) ?? '')) {
       player.beginAction(clip, actTime, undefined, { release: true });
       const aim = target.clone();
+      const charge = this.charge;
       this.atRelease(player, () => {
         const live = this.tickCtx;
         player.keepAction = true;
+        let went = false;
         try {
-          this.castNow(skillId, player, aim, live?.ctx ?? ctx, live?.enemies ?? enemies, live ? live.boss : boss, true);
+          went = this.castNow(skillId, player, aim, live?.ctx ?? ctx, live?.enemies ?? enemies, live ? live.boss : boss, true);
         } finally {
           player.keepAction = false;
+          // Stunned on the release frame: the spell never left the hand.
+          if (!went && charge) this.refund(charge);
         }
       });
+      this.charge = null;
       return true;
     }
     const hitAt = (p: { x: number; z: number }): void => {
@@ -2265,7 +2284,9 @@ export class SkillRunner {
               undefined, def.id, school, rank,
             );
           }
-          this.applyBuff(player, def, rank, num, color);
+          // Only a burst that is meant to leave the caster something gets a buff;
+          // the rest would put a blank placeholder named after the skill on the bar.
+          if (SELF_POWER[def.id] || SELF_BUFF_STATUS[def.id]) this.applyBuff(player, def, rank, num, color);
           break;
         }
 
@@ -2339,6 +2360,7 @@ export class SkillRunner {
     } finally {
       this.effects.endQuiet();
       this.casting = false;
+      this.charge = null;
     }
 
     return true;
@@ -3728,7 +3750,10 @@ export class SkillRunner {
    */
   atRelease(player: Player, run: () => void): void {
     const wait = player.releaseIn;
+    // The mana and cooldown the cast being run paid on its press, if any.
+    const charge = this.charge && this.charge.player === player ? this.charge : null;
     if (wait <= 0) {
+      if (charge) charge.settled = true;
       run();
       return;
     }
@@ -3737,12 +3762,32 @@ export class SkillRunner {
       rank: boostRank(),
       t: wait,
       run: () => {
-        if (player.actionId !== id || !player.alive) return;
+        // Cut off before the hand opened (a dodge, a new action): nothing
+        // left it, so what was paid for it comes back.
+        if (player.actionId !== id || !player.alive) {
+          if (charge) this.refund(charge);
+          return;
+        }
         this.caster = player;
         run();
+        // Let go: paid for. (A release that could not go refunds itself first.)
+        if (charge) charge.settled = true;
       },
     });
   }
+
+  /** The cast that paid on its press and never let go: its mana and cooldown back. */
+  private refund(charge: CastCharge): void {
+    if (charge.settled) return;
+    charge.settled = true;
+    const p = charge.player;
+    if (!p.alive) return;
+    if (charge.mana > 0) p.restoreMana(charge.mana);
+    if (charge.cooled) p.resetCooldown(charge.skillId);
+  }
+
+  /** The cast `castNow` is running: what it paid on its press (`refund`). */
+  private charge: CastCharge | null = null;
 
   update(dt: number): void {
     const live = this.tickCtx;
@@ -4604,6 +4649,7 @@ export class SkillRunner {
           },
         });
       },
+      atRelease: (run) => this.atRelease(player, run),
       wallStop: (from, dir, max, radius) => this.wallStop(from, dir, max, ctx, radius),
       statuses: (riderOnly) => this.statusFor(def, num, color, riderOnly),
       buff: () => this.applyBuff(player, def as { id: string; name: string; params?: Record<string, number | number[]> }, rank, num, color),

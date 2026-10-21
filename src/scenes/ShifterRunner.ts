@@ -72,6 +72,11 @@ export interface ShiftKit {
   targets(): ShiftTarget[];
   /** Runs `run` after `t` seconds, if the cast's action is still the one playing. */
   later(t: number, run: () => void, keepIfInterrupted?: boolean): void;
+  /**
+   * Runs `run` on the release frame of the action playing (`SkillRunner.atRelease`);
+   * a dodge before it cancels the cast and gives back what it cost.
+   */
+  atRelease(run: () => void): void;
   /** How far along `dir` the hero can go before a wall. */
   wallStop(from: THREE.Vector3, dir: THREE.Vector3, max: number, radius: number): number;
   /** The status a skill names (`params.statusId` or the runner's table). */
@@ -1105,8 +1110,28 @@ export function runShift(k: ShiftKit, c: ShiftCast): boolean {
     s.remove('ss.slink');
     c.player.refreshStats();
   }
+  // A howl, a roar of power or a buff lets go on its gesture's release frame,
+  // as every class's spells do: a dodge before then cancels it and gives back
+  // its mana. The change of form itself and the blows keep their own beats.
+  if (RELEASED.has(sub)) {
+    const player = c.player;
+    player.beginAction(c.clip, c.castTime, undefined, { release: true });
+    c.lands = player.releaseIn;
+    k.atRelease(() => {
+      player.keepAction = true;
+      try {
+        h(k, cast);
+      } finally {
+        player.keepAction = false;
+      }
+    });
+    return true;
+  }
   h(k, cast);
   // The ambush ran on a copy; what it set goes back to the cast.
   c.lands = cast.lands;
   return true;
 }
+
+/** Handlers that wait for the release frame (`runShift`). */
+const RELEASED: ReadonlySet<string> = new Set(['slink', 'nightHunt', 'huntingHowl', 'callThePack', 'bloodHowl', 'bloodmoon', 'bristle', 'ursaMajor']);

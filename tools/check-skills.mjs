@@ -11,7 +11,7 @@
  */
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { gpuArgs } from './browser-args.mjs';
 
@@ -22,6 +22,14 @@ const args = Object.fromEntries(
   })
 );
 const CLASSES = String(args.classes ?? 'warden,shadowblade,ranger').split(',');
+/** --skills=a,b: audit only these skills of the classes named (one skill alone, after a fix). */
+const ONLY = args.skills ? String(args.skills).split(',') : null;
+/**
+ * The page's size. Software rendering spends most of each frame on pixels,
+ * and the audit reads only what the game reports (damage, effects, sounds,
+ * statuses), never the picture, so a small page tests the same in less time.
+ */
+const VIEW = { width: 480, height: 300 };
 const PORT = Number(args.port ?? process.env.SLAY_PORT ?? 4247);
 
 /** The weapon each class is meant to fight with, so no test is weapon-starved. */
@@ -81,7 +89,7 @@ const browser = await chromium.launch({
   executablePath: existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined,
   args: gpuArgs(),
 });
-let page = await browser.newPage({ viewport: { width: 700, height: 440 } });
+let page = await browser.newPage({ viewport: VIEW });
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)));
 /** The audit's own line per skill, so a slow run shows it is moving. */
@@ -102,7 +110,7 @@ for (const cls of CLASSES) {
         // Fresh page, same browser: a dead renderer does not always mean a
         // dead browser, and reloading is much cheaper than booting again.
         try { await page.close(); } catch {}
-        page = await browser.newPage({ viewport: { width: 700, height: 440 } });
+        page = await browser.newPage({ viewport: VIEW });
         page.on('pageerror', (er) => pageErrors.push(String(er).slice(0, 200)));
         page.on('console', echo);
         await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
@@ -123,15 +131,15 @@ async function runClass(cls) {
   for (const kit of KITS[cls] ?? [{ gear: [WEAPON[cls] ?? 'sword.short'] }]) {
     console.log(`  ${cls}: ${kit.gear.join(' + ')}${kit.trees ? ` (${kit.trees.join(', ')})` : ''}`);
     const rows = await page.evaluate(
-      async ([c, gear, trees]) => {
+      async ([c, gear, trees, only]) => {
         window.SLAY.debug.makeCharacter(c, 60);
         for (const g of gear) window.SLAY.debug.equip(g, 40);
         await window.SLAY.engine.goTo('dungeon', { depth: 1 });
         for (let i = 0; i < 40; i++) await new Promise((r) => requestAnimationFrame(r));
         window.SLAY.debug.godMode(true);
-        return window.SLAY.debug.skillAudit(c, trees);
+        return window.SLAY.debug.skillAudit(c, trees, only);
       },
-      [cls, kit.gear, kit.trees ?? null]
+      [cls, kit.gear, kit.trees ?? null, ONLY]
     );
     if (!best) best = rows;
     else {
@@ -194,6 +202,7 @@ function report(cls, rows) {
   if (threw.length) console.log('  threw: ' + threw.map((r) => `${r.id} (${r.error})`).join('; '));
 }
 
+mkdirSync('shots', { recursive: true });
 writeFileSync('shots/skill-audit.json', JSON.stringify(all, null, 1));
 console.log('\nwrote shots/skill-audit.json');
 if (pageErrors.length) {

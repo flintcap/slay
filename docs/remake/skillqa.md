@@ -1,6 +1,6 @@
 # Stream: skillqa (Wave 5: quality pass over every class's skills)
 
-Status: waiting
+Status: in progress
 
 Goal (owner): after skillcore and all seven class streams are done, send
 everything through quality checks: AAA quality, every skill working, and

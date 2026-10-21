@@ -765,7 +765,7 @@ export function installDebug(engine: Engine): Record<string, unknown> {
      * Nothing here is inferred. A skill that reports `fired` but no damage and
      * no effects did nothing, whatever its description says.
      */
-    async skillAudit(classId: CharClassId, trees?: string[]): Promise<Array<Record<string, unknown>>> {
+    async skillAudit(classId: CharClassId, trees?: string[] | null, only?: string[] | null): Promise<Array<Record<string, unknown>>> {
       const scene = engine.currentScene as unknown as {
         player?: Record<string, unknown>;
         enemies?: Array<Record<string, unknown>>;
@@ -784,7 +784,9 @@ export function installDebug(engine: Engine): Record<string, unknown> {
 
       const def = CLASSES.find((k) => k.id === classId);
       if (!def) return [{ error: `unknown class ${classId}` }];
-      const list = SKILLS.filter((s) => def.trees.includes(s.treeId) && (!trees || trees.includes(s.treeId)) && s.targeting !== 'passive');
+      const list = SKILLS.filter(
+        (s) => def.trees.includes(s.treeId) && (!trees || trees.includes(s.treeId)) && (!only || only.includes(s.id)) && s.targeting !== 'passive',
+      );
 
       // A known-open stage: the level's own entrance, which generation
       // guarantees is walkable and clear.
@@ -802,8 +804,13 @@ export function installDebug(engine: Engine): Record<string, unknown> {
       for (const s of list) {
         // A line per skill, so a slow software-rendered run shows it is moving.
         console.info(`[audit] ${s.id}`);
-        // Reset the world around this one skill.
+        // Reset the world around this one skill: what the last one left on
+        // the hero (a stance's root, a buff, a form's numbers) goes too, so
+        // no skill is refused for what another did.
         c.skills[s.id] = 3;
+        const st = pl.status as { clear?: () => void } | undefined;
+        st?.clear?.();
+        (pl as unknown as { refreshStats?: () => void }).refreshStats?.();
         (pl.position as THREE.Vector3).copy(stage);
         (pl as unknown as { actionLock: number }).actionLock = 0;
         (pl as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();

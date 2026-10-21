@@ -16,13 +16,18 @@ export function promisingEffects(): { fx: unknown; tick(dt: number): void } {
   const later = (t: number, fn: () => void): void => {
     due.push({ t, fn });
   };
+  // Plain numbers the game reads off the effects rather than calls: the
+  // quality's particle scale (`CombatFeel.onKill` compares it), read as High.
+  const numbers: Record<string, number> = { fxScale: 1 };
   const fx = new Proxy(
     {},
     {
       // Each member is callable (and keeps its promises) and also answers any
       // property read politely, so `fx.rig.kick()` works as well as `fx.meteor()`.
       get: (_o, key) =>
-        new Proxy(function () {}, { get: () => shrug, apply: (_f, _t, args: unknown[]) => call(key, args) }),
+        typeof key === 'string' && key in numbers
+          ? numbers[key]
+          : new Proxy(function () {}, { get: () => shrug, apply: (_f, _t, args: unknown[]) => call(key, args) }),
     },
   );
   function call(key: string | symbol, args: unknown[]): unknown {

@@ -545,15 +545,16 @@ function lotusLook(host: RogueHost, l: RogueLook): void {
   }
 }
 
-/** Nightfall's hands come down on its gesture's contact key (`gestures/rogue.ts`), this share in. */
-const NIGHTFALL_DROP = 0.4;
-
-/** Nightfall: the curtain of shadow falls as the hands come down. */
+/**
+ * Nightfall: the curtain of shadow falls as the hands come down. Its
+ * gesture's key lands on the release frame (the animator lands it there),
+ * and the field is laid on that frame (`SkillRunner`, `RELEASE_CLASSES`).
+ */
 function nightfallLook(host: RogueHost, l: RogueLook): void {
   const x = l.aim.x;
   const z = l.aim.z;
   const radius = l.num('radius', 9);
-  host.later(l.actTime * NIGHTFALL_DROP, () => nightfallCurtain(host.effects, x, z, radius));
+  host.later(l.player.releaseIn, () => nightfallCurtain(host.effects, x, z, radius));
 }
 
 // ---------------------------------------------------------------------------

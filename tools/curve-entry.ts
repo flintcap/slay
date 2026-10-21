@@ -80,6 +80,8 @@ const arg = (k: string): string | undefined => process.argv.find((x) => x.starts
 const { cases, check } = caseLog();
 const DT = 1 / 30;
 const SAFE_RING = 0x60ffa0;
+/** Seconds a step or a roll takes to clear a marker, for a bot that lets its blow land first. */
+const STEP_OUT = 0.3;
 
 setMonsterCatalog({
   pick: (depth, biome, rng, count) => pickMonstersForDepth(depth, biome, rng, count).map((m) => m.id),
@@ -514,13 +516,25 @@ function fight(
     if (safe.length) {
       const s = safe.reduce((b, z) => (Math.hypot(z.x - p.x, z.z - p.z) < Math.hypot(b.x - p.x, b.z - p.z) ? z : b));
       const d = Math.hypot(s.x - p.x, s.z - p.z);
-      if (d > 1.2) {
+      const blowIn = Math.max(player.contactIn, player.releaseIn);
+      if (d > 1.2 && !(blowIn > 0 && blowIn + STEP_OUT < s.until - a.ctx.elapsed)) {
         if (d > 4 && player.dodgeReadyIn <= 0) player.dodge(s.x - p.x, s.z - p.z);
         else player.moveTo(s.x, s.z);
         continue;
       }
     }
     const bad = live.find((z) => !(z.kind === 'ring' && z.color === SAFE_RING) && inside(z, p.x, p.z));
+    // A fair player lets a blow already on its way land, then steps out, when
+    // the hit coming at them lands late enough for both. Dodging the instant a
+    // marker shows cut every heavy swing off before its contact frame.
+    const blowIn = Math.max(player.contactIn, player.releaseIn);
+    const landsIn = bad
+      ? Math.min(...live.filter((z) => !(z.kind === 'ring' && z.color === SAFE_RING) && inside(z, p.x, p.z)).map((z) => z.until - a.ctx.elapsed))
+      : Infinity;
+    if (bad && blowIn > 0 && blowIn + STEP_OUT < landsIn) {
+      acts.busy++;
+      continue;
+    }
     if (bad) {
       // A short step or nothing: a player eats a hit rather than run across the room.
       for (let r = 1.5; r <= 3.5; r += 1) {
