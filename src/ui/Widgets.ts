@@ -3,6 +3,7 @@ import { itemIconUri, requestItemIcon } from '../art/Icons';
 import { ONE_HAND_MELEE } from '../data/itemBases';
 import { equipRules } from '../data/classes';
 import { save } from '../core/Save';
+import { events } from '../core/Events';
 /**
  * SLAY — UI widget kit.
  *
@@ -1010,7 +1011,16 @@ export interface PanelOpts {
   onOpen?: () => void;
   /** No open and close sound (screens that are the whole game: title, death). */
   quiet?: boolean;
+  /**
+   * The screen edge it stands on. A side panel fills that side from the top
+   * of the screen down to the action bar, never moves, and takes the place of
+   * the side panel already there, so the middle of the screen, where the hero
+   * stands, stays clear. The camera slides the hero into the open part.
+   */
+  side?: PanelSide;
 }
+
+export type PanelSide = 'left' | 'right';
 
 /** How near a screen edge or another panel a dropped panel snaps to it. */
 const SNAP = 28;
@@ -1027,6 +1037,26 @@ const PANEL_Z = 40;
  * layers however many times they are clicked.
  */
 const panelStack: Panel[] = [];
+
+/** How much of the window each side's open panel covers, 0..1, for the camera. */
+function emitSides(): void {
+  const cover = { left: 0, right: 0 };
+  for (const p of panelStack) {
+    const side = p.side;
+    if (!side) continue;
+    // Both in the UI layer's own pixels, so the UI scale cancels out.
+    cover[side] = Math.max(cover[side], Math.min(1, p.frame.offsetWidth / Math.max(1, uiWidth())));
+  }
+  if (cover.left === lastCover.left && cover.right === lastCover.right) return;
+  lastCover = cover;
+  events.emit('ui:sides', cover);
+}
+let lastCover = { left: 0, right: 0 };
+
+/** Whether a side panel is open on `side` (that panel, when `id` is given). */
+export function isSideOpen(side: PanelSide, id?: string): boolean {
+  return panelStack.some((p) => p.side === side && (!id || p.id === id));
+}
 
 /**
  * The filigree layer for any framed surface: four corners and two crests.
@@ -1095,6 +1125,7 @@ export class Panel {
   readonly header: HTMLDivElement;
   readonly footer: HTMLDivElement;
   readonly id: string;
+  readonly side: PanelSide | null;
 
   private opts: PanelOpts;
   private openState = false;
@@ -1103,17 +1134,21 @@ export class Panel {
   constructor(opts: PanelOpts) {
     this.opts = opts;
     this.id = opts.id;
+    this.side = opts.side && !opts.fullscreen ? opts.side : null;
 
     this.root = div(`panel-wrap ${opts.fullscreen ? 'panel-full' : ''} ${opts.className ?? ''}`);
     this.root.dataset.panel = opts.id;
+    if (this.side) this.root.classList.add('panel-side', `side-${this.side}`);
 
+    // A side panel leaves the world in view: no scrim.
     const scrim = div('panel-scrim');
-    if (opts.scrim || opts.fullscreen) this.root.appendChild(scrim);
+    if ((opts.scrim && !this.side) || opts.fullscreen) this.root.appendChild(scrim);
 
     this.frame = div('panel');
     this.frame.classList.add('ui-interactive');
-    if (opts.width) this.frame.style.width = `${opts.width}px`;
-    if (opts.height) this.frame.style.height = `${opts.height}px`;
+    // A side panel's size is the side's (styles.css, .panel-side).
+    if (opts.width && !this.side) this.frame.style.width = `${opts.width}px`;
+    if (opts.height && !this.side) this.frame.style.height = `${opts.height}px`;
 
     // --- header ---
     this.header = div('panel-hd');
@@ -1146,12 +1181,13 @@ export class Panel {
     add(this.frame, this.header, this.body, this.footer, frameOrn);
     this.root.appendChild(this.frame);
 
-    if (opts.draggable !== false && !opts.fullscreen) this.enableDrag();
+    const movable = opts.draggable !== false && !opts.fullscreen && !this.side;
+    if (movable) this.enableDrag();
 
     // Clicking anywhere in the panel raises it above its siblings.
     this.frame.addEventListener('pointerdown', () => this.raise(), true);
     // A double click on the title bar sends it home and forgets the place.
-    if (opts.draggable !== false && !opts.fullscreen) {
+    if (movable) {
       this.header.addEventListener('dblclick', (e) => {
         if ((e.target as HTMLElement).closest('button')) return;
         this.forgetPlace();
@@ -1277,7 +1313,7 @@ export class Panel {
   /** Puts it where the player last left it, inside the window as it is now. */
   applyPlace(): void {
     const place = save.settings.panelPlaces?.[this.id];
-    if (!place || this.opts.fullscreen || this.opts.draggable === false) return;
+    if (!place || this.opts.fullscreen || this.opts.draggable === false || this.side) return;
     const w = this.frame.offsetWidth;
     const W = uiWidth();
     const H = uiHeight();
@@ -1312,12 +1348,15 @@ export class Panel {
 
   open(): void {
     if (this.openState) return;
+    // One panel to a side: the one already there steps aside.
+    if (this.side) for (const other of [...panelStack]) if (other !== this && other.side === this.side) other.close();
     this.openState = true;
     this.root.classList.add('is-open');
     this.applyPlace();
     this.raise();
     if (!this.opts.quiet) uiSfx('ui.open', 0.8);
     this.opts.onOpen?.();
+    if (this.side) emitSides();
   }
 
   close(): void {
@@ -1329,6 +1368,7 @@ export class Panel {
     if (!this.opts.quiet) uiSfx('ui.close', 0.8);
     this.opts.onClose?.();
     hoverHooks.hide?.();
+    if (this.side) emitSides();
   }
 
   toggle(): void {
@@ -1349,6 +1389,7 @@ export class Panel {
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', () => {
     for (const p of panelStack) p.applyPlace();
+    emitSides();
   });
 }
 

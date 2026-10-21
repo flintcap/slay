@@ -58,6 +58,10 @@ import { uiSfx } from './Sfx';
 import { estimateAttack } from './AttackEstimate';
 import { tr } from '../core/I18n';
 import { cssPx } from '../core/UiScale';
+import { bagVerb } from './BagLink';
+
+/** What a right-click in the bag does with nothing open beside it. */
+const OWN_VERB = tr('Right-click to equip or drink.');
 
 // ---------------------------------------------------------------------------
 // Inventory model helpers — the UI is the only place that shuffles the arrays,
@@ -464,6 +468,7 @@ const SPIN_HINT = tr('Drag to turn');
 export class InventoryPanel {
   readonly panel: Panel;
   private grid: ItemGrid;
+  private verbEl = span('inv-hint-verb', OWN_VERB);
   private equipSlots = new Map<EquipSlot, ItemSlot>();
   private goldEl: HTMLSpanElement;
   private capacityEl: HTMLSpanElement;
@@ -487,7 +492,7 @@ export class InventoryPanel {
       title: tr('Equipment'),
       subtitle: tr('What you carry is what you lose'),
       icon: 'bag',
-      width: 1030,
+      side: 'right',
       // The figure animates, so it must not keep drawing behind a closed panel.
       onClose: () => this.view.stop(),
     });
@@ -606,14 +611,15 @@ export class InventoryPanel {
       onRightClick: (item, _i, ev) => this.onRightClick(item, ev),
     });
 
+    // One line under the bag: what a right-click does here and now (the
+    // vault, a shop or the forge beside it changes that). The rest of the
+    // handling lives on the help mark.
     const hint = div('inv-hint');
-    hint.appendChild(span('', tr('Right-click to equip or drink · drag a gem onto gear to socket it · drag onto the ground to drop · hold ')));
-    hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', tr(' and right-click for more, or ')));
-    hint.appendChild(span('keycap', 'Shift'));
-    hint.appendChild(span('', tr(' and click a stack to split it, or ')));
-    hint.appendChild(span('keycap', tr('Ctrl')));
-    hint.appendChild(span('', ' and right-click to drop'));
+    hint.appendChild(this.verbEl);
+    const more = span('inv-hint-more');
+    more.appendChild(icon('info', { size: 12 }));
+    more.title = tr('Drag a gem onto gear to socket it. Drag onto the ground to drop. Shift and right-click for more. Shift and click a stack to split it. Ctrl and right-click to drop.');
+    hint.appendChild(more);
 
     // Dragging an item out of the window and letting go throws it away, which
     // is how the whole genre does it and was the one thing the pack could not
@@ -734,6 +740,9 @@ export class InventoryPanel {
       this.discard({ kind: 'inventory', item });
       return;
     }
+
+    // The vault, a shop or the forge beside the bag: store, sell or pick.
+    if (!ev.shiftKey && bagVerb()?.use(item)) return;
 
     // Shift opens the full menu for anything, including gear — plain
     // right-click equips, so without this there was no way to reach the menu
@@ -959,6 +968,7 @@ export class InventoryPanel {
 
     this.grid.setItems(c.inventory, 0, this.quietNext);
     this.quietNext = false;
+    this.decorateBag();
     countTo(this.goldEl, c.gold, fmtInt, 400);
     const used = invCount(c);
     this.capacityEl.textContent = `${used} / ${c.inventory.length}`;
@@ -972,6 +982,25 @@ export class InventoryPanel {
     this.panel.setTitle(tr('Equipment'), tr('{0} · Level {1} {2}', c.name, c.level, def?.name ?? ''));
 
     this.renderStatRail(c);
+  }
+
+  /** The counter beside the bag stamps its price or its pick on each item. */
+  private decorateBag(): void {
+    const verb = bagVerb();
+    this.verbEl.textContent = verb?.hint ?? OWN_VERB;
+    for (const slot of this.grid.slots) {
+      const item = slot.item;
+      const badge = item && verb?.badge ? verb.badge(item) : null;
+      let tag = slot.root.querySelector<HTMLElement>('.vendor-price');
+      if (badge) {
+        if (!tag) {
+          tag = div('vendor-price');
+          slot.root.appendChild(tag);
+        }
+        tag.textContent = badge;
+      } else tag?.remove();
+      slot.root.classList.toggle('is-picked', !!item && !!verb?.marked?.(item));
+    }
   }
 
   private renderStatRail(c: Character): void {

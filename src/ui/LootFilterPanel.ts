@@ -82,7 +82,7 @@ export class LootFilterPanel {
       title: tr('Loot Filter'),
       subtitle: tr('Decide what the floor shows you'),
       icon: 'filter',
-      width: 520,
+      side: 'left',
     });
     this.body = div('depth-panel');
     this.panel.body.appendChild(this.body);

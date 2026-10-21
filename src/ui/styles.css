@@ -1247,6 +1247,40 @@ input.slider::-moz-range-thumb {
   cursor: grabbing;
 }
 
+/* Side panels (Panel `side`). Each stands on its own screen edge, from the
+   top down to the action bar, so the middle of the screen stays clear for the
+   hero. Flush to the edge, so the outer corners go square, and they slide in
+   from that edge rather than grow. */
+.panel-wrap.panel-side {
+  padding-top: 8px;
+}
+.panel-wrap.side-left {
+  place-items: start start;
+}
+.panel-wrap.side-right {
+  place-items: start end;
+}
+.panel-side .panel {
+  width: min(640px, 50cqw);
+  height: calc(100cqh - 8px - 152px * var(--hud-scale, 1));
+  max-width: none;
+  max-height: none;
+}
+.panel-side .panel::before {
+  border-radius: inherit;
+}
+.side-left .panel {
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  transform: translateX(-28px);
+}
+.side-right .panel {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  transform: translateX(28px);
+}
+.panel-side .panel-body {
+  padding: var(--s4);
+}
+
 /* Relief and grain. Two generated textures in one overlay layer. */
 .panel::before {
   content: '';
@@ -4717,15 +4751,21 @@ input.slider::-moz-range-thumb {
    Inventory
    -------------------------------------------------------------------------- */
 
+/* One column in the right-hand side panel: the figure and the stats side by
+   side, the bag under them. */
 .inv-wrap {
   display: grid;
-  grid-template-columns: 412px 1fr;
-  gap: var(--s5);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s2);
 }
 .inv-left {
   display: flex;
-  flex-direction: column;
-  gap: var(--s4);
+  align-items: flex-start;
+  gap: var(--s3);
+}
+.inv-left .paperdoll {
+  flex: none;
+  zoom: 0.72;
 }
 
 .paperdoll {
@@ -4881,6 +4921,10 @@ input.slider::-moz-range-thumb {
 }
 
 .inv-statrail {
+  flex: 1;
+  min-width: 0;
+  max-height: 430px;
+  overflow: auto;
   padding: var(--s3) var(--s4);
   background: rgb(var(--shade-rgb) / 0.25);
   border-radius: var(--radius);
@@ -4901,6 +4945,10 @@ input.slider::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
+  zoom: 0.96;
+}
+.inv-right .itemgrid {
+  justify-content: safe center;
 }
 .inv-packhd {
   display: flex;
@@ -4935,9 +4983,19 @@ input.slider::-moz-range-thumb {
   box-shadow: var(--hairline);
 }
 .inv-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
   font-size: var(--fs-xs);
   color: var(--ink-4);
   text-align: center;
+}
+/* The rest of the bag's mouse moves, on hover. */
+.inv-hint-more {
+  display: inline-flex;
+  color: var(--ink-3);
+  cursor: help;
 }
 
 /* --------------------------------------------------------------------------
@@ -4946,8 +5004,8 @@ input.slider::-moz-range-thumb {
 
 .char-wrap {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: var(--s5);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s4);
 }
 .char-left {
   display: flex;
@@ -5184,8 +5242,8 @@ input.slider::-moz-range-thumb {
 }
 .char-cols {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--s5);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s4);
 }
 .char-empty {
   font-size: var(--fs-xs);
@@ -5413,32 +5471,16 @@ input.slider::-moz-range-thumb {
   text-transform: uppercase;
 }
 
+/* The picked skill on top at a set height, so the board under it never
+   moves; the board fits the rest (SkillTreePanel `fitBoard`). */
 .skill-body {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--s6);
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3);
+  justify-items: center;
 }
 .skill-boardwrap {
   width: 396px;
-}
-.skill-treeblurb {
-  margin-bottom: var(--s3);
-  min-height: 40px;
-}
-.skill-treename {
-  display: block;
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--gold-hi);
-}
-.skill-treetext {
-  display: block;
-  font-size: var(--fs-xs);
-  font-style: italic;
-  color: var(--ink-4);
 }
 
 .skill-board {
@@ -6063,46 +6105,6 @@ input.slider::-moz-range-thumb {
   font-style: italic;
 }
 
-.skill-hotstrip {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  padding: var(--s3);
-  background: rgb(var(--shade-rgb) / 0.28);
-  border-radius: var(--radius);
-  box-shadow: var(--hairline);
-}
-.skill-hotlabel {
-  font-size: calc(10px * var(--text-scale, 1));
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-4);
-}
-.skill-hotslots {
-  display: flex;
-  gap: 5px;
-}
-.skill-hotcell {
-  position: relative;
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(180deg, #221b14, #0f0c09);
-  border-radius: var(--radius);
-  box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.25);
-}
-.skill-hotcell.is-empty {
-  box-shadow: inset 0 0 0 1px rgb(var(--ink-4-rgb) / 0.25);
-}
-.skill-hotkey {
-  position: absolute;
-  top: 1px;
-  left: 3px;
-  font-family: var(--font-num);
-  font-size: calc(10px * var(--text-scale, 1));
-  color: var(--ink-4);
-}
 
 /* --------------------------------------------------------------------------
    Stash / vendor / blacksmith shared shell
@@ -6229,10 +6231,11 @@ input.slider::-moz-range-thumb {
   --fade-r: 28px;
 }
 
+/* Vault and purse side by side, each with the buttons that fill it under. */
 .goldbank {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3) var(--s5);
   padding: var(--s4);
   background: rgb(var(--shade-rgb) / 0.28);
   border-radius: var(--radius);
@@ -6255,6 +6258,11 @@ input.slider::-moz-range-thumb {
   font-size: var(--fs-xl);
   font-variant-numeric: tabular-nums;
   color: var(--gold-hi);
+}
+.goldbank-move {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
 }
 .goldbank-actions {
   display: flex;
@@ -6284,11 +6292,15 @@ input.slider::-moz-range-thumb {
 
 /* --- blacksmith ---------------------------------------------------------- */
 
+/* Worn gear across the top, the anvil and the services under it. */
 .smith-wrap {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) 260px;
-  gap: var(--s5);
+  grid-template-columns: minmax(0, 1fr) 236px;
+  gap: var(--s4);
   align-items: start;
+}
+.smith-wrap > .trade-col {
+  grid-column: 1 / -1;
 }
 .smith-preview {
   display: flex;
@@ -6799,16 +6811,6 @@ input.slider::-moz-range-thumb {
   }
 }
 
-@container ui (max-width: 1500px) {
-  .skill-body {
-    grid-template-columns: auto 1fr;
-    gap: var(--s5);
-  }
-  .smith-wrap {
-    grid-template-columns: max-content minmax(0, 1fr) 236px;
-  }
-}
-
 /* Generated item and skill icons ------------------------------------------ */
 .islot-img {
   display: block;
@@ -7197,9 +7199,9 @@ input.slider::-moz-range-thumb {
   }
 }
 
-/* The skills panel never scrolls as a whole. The board is sized to fit
-   (SkillTreePanel `fitBoard`) and a long skill's details scroll inside their
-   own box, so the hotbar strip under them stays in sight at 1280 by 800. */
+/* The skills panel never scrolls as a whole. The picked skill's details keep
+   one height and scroll inside their own box, and the board under them is
+   sized to fit the rest (SkillTreePanel `fitBoard`). */
 .panel-skills .panel-body {
   display: flex;
   flex-direction: column;
@@ -7207,27 +7209,27 @@ input.slider::-moz-range-thumb {
 .panel-skills .skill-body {
   flex: 1;
   min-height: 0;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
 }
 .panel-skills .skill-rail {
-  align-self: stretch;
-  min-height: 0;
+  width: 100%;
 }
 .panel-skills .skill-detail {
-  flex: 0 1 auto;
-  min-height: 0;
+  box-sizing: border-box;
+  height: 168px;
   overflow-y: auto;
 }
-.panel-skills .skill-hotstrip {
-  flex: none;
-}
 
-/* Short screens (800 and 720 tall): the flavour line goes, and the board's
-   tiers get shorter to fit (SkillTreePanel `fitBoard`). Its text keeps its
-   size: scaling the board as one piece took the labels under 8 px. */
+/* Short screens (800 and 720 tall): the action bar shrinks, so the side
+   panels reach a little lower, and the board's tiers get shorter to fit
+   (SkillTreePanel `fitBoard`). Its text keeps its size: scaling the board as
+   one piece took the labels under 8 px. */
 @container ui (max-height: 820px) {
-  .skill-treeblurb {
-    display: none;
+  .panel-side .panel {
+    height: calc(100cqh - 8px - 138px * var(--hud-scale, 1));
+  }
+  .panel-skills .skill-detail {
+    height: 132px;
   }
 }
 
@@ -7251,9 +7253,6 @@ input.slider::-moz-range-thumb {
 .seg:active {
   transform: translateY(1px);
   filter: brightness(0.85);
-}
-.skill-hotcell:not(.is-empty):hover {
-  box-shadow: 0 0 0 1px var(--shade), inset 0 0 0 1px rgb(var(--gold-hi-rgb) / 0.6), 0 0 10px -2px rgb(var(--gold-rgb) / 0.55);
 }
 .buff {
   transition: transform var(--dur-1) var(--ease), filter var(--dur-1) ease;
@@ -7336,6 +7335,10 @@ input.slider::-moz-range-thumb {
 /* Blacksmith: the worn gear row under the pack. */
 .smith-worn {
   display: grid;
-  grid-template-columns: repeat(6, 36px);
+  grid-template-columns: repeat(auto-fill, 44px);
   gap: var(--s1);
+}
+/* One row of every slot: the slot's icon says which, its name would not fit. */
+.smith-worn .islot-ph-label {
+  display: none;
 }

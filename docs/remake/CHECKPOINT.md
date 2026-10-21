@@ -658,6 +658,23 @@ Update this file and push it after every finished step.
   40, Revenant 40, Ranger 25 (90-91%; Revenant 5 is challenged now).
   Monsters unchanged. Static checks: 84 of 86 pass (curve as above;
   tactics, the older failure noted under #172).
+- #174 Menu remake (owner picked the first mock-up, "without the full bar
+  at the bottom"). Menus stand on set sides and never cover the hero:
+  Equipment and Skills on the right; Character, Vault, the shops, the
+  forge, Contract, Journal and the town NPC panels on the left; map, pause,
+  settings and the story screens stay in the middle. Each side panel runs
+  from the top to the action bar, 640 px wide, flush to its edge, no
+  dragging, no dimming, one per side (`PanelOpts.side`). The camera slides
+  so the hero stands in the middle of the free space (`ui:sides`,
+  CameraRig). The vault, shops and forge lost their copy of the pack: the
+  Equipment bag stores, sells or brings to the anvil on right-click while
+  they are open, shows sale prices and rings the anvil item (`BagLink.ts`).
+  Skills: details on top at a set height, the board fits under them; the
+  hotbar strip went (the HUD hotbar takes drops and right-click clears).
+  Journal tabs drop their icons to fit 640. Real frames at 1080p: every
+  side panel ends above the action bar and none of them scrolls but the
+  Character sheet. Static checks: 84 of 86 (curve and tactics, as under
+  #173).
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

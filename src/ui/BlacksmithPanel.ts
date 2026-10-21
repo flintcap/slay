@@ -1,8 +1,8 @@
 /**
  * SLAY — the blacksmith.
  *
- * Pick an item on the left, see exactly what each service would do to it in the
- * middle, pay for it on the right. The upgrade preview is a real dry run: the
+ * Pick an item from the Equipment bag or the worn row, see exactly what each
+ * service would do to it, then pay for it below. The upgrade preview is a real dry run: the
  * item is cloned, upgraded off to the side, and the two stat blocks are
  * diffed — so "+1" is never a mystery.
  */
@@ -33,11 +33,10 @@ import {
 import { itemStats, itemDisplayName, newItem, getBase, modLine } from '../sim/Loot';
 import { getSocketable, socketBonuses } from '../data/gems';
 import { addItemToInventory } from '../sim/Inventory';
-import { INV_COLS, INV_ROWS } from '../sim/Grid';
 import { materialName, materialColor } from '../data/materials';
 import { Random, randomSeed } from '../core/RNG';
 import { requestItemIcon } from '../art/Icons';
-import { ItemGrid, normalizeInventory, invRemove, invConsumeOne } from './InventoryPanel';
+import { normalizeInventory, invRemove, invConsumeOne } from './InventoryPanel';
 import {
   scheduleRefresh,
   Panel,
@@ -63,16 +62,17 @@ import {
   ItemSlot,
   STAT_ICON,
   PERCENT_STATS,
+  registerDrop,
   type DragPayload,
 } from './Widgets';
 import { uiSfx } from './Sfx';
 import { tr, trn } from '../core/I18n';
+import { bagChanged, lendBag, returnBag } from './BagLink';
 
 type ServiceId = 'upgrade' | 'reroll' | 'hone' | 'socket' | 'salvage';
 
 export class BlacksmithPanel {
   readonly panel: Panel;
-  private packGrid: ItemGrid;
   /** What the hero is wearing, so worn gear can go on the anvil without taking it off. */
   private worn = new Map<EquipSlot, ItemSlot>();
   private preview: HTMLDivElement;
@@ -82,7 +82,6 @@ export class BlacksmithPanel {
   private locks = new Set<number>();
   /** The line picked to hone, for the item on the anvil. */
   private honePick: number | null = null;
-  private goldEl: HTMLSpanElement;
 
   constructor() {
     this.panel = new Panel({
@@ -90,43 +89,31 @@ export class BlacksmithPanel {
       title: tr('Blacksmith'),
       subtitle: tr('Steel remembers every blow it survives'),
       icon: 'anvil',
-      width: 1140,
+      side: 'left',
+      onOpen: () =>
+        lendBag('blacksmith', {
+          hint: tr('Right-click to put it on the anvil.'),
+          use: (item) => {
+            this.select(item);
+            return true;
+          },
+          marked: (item) => item.uid === this.selected?.uid,
+        }),
+      onClose: () => returnBag('blacksmith'),
     });
     this.panel.frame.classList.add('panel-smith');
 
     const wrap = div('smith-wrap');
 
-    // --- item picker ------------------------------------------------------
+    // --- worn gear: the pack itself is the Equipment bag beside us --------
     const left = div('trade-col');
-    const lhd = div('trade-colhd');
-    lhd.appendChild(span('trade-coltitle', tr('Your Pack')));
-    const gold = div('inv-gold');
-    gold.appendChild(icon('coin', { size: 13 }));
-    this.goldEl = span('inv-gold-v', '0');
-    gold.appendChild(this.goldEl);
-    lhd.appendChild(gold);
-    left.appendChild(lhd);
-
-    this.packGrid = new ItemGrid({
-      cols: INV_COLS,
-      rows: INV_ROWS,
-      size: 36,
-      source: 'craft',
-      accepts: (p) => !!p.item,
-      onDrop: (p) => this.pick(p),
-      onClick: (item) => this.select(item),
-      onRightClick: (item) => this.select(item),
-    });
-    left.appendChild(this.packGrid.root);
-    left.appendChild(div('inv-hint', tr('Click an item to bring it to the anvil.')));
-
     const whd = div('trade-colhd');
     whd.appendChild(span('trade-coltitle', tr('Worn')));
     left.appendChild(whd);
     const wornRow = div('smith-worn');
     for (const slot of Object.keys(SLOT_LABEL) as EquipSlot[]) {
       const cell = new ItemSlot({
-        size: 36,
+        size: 44,
         slot,
         draggable: false,
         placeholder: SLOT_ICON[slot],
@@ -141,6 +128,7 @@ export class BlacksmithPanel {
 
     // --- preview ----------------------------------------------------------
     this.preview = div('smith-preview');
+    registerDrop(this.preview, (p) => !!p.item, (p) => this.pick(p));
 
     // --- services ---------------------------------------------------------
     this.actions = div('smith-actions');
@@ -186,6 +174,7 @@ export class BlacksmithPanel {
     this.selected = item;
     this.renderPreview();
     this.renderActions();
+    bagChanged();
   }
 
   private readonly boundRefresh = (): void => this.refresh();
@@ -194,9 +183,7 @@ export class BlacksmithPanel {
     const c = save.account.current;
     if (!c) return;
     normalizeInventory(c);
-    this.packGrid.setItems(c.inventory);
     for (const [slot, cell] of this.worn) cell.setItem(c.equipment[slot] ?? null);
-    this.goldEl.textContent = fmtInt(c.gold);
     // Keep the selection alive across refreshes, drop it if it left the pack.
     if (this.selected && !c.inventory.some((i) => i?.uid === this.selected?.uid)) {
       const equipped = Object.values(c.equipment).some((i) => i?.uid === this.selected?.uid);
@@ -210,15 +197,13 @@ export class BlacksmithPanel {
 
   private renderPreview(): void {
     clear(this.preview);
-    // Mark the item on the anvil in the pack, so you can see what you picked.
+    // Mark the item on the anvil, so you can see what you picked. The bag
+    // rings its own copy through the lent verb.
     const uid = this.selected?.uid ?? '';
-    this.packGrid.root.querySelectorAll<HTMLElement>('.islot').forEach((el) => {
-      el.classList.toggle('is-picked', !!uid && el.dataset.uid === uid);
-    });
     for (const cell of this.worn.values()) cell.root.classList.toggle('is-picked', !!uid && cell.item?.uid === uid);
     const item = this.selected;
     if (!item) {
-      this.preview.appendChild(emptyState(tr('Click an item in your pack, or one you are wearing, to put it on the anvil.'), 'anvil'));
+      this.preview.appendChild(emptyState(tr('Right-click an item in your bag, or one you are wearing, to put it on the anvil.'), 'anvil'));
       return;
     }
     const rc = rarityHex(item.rarity);

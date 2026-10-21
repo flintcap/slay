@@ -12,7 +12,8 @@ import { events } from '../core/Events';
 import { save, STASH_TAB_SIZE } from '../core/Save';
 import { itemDisplayName } from '../sim/Loot';
 import { moveBetween, sortStashTab, splitStack, stackCount } from '../sim/Inventory';
-import { findFit, tabArea, INV_COLS, INV_ROWS, STASH_COLS, STASH_ROWS } from '../sim/Grid';
+import { lendBag, returnBag } from './BagLink';
+import { findFit, tabArea, STASH_COLS, STASH_ROWS } from '../sim/Grid';
 import { ItemGrid, normalizeInventory, invFirstFree, placeOrFit } from './InventoryPanel';
 import {
   scheduleRefresh,
@@ -44,7 +45,6 @@ export class StashPanel {
   readonly panel: Panel;
   private tabs: Tabs;
   private stashGrid: ItemGrid;
-  private packGrid: ItemGrid;
   private tabIndex = 0;
   private search = '';
   private vaultGoldEl: HTMLSpanElement;
@@ -58,12 +58,21 @@ export class StashPanel {
       title: tr('The Vault'),
       subtitle: tr('Everything stored here outlives you'),
       icon: 'stash',
-      width: 1180,
+      side: 'left',
+      // The pack is the Equipment bag on the right; right-click there stores.
+      onOpen: () =>
+        lendBag('stash', {
+          hint: tr('Right-click to store it in the vault.'),
+          use: (item) => {
+            this.toVault(item);
+            return true;
+          },
+        }),
+      onClose: () => returnBag('stash'),
     });
     this.panel.frame.classList.add('panel-stash');
 
     const wrap = div('trade-wrap');
-    wrap.style.gridTemplateColumns = 'minmax(0,1fr) auto';
 
     // --- vault side -------------------------------------------------------
     const left = div('trade-col');
@@ -143,7 +152,7 @@ export class StashPanel {
       accepts: (p) => !!p.item,
       onDrop: (p, i) => this.dropIntoStash(p, i),
       onClick: (item, i, ev) => {
-        if (ev.shiftKey && item) this.askSplit(item, 'stash', this.tabOffset() + i);
+        if (ev.shiftKey && item) this.askSplit(item, this.tabOffset() + i);
       },
       onRightClick: (item, i) => this.toPack(item, i),
     });
@@ -155,27 +164,6 @@ export class StashPanel {
       span('', tr('The vault is shared by every character on this account and is never lost on death. Your pack is.'))
     );
     left.appendChild(note);
-
-    // --- pack side --------------------------------------------------------
-    const right = div('trade-col');
-    const rhd = div('trade-colhd');
-    rhd.appendChild(span('trade-coltitle', tr('Pack')));
-    rhd.appendChild(span('goldbank-label', 'right-click to store'));
-    right.appendChild(rhd);
-
-    this.packGrid = new ItemGrid({
-      cols: INV_COLS,
-      rows: INV_ROWS,
-      size: CELL,
-      source: 'inventory',
-      accepts: (p) => !!p.item,
-      onDrop: (p, i) => this.dropIntoPack(p, i),
-      onClick: (item, i, ev) => {
-        if (ev.shiftKey && item) this.askSplit(item, 'pack', i);
-      },
-      onRightClick: (item) => this.toVault(item),
-    });
-    right.appendChild(this.packGrid.root);
 
     // --- gold -------------------------------------------------------------
     const bank = div('goldbank');
@@ -210,10 +198,14 @@ export class StashPanel {
         }).root
       );
     }
-    add(bank, r1, r2, div('goldbank-label', tr('Deposit')), dep, div('goldbank-label', tr('Withdraw')), wit);
-    right.appendChild(bank);
+    const putIn = div('goldbank-move');
+    add(putIn, div('goldbank-label', tr('Deposit')), dep);
+    const takeOut = div('goldbank-move');
+    add(takeOut, div('goldbank-label', tr('Withdraw')), wit);
+    add(bank, r1, r2, putIn, takeOut);
+    left.appendChild(bank);
 
-    add(wrap, left, right);
+    wrap.appendChild(left);
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
@@ -308,14 +300,8 @@ export class StashPanel {
     this.quietNext = false;
 
     const c = acct.current;
-    if (c) {
-      normalizeInventory(c);
-      this.packGrid.setItems(c.inventory);
-      countTo(this.purseGoldEl, c.gold, fmtInt, 320);
-    } else {
-      this.packGrid.setItems([]);
-      this.purseGoldEl.textContent = '0';
-    }
+    if (c) countTo(this.purseGoldEl, c.gold, fmtInt, 320);
+    else this.purseGoldEl.textContent = '0';
     countTo(this.vaultGoldEl, acct.bankGold, fmtInt, 320);
     this.applyFilter();
   }
@@ -376,50 +362,16 @@ export class StashPanel {
     return false;
   }
 
-  private dropIntoPack(p: DragPayload, index: number): boolean {
-    const acct = save.account;
-    const c = acct.current;
-    if (!c || !p.item) return false;
-    normalizeInventory(c);
-
-    if (p.kind === 'stash' && p.index !== undefined) {
-      if (!placeOrFit(acct.stash, p.index, c.inventory, index)) {
-        events.emit('toast', { text: tr('No room in your pack for that.'), kind: 'bad' });
-        return false;
-      }
-      save.touch();
-      events.emit('ui:refresh', {});
-      return true;
-    }
-    if (p.kind === 'inventory' && p.index !== undefined) {
-      if (!moveBetween(c.inventory, p.index, c.inventory, index)) {
-        events.emit('toast', { text: tr('It will not fit there.'), kind: 'bad' });
-        return false;
-      }
-      save.touch();
-      this.refresh();
-      return true;
-    }
-    return false;
-  }
-
   /**
-   * Shift+click on a stack: ask how many, then split them off into the first
-   * empty slot of the same side (the open tab, for the vault).
+   * Shift+click on a stack in the vault: ask how many, then split them off
+   * into the first empty slot of the open tab. The pack splits its own.
    */
-  private askSplit(item: Item, side: 'stash' | 'pack', index: number): void {
+  private askSplit(item: Item, index: number): void {
     const held = stackCount(item);
     if (held < 2) return;
     splitStackDialog(attempt(() => itemDisplayName(item), 'stack'), held, (n) => {
-      const c = save.account.current;
-      let ok = false;
-      if (side === 'stash') {
-        const start = this.tabOffset();
-        ok = save.account.stash[index]?.uid === item.uid && splitStack(save.account.stash, index, n, start, start + STASH_TAB_SIZE);
-      } else if (c) {
-        normalizeInventory(c);
-        ok = c.inventory[index]?.uid === item.uid && splitStack(c.inventory, index, n);
-      }
+      const start = this.tabOffset();
+      const ok = save.account.stash[index]?.uid === item.uid && splitStack(save.account.stash, index, n, start, start + STASH_TAB_SIZE);
       if (!ok) {
         events.emit('toast', { text: tr('No empty slot to split into.'), kind: 'bad' });
         return;

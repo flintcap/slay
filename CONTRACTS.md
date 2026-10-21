@@ -1238,6 +1238,32 @@ export function isAnyPanelOpen(): boolean;
 export function closeAllPanels(): void;
 ```
 
+### Side panels — `src/ui/Widgets.ts`, `src/ui/BagLink.ts`, `src/fx/CameraRig.ts`
+
+```ts
+/** PanelOpts.side: the screen edge the panel stands on. It fills that side
+ *  from the top to the action bar (styles.css `.panel-side`), never moves,
+ *  and opening one closes the other panel on the same side. */
+side?: 'left' | 'right';
+export function isSideOpen(side: PanelSide, id?: string): boolean;
+/** Bus: what share of the window width each side covers, 0..1, on every change. */
+'ui:sides': { left: number; right: number };
+```
+
+Right: `inventory`, `skills`. Left: `character`, `stash`, `vendor`,
+`alchemist`, `blacksmith`, `questLog`, `journal` and the town NPC panels.
+The map, pause, settings and story screens stay in the middle. CameraRig
+listens to `ui:sides` and slides its look point so the hero stands in the
+middle of the free space (in world space, since TRAA owns the view offset).
+
+The vault, the shops and the forge carry no copy of the pack. On open they
+call `lendBag(owner, verb)`, which opens Equipment beside them and gives its
+bag a right-click (`verb.use`), a line of help (`verb.hint`), a tag per item
+(`verb.badge`, e.g. the sale price) and a ring (`verb.marked`, the item on
+the anvil). On close they call `returnBag(owner)`; Equipment closes too if it
+was opened for them, unless another counter took the left side. Call
+`bagChanged()` when a badge or ring should redraw.
+
 ## `src/scenes/*` — owned by SCENES (integration)
 
 Scenes are the only place allowed to import across every vertical. They own

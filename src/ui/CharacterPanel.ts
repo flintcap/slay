@@ -182,7 +182,7 @@ export class CharacterPanel {
       title: tr('Character'),
       subtitle: tr('Attributes and derived power'),
       icon: 'strength',
-      width: 940,
+      side: 'left',
     });
     this.panel.frame.classList.add('panel-character');
 

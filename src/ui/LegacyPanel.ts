@@ -38,7 +38,7 @@ export class LegacyPanel {
       title: tr('Legacy'),
       subtitle: tr('What survives every death'),
       icon: 'star',
-      width: 600,
+      side: 'left',
     });
     this.body = div('depth-panel');
     this.panel.body.appendChild(this.body);

@@ -32,7 +32,7 @@ export class GatePanel {
       title: tr('The Descent'),
       subtitle: tr('Choose how deep to go'),
       icon: 'descend',
-      width: 460,
+      side: 'left',
       onClose: () => this.resolve(null),
     });
     this.body = div('depth-panel gate-panel');

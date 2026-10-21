@@ -24,7 +24,7 @@ export class GamblerPanel {
       title: tr('The Gambler'),
       subtitle: tr('Sealed goods. No refunds.'),
       icon: 'coin',
-      width: 560,
+      side: 'left',
     });
     this.body = div('depth-panel');
     this.panel.body.appendChild(this.body);

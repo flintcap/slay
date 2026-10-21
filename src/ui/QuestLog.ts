@@ -38,7 +38,7 @@ export class QuestLogPanel {
       title: tr('Contract'),
       subtitle: tr('What you agreed to do down here'),
       icon: 'quest',
-      width: 560,
+      side: 'left',
     });
     this.panel.frame.classList.add('panel-quest');
     this.body = div('');

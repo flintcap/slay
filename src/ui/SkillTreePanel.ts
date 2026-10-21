@@ -2,9 +2,9 @@
  * SLAY — the skill tree.
  *
  * Three trees per class, six tiers deep, prerequisites drawn as real lines
- * between nodes. The left half is the board; the right half is a detail pane
- * that shows what the next rank actually buys you, because "+1 rank" means
- * nothing without the numbers next to it.
+ * between nodes. A detail pane above the board shows what the next rank
+ * actually buys you, because "+1 rank" means nothing without the numbers next
+ * to it.
  *
  * Nodes can be dragged straight onto the HUD hotbar.
  */
@@ -66,8 +66,8 @@ const COLS = 3;
  */
 const TIER_H_MAX = 104;
 const TIER_H_MIN = 84;
-/** What the panel's frame takes above and below the board, before it is laid out. */
-const BOARD_CHROME = 200;
+/** What the action bar, the panel frame and the skill details above the board take, before it is laid out. */
+const BOARD_CHROME = 540;
 const geo = { cellH: TIER_H_MAX, node: 58, arcR: 32, arcLen: 2 * Math.PI * 32 };
 
 /** Sizes the board for `room` px of height. */
@@ -97,8 +97,6 @@ export class SkillTreePanel {
   private lines: SVGSVGElement;
   private detail: HTMLDivElement;
   private pointsEl: HTMLDivElement;
-  private hotStrip: HTMLDivElement;
-  private treeBlurb: HTMLDivElement;
 
   private nodes = new Map<string, NodeView>();
   private card = div('skcard');
@@ -115,7 +113,7 @@ export class SkillTreePanel {
       title: tr('Skills'),
       subtitle: tr('Points are yours to spend · a full respec has a price'),
       icon: 'skillLevels',
-      width: 1160,
+      side: 'right',
     });
     this.panel.frame.classList.add('panel-skills');
 
@@ -144,20 +142,20 @@ export class SkillTreePanel {
 
     const body = div('skill-body');
 
+    // The picked skill reads on top and the board fits itself under it. The
+    // hotbar is the HUD's own, just below the panel, and takes drops there.
     const boardWrap = div('skill-boardwrap');
-    this.treeBlurb = div('skill-treeblurb');
     this.board = div('skill-board');
     this.lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.lines.classList.add('skill-lines');
     this.board.appendChild(this.lines as unknown as Node);
-    add(boardWrap, this.treeBlurb, this.board);
+    boardWrap.appendChild(this.board);
 
     const rail = div('skill-rail');
     this.detail = div('skill-detail');
-    this.hotStrip = div('skill-hotstrip');
-    add(rail, this.detail, this.hotStrip);
+    rail.appendChild(this.detail);
 
-    add(body, boardWrap, rail);
+    add(body, rail, boardWrap);
     add(this.panel.body, head, body);
 
     events.on('ui:refresh', () => {
@@ -211,7 +209,6 @@ export class SkillTreePanel {
     this.buildBoard();
     this.renderPoints(c);
     this.renderRespec(c);
-    this.renderHotStrip(c);
     this.showDetail(this.pinned ?? this.focused ?? this.defaultFocus());
   }
 
@@ -317,13 +314,6 @@ export class SkillTreePanel {
     this.lines.setAttribute('width', String(COLS * CELL_W));
     this.lines.setAttribute('height', String(TIERS * geo.cellH));
     clear(this.lines as unknown as Element);
-
-    const tree = treeById(this.activeTree);
-    clear(this.treeBlurb);
-    if (tree) {
-      this.treeBlurb.appendChild(span('skill-treename', tree.name));
-      this.treeBlurb.appendChild(span('skill-treetext', tree.blurb));
-    }
 
     const list = skillsInTree(this.activeTree);
     if (!list.length) {
@@ -875,39 +865,6 @@ export class SkillTreePanel {
       actions.appendChild(div('skdetail-draghint', tr('or drag the node onto a hotbar slot')));
     }
     this.detail.appendChild(actions);
-  }
-
-  // -- hotbar strip --------------------------------------------------------
-
-  private renderHotStrip(c: Character): void {
-    clear(this.hotStrip);
-    this.hotStrip.appendChild(span('skill-hotlabel', tr('Hotbar')));
-    const strip = div('skill-hotslots');
-    while (c.hotbar.length < 6) c.hotbar.push(null);
-    for (let i = 0; i < 6; i++) {
-      const id = c.hotbar[i];
-      const cell = div('skill-hotcell');
-      cell.appendChild(span('skill-hotkey', String(i + 1)));
-      if (id) {
-        const d = skillById(id);
-        const art = div('skill-hotart');
-        // The skill's own painted icon, as on its node and the HUD hotbar.
-        const def = skillDefFor(id);
-        art.innerHTML = `<img class="skill-img" src="${skillIconUri(id, def?.effect, def?.damageType, def?.targeting === 'passive', def?.icon)}" alt="" style="width:36px;height:36px" draggable="false">`;
-        cell.appendChild(art);
-        cell.title = d?.name ?? id;
-        cell.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          c.hotbar[i] = null;
-          save.touch();
-          events.emit('ui:refresh', {});
-        });
-      } else {
-        cell.classList.add('is-empty');
-      }
-      strip.appendChild(cell);
-    }
-    this.hotStrip.appendChild(strip);
   }
 }
 

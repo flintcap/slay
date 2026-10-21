@@ -48,7 +48,7 @@ export class FusePanel {
       title: tr('Stone Work'),
       subtitle: tr('Three of a kind, rendered into one better'),
       icon: 'gem',
-      width: 600,
+      side: 'left',
     });
     this.body = div('depth-panel');
     this.panel.body.appendChild(this.body);

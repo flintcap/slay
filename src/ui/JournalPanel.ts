@@ -156,9 +156,7 @@ export class JournalPanel {
       title: tr('Journal'),
       subtitle: tr('What the descent has taught you, kept in order'),
       icon: 'book',
-      width: 860,
-      height: 600,
-      scrim: true,
+      side: 'left',
     });
     const root = div('jr');
     this.tabs = new Tabs([], 'descent', (id) => {

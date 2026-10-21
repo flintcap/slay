@@ -1,10 +1,10 @@
 /**
  * SLAY — the merchant.
  *
- * Rolling stock on the left, your pack on the right, prices on every slot. Set,
- * unique, mythic and ancient items get a confirmation dialog before they are
- * sold, because losing a mythic to a misclick is the kind of thing players
- * quit over.
+ * Rolling stock on the left. Your pack stays in the Equipment panel on the
+ * right and wears its sale price on every slot. Set, unique, mythic and
+ * ancient items get a confirmation dialog before they are sold, because
+ * losing a mythic to a misclick is the kind of thing players quit over.
  */
 
 import type { Item, ItemRarity } from '../types';
@@ -15,8 +15,8 @@ import { rollItem, vendorPrice, itemDisplayName, rarityRank, createItem, getBase
 import { Random, randomSeed } from '../core/RNG';
 import { ItemGrid, normalizeInventory, invFirstFree, invRemove } from './InventoryPanel';
 import { recordSale, buyBackList, buyBackPrice, takeBack } from '../sim/BuyBack';
-import { addItemToInventory, moveBetween, setStackCount } from '../sim/Inventory';
-import { INV_COLS, INV_ROWS, itemSize, packInto, type Area } from '../sim/Grid';
+import { addItemToInventory, setStackCount } from '../sim/Inventory';
+import { itemSize, packInto, type Area } from '../sim/Grid';
 import {
   scheduleRefresh,
   Panel,
@@ -28,7 +28,6 @@ import {
   span,
   icon,
   fmtInt,
-  countTo,
   modal,
   rarityHex,
   attempt,
@@ -36,6 +35,7 @@ import {
 } from './Widgets';
 import { uiSfx } from './Sfx';
 import { tr } from '../core/I18n';
+import { lendBag, returnBag } from './BagLink';
 
 /** Rarities that demand a confirmation before being sold. */
 const PRECIOUS: ItemRarity[] = ['set', 'unique', 'mythic', 'ancient'];
@@ -116,12 +116,10 @@ export class VendorPanel {
   private opts: VendorOpts;
   private stock: Array<Item | null> = new Array(STOCK_SIZE).fill(null);
   private stockGrid: ItemGrid;
-  private packGrid: ItemGrid;
   /** Which shelf page is showing, and the pager under the shelf. */
   private page = 0;
   private pageLabel!: HTMLSpanElement;
   private pager!: HTMLDivElement;
-  private goldEl: HTMLSpanElement;
   private restockEl: HTMLDivElement;
   private restockBtn!: Button;
   private tabs!: Tabs;
@@ -143,12 +141,23 @@ export class VendorPanel {
       title: opts.title,
       subtitle: opts.subtitle,
       icon: opts.icon ?? 'coin',
-      width: 1080,
+      side: 'left',
+      // The pack is the Equipment bag on the right: right-click there sells,
+      // and each item wears what it would fetch.
+      onOpen: () =>
+        lendBag(opts.id, {
+          hint: tr('Right-click to sell it.'),
+          use: (item) => {
+            this.trySell(item);
+            return true;
+          },
+          badge: (item) => `+${fmtInt(attempt(() => vendorPrice(item, false), Math.floor((item.value ?? 0) / 4)))}`,
+        }),
+      onClose: () => returnBag(opts.id),
     });
     this.panel.frame.classList.add('panel-vendor');
 
     const wrap = div('trade-wrap');
-    wrap.style.gridTemplateColumns = '1fr 1fr';
 
     // --- stock ------------------------------------------------------------
     const left = div('trade-col');
@@ -220,37 +229,12 @@ export class VendorPanel {
       this.refresh();
     });
 
-    // --- pack -------------------------------------------------------------
-    const right = div('trade-col');
-    const rhd = div('trade-colhd');
-    rhd.appendChild(span('trade-coltitle', tr('Your Pack')));
-    const gold = div('inv-gold');
-    gold.appendChild(icon('coin', { size: 14 }));
-    this.goldEl = span('inv-gold-v', '0');
-    gold.appendChild(this.goldEl);
-    rhd.appendChild(gold);
-    right.appendChild(rhd);
-
-    this.packGrid = new ItemGrid({
-      cols: INV_COLS,
-      rows: INV_ROWS,
-      size: 44,
-      source: 'inventory',
-      accepts: (p) => p.kind === 'inventory' && !!p.item,
-      // Inside the pack a drag rearranges it, as everywhere else.
-      onDrop: (p, index) => this.rearrange(p, index),
-      onClick: (item) => this.trySell(item),
-      onRightClick: (item) => this.trySell(item),
-    });
-    right.appendChild(this.packGrid.root);
-    right.appendChild(div('inv-hint', tr('Click an item in your pack to sell it.')));
-
     const note = div('trade-note warn');
     note.appendChild(icon('warn', { size: 13 }));
     note.appendChild(span('', tr('Sold items are gone for good. Set and better always ask twice.')));
-    right.appendChild(note);
+    left.appendChild(note);
 
-    add(wrap, left, right);
+    wrap.appendChild(left);
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
@@ -372,11 +356,6 @@ export class VendorPanel {
       ],
       this.tab,
     );
-    if (c) {
-      normalizeInventory(c);
-      this.packGrid.setItems(c.inventory);
-      countTo(this.goldEl, c.gold, fmtInt, 340);
-    }
     const cost = this.restockCost();
     this.restockBtn.setLabel(tr('Ask for new stock — {0}g', fmtInt(cost)));
     this.restockBtn.setDisabled((c?.gold ?? 0) < cost || this.tab === 'buyback');
@@ -384,7 +363,7 @@ export class VendorPanel {
     this.decorate(c?.gold ?? 0);
   }
 
-  /** Stamps prices onto both grids and greys out anything unaffordable. */
+  /** Stamps prices onto the shelf and greys out anything unaffordable. */
   private decorate(gold: number): void {
     for (let i = 0; i < this.stockGrid.slots.length; i++) {
       const slot = this.stockGrid.slots[i];
@@ -405,20 +384,6 @@ export class VendorPanel {
       }
       tag.textContent = fmtInt(price);
       slot.root.classList.toggle('cannot-afford', gold < price);
-    }
-    for (const slot of this.packGrid.slots) {
-      const item = slot.item;
-      let tag = slot.root.querySelector<HTMLElement>('.vendor-price');
-      if (!item) {
-        tag?.remove();
-        continue;
-      }
-      const price = attempt(() => vendorPrice(item, false), Math.floor((item.value ?? 0) / 4));
-      if (!tag) {
-        tag = div('vendor-price');
-        slot.root.appendChild(tag);
-      }
-      tag.textContent = `+${fmtInt(price)}`;
     }
   }
 
@@ -457,19 +422,6 @@ export class VendorPanel {
       rarity: item.rarity,
     });
     events.emit('ui:refresh', {});
-  }
-
-  private rearrange(p: DragPayload, index: number): boolean {
-    const c = save.account.current;
-    if (!c || !p.item || p.index === undefined) return false;
-    normalizeInventory(c);
-    if (!moveBetween(c.inventory, p.index, c.inventory, index)) {
-      events.emit('toast', { text: tr('It will not fit there.'), kind: 'bad' });
-      return false;
-    }
-    save.touch();
-    this.refresh();
-    return true;
   }
 
   private sellFromDrag(p: DragPayload): boolean {

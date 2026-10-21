@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9280,
+ "count": 9276,
  "strings": [
   {
    "key": "Beating iron…",
@@ -48370,18 +48370,6 @@
    ]
   },
   {
-   "key": "Click an item in your pack, or one you are wearing, to put it on the anvil.",
-   "files": [
-    "ui/BlacksmithPanel.ts"
-   ]
-  },
-  {
-   "key": "Click an item to bring it to the anvil.",
-   "files": [
-    "ui/BlacksmithPanel.ts"
-   ]
-  },
-  {
    "key": "Click up to {0} line to bind with cloth and keep through the reroll.|Click up to {0} lines to bind with cloth and keep through the reroll.",
    "one": "Click up to {0} line to bind with cloth and keep through the reroll.",
    "other": "Click up to {0} lines to bind with cloth and keep through the reroll.",
@@ -48524,6 +48512,18 @@
    ]
   },
   {
+   "key": "Right-click an item in your bag, or one you are wearing, to put it on the anvil.",
+   "files": [
+    "ui/BlacksmithPanel.ts"
+   ]
+  },
+  {
+   "key": "Right-click to put it on the anvil.",
+   "files": [
+    "ui/BlacksmithPanel.ts"
+   ]
+  },
+  {
    "key": "Rolls new prefixes and suffixes at this item level. The {0}; every other line is lost. There is no undo.",
    "files": [
     "ui/BlacksmithPanel.ts"
@@ -48638,13 +48638,6 @@
    "key": "You have no Sigil of Order, so knocking this one out will destroy it.",
    "files": [
     "ui/BlacksmithPanel.ts"
-   ]
-  },
-  {
-   "key": "Your Pack",
-   "files": [
-    "ui/BlacksmithPanel.ts",
-    "ui/VendorPanel.ts"
    ]
   },
   {
@@ -50849,18 +50842,6 @@
    "note": "minutes, as short as it can be."
   },
   {
-   "key": " and click a stack to split it, or ",
-   "files": [
-    "ui/InventoryPanel.ts"
-   ]
-  },
-  {
-   "key": " and right-click for more, or ",
-   "files": [
-    "ui/InventoryPanel.ts"
-   ]
-  },
-  {
    "key": "<p>Damage a second from {0} on one target, with crits at their average. Its armour and resistances come off after.</p>",
    "files": [
     "ui/InventoryPanel.ts"
@@ -50897,12 +50878,6 @@
    ]
   },
   {
-   "key": "Ctrl",
-   "files": [
-    "ui/InventoryPanel.ts"
-   ]
-  },
-  {
    "key": "Ctrl+right-click",
    "files": [
     "ui/InventoryPanel.ts"
@@ -50914,6 +50889,12 @@
     "ui/InventoryPanel.ts",
     "ui/SkillTreePanel.ts",
     "ui/Tooltip.ts"
+   ]
+  },
+  {
+   "key": "Drag a gem onto gear to socket it. Drag onto the ground to drop. Shift and right-click for more. Shift and click a stack to split it. Ctrl and right-click to drop.",
+   "files": [
+    "ui/InventoryPanel.ts"
    ]
   },
   {
@@ -50950,8 +50931,7 @@
    "key": "It will not fit there.",
    "files": [
     "ui/InventoryPanel.ts",
-    "ui/StashPanel.ts",
-    "ui/VendorPanel.ts"
+    "ui/StashPanel.ts"
    ]
   },
   {
@@ -50989,7 +50969,7 @@
    ]
   },
   {
-   "key": "Right-click to equip or drink · drag a gem onto gear to socket it · drag onto the ground to drop · hold ",
+   "key": "Right-click to equip or drink.",
    "files": [
     "ui/InventoryPanel.ts"
    ]
@@ -53121,12 +53101,6 @@
    ]
   },
   {
-   "key": "Hotbar",
-   "files": [
-    "ui/SkillTreePanel.ts"
-   ]
-  },
-  {
    "key": "Hover a skill to inspect it.",
    "files": [
     "ui/SkillTreePanel.ts"
@@ -53472,13 +53446,13 @@
    ]
   },
   {
-   "key": "Pack",
+   "key": "Purse",
    "files": [
     "ui/StashPanel.ts"
    ]
   },
   {
-   "key": "Purse",
+   "key": "Right-click to store it in the vault.",
    "files": [
     "ui/StashPanel.ts"
    ]
@@ -54548,12 +54522,6 @@
    ]
   },
   {
-   "key": "Click an item in your pack to sell it.",
-   "files": [
-    "ui/VendorPanel.ts"
-   ]
-  },
-  {
    "key": "Click an item to buy it.",
    "files": [
     "ui/VendorPanel.ts"
@@ -54597,6 +54565,12 @@
   },
   {
    "key": "Page {0} / {1}",
+   "files": [
+    "ui/VendorPanel.ts"
+   ]
+  },
+  {
+   "key": "Right-click to sell it.",
    "files": [
     "ui/VendorPanel.ts"
    ]

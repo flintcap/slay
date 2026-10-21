@@ -41,7 +41,7 @@ export class EnchanterPanel {
       title: tr('The Enchanter'),
       subtitle: tr('One property, made over'),
       icon: 'sparkle',
-      width: 600,
+      side: 'left',
     });
     this.body = div('depth-panel');
     this.panel.body.appendChild(this.body);

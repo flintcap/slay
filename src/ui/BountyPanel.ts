@@ -34,7 +34,7 @@ export class BountyPanel {
       title: tr('Bounty Board'),
       subtitle: tr('Paid on proof'),
       icon: 'scroll',
-      width: 600,
+      side: 'left',
     });
     this.body = div('depth-panel');
     this.panel.body.appendChild(this.body);
