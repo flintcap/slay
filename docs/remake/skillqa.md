@@ -53,9 +53,12 @@ sheet per class only where a "For skillqa" note asks for a look. Run
   economy, i18n, rankpower, unfinished (all fixed, see below), tactics
   (fails at 49ada73 too: monster AI, not a skill) and curve (information
   only: the walls).)
-- [ ] 2. Working. `check-skills` for all seven classes. Every skill fires,
+- [x] 2. Working. `check-skills` for all seven classes. Every skill fires,
   hits, costs mana, and grows each rank. Read the code behind each failure
-  before fixing it.
+  before fixing it. (All 203 active skills work: Mage 33, Knight 26, Rogue
+  25, Paladin 32, Revenant 30, Ranger 31, Shapeshifter 26. The one refusal,
+  Umbral Ambush, was the audit's: fixed in 851d52f. Growth with rank is
+  `check-rankpower`, which passes.)
 - [x] 3. Speed. Spot check, from the code, that every class's basic attack
   and skill times follow skillcore's model (no stray hard-coded seconds,
   nothing faster than the ceiling, caster weapons have no basic attack).
@@ -76,10 +79,17 @@ sheet per class only where a "For skillqa" note asks for a look. Run
   channels (fixed length), release casts (`keepAction`), Riposte (a
   gesture only) and the Paladin's answer (a full action of its own) do
   not shorten anything.)
-- [ ] 4. Quality. Work through every "For skillqa" note. Icons: unique per
+- [x] 4. Quality. Work through every "For skillqa" note. Icons: unique per
   skill, sharp, class colors (`check-iconmatch`). Melee: own swing per
   skill. Ranged and spells: own projectile and effect. Fix what is below a
-  AAA bar.
+  AAA bar. (Every "For skillqa" note and Known issue below is fixed and
+  ticked. `check-iconmatch` passes; the fire tree, Sparkbolt, Inferno
+  Stream and four Shadowcraft icons were repainted to be their own. In
+  every class's audit each skill plays its own clip, `skill.<id>`, and its
+  own sound. Looks in motion were shot for every class; below the bar and
+  fixed: the breaths (a slab, now a wedge with their own jets), Frozen Orb
+  (a shard, now a ball), Retribution's charge (glints, now a light), the
+  Knight's standard (five meshes, now three).)
 - [ ] 5. Frame rate. Every new effect has a `warmup()` stand-in; no
   allocation in per-frame code; particle counts follow the quality ladder.
   After numbers from `check-perf` and `check-frames`, same scene and
@@ -368,15 +378,15 @@ skillqa's runs, on the build of 4ac72fd (and 851d52f for the reruns):
 Mage 33/33, Knight 26/26 (Gatefall fires), Rogue 24/25 then 25/25
 (Umbral Ambush was refused: the audit clears statuses between skills, so
 the hero was never veiled for a skill struck from the veil; the audit now
-veils him for it, 851d52f, and it fires), Paladin 32/32.
+veils him for it, 851d52f, and it fires), Paladin 32/32. On 851d52f:
+Revenant 30/30, Ranger 31/31, Shapeshifter 26/26.
 
 ## Next up
 
-Milestone 2: `check-skills` on the build of 851d52f, still to run:
-revenant, ranger, shapeshifter (one class a run, timeout 3500 each, a
-background chain writing `skills-<class>.txt` in the scratchpad). Then
-`check-perf --preview` after, `check-frames`, and the handover
-(milestone 6).
+Milestone 5: `check-perf --preview` after (running on the build of
+851d52f, output `perf-after.txt` in the scratchpad), then
+`node tools/bundle-artifact.mjs` and `check-frames`, compare with the
+before table, then the handover (milestone 6).
 
 ## Notes for resume
 
