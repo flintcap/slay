@@ -822,12 +822,12 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/player.female.bagFull/01.ogg | https://opengameart.org/content/voice-clip-packs-for-visual-novels-and-rpgs | cicifyre | CC0 |
 | sounds/player.female.bagFull/02.ogg | https://opengameart.org/content/female-rpg-voice-starter-pack | cicifyre | CC0 |
 | sounds/player.female.bagFull/03.ogg | https://opengameart.org/content/female-rpg-voice-starter-pack | cicifyre | CC0 |
-| sounds/player.female.hurt/01.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice), cut short | CC0 |
-| sounds/player.female.hurt/02.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice), cut short | CC0 |
-| sounds/player.female.hurt/03.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice), cut short | CC0 |
-| sounds/player.female.hurtHeavy/01.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice), cut short | CC0 |
-| sounds/player.female.hurtHeavy/02.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice), cut short | CC0 |
-| sounds/player.female.hurtHeavy/03.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice), cut short | CC0 |
+| sounds/player.female.hurt/01.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice) | CC0 |
+| sounds/player.female.hurt/02.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice) | CC0 |
+| sounds/player.female.hurt/03.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice) | CC0 |
+| sounds/player.female.hurtHeavy/01.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice) | CC0 |
+| sounds/player.female.hurtHeavy/02.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice) | CC0 |
+| sounds/player.female.hurtHeavy/03.ogg | https://opengameart.org/content/female-hurt-grunts-groans | Nocturnal_Vanguard (AuraVoice) | CC0 |
 | sounds/player.female.lowLife/01.ogg | https://opengameart.org/content/voice-clip-packs-for-visual-novels-and-rpgs | cicifyre | CC0 |
 | sounds/player.female.lowLife/02.ogg | https://opengameart.org/content/female-rpg-voice-starter-pack | cicifyre | CC0 |
 | sounds/player.female.noMana/01.ogg | https://opengameart.org/content/voice-clip-packs-for-visual-novels-and-rpgs | cicifyre | CC0 |

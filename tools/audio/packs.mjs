@@ -79,6 +79,7 @@ export const PACKS = {
   vMale: oga('voice-clip-pack-male-adventurer-rpg', 'wolfwoot', ['RPG%20Male%20Adventurer.zip']),
   vFemale: oga('female-rpg-voice-starter-pack', 'cicifyre', ['RPG%20Voice%20Starter%20Pack.zip']),
   vFemale2: oga('voice-clip-packs-for-visual-novels-and-rpgs', 'cicifyre', ['Free%20Voice%20Clips%20Pack%20-%20Mature%20Female.zip']),
+  vGrunt: oga('female-hurt-grunts-groans', 'Nocturnal_Vanguard (AuraVoice)', ['female_hurt_grunts_groans_1.ogg']),
   hurt: oga('hurt-death-sound-effect-for-character', 'Badre-Eddine', ['death%20sound%20effect.zip']),
   gbreath: oga('ghost-breath', 'qubodup', ['ghostbreath.flac']),
   ghost: oga('ghost', 'Ogrebane', ['ghost.wav']),

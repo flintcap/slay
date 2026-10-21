@@ -2170,22 +2170,22 @@
   "vFemale"
  ],
  "sounds/player.female.hurt/01.ogg": [
-  "vFemale"
+  "vGrunt"
  ],
  "sounds/player.female.hurt/02.ogg": [
-  "vFemale"
+  "vGrunt"
  ],
  "sounds/player.female.hurt/03.ogg": [
-  "vFemale"
+  "vGrunt"
  ],
  "sounds/player.female.hurtHeavy/01.ogg": [
-  "vFemale"
+  "vGrunt"
  ],
  "sounds/player.female.hurtHeavy/02.ogg": [
-  "vFemale"
+  "vGrunt"
  ],
  "sounds/player.female.hurtHeavy/03.ogg": [
-  "vFemale2"
+  "vGrunt"
  ],
  "sounds/player.female.lowLife/01.ogg": [
   "vFemale2"

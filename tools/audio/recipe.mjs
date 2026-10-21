@@ -581,8 +581,9 @@ export const SFX = {
   'player.hurtHeavy': [...xs('yell', '3grunt#.wav', [1, 2, 6]), x('yell', '1yell6.wav')],
   'player.death': [...xs('hurt', '#.mp3', [4, 16, 5]), x('hit5', 'die1.ogg', { rate: 0.9 })],
   // A woman hero's hurt sounds: one voice throughout (HeroVoice.ts).
-  'player.female.hurt': xs('vFemale', `${VF}damaged#.wav`, [1, 2, 3]),
-  'player.female.hurtHeavy': [...xs('vFemale', `${VF}damaged#.wav`, [1, 3], { rate: 0.9 }), x('vFemale2', `${VF2}noises/gasp1.wav`)],
+  // Short grunts, cut from one take (owner: the old cries ran long and did not read as a hit).
+  'player.female.hurt': [3.74, 2.11, 11.7].map((ss) => x('vGrunt', 'female_hurt_grunts_groans_1.ogg', { ss, t: 0.24, hp: 110, keep: true, fadeIn: 0.01, fadeOut: 0.06 })),
+  'player.female.hurtHeavy': [7.38, 0.49, 11.7].map((ss) => x('vGrunt', 'female_hurt_grunts_groans_1.ogg', { ss, t: 0.38, hp: 110, keep: true, fadeIn: 0.01, fadeOut: 0.08 })),
   // The hero's barks: out of mana, pack full, near death.
   'player.male.noMana': xs('vMale', `${VM}no#.wav`, [0, 1]),
   'player.male.bagFull': xs('vMale', `${VM}jump#.wav`, [0, 1]),

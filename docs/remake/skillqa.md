@@ -143,6 +143,15 @@ Revenant (sk-revenant, done):
 - Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
   unused by any Revenant skill. Remove them if nothing else names them.
 
+Ranger (sk-ranger, done):
+- Never seen in motion: traps, brambles, Kestrel, standing arrows, the
+  rains, and the 21 new skills. Frame time not measured; one `check-perf`
+  look with Arrow Rain or Darken The Sky up.
+- sk-ranger traced the `check-curve` "hit report failed" line: a shared
+  line in `CombatFeel.onKill` compares the test harness's stand-in
+  `fxScale` to a number. Fix the stand-in or the compare.
+- `check-beats` fails on other classes' skills. Run it and fix each.
+
 ## Next up
 
 Wait for skillcore and the seven class streams. Then start milestone 1.
