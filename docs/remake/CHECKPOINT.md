@@ -601,6 +601,24 @@ Update this file and push it after every finished step.
   than skillqa, cause not found. Walls (curve, information only): Knight
   1, 5, 12; Rogue 40; Revenant 12; Ranger 5, 12; Paladin 5, 12, 25;
   Shapeshifter 12, 40; Mage none. Owner tests in `skillqa.md`.
+- #171 Balance pass (owner: unstick walled heroes; players chase sets and
+  uniques, not only rares). check-curve now models the chaser by default
+  (`--kit=chase`): one clear of every depth through the real drop tables
+  (75% of each floor killed, every chest, the bosses before this one), and
+  every set piece, unique, charm and dropped weapon found is worn where it
+  beats the rare on main-skill damage times hits it can take. `--kit=rare`
+  is the old model. Each cell runs in its own process (4 at a time): cells
+  sharing one process read differently by order. New `--blame` (with
+  `--trace`) shows what each worn piece adds. Fix, class side only: hero
+  power starts at level 1 (`EARLY_DAMAGE_PER` 1.10, `EARLY_LIFE_PER` 1.12,
+  `sim/HeroPower.ts`); the full rates pass it near level 20 and 23, so the
+  deep curve is the same. Chase curve before: 8 of 35 (walled: Knight 1;
+  Rogue, Ranger, Paladin, Shapeshifter 5; Ranger 12; untouched: Mage 40,
+  Revenant 40). After: 32 of 35, nothing walled; untouched Mage 40,
+  Revenant 5 and 40. The chase Mage at depth 40 kills bosses in 1s: set
+  and unique elemental damage multiplies with the skill pool (Stormbound
+  Sigil alone x2.4). Monsters unchanged. potions, levels, starter-power,
+  setpower, passives, economy, rankpower, controls pass.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

@@ -6,9 +6,12 @@
  * runs pay for, attribute and skill points spent sensibly (main skills, the
  * passives that feed them, offensive passives), the best of many rare drops of
  * the depth's item level plus the caches of every depth milestone already
- * cleared. It then fights the biggest pack on a real generated floor and that
- * run's real boss, under the run's real modifiers (`scenes/RunModifiers.ts`),
- * with the real skill runner, real monsters and real minions.
+ * cleared, and, since players chase them, every set piece, unique and charm
+ * one clear of each depth turned up, worn wherever it beats the rare (judged
+ * on the build's main skill and the hits it can take). It then fights the
+ * biggest pack on a real generated floor and that run's real boss, under the
+ * run's real modifiers (`scenes/RunModifiers.ts`), with the real skill
+ * runner, real monsters and real minions.
  *
  * The hero plays like a decent player: it alternates its two best skills (so
  * combos land), keeps a summoner's army up, falls back on the basic attack,
@@ -26,8 +29,11 @@
  *   --deep                    depths 30 45 60 75 90 100: the deep families, powers and bosses
  *   --seeds=3                 tries per cell (default 3)
  *   --trace                   the hero's sheet, build and what hurt it
- *   --hp=1.13:1.12            try other hero power rates (sim/HeroPower.ts)
+ *   --blame                   with --trace: what each worn piece adds to the top skill and life
+ *   --hp=1.15:1.17:1.1:1.12   try other hero power rates: damage, life, early damage, early life (sim/HeroPower.ts)
  *   --dmg=2 --life=2          scale the hero outright, to see what a cell needs
+ *   --kit=rare                rares and the milestone caches only, no sets, uniques
+ *                             or charms found on the way (the old model)
  *   --kit=best                the hero a farmer has: uniques, sets and rares, every
  *                             piece upgraded at the anvil, gems in its sockets and a
  *                             pack of charms. It must lose real life too.
@@ -39,7 +45,7 @@
 import * as THREE from 'three';
 import { arena, caseLog, shrug, type Arena } from './combat-arena';
 import { promisingEffects } from './sim-effects';
-import { generateRun, setMonsterCatalog } from '../src/world/DungeonGen';
+import { generateRun, isPlainChest, setMonsterCatalog } from '../src/world/DungeonGen';
 import { MONSTERS, pickMonstersForDepth, getMonster } from '../src/data/monsters';
 import { MONSTER_AFFIXES } from '../src/data/monsterAffixes';
 import { BOSSES, pickBossForDepth } from '../src/data/bosses';
@@ -47,6 +53,8 @@ import { namedRaresFor } from '../src/data/namedRares';
 import { SKILLS, SKILL_BY_ID, SYNERGIES } from '../src/data/skills';
 import { CLASSES } from '../src/data/classes';
 import { Boss } from '../src/entities/Boss';
+import { resetEnemyRuntime } from '../src/entities/Enemy';
+import { resetAllStatuses } from '../src/sim/Status';
 import { Player } from '../src/entities/Player';
 import { SkillRunner, weaponStyle } from '../src/scenes/SkillRunner';
 import {
@@ -61,7 +69,12 @@ import {
   usingTwoHander,
   startingSkillFor,
 } from '../src/sim/Character';
-import { rollItem, rollCharm, getBase } from '../src/sim/Loot';
+import { rollItem, rollCharm, rollDrops, getBase, setLootHero } from '../src/sim/Loot';
+import { NO_FIND, PAYOUT, bossIlvl, payoutIlvl, type PayoutDef } from '../src/sim/Payout';
+import { computeStats } from '../src/sim/Stats';
+import { armorReduction, drFraction, flatElementalTotal } from '../src/sim/Combat';
+import { passiveEffects } from '../src/sim/Passives';
+import { estimateAttack, estimateSkill } from '../src/ui/AttackEstimate';
 import { MAX_UPGRADE } from '../src/sim/Crafting';
 import { GEMS } from '../src/data/gems';
 import { activeDifficulty } from '../src/data/difficulties';
@@ -72,10 +85,10 @@ import { tuneDepthRamp } from '../src/sim/Difficulty';
 import { xpForLevel } from '../src/sim/Stats';
 import { Random } from '../src/core/RNG';
 import { events } from '../src/core/Events';
-import type { CharClassId, Character, DamagePacket, DungeonLevel, EquipSlot, Item, SkillDef } from '../src/types';
+import type { CharClassId, Character, DamagePacket, DungeonLevel, EquipSlot, Item, MonsterRank, SkillDef } from '../src/types';
 import type { Enemy } from '../src/entities/Enemy';
 
-declare const process: { argv: string[] };
+declare const process: { argv: string[]; exit(code: number): never };
 const arg = (k: string): string | undefined => process.argv.find((x) => x.startsWith(`--${k}=`))?.split('=')[1];
 const { cases, check } = caseLog();
 const DT = 1 / 30;
@@ -113,7 +126,11 @@ const trace = process.argv.includes('--trace');
 // Experiment knobs: scale the hero's damage and life to see what the curve needs.
 const KDMG = Number(arg('dmg') ?? 1);
 const KLIFE = Number(arg('life') ?? 1);
-const BEST = arg('kit') === 'best';
+// The kit: `chase` (default) wears the sets, uniques and charms found on the
+// way where they beat the rares, `rare` only rares and caches, `best` the farmer's.
+const KIT = arg('kit') ?? 'chase';
+const BEST = KIT === 'best';
+const CHASE = KIT === 'chase';
 if (arg('mlife') || arg('mdmg')) {
   const dif = activeDifficulty() as { monsterLife: number; monsterDamage: number };
   dif.monsterLife *= Number(arg('mlife') ?? 1);
@@ -123,7 +140,10 @@ if (arg('ramp')) {
   const [life, damage, curve, deep] = arg('ramp')!.split(':').map(Number);
   tuneDepthRamp(life!, damage!, curve!, deep!);
 }
-if (arg('hp')) tuneHeroPower(Number(arg('hp')!.split(':')[0]), Number(arg('hp')!.split(':')[1]));
+if (arg('hp')) {
+  const [dmg, life, early, earlyLife] = arg('hp')!.split(':').map(Number);
+  tuneHeroPower(dmg!, life!, early ?? undefined, earlyLife ?? undefined);
+}
 // The default five depths keep the check to a couple of minutes; `--wide` walks
 // the whole run, every class at ten depths out to 60 (balance milestone 4).
 const WIDE_DEPTHS = [1, 5, 8, 12, 18, 25, 32, 40, 50, 60];
@@ -247,6 +267,105 @@ function dressUp(c: Character, depth: number, rng: Random): void {
   }
 }
 
+const SPECIAL = new Set(['set', 'unique', 'mythic', 'ancient']);
+
+/**
+ * What a player chasing sets and uniques has found by this depth: every set
+ * piece, unique and charm from one clear of each depth before it and of this
+ * depth's floors (its boss still stands), most of each floor killed as
+ * `levelAt` counts it, through the real drop tables at the item levels
+ * `sim/Payout.ts` gives the scene, every chest opened. One clear a depth and
+ * no farming: the chaser with the least time in.
+ */
+function careerFinds(classId: CharClassId, depth: number): Item[] {
+  setLootHero(classId);
+  const rng = new Random(2026 + depth * 13 + classId.length);
+  const out: Item[] = [];
+  const keep = (items: Item[]): void => {
+    for (const it of items) if (SPECIAL.has(it.rarity) || getBase(it.baseId).category === 'charm') out.push(it);
+  };
+  for (let d = 1; d <= depth; d++) {
+    const run = generateRun(d, 1000 + d, classId);
+    const kill = (rank: MonsterRank): void => keep(rollDrops(rank === 'boss' ? bossIlvl(d) : payoutIlvl(d, rank === 'normal' ? 0 : 2), rank, rng).items);
+    for (const lvl of run.levels) {
+      for (const s of lvl.spawns) if (rng.chance(0.75)) kill(s.rank);
+      for (const p of lvl.props) {
+        if (!isPlainChest(p)) continue;
+        const def: PayoutDef = p.interact === 'chest.rare' ? PAYOUT.chestRare : PAYOUT.chest;
+        keep(rollDrops(payoutIlvl(d, def.bonus), def.rank ?? 'champion', rng, NO_FIND, def.gold).items);
+      }
+    }
+    if (d < depth) kill('boss');
+  }
+  setLootHero(undefined);
+  return out;
+}
+
+const RESISTS = ['fireResist', 'coldResist', 'lightningResist', 'poisonResist'] as const;
+
+/**
+ * How a player weighs a piece: the damage of the build's main skill against
+ * the hits the hero can take (life through resistances, damage reduction and
+ * armour on the physical half), equally.
+ */
+function kitScore(c: Character, main: string | null): number {
+  const st = computeStats(c);
+  const est = (main ? estimateSkill(c, st, main) : null) ?? estimateAttack(c, st);
+  const dps = Math.max(1, est?.dps ?? 1);
+  const res = RESISTS.reduce((n, k) => n + Math.max(-100, Math.min(75, st[k])), 0) / RESISTS.length / 100;
+  const armour = armorReduction(st.defense, st.life * 0.1) * 0.5;
+  const ehp = st.life / Math.max(0.05, 1 - res) / Math.max(0.05, 1 - drFraction(st)) / Math.max(0.05, 1 - armour);
+  return Math.log(dps) + Math.log(Math.max(1, ehp));
+}
+
+const twoHanded = (it: Item): boolean => getBase(it.baseId).slot === 'twoHand';
+
+/**
+ * Wears each set piece, unique or dropped weapon where it beats what is on
+ * (two passes, so a second set piece can count the bonus the first one
+ * opened), then carries the best charms found.
+ */
+function chaseKit(c: Character, classId: CharClassId, finds: Item[]): void {
+  const main =
+    SKILLS.filter((s) => (c.skills[s.id] ?? 0) > 0 && isDamageActive(s)).sort((x, y) => y.tier - x.tier || (c.skills[y.id] ?? 0) - (c.skills[x.id] ?? 0))[0]?.id ?? null;
+  const gear = finds.filter((it) => {
+    const base = getBase(it.baseId);
+    if (base.category === 'charm') return false;
+    return !(WEAPON_CATS.has(base.category) && !STYLE[classId].includes(base.category));
+  });
+  for (let pass = 0; pass < 2; pass++) {
+    for (const slot of SLOTS) {
+      let pick: Item | null = null;
+      let score = kitScore(c, main);
+      for (const it of gear) {
+        if (!slotsFor(it, classId).includes(slot) || Object.values(c.equipment).some((w) => w?.uid === it.uid)) continue;
+        if (slot === 'offHand' && usingTwoHander(c)) continue;
+        const was = { here: c.equipment[slot], off: c.equipment.offHand };
+        c.equipment[slot] = it;
+        if (slot === 'mainHand' && twoHanded(it)) delete c.equipment.offHand;
+        const fits = meetsRequirements(c, it).ok;
+        const s = fits ? kitScore(c, main) : -Infinity;
+        if (was.here) c.equipment[slot] = was.here;
+        else delete c.equipment[slot];
+        if (was.off) c.equipment.offHand = was.off;
+        if (s > score + 1e-6) {
+          score = s;
+          pick = it;
+        }
+      }
+      if (!pick) continue;
+      c.equipment[slot] = pick;
+      if (slot === 'mainHand' && twoHanded(pick)) delete c.equipment.offHand;
+    }
+  }
+  const charms = finds.filter((it) => getBase(it.baseId).category === 'charm' && meetsRequirements(c, it).ok).sort((x, y) => y.value - x.value);
+  for (const ch of charms.slice(0, 24)) {
+    const free = c.inventory.findIndex((x) => !x);
+    if (free < 0) break;
+    c.inventory[free] = ch;
+  }
+}
+
 function buildHero(classId: CharClassId, depth: number): { c: Character; level: number; tree: string } {
   const level = levelAt(classId, depth);
   const c = createCharacter('Curve', classId, new Random(5 + depth));
@@ -269,6 +388,9 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
   // A player keeps the best of what drops: the most valuable of a few
   // candidates per slot.
   const best = new Map<EquipSlot, Item>();
+  // Weapons are picked on what they hit for (the Equipment panel's Est. DPS),
+  // not on price: the chase kit weighs every one that dropped.
+  const weapons: Item[] = [];
 
   // Depth milestones already cleared paid their caches (uniques, sets, mythics);
   // they join the drops the hero picks from.
@@ -284,6 +406,7 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
     // Weapons the build fights with: a dagger build keeps daggers, an archer bows.
     const base = getBase(item.baseId);
     if (WEAPON_CATS.has(base.category) && !STYLE[classId].includes(base.category)) continue;
+    if (WEAPON_CATS.has(base.category)) weapons.push(item);
     for (const slot of slotsFor(item, classId)) {
       const have = best.get(slot);
       if ((!have || item.value > have.value) && (slot !== 'ring2' || best.get('ring1') !== item)) {
@@ -301,9 +424,28 @@ function buildHero(classId: CharClassId, depth: number): { c: Character; level: 
       if (trace && !r.ok) console.error(`  could not equip ${item.name} in ${slot}: ${r.reason}`);
     }
   }
+  if (CHASE) chaseKit(c, classId, [...careerFinds(classId, depth), ...weapons]);
   if (BEST) dressUp(c, depth, new Random(311 + depth));
   if (trace) console.error(`  skills: ${JSON.stringify(c.skills)} left ${c.skillPoints}`);
   if (trace) console.error(`  gear: ${Object.entries(c.equipment).map(([k, v]) => `${k}=${v!.name}(${v!.baseId},i${v!.ilvl})`).join(' ')}`);
+  if (trace) {
+    const st = computeStats(c);
+    const top = Object.keys(c.skills)
+      .map((id) => estimateSkill(c, st, id))
+      .filter((e) => e !== null)
+      .sort((x, y) => y.dps - x.dps)[0];
+    if (process.argv.includes('--blame')) {
+      for (const slot of Object.keys(c.equipment) as EquipSlot[]) {
+        const it = c.equipment[slot]!;
+        delete c.equipment[slot];
+        const s2 = computeStats(c);
+        const e2 = top?.def ? estimateSkill(c, s2, top.def.id) : null;
+        console.error(`    without ${slot} ${it.name} [${it.rarity}${it.setId ? ' ' + it.setId : ''}]: dps x${((top?.dps ?? 1) / (e2?.dps ?? 1)).toFixed(2)} elem ${Math.round(s2.elementalDamagePct)} flat ${Math.round(flatElementalTotal(s2))} life x${(st.life / s2.life).toFixed(2)}`);
+        c.equipment[slot] = it;
+      }
+    }
+    console.error(`  sheet: +${st.skillLevels} skills | top ${top?.def?.id ?? 'basic'} r${top?.rank ?? 0} x${top?.scale.toFixed(1) ?? 1} hit ${Math.round(top?.min ?? 0)}-${Math.round(top?.max ?? 0)} dps ${Math.round(top?.dps ?? 0)} | ed ${Math.round(st.enhancedDamage)}% elem ${Math.round(st.elementalDamagePct)}% flat ${Math.round(flatElementalTotal(st))} mastery ${JSON.stringify(passiveEffects(c).elementPct)}`);
+  }
   return { c, level, tree };
 }
 
@@ -367,6 +509,10 @@ function fight(
   seed: number,
   run: { modifiers: string[]; level: DungeonLevel },
 ): Outcome {
+  // A fresh floor, as the game tears one down: no pack, projectile, hazard or
+  // status left over from the last fight.
+  resetEnemyRuntime();
+  resetAllStatuses();
   const a = arena({ seed, depth });
   const zones: Zone[] = [];
   const decals = a.ctx.decals as unknown as Record<string, unknown>;
@@ -628,6 +774,8 @@ function fight(
   }
   offCombo();
   mods.dispose();
+  runner.dispose();
+  player.dispose();
   if (trace) {
     const st = player.stats;
     const owned = rotation.map((r) => `${r.id}:${player.character.skills[r.id]}`).join(',');
@@ -643,6 +791,14 @@ function fight(
 }
 
 // --- run ----------------------------------------------------------------------
+
+// check-curve.mjs asks for the cells first, then runs each one in a fresh
+// process: a fight leaves the game's module state behind, so cells run back to
+// back read differently by order.
+if (process.argv.includes('--cells')) {
+  console.log(JSON.stringify(CLASSES_RUN.flatMap((classId) => DEPTHS.map((depth) => [classId, depth]))));
+  process.exit(0);
+}
 
 const SEEDS = Number(arg('seeds') ?? 3);
 const rows: Array<Record<string, unknown>> = [];

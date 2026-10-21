@@ -5,6 +5,8 @@
  *   node tools/check-curve.mjs --classes=ranger --depths=25 --trace
  *   node tools/check-curve.mjs --wide               every class at ten depths out to 60 (slow)
  *   node tools/check-curve.mjs --deep               every class at depths 30 45 60 75 90 100 (slow)
+ *   node tools/check-curve.mjs --kit=rare           rares and caches only (default `chase`: sets and uniques found on the way)
+ *   node tools/check-curve.mjs --jobs=2             cells at once (default 4)
  *
  * Builds the hero a player would have at each depth and fights a real pack and
  * a real boss under the run's modifiers, over three seeds per cell. See
@@ -14,7 +16,9 @@
  */
 import { build } from 'vite';
 import { rmSync, mkdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { availableParallelism } from 'node:os';
+import { promisify } from 'node:util';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -32,10 +36,28 @@ await build({
     minify: false,
   },
 });
-const raw = execFileSync('node', [path.join(OUT, 'e.mjs'), ...process.argv.slice(2)], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+// Each class and depth runs in its own process, a few at once: a fight leaves
+// the game's module state behind, so cells sharing a process read by order.
+const ENTRY = path.join(OUT, 'e.mjs');
+const rest = process.argv.slice(2).filter((a) => !a.startsWith('--classes=') && !a.startsWith('--depths='));
+const lastJson = (raw) => JSON.parse(raw.trim().split('\n').at(-1));
+const cells = lastJson(execFileSync('node', ['--no-warnings', ENTRY, ...process.argv.slice(2), '--cells'], { encoding: 'utf8' }));
+const run = promisify(execFile);
+const results = new Array(cells.length);
+let next = 0;
+const worker = async () => {
+  while (next < cells.length) {
+    const i = next++;
+    const [cls, depth] = cells[i];
+    const { stdout, stderr } = await run('node', ['--no-warnings', ENTRY, ...rest, `--classes=${cls}`, `--depths=${depth}`], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    if (stderr) process.stderr.write(stderr);
+    results[i] = lastJson(stdout).cases;
+  }
+};
+const jobs = Number(process.argv.find((a) => a.startsWith('--jobs='))?.split('=')[1] ?? Math.min(4, availableParallelism()));
+await Promise.all(Array.from({ length: Math.max(1, jobs) }, worker));
 rmSync(OUT, { recursive: true, force: true });
-const lines = raw.trim().split('\n');
-const { cases } = JSON.parse(lines[lines.length - 1]);
+const cases = results.flat();
 
 for (const c of cases) {
   console.log(`${c.ok ? 'ok  ' : 'FAIL'} ${c.name.padEnd(44)} ${c.detail}`);
