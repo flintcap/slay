@@ -94,7 +94,34 @@ sheet per class only where a "For skillqa" note asks for a look. Run
   allocation in per-frame code; particle counts follow the quality ladder.
   After numbers from `check-perf` and `check-frames`, same scene and
   settings as before. Frame rate must not drop; make it faster where you
-  can (merge draws, reuse buffers, cut overdraw).
+  can (merge draws, reuse buffers, cut overdraw). (New looks: the orb and
+  crystal solids are warmed by `solids.standIns()` and hidden while empty;
+  the jets and Retribution's light are emitters in the shared particle
+  field, which scales by quality and clips at the frame budget; the glow
+  and the cone jet reuse their option objects and vectors. Faster: the
+  Knight's standard is three draws, not five; the skill board's icons
+  encode off the main thread.
+
+  `check-perf --preview` after, build of 851d52f, same seed and hero:
+
+  | depth | monsters | updateMs | worst | allocKB/step | programs | meshes | textures | shadowLights |
+  |---|---|---|---|---|---|---|---|---|
+  | 0 town | 0 | 1.1 | 7.2 | 157.5 | 0 | 300 | 139 | 1 |
+  | 1 | 80 | 5.1 (2.7 rerun) | 12.9 | 259.1 (216.4) | 0 | 583 | 156 | 3 |
+  | 6 | 125 | 3.3 | 8.3 | 261.0 | 0 | 701 | 152 | 2 |
+  | 12 | 136 | 3.8 | 15.5 | 345.5 | 0 | 739 | 159 | 2 |
+  | 20 | 167 | 6.8 (7.1 rerun) | 20.4 | 434.7 (452.8) | 0 | 809 | 153 | 2 |
+  | 32 | 348 | 5.4 (9.3 rerun) | 8.5 | 512.1 (667.9) | 0 | 1634 | 170 | 2 |
+
+  Allocation, programs, textures and lights are the same as before; the
+  two more meshes are the hidden orb and crystal pools. The update step
+  swings with the fight and the machine: the old build (49ada73) run
+  again now read 5.8 at depth 20 and 9.9 at depth 32 (4.3 before). Depth
+  20 read higher twice, so it was split by system on both builds in the
+  same scene with the heap sampler off: median 2.6 old, 2.9 new; mean 3.38
+  and 3.65. The 0.27 ms is spread over systems no skillqa change touches
+  (pack draws +0.10, name plates +0.05) as much as the particle field
+  (+0.14): the fight's own spread, not a drop.)
 - [ ] 6. Handover. List what was fixed, the before and after frame numbers,
   and "For the owner to test" (one line per class: what to try and what
   should happen). Set `Status: done`, push.
