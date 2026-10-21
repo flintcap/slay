@@ -24,8 +24,6 @@ Done: speed (parts 1 and 2), balance (item list declined), ui, effects, mapvarie
 Paused: no
 
 Wave 5 (skills remake, owner):
-Running: none
-Planned, waiting for a build slot: none
 Building: none (all seven class streams done)
 Running: skillqa (alone, last)
 Done: skillcore, sk-mage, sk-rogue, sk-knight, sk-paladin, sk-revenant,
