@@ -91,8 +91,9 @@ Shared code:
   it. One class takes about 40 minutes; make it faster if you can without
   testing less. (7d1be27: makes `shots/`, a 480x300 page, and
   `--skills=a,b` audits only those.)
-- `check-skillparams` failed on phalanx, vanish, momentum and perfectForm
-  (before sk-knight and sk-rogue finished). Rerun once after them.
+- [x] `check-skillparams` failed on phalanx, vanish, momentum and perfectForm
+  (before sk-knight and sk-rogue finished). Rerun once after them. (Passes
+  in the first static run.)
 
 Mage (sk-mage, done):
 - Dragon's Breath has no fire blast of its own; Winter's Breath has no
@@ -133,10 +134,15 @@ Knight (sk-knight, done):
   `tools/rankpower-entry.ts`; check the changes are sound.
 
 Paladin (sk-paladin, done):
-- Consecrated Ground's unique gives "+25% damage", but the skill deals no
-  damage, so that line does nothing. Give it a line that works.
-- Saint's Reach has no cap: Mercy Stroke's x8 hit carries x2.4 into the
-  enemy behind. Cap it.
+- [x] Consecrated Ground's unique gives "+25% damage", but the skill deals no
+  damage, so that line does nothing. Give it a line that works. (Its dead
+  line is gone and its real ones grow more: 40% area, 35% slow, 50% attack
+  slow, named so. Three more uniques had the same dead line, on War Cry,
+  Amplify Damage and Rattling Roar; fixed the same way, and
+  `check-uniques` now fails a damage bend on a skill with no damage.)
+- [x] Saint's Reach has no cap: Mercy Stroke's x8 hit carries x2.4 into the
+  enemy behind. Cap it. (It carries at most double a plain cut's share:
+  x0.6 at 30%. The tooltip says so.)
 - Never seen in motion: every new swing, the rushes (Doorbreaker,
   Confession Thrust, Feint, Last Rites), The Last Hour's bell, Hurl the
   Censer's chain. Frame time not measured.
@@ -156,8 +162,9 @@ Revenant (sk-revenant, done):
   sound, and fix the checker rule if it is what stops it. (Each has a new
   cast take and plays its burst where it goes off; Doom's blast is its
   own take. `check-skillsound` allows a hit for these three effects.)
-- Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
+- [x] Old Revenant names in `ICON_MAP` (`bone-spear`, `cage` and so on) are
   unused by any Revenant skill. Remove them if nothing else names them.
+  (Removed; every skill's icon plan is the same before and after.)
 
 Ranger (sk-ranger, done):
 - Never seen in motion: traps, brambles, Kestrel, standing arrows, the
@@ -181,9 +188,10 @@ Shapeshifter (sk-shifter, done):
   names metres for a packet shove.)
 - [x] Bristle's HUD text shows the base 30% reflect, not the ranked number.
   (e75c312: buff chips read the application's own magnitude, mods, ward.)
-- The character panel's attack speed shows the weapon's pace, not the
+- [x] The character panel's attack speed shows the weapon's pace, not the
   beast's (`FORM_PACE` in `data/shifterPower.ts` is read by the runner and
-  `ui/AttackEstimate.ts`, not by `CharacterPanel.ts`).
+  `ui/AttackEstimate.ts`, not by `CharacterPanel.ts`). (The panel knows no
+  live form, so its hint lists the cat, wolf and bear rates.)
 - Rake's first swipe waits about 0.3 s (blow at 35% of the action): check
   the cat's flurry feels quick. Killing Dance replays its gesture per
   blow: look for a hitch between blows.

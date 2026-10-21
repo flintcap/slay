@@ -177,21 +177,6 @@ const ICON_MAP: Record<string, string> = {
   comet: 'star^impact', 'edge-winter': 'split^aura',
   // Shared by more than one class
   dash: 'boot^speed', leap: 'boot^rise',
-  // Revenant — ossuary
-  'bone-spear': 'bone^speed', skeleton: 'skull', 'bone-armor': 'bone:1^aura', 'skele-mage': 'skull:2', 'mastery-bone': 'bone^mastery',
-  'skull-spirit': 'ghost^rise', golem: 'boulder^rise', cage: 'cage', marrow: 'bone:1^drip', 'bone-storm': 'bone^spin', lord: 'crown',
-  knight: 'helm', reassemble: 'bone:1^rise', 'nova-bone': 'bone^nova', 'death-knight': 'helm:1', choir: 'ghost^multi',
-  ossuary: 'tower', 'mastery-ossuary': 'skull^mastery',
-  // Revenant — blight
-  'curse-weak': 'rune^drip', 'bolt-blight': 'skull^speed', decay: 'wilt', amplify: 'horn', 'nova-poison': 'drop^nova',
-  hex: 'rune^multi', terror: 'skull^nova', 'curse-blood': 'drop^aura', 'corpse-boom': 'skull^burst', contagion: 'cloud^multi',
-  doom: 'hourglass', attrition: 'hourglass^drip', confusion: 'swirl', pestilence: 'cloud:1', 'mastery-curse': 'rune^mastery',
-  decline: 'wilt^drip', lower: 'shield^drip', 'mastery-blight': 'drop^mastery',
-  // Revenant — gravepact
-  siphon: 'chalice^drip', 'ward-spirit': 'ghost^aura', 'wisp-soul': 'ghost', 'pact-blood': 'hand^drip', gravewalk: 'hand^rise',
-  'fang-dark': 'fang', 'cage-soul': 'cage', 'drain-beam': 'beam', embrace: 'hand^aura', revenant: 'ghost^rise', harvest: 'scythe',
-  'nova-blood': 'drop^nova', undying: 'heart^aura', tether: 'chain', covenant: 'rune', 'second-death': 'skull^rise',
-  scythe: 'scythe^spin', 'mastery-grave': 'scythe^mastery',
   // First painted for the Ranger, whose skills now use `rn-` keys
   // (`icons/rangerIcons.ts`); these stay for the statuses and panels that name them.
   arrow: 'arrow', target: 'target', crosshair: 'target:1', blood: 'drop', range: 'bow', pierce: 'arrow^impact', snare: 'trap',
