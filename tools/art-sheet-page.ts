@@ -161,6 +161,10 @@ export const SHEETS: Record<string, () => Promise<HTMLCanvasElement>> = {
   async ranger() {
     return classSheet('ranger');
   },
+  /** Every Shapeshifter skill at 96px and at hotbar size, named, tree by tree. */
+  async shapeshifter() {
+    return classSheet('shapeshifter');
+  },
 
   /** Every status chip at 48px and at the HUD's 17px, then every affix badge at 32px and 14px. */
   async statuses() {

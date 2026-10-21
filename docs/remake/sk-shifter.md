@@ -92,9 +92,10 @@ the first browser check.
   - old saves stay safe: removed or moved skills refund their points and
     leave the hotbar (check that `src/sim/Character.ts` still does this for your ids)
   - all player text through `tr()`, then extract strings (`check-i18n`)
-- [ ] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
+- [x] 5. Icons. Repaint every icon so it is unique to its skill, sharp at
   skillcore's icon size, and in class colors, with each tree's own accent.
   Readable at hotbar size: one clear shape, strong light and dark.
+  (sk-shifter: icons, a picture of his own for every skill, each tree its own light)
 - [ ] 6. Effects quality and cost. Projectiles, swings and hit effects look
   AAA in the game's dark and gritty style. No allocation in per-frame code;
   particle counts follow the quality ladder; every new effect pipeline has
@@ -112,17 +113,15 @@ the first browser check.
 
 ## Next up
 
-Milestones 1 to 4 are done (see "Milestone 4: what was built" under
-"Notes for resume"). Next, milestone 5 icons: repaint every `ss-*` plan in
-`src/art/icons/shifterIcons.ts` so no two skills in the game share a
-picture (the audit's exact copies: Hamstring = gash, Stalker = footprints,
-Feral Grace = speed, Night Hunt = moon^aura like Vespers, Pack Blood =
-siphon, Alpha = crown-shield, Thick Hide = crest, Fat Reserves = undying,
-Bruiser = fist, Scar Tissue = scar, Old Scars = crack-cold; and the two new
-keys `ss-ravening`, `ss-manymouths`), each tree's own accent, sharp at
-icon size; `check-iconmatch`. Then milestone 6 (`clawTrails` allocates a
-vector a frame; warmup stand-ins for `ss.impact.*` and `ss.raven.spray`),
-7 (check-skills and check-curve once each), 8 (handover).
+Milestones 1 to 5 are done (see "Milestone 5: icons" under "Notes for
+resume"). Next, milestone 6: `clawTrails` in `src/fx/shifter/ShifterFX.ts`
+allocates a vector a frame (`_b.clone().sub(_a)`): reuse a scratch vector;
+check the other shifter FX for per-frame allocation; particle counts on
+the quality ladder; `warmup()` stand-ins in `src/scenes/DungeonScene.ts`
+for `ss.impact.cat`, `ss.impact.wolf`, `ss.impact.bear`, `ss.raven.spray`
+and any shifter effect not yet warmed. Then 7 (`get-chrome` is done this
+session; check-skills and check-curve once each, inside the lock), 8
+(handover).
 
 ## Notes for resume
 
@@ -539,6 +538,34 @@ blow never comes quicker; damage per hit stays as it is.
   grep goForTheThroat / scentOfWeakness / ss-gofor / ss-scent in src, tools,
   locales, public, ASSETS.md: 0.
 
+### Milestone 5: icons
+
+- Every skill's picture is now one of his own glyphs in
+  `art/ShifterGlyphs.ts`, each skill its own glyph and variant (54 pairs,
+  none shared): `beast` heads (v3 the cat crowned for King of the Night,
+  v4 the wolf in its ruff for Thick Ruff, v5 the old grey bear among the
+  four elements for Grizzled, v6 the scarred bear for Old Scars, v7 the
+  roaring bear for Rattling Roar), `paw` prints (v3 in blood for Taste of
+  Blood, v4 three wolf prints for Pack Instinct, v5 a glowing trail for
+  Stalker), `howl` (v2 a heart of blood for Blood Howl), and new: `sstear`
+  (Rake, Hamstring, Open Veins, Maul, Killing Dance), `sscat` (Pounce,
+  Feral Grace, Slink, Lithe), `sswolf` (Lunge, Call the Pack, Alpha, Last
+  Wolf Standing), `ssbear` (Ursa Major, Overrun, Immovable Bulk, Unbowed),
+  `ssjaw` (Snap, Worry, Throat Tear, Sharp Teeth, Ravening), `sseyes`
+  (Cat's Eyes, Many Mouths, Night Hunt, Blood Frenzy), `sshide` (Thick
+  Hide, Bristle, Scar Tissue), `ssheart` (Pack Blood, Fat Reserves, Ninth
+  Life), `ssclaw` (Keen Claws, Bruiser, Hammerfall, Reaping Swipe, Bear
+  Hug). Blood is always painted red, whatever the tree's light.
+- Each tree has its own light and ground (`TREE_LOOK.shapeshifter` in
+  `art/SkillIconArt.ts`): Feral violet night `0xa890ff`, Teeth blood red
+  `0xe0503c`, Claw amber `0xe09050` (the class light).
+- None of the eleven copies the audit found is left; no `ss-*` plan matches
+  any other plan in `ICON_MAP`, and no other class draws `beast`, `paw` or
+  `howl`.
+- Looked at with `node tools/art-sheet.mjs shapeshifter` (new sheet in
+  `tools/art-sheet-page.ts`, seconds, no game boot) at 96 px and 40 px.
+  Weakest at hotbar size: Immovable Bulk, Ravening (bite marks), Lithe.
+
 ## For the owner to test
 
 (empty)
@@ -558,6 +585,10 @@ blow never comes quicker; damage per hit stays as it is.
   `motionOverride`: look that a pulled or wrenched body never ends inside a
   wall or prop (the path is checked with `wallStop`, the end point is not
   checked against props smaller than the step).
+- Icons (milestone 5): judge at real hotbar size in game, above all
+  Immovable Bulk (a bear sat face on), Ravening (three bite marks) and
+  Lithe (the cat walking, tail curled); the shifter status chips now use
+  the same glyphs at 17 px (`ss-snap` is Pack Frenzy's chip, a side-on jaw).
 
 ## Handover
 

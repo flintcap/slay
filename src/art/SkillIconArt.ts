@@ -118,6 +118,13 @@ const TREE_LOOK: Record<string, readonly ClassLook[]> = {
     { ...CLASS_LOOK.ranger!, light: 0xe0a040, ground: 0x22160c },
     { ...CLASS_LOOK.ranger!, light: 0xb8c8d8, ground: 0x141a22 },
   ],
+  // The Shapeshifter: Feral the cat's violet night, Teeth the wolf's blood
+  // red, Claw the bear's amber firelight.
+  shapeshifter: [
+    { ...CLASS_LOOK.shapeshifter!, light: 0xa890ff, ground: 0x120c22 },
+    { ...CLASS_LOOK.shapeshifter!, light: 0xe0503c, ground: 0x1e0a08 },
+    { ...CLASS_LOOK.shapeshifter!, light: 0xe09050, ground: 0x22140c },
+  ],
   shadowblade: [
     { ...CLASS_LOOK.shadowblade!, light: 0x8fd84a, ground: 0x0e1a08 },
     { ...CLASS_LOOK.shadowblade!, light: 0xa6e8c4, ground: 0x160f20 },
