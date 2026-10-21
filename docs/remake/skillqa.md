@@ -30,10 +30,29 @@ sheet per class only where a "For skillqa" note asks for a look. Run
 
 ## Milestones
 
-- [ ] 1. Before numbers. Take `check-perf` frame numbers once before any
+- [x] 1. Before numbers. Take `check-perf` frame numbers once before any
   fix (or use the last numbers in `CHECKPOINT.md` if they are from the same
   scene and settings; say which). Run the static checkers once and list
-  every failure.
+  every failure. (Taken fresh from the build at 49ada73, before any
+  skillqa commit: `check-perf --preview`, default depths, seed 424242,
+  warden level 30. Software rendering, so draw calls read 1; what counts
+  is the update step, allocation, programs and scene counts:
+
+  | depth | monsters | updateMs | worst | allocKB/step | programs | meshes | textures | shadowLights |
+  |---|---|---|---|---|---|---|---|---|
+  | 0 town | 0 | 1.1 | 2.8 | 159.2 | 0 | 300 | 139 | 1 |
+  | 1 | 80 | 2.4 | 13.1 | 255.9 | 0 | 581 | 156 | 3 |
+  | 6 | 125 | 4.0 | 16.3 | 330.5 | 0 | 699 | 152 | 2 |
+  | 12 | 136 | 3.5 | 19.4 | 350.8 | 0 | 737 | 159 | 2 |
+  | 20 | 167 | 5.0 | 12.2 | 446.2 | 0 | 807 | 153 | 2 |
+  | 32 | 348 | 4.3 | 7.9 | 515.9 | 0 | 1632 | 170 | 2 |
+
+  It already failed six budgets there (depth 1 shadow lights, allocation
+  at every depth below the town): older than this wave. A 22 s browser
+  check overlapped depths 20 and 32. Static checkers, first run: beats,
+  economy, i18n, rankpower, unfinished (all fixed, see below), tactics
+  (fails at 49ada73 too: monster AI, not a skill) and curve (information
+  only: the walls).)
 - [ ] 2. Working. `check-skills` for all seven classes. Every skill fires,
   hits, costs mana, and grows each rank. Read the code behind each failure
   before fixing it.
@@ -190,7 +209,10 @@ Paladin (sk-paladin, done):
   Confession Thrust, Feint, Last Rites), The Last Hour's bell, Hurl the
   Censer's chain. Frame time not measured. (sk-paladin fears Doorbreaker's
   lane most, a dust look every 0.05 s while running, then the great bell's
-  landing.)
+  landing.) (Cost, from the code: the lane is one 5-sprite dust burst a
+  tick through the particle field's ladder and budget, about 50 sprites a
+  run at High; the bell's landing is two bursts, two decals, two
+  particle-free rings and one flash, and the bell is warmed. Both cheap.)
 
 Revenant (sk-revenant, done):
 - Never seen in motion: Bone Storm, Bone Cage, Gravewalk, Soul Cage, Soul
