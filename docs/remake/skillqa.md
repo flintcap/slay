@@ -113,8 +113,16 @@ Shared code:
   seed: a deep descent yields about four, mean over 60 seeds, so one
   descent comes up empty about one time in fifty. 08ec36e judges sets and
   uniques over the last five descents; fewer than five there is a gap.)
-- Skill icons now bake in idle time 3 s after the town loads; never tested
-  in a browser. Check the skill board opens with no stall.
+- [x] Skill icons now bake in idle time 3 s after the town loads; never tested
+  in a browser. Check the skill board opens with no stall. (It did not
+  finish: on a busy page the idle calls came once a second, one icon each,
+  and the PNG encode was most of each bake. The warm-up now paints on its
+  own canvas and encodes with `toBlob`, off the main thread, its calls are
+  capped at 120 ms like the item pump, and the first tree goes first.
+  Probe on the built game, software drawn: the mage board's first open
+  after 15 s in town baked 0 icons and its long task fell from 187 ms to
+  91 ms, the panel's first layout. A board opened 0.3 s after arrival
+  still bakes its own, as before.)
 - [x] `check-skills` exits 1 when there is no `shots/` folder; make it create
   it. One class takes about 40 minutes; make it faster if you can without
   testing less. (7d1be27: makes `shots/`, a 480x300 page, and
@@ -293,9 +301,11 @@ clears statuses between skills.
 
 ## Next up
 
-Milestone 1: check-perf "before" from the build at 49ada73 (built in
-the scratchpad worktree `old49`, served with `SLAY_OUTDIR`), once the
-static run is done. Then work down the unticked "Known issues".
+Known issues still open: Rogue's check-skillcost run; Knight's Gatefall
+run alone (`check-skills --classes=warden --skills=gatefall`); then the
+"never seen in motion" looks per class (a few screenshots each). Then
+check-skills reruns for classes the fixes touched, check-perf after, and
+the handover.
 
 ## Notes for resume
 

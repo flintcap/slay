@@ -354,6 +354,19 @@ function treeInfo(treeId: string | undefined): { classId?: string; index: number
   return { classId: tree.classId, index: Math.max(0, siblings.findIndex((t) => t.id === treeId)) };
 }
 
+function skillKey(skillId: string, effect: string | undefined, damageType: DamageType | undefined, passive: boolean, iconKey: string | undefined): string {
+  return `${skillId}|${effect ?? '-'}|${damageType ?? '-'}|${passive ? 'p' : 'a'}|${iconKey ?? '-'}`;
+}
+
+/** Paints one skill icon into `x`, a canvas `128 * k` pixels square. */
+function paintSkillAt(x: CanvasRenderingContext2D, k: number, skillId: string, effect: string | undefined, damageType: DamageType | undefined, passive: boolean, iconKey: string | undefined): void {
+  const { classId, index } = treeInfo(SKILL_BY_ID[skillId]?.treeId);
+  x.save();
+  x.scale(k, k);
+  paintSkillIcon(x, { skillId, icon: iconKey, effect, damageType, passive, classId, treeIndex: index });
+  x.restore();
+}
+
 /**
  * Returns an image URI for a skill. `passive` gets a hexagonal plate so the
  * tree reads at a glance. The class frame and tree pips are looked up from
@@ -367,17 +380,13 @@ export function skillIconUri(
   /** The skill's own authored icon name, which picks the pictogram. */
   iconKey?: string,
 ): string {
-  const key = `${skillId}|${effect ?? '-'}|${damageType ?? '-'}|${passive ? 'p' : 'a'}|${iconKey ?? '-'}`;
+  const key = skillKey(skillId, effect, damageType, passive, iconKey);
   const hit = skillCache.get(key);
   if (hit) return hit;
-  const { classId, index } = treeInfo(SKILL_BY_ID[skillId]?.treeId);
   // Painted in plain-screen units, scaled up to the screen's own pixels.
   const k = iconScale();
   const { c, x } = scratchCanvas(Math.round(S * k));
-  x.save();
-  x.scale(k, k);
-  paintSkillIcon(x, { skillId, icon: iconKey, effect, damageType, passive, classId, treeIndex: index });
-  x.restore();
+  paintSkillAt(x, k, skillId, effect, damageType, passive, iconKey);
   const uri = c.toDataURL('image/png');
   skillCache.set(key, uri);
   return uri;
@@ -385,19 +394,48 @@ export function skillIconUri(
 
 /** Skills whose icons are waiting for idle time. */
 const skillWarm: SkillDefLike[] = [];
+/** Keys painted and waiting on the browser's PNG encoder. */
+const skillEncoding = new Set<string>();
 let skillWarming = 0;
 
 type SkillDefLike = { id: string; effect?: string; damageType?: DamageType; targeting?: string; icon?: string };
 type IdleDeadline = { didTimeout: boolean; timeRemaining(): number };
 
+/**
+ * Paints one icon on its own canvas and hands the PNG encode to `toBlob`,
+ * which runs off the main thread: the encode is most of a bake's cost, so
+ * the warm-up's frames only pay for the painting.
+ */
+function warmSkill(s: SkillDefLike): void {
+  const passive = s.targeting === 'passive';
+  const key = skillKey(s.id, s.effect, s.damageType, passive, s.icon);
+  if (skillCache.has(key) || skillEncoding.has(key)) return;
+  const k = iconScale();
+  const { c, x } = makeCanvas(Math.round(S * k));
+  paintSkillAt(x, k, s.id, s.effect, s.damageType, passive, s.icon);
+  if (typeof c.toBlob !== 'function' || typeof URL?.createObjectURL !== 'function') {
+    skillCache.set(key, c.toDataURL('image/png'));
+    return;
+  }
+  const gen = generation;
+  skillEncoding.add(key);
+  c.toBlob((blob) => {
+    skillEncoding.delete(key);
+    // Dropped if the caches were cleared meanwhile, or a board that opened
+    // first already baked this one.
+    if (gen !== generation || skillCache.has(key)) return;
+    skillCache.set(key, blob ? URL.createObjectURL(blob) : c.toDataURL('image/png'));
+  }, 'image/png');
+}
+
 function skillWarmPump(deadline?: IdleDeadline): void {
   skillWarming = 0;
   const t0 = performance.now();
-  const budget = deadline && !deadline.didTimeout ? Math.max(4, deadline.timeRemaining() - 1) : 4;
+  const budget = deadline && !deadline.didTimeout ? Math.max(ICON_BUDGET_MS, deadline.timeRemaining() - 1) : ICON_BUDGET_MS;
   while (skillWarm.length > 0) {
     const s = skillWarm.shift()!;
     try {
-      skillIconUri(s.id, s.effect, s.damageType, s.targeting === 'passive', s.icon);
+      warmSkill(s);
     } catch {
       /* drawn when shown instead */
     }
@@ -408,18 +446,22 @@ function skillWarmPump(deadline?: IdleDeadline): void {
 
 function scheduleSkillWarm(): void {
   if (skillWarming) return;
+  // Capped like the item pump, so a busy page with no idle time still warms
+  // several a second rather than one.
   const idle = (globalThis as { requestIdleCallback?: (cb: (d: IdleDeadline) => void, o?: { timeout: number }) => number }).requestIdleCallback;
-  skillWarming = idle ? idle(skillWarmPump, { timeout: 1000 }) : (setTimeout(() => skillWarmPump(), 50) as unknown as number);
+  skillWarming = idle ? idle(skillWarmPump, { timeout: 120 }) : (setTimeout(() => skillWarmPump(), 50) as unknown as number);
 }
 
 /**
  * Bakes a class's skill icons ahead of need, a few at a time in the browser's
  * idle time, so the skill board's first open does not bake fifty icons in
- * one frame. Costs nothing for icons already baked.
+ * one frame. The first tree goes first, as the board opens on it. Costs
+ * nothing for icons already baked.
  */
 export function warmSkillIcons(classId: string): void {
-  const trees = new Set(SKILL_TREES.filter((t) => t.classId === classId).map((t) => t.id));
-  for (const s of Object.values(SKILL_BY_ID)) if (s.treeId && trees.has(s.treeId)) skillWarm.push(s);
+  const trees = SKILL_TREES.filter((t) => t.classId === classId).map((t) => t.id);
+  const all = Object.values(SKILL_BY_ID);
+  for (const id of trees) for (const s of all) if (s.treeId === id) skillWarm.push(s);
   if (skillWarm.length > 0) scheduleSkillWarm();
 }
 
@@ -471,6 +513,7 @@ export function clearIconCaches(): void {
   pending.clear();
   listeners.clear();
   skillCache.clear();
+  skillEncoding.clear();
   statusCache.clear();
   affixCache.clear();
 }
