@@ -19,10 +19,10 @@ export const EDGE_FALLOFF: ReadonlySet<string> = new Set([
   'gatefall', 'gorefeast', 'warStomp', 'heraldOfRuin',
   // Mage
   'emberNova', 'fireball', 'blastWave', 'pyroclasm', 'firestorm', 'annihilate',
-  'sparkbolt', 'shockNova', 'thunderclap', 'lightningStrike', 'heavensGate',
+  'shockNova', 'thunderclap', 'lightningStrike', 'heavensGate',
   'frostNova', 'glacialSpike', 'rimeField', 'blizzard', 'frostStep', 'glacialComet',
   // Rogue
-  'noxiousCloud', 'plagueVial', 'envenomBurst', 'knifeHalo', 'steelWaltz',
+  'noxiousCloud', 'plagueVial', 'envenomBurst', 'knifeHalo',
   // Revenant
   'boneCage', 'boneStorm', 'boneNova', 'poisonNova', 'pestilence', 'sanguineNova', 'corpseExplosion', 'reaping',
 ]);

@@ -199,15 +199,6 @@ export const STATUSES: StatusDef[] = [
     icon: 'arc',
     tags: ['dot', 'lightning'],
   }),
-  def('static', tr('Static Charge'), -1, {
-    desc: tr('Charge builds with every hit. At 10 stacks it detonates for lightning damage.'),
-    maxStacks: 10,
-    stacking: 'stack',
-    baseDuration: 8,
-    color: 0xbfe4ff,
-    icon: 'coil',
-    tags: ['lightning'],
-  }),
   def('poisoned', tr('Poisoned'), -1, {
     desc: tr('Venom in the blood. Poison damage over time; also cuts healing by 30%.'),
     dot: dot('poison', 5),
@@ -263,14 +254,6 @@ export const STATUSES: StatusDef[] = [
     color: 0x8e0f0f,
     icon: 'gash',
     tags: ['dot', 'physical'],
-  }),
-  def('rent', tr('Rent'), -1, {
-    desc: tr('Flesh laid open. Bleed effects on this target deal +30% damage.'),
-    mods: mods({ physicalResist: -15 }),
-    baseDuration: 8,
-    color: 0xd04040,
-    icon: 'claw',
-    tags: ['physical', 'shred'],
   }),
   def('soulburn', tr('Soulburn'), -1, {
     desc: tr('Arcane fire in the spirit. Arcane damage over time that ignores 25% of resistance.'),

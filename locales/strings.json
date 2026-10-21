@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9280,
+ "count": 9278,
  "strings": [
   {
    "key": "Beating iron…",
@@ -1433,6 +1433,12 @@
    "key": "{v}% of Damage Stolen as Mana",
    "files": [
     "data/affixes.ts"
+   ]
+  },
+  {
+   "key": "Area damage is full at the centre and falls to {0}% at the edge.",
+   "files": [
+    "data/areaFalloff.ts"
    ]
   },
   {
@@ -20243,12 +20249,6 @@
    ]
   },
   {
-   "key": "Charge builds with every hit. At 10 stacks it detonates for lightning damage.",
-   "files": [
-    "data/statuses.ts"
-   ]
-  },
-  {
    "key": "Charred armour. -25% fire resistance and -10% defense.",
    "files": [
     "data/statuses.ts"
@@ -20389,12 +20389,6 @@
   },
   {
    "key": "Flees blindly from the source of terror and cannot attack.",
-   "files": [
-    "data/statuses.ts"
-   ]
-  },
-  {
-   "key": "Flesh laid open. Bleed effects on this target deal +30% damage.",
    "files": [
     "data/statuses.ts"
    ]
@@ -20617,13 +20611,6 @@
    ]
   },
   {
-   "key": "Rent",
-   "files": [
-    "data/statuses.ts",
-    "data/story/premise.ts"
-   ]
-  },
-  {
    "key": "Returns a share of every melee hit taken to the attacker.",
    "files": [
     "data/statuses.ts"
@@ -20710,12 +20697,6 @@
   },
   {
    "key": "Soulburn",
-   "files": [
-    "data/statuses.ts"
-   ]
-  },
-  {
-   "key": "Static Charge",
    "files": [
     "data/statuses.ts"
    ]
@@ -32613,6 +32594,12 @@
   },
   {
    "key": "Nothing on this tier was built. It was made room for.",
+   "files": [
+    "data/story/premise.ts"
+   ]
+  },
+  {
+   "key": "Rent",
    "files": [
     "data/story/premise.ts"
    ]
