@@ -22,8 +22,9 @@ export const SOLID = {
   // The Revenant's (`fx/revenant/RevenantFX.ts`): a hunting skull, a cage
   // rib, a grave-hand and a chain link.
   skull: 16, rib: 17, claw: 18, link: 19,
-  // The Mage's Frozen Orb: a faceted ball of ice.
-  orb: 20,
+  // The Mage's: Frozen Orb's faceted ball of ice, and the ice crystals
+  // Winter's Breath leaves standing in the floor.
+  orb: 20, icicle: 21,
 } as const;
 export type SolidShape = keyof typeof SOLID;
 
@@ -470,9 +471,9 @@ export class SolidPool {
       mats[2]!,
       new THREE.MeshStandardMaterial({ color: 0x4a4448, emissive: 0x8a1a2a, emissiveIntensity: 0.55, roughness: 0.45, metalness: 0.7 }),
     );
-    // The Frozen Orb is the ice shard's own ice.
-    mats.push(mats[1]!);
-    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo(), skullGeo(), ribGeo(), clawGeo(), linkGeo(), iceOrbGeo()];
+    // The Frozen Orb and Winter's Breath's crystals are the ice shard's own ice.
+    mats.push(mats[1]!, mats[1]!);
+    const geos = [arrowGeo(), shardGeo(), spearGeo(), rockGeo(), spikeGeo(), bladeGeo(), thornGeo(), crystalGeo(), rockGeo(), fangGeo(), sawGeo(), featherGeo(), bucklerGeo(), needleGeo(), vialGeo(), phantomGeo(), skullGeo(), ribGeo(), clawGeo(), linkGeo(), iceOrbGeo(), crystalGeo()];
     for (let k = 0; k < geos.length; k++) {
       const mesh = new THREE.InstancedMesh(geos[k]!, mats[k]!, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

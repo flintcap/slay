@@ -45,6 +45,7 @@ import { KnightKit, knightBlow, knightUnlit, type KnightCast } from './knight/Kn
 import { basicShot, castRanger, clearRanger, RANGER_BOW, RANGER_MOVES, tickRanger } from './ranger/RangerMoves';
 import type { RangerHost } from './ranger/RangerTypes';
 import { SKILL_MOTIFS, motifAt, skillParticles, THROWN_SHAPES } from '../fx/SkillLooks';
+import { breathJet } from '../fx/mage/looks';
 import { AREA_EDGE_SHARE } from '../data/areaFalloff';
 import { atRank, boostRank } from '../fx/kit/Boost';
 import { tr } from '../core/I18n';
@@ -1709,6 +1710,7 @@ export class SkillRunner {
             color,
             emitter: sig.emitter,
             density: sig.density,
+            jet: breathJet(def.id),
           });
           this.meleeSwing(player, dir, half * 2, reach, makePacket, ctx, enemies, boss, type, false, 'melee', sound.hit);
           break;
@@ -2375,7 +2377,9 @@ export class SkillRunner {
       // A motif lands with the blow on its contact frame, or with a throw or
       // a cast on its release frame (a melee action has no release frame).
       const lands = shiftLands ?? Math.max(player.contactIn, player.releaseIn);
-      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, lands, num('radius', 2.5));
+      // A cone's motif spreads over the near half of its reach.
+      const motifR = family === 'cone' ? num('reach', num('range', num('length', 6.5))) * 0.45 : 2.5;
+      this.drawMotif(def.id, family, def.targeting, origin, target, dir, school, color, lands, num('radius', motifR));
     } finally {
       this.effects.endQuiet();
       this.casting = false;

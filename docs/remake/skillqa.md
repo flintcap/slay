@@ -96,8 +96,11 @@ Shared code:
   in the first static run.)
 
 Mage (sk-mage, done):
-- Dragon's Breath has no fire blast of its own; Winter's Breath has no
-  crystal fan.
+- [x] Dragon's Breath has no fire blast of its own; Winter's Breath has no
+  crystal fan. (The cone pours a jet of its own from the mouth: `mg.gout`,
+  pressurised flame with a white throat, sparks and soot, and
+  `mg.rimespray`, glass ice and frost. Winter's Breath's motif is now ice
+  crystals pushing up out of the floor across the wedge, near rows first.)
 - [x] Frozen Orb looks like a shard, not a round orb. (A new `orb` body:
   a faceted ball of ice, the shard's own ice, tumbling in the frost glow.)
 - The fire tree's icons need a deeper repaint. (sk-mage also: Sparkbolt

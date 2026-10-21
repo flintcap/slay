@@ -15,6 +15,10 @@
  * shared particle field: one pipeline, already compiled at load, with counts
  * on the quality ladder and the pressure valve. Detail layers marked `rich`
  * draw on High and Ultra only.
+ *
+ * The two breaths also pour a jet of their own out of the mouth
+ * (`breathJet`, fired by `EffectSystem.cone`): Dragon's Breath a roaring
+ * gout of pressurised flame, Winter's Breath a fan of glass ice and frost.
  */
 import { SPRITE } from '../kit/Atlas';
 import { registerEmitters, type Emitter, type Layer } from '../kit/Emitters';
@@ -38,6 +42,10 @@ const ARC = [0xffffff, 0xc8b0ff, 0x5a3ab0] as const;
 const GLASS = [0xf4fcff, 0x8ad0ff, 0x1a4a7a] as const;
 /** A breath of cold air. */
 const MIST = [0xdcefff, 0x8aaecc, 0x2a3a4a] as const;
+/** Pressurised flame: a white-gold throat, orange body, a red edge. */
+const GOUT = [0xfff2c8, 0xff8a1e, 0x7a1804] as const;
+/** The white heart at the mouth of a breath of fire. */
+const THROAT = [0xffffff, 0xffd890, 0xff7a20] as const;
 
 const EM: Record<string, Emitter> = {
   // --- fire: heavy and smoky ------------------------------------------------
@@ -65,6 +73,20 @@ const EM: Record<string, Emitter> = {
     layers: [
       L({ sprite: SPRITE.smoke, count: 2, ramp: SOOT, speed: [0.1, 0.4], up: 0.6, radius: 0.12, size: [0.25, 0.4], grow: 2.6, life: [1.0, 1.6], heat: [0.4, 0], emit: 0.2, occl: 0.7, gravity: 0.4, drag: 1.6, turb: 0.35, spin: 0.8, tint: false }),
       L({ sprite: SPRITE.cinder, variants: 4, count: 2, ramp: COALS, speed: [0.3, 1], up: 0.4, radius: 0.1, size: [0.025, 0.05], grow: 0.5, life: [0.6, 1.0], heat: [1, 0.4], emit: 1.2, occl: 0, gravity: -3, drag: 1, turb: 0.5, tint: false }),
+    ],
+  },
+  /**
+   * Dragon's Breath: a gout of pressurised flame thrown hard down the cone.
+   * Tongues of fire that swell as they slow, a white throat at the mouth,
+   * sparks flung to the far end, and soot rolling off the top.
+   */
+  'mg.gout': {
+    school: 'fire',
+    layers: [
+      L({ sprite: SPRITE.flame, count: 6, ramp: GOUT, speed: [12, 19], spread: 0.3, up: 0.04, radius: 0.15, size: [0.32, 0.5], grow: 3.2, life: [0.55, 0.85], heat: [1, 0.15], emit: 1.2, occl: 0.2, gravity: 1.4, drag: 1.2, turb: 0.45, spin: 1.5, stretch: 0.25, fade: 1.2, tint: false }),
+      L({ sprite: SPRITE.glow, count: 1, ramp: THROAT, speed: [3, 5], spread: 0.1, radius: 0, size: [0.55, 0.65], grow: 1.8, life: [0.12, 0.16], heat: [1, 0.7], emit: 1.6, occl: 0, drag: 2, fade: 1.4, tint: false }),
+      L({ sprite: SPRITE.cinder, variants: 4, count: 4, ramp: COALS, speed: [11, 17], spread: 0.4, up: 0.08, radius: 0.1, size: [0.03, 0.06], grow: 0.5, life: [0.6, 1.0], heat: [1, 0.45], emit: 1.3, occl: 0, gravity: -3, drag: 1.1, turb: 0.5, stretch: 0.6, ground: true, bounce: 0.2, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 3, ramp: SOOT, speed: [6, 10], spread: 0.35, up: 0.25, radius: 0.2, size: [0.5, 0.8], grow: 3, life: [1.0, 1.5], heat: [0.3, 0], emit: 0.12, occl: 0.6, gravity: 0.8, drag: 1.4, turb: 0.4, spin: 0.6, fade: 1, tint: false, rich: true }),
     ],
   },
   /** Embers shed in flight, falling, with a thread of smoke. */
@@ -120,6 +142,19 @@ const EM: Record<string, Emitter> = {
       L({ sprite: SPRITE.smoke, count: 3, ramp: MIST, speed: [0.3, 0.8], up: 0.2, disc: true, radius: 0.4, size: [0.5, 0.8], grow: 2.2, life: [1.4, 2.2], heat: [0.4, 0], emit: 0.35, occl: 0.25, gravity: -0.2, drag: 2, turb: 0.2, fade: 1, tint: false, rich: true }),
     ],
   },
+  /**
+   * Winter's Breath: a fan of glass ice thrown down the cone. Shards that
+   * tumble and skitter over the floor, frost crystals that hang where the
+   * breath passed, and a cold mist under them.
+   */
+  'mg.rimespray': {
+    school: 'cold',
+    layers: [
+      L({ sprite: SPRITE.ice, variants: 4, count: 6, ramp: GLASS, speed: [11, 17], spread: 0.34, up: 0.1, radius: 0.12, size: [0.1, 0.18], grow: 0.9, life: [0.6, 0.9], heat: [0.9, 0.5], emit: 0.8, occl: 0.35, gravity: -4, drag: 1.2, spin: 8, stretch: 0.3, ground: true, bounce: 0.25, fade: 1, tint: false }),
+      L({ sprite: SPRITE.frost, variants: 4, count: 4, ramp: GLASS, speed: [8, 14], spread: 0.38, up: 0.06, radius: 0.15, size: [0.12, 0.22], grow: 1.2, life: [0.9, 1.4], heat: [0.9, 0.5], emit: 0.9, occl: 0.1, gravity: -0.4, drag: 1.4, turb: 0.2, spin: 1.5, fade: 0.9, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 3, ramp: MIST, speed: [9, 14], spread: 0.3, radius: 0.2, size: [0.5, 0.8], grow: 3, life: [0.7, 1.0], heat: [0.35, 0], emit: 0.35, occl: 0.2, gravity: -0.1, drag: 1.3, turb: 0.2, fade: 1, tint: false, rich: true }),
+    ],
+  },
   /** Frost crystals drifting down out of a cold mist. */
   'mg.rimefall': {
     school: 'cold',
@@ -149,6 +184,17 @@ registerEmitters(EM);
 
 /** Every Mage emitter id, for the checkers. */
 export const MAGE_EMITTERS: readonly string[] = Object.keys(EM);
+
+/** The jet a breath pours out of the mouth, by skill id. */
+const BREATH_JETS: Readonly<Record<string, string>> = {
+  dragonsBreath: 'mg.gout',
+  wintersBreath: 'mg.rimespray',
+};
+
+/** A breath skill's own jet (`EffectSystem.cone`), or undefined. */
+export function breathJet(skillId: string): string | undefined {
+  return BREATH_JETS[skillId];
+}
 
 /** Each Mage tree's bursts and wakes. */
 const POOLS: Readonly<Record<string, { burst: readonly string[]; trail: readonly string[] }>> = {

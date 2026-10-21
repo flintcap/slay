@@ -118,7 +118,7 @@ export const SKILL_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   blizzard: m('ice shards', 'rain'),
   frostStep: m('frost fields', 'trail'),
   frozenOrb: m('frost orbs', 'spiral'),
-  wintersBreath: m('snowfall', 'fan'),
+  wintersBreath: m('ice crystals', 'spread'),
   glacialComet: m('frost orbs', 'fall'),
 
   // Shadowblade: Venom.

@@ -76,6 +76,7 @@ export const MOTIF_SHAPES = {
   knives: { k: 'solid', shape: 'blade', size: 0.7, land: 'sparks' },
   thorns: { k: 'solid', shape: 'thorn', size: 0.75, land: 'puff.spores' },
   crystals: { k: 'solid', shape: 'crystal', size: 0.6, land: 'arcane' },
+  'ice crystals': { k: 'solid', shape: 'icicle', size: 1.1, land: 'frost' },
   cinders: { k: 'solid', shape: 'cinder', size: 0.32, land: 'embers' },
   fangs: { k: 'solid', shape: 'fang', size: 0.55, land: 'poison' },
   saws: { k: 'solid', shape: 'saw', size: 0.6, land: 'sparks' },
@@ -275,6 +276,28 @@ export const MOTIF_MOTIONS = {
       const dx = f.fx * c - f.fz * s;
       const dz = f.fx * s + f.fz * c;
       out.push(piece(f.x + f.fx * 0.5, 1.1, f.z + f.fz * 0.5, f.x + dx * f.radius * 1.4, 0.8, f.z + dz * f.radius * 1.4, Math.abs(a) * 0.05, 0.4, Path.Line));
+    }
+    return out;
+  },
+  /**
+   * Pieces push up out of the floor across a wedge in front, the near rows
+   * first and the far rows widest, like frost racing over the floor.
+   */
+  spread: (f) => {
+    const out: Piece[] = [];
+    for (let row = 0; row < 3; row++) {
+      const d = f.radius * (0.45 + 0.6 * row);
+      const n = 3 + row;
+      for (let i = 0; i < n; i++) {
+        const a = (i / (n - 1) - 0.5) * 0.95;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        const x = f.x + (f.fx * c - f.fz * s) * d;
+        const z = f.z + (f.fx * s + f.fz * c) * d;
+        const p = piece(x, -0.6, z, x, 0.3, z, row * 0.08 + Math.abs(a) * 0.04, 1.1, Path.Rise);
+        p.grow = 0.7 + 0.25 * row;
+        out.push(p);
+      }
     }
     return out;
   },

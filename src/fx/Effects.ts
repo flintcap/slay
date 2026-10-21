@@ -1265,8 +1265,13 @@ export class EffectSystem {
     });
   }
 
-  /** A cone: breath, frost spray, a war cry. Lights the floor in its shape. */
-  cone(origin: THREE.Vector3, direction: THREE.Vector3, halfAngle: number, range: number, opts: { element?: School; color?: number; duration?: number; emitter?: string; density?: number } = {}): EffectHandle {
+  /**
+   * A cone: breath, frost spray, a war cry. Lights the floor in its shape.
+   * `jet` is an emitter fired from the mouth down the cone on every tick of
+   * its first two thirds, so a breath pours out of the caster and reaches as
+   * far as it hits (its speed is scaled to the cone's length).
+   */
+  cone(origin: THREE.Vector3, direction: THREE.Vector3, halfAngle: number, range: number, opts: { element?: School; color?: number; duration?: number; emitter?: string; density?: number; jet?: string } = {}): EffectHandle {
     const school = opts.element ?? 'physical';
     const el = element(school);
     const l = lookOf(school, opts.color);
@@ -1284,6 +1289,8 @@ export class EffectSystem {
     e.dur = dur;
     e.acc = CONE_TICK;
     e.emitter = opts.emitter ?? el.emitter;
+    // A cone has no wake, so its `shed` holds the jet.
+    e.shed = opts.jet ?? null;
     e.power = opts.density ?? 1;
     const yaw = Math.atan2(e.d.x, e.d.z);
     e.ground = this.decals.glow('wedge', origin.x, origin.z, range, dur, opts.color ?? school, 1.5, yaw, halfAngle);
@@ -1316,6 +1323,12 @@ export class EffectSystem {
         count: Math.round(16 * e.power), scale: 0.7, dir: _v1, speed: 1.6, school: e.school, color: e.color,
         scatter: Math.max(0.6, Math.sin(e.half) * mid),
       });
+      if (e.shed && p < 0.68) {
+        _v1.set(e.d.x, 0.04, e.d.z);
+        this.fx.burst(e.shed, e.a.x + e.d.x * 0.5, e.a.y + 0.05, e.a.z + e.d.z * 0.5, {
+          count: Math.round(12 * e.power), dir: _v1, speed: e.radius / 10, school: e.school, scatter: 0.15,
+        });
+      }
     }
     return !(e.stopped || p >= 1);
   }
@@ -1938,7 +1951,7 @@ export class EffectSystem {
       e.solid = this.solids.alloc(draw.shape);
       e.emitter = ('land' in draw && draw.land) || '';
       // Spin about the length, radians a second: saws whirl, knives and crystals turn.
-      e.style = draw.shape === 'saw' ? 18 : draw.shape === 'shard' || draw.shape === 'crystal' ? 3 : draw.shape === 'blade' ? 9 : 0;
+      e.style = draw.shape === 'saw' ? 18 : draw.shape === 'shard' || draw.shape === 'crystal' ? 3 : draw.shape === 'blade' ? 9 : draw.shape === 'icicle' ? 0.6 : 0;
     } else if (draw.k === 'slash') {
       e.mote = 2;
       e.size = draw.size * size * p.grow;
