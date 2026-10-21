@@ -636,7 +636,7 @@ Update this file and push it after every finished step.
   stand idle. That alone moved Mage 25 from 57/25/11s to 11/8/3s. Chase
   curve after: 31 of 35, nothing walled; untouched Mage 25 and 40, Revenant
   5 and 40 (lowest life 87-90%, the line is 85%). Monsters unchanged.
-  Static checks: 85 of 86 pass. check-tactics fails "big telegraphs are
+  Static checks: 84 of 86 pass (curve as above). check-tactics fails "big telegraphs are
   staggered" (1 of 16 lands within 0.2s of another) on 1260e83 too: older.
 ## Phase 0d log
 
