@@ -364,12 +364,19 @@ that passed unless your fixes touch its skills; then rerun only that class,
 once, after all your fixes for it. Run Gatefall on its own after the audit
 clears statuses between skills.
 
+skillqa's runs, on the build of 4ac72fd (and 851d52f for the reruns):
+Mage 33/33, Knight 26/26 (Gatefall fires), Rogue 24/25 then 25/25
+(Umbral Ambush was refused: the audit clears statuses between skills, so
+the hero was never veiled for a skill struck from the veil; the audit now
+veils him for it, 851d52f, and it fires), Paladin 32/32.
+
 ## Next up
 
-Milestone 2: `check-skills` on the build of 4ac72fd, one class a run
-(timeout 3500 each), in this order: mage, warden, shadowblade, paladin,
-revenant, ranger, shapeshifter. Then the static checkers, `check-perf
---preview` after, `check-frames`, and the handover (milestone 6).
+Milestone 2: `check-skills` on the build of 851d52f, still to run:
+revenant, ranger, shapeshifter (one class a run, timeout 3500 each, a
+background chain writing `skills-<class>.txt` in the scratchpad). Then
+`check-perf --preview` after, `check-frames`, and the handover
+(milestone 6).
 
 ## Notes for resume
 
