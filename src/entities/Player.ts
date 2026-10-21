@@ -639,6 +639,16 @@ export class Player {
     if (this.frozen || this.dodgeTime > 0 || (this.dodgeCd > 0 && !opts.skill)) return false;
     // A root holds the feet and a stun the whole body: no dash out of either.
     if (this.immobilised) return false;
+    // An evade out of an action whose blow already landed (or whose spell
+    // already let go) leaves the rest of it owed, as walking out does
+    // (`restLeft`): dodging the follow-through must not bring the next attack
+    // or cast sooner. One cut off before it landed did nothing (a spell's
+    // mana comes back), so nothing is owed for it. A dash skill is the
+    // action itself.
+    if (!opts.skill && this.actionLock > 0 && this.actionTotal > 0) {
+      const into = this.actionTotal - this.actionLock;
+      if (into >= Math.max(this.contactAt, this.releaseAt)) this.restLeft = Math.max(this.restLeft, this.actionLock);
+    }
     this.actionLock = 0;
     this.carryLeft = 0;
     this.spinLeft = 0;

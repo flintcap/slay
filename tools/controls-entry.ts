@@ -350,6 +350,33 @@ function casterOnBar() {
   check('a held move key does not speed up swings', walking <= still, `${still} swings standing, ${walking} walking in 3s`);
 }
 
+// 12c. A dodge out of a blow that already landed owes the rest of it, as
+// walking out does; one dodged before it lands did nothing and owes nothing.
+{
+  const freeAt = (dodgeAt: number): number => {
+    const w = world();
+    w.input.worldPoint.set(0, 0, 3);
+    w.player.beginAction('attack1', 1.2);
+    let n = Math.round(dodgeAt / DT);
+    w.step(n);
+    w.input.tap('Space');
+    w.step();
+    n++;
+    while (w.player.isBusy && n < 600) {
+      w.step();
+      n++;
+    }
+    return w.log.dodges === 1 ? n * DT : -1;
+  };
+  const late = freeAt(0.8);
+  const early = freeAt(0.05);
+  check(
+    'a dodge out of a landed blow does not bring the next one sooner',
+    late >= 1.18 && early > 0 && early < 0.5,
+    `free ${late.toFixed(2)}s into a 1.2s action dodged at 0.8s, ${early.toFixed(2)}s when dodged at 0.05s`,
+  );
+}
+
 // 13. A hit during the dash is evaded and announced.
 {
   const w = world();

@@ -66,7 +66,16 @@ sheet per class only where a "For skillqa" note asks for a look. Run
   movement like the dodge, on purpose. Class runners time every action
   from `attackTime`, `castTime` or their contact frame. `basicAttack`
   refuses a wand, staff, orb or a focus in bare hands, as `castsOnly`
-  does; a Paladin's scepter is a mace.)
+  does; a Paladin's scepter is a mace. After the lead's fb675b9 (walking
+  out of a swing owes the rest of it, `restLeft`), every other way an
+  action ends early was checked: the evade was the one left. Dodging out
+  of a blow that had landed, or a spell that had let go, freed the hands
+  for the next attack at the dodge's end; it now owes the rest as walking
+  does, while a dodge before the blow lands owes nothing (the blow is lost,
+  a spell's mana comes back). New check-controls case. Dash skills,
+  channels (fixed length), release casts (`keepAction`), Riposte (a
+  gesture only) and the Paladin's answer (a full action of its own) do
+  not shorten anything.)
 - [ ] 4. Quality. Work through every "For skillqa" note. Icons: unique per
   skill, sharp, class colors (`check-iconmatch`). Melee: own swing per
   skill. Ranged and spells: own projectile and effect. Fix what is below a
