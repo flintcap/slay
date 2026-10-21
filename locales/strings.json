@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9279,
+ "count": 9280,
  "strings": [
   {
    "key": "Beating iron…",
@@ -6644,12 +6644,6 @@
    ]
   },
   {
-   "key": "+3% damage per rank against any enemy carrying a debuff you put on it.",
-   "files": [
-    "data/classSkills/shapeshifter.ts"
-   ]
-  },
-  {
    "key": "+5% critical damage per rank.",
    "files": [
     "data/classSkills/shapeshifter.ts"
@@ -6802,12 +6796,6 @@
    ]
   },
   {
-   "key": "Circle one enemy and strike from every side: 6 blows (+1 every 5 ranks), each 45% weapon damage (+6% per rank), each one faster than the last.",
-   "files": [
-    "data/classSkills/shapeshifter.ts"
-   ]
-  },
-  {
    "key": "Clamp on and shake. The enemy is held (stunned) while you shake it 4 times, each 40% weapon damage (+6% per rank), then thrown aside.",
    "files": [
     "data/classSkills/shapeshifter.ts"
@@ -6832,13 +6820,7 @@
    ]
   },
   {
-   "key": "Drop low and go quiet for 4s: +30% movement speed (+1.5% per rank) and +20% critical chance (+0.5% per rank). Your next Feral skill deals +60% damage (+8% per rank) and ends it.",
-   "files": [
-    "data/classSkills/shapeshifter.ts"
-   ]
-  },
-  {
-   "key": "Drop low and spring up at the throat from up to 4m: 220% weapon damage (+30% per rank). Leaves a Hemorrhage for 6s and the enemy Weakened for 4s.",
+   "key": "Drop low and go quiet for 4s: +30% movement speed (+1.5% per rank) and +20% critical chance (+0.5% per rank). Your next Feral strike deals +60% damage (+8% per rank), is a sure critical strike, and ends it.",
    "files": [
     "data/classSkills/shapeshifter.ts"
    ]
@@ -6886,7 +6868,7 @@
    ]
   },
   {
-   "key": "Go for the Throat",
+   "key": "For every wolf of yours standing (up to 3), you and your wolves deal +1% damage per rank.",
    "files": [
     "data/classSkills/shapeshifter.ts"
    ]
@@ -6997,6 +6979,13 @@
    ]
   },
   {
+   "key": "Many Mouths",
+   "files": [
+    "data/classSkills/shapeshifter.ts",
+    "data/shifterStatuses.ts"
+   ]
+  },
+  {
    "key": "Maul",
    "files": [
     "data/classSkills/shapeshifter.ts",
@@ -7066,6 +7055,12 @@
    ]
   },
   {
+   "key": "Ravening",
+   "files": [
+    "data/classSkills/shapeshifter.ts"
+   ]
+  },
+  {
    "key": "Reaping Swipe",
    "files": [
     "data/classSkills/shapeshifter.ts"
@@ -7078,6 +7073,12 @@
    ]
   },
   {
+   "key": "Run round one enemy and strike from every side: 6 blows (+1 every 5 ranks), each 45% weapon damage (+6% per rank), each one faster than the last. With other enemies within 3m, each blow goes to the next one not yet struck.",
+   "files": [
+    "data/classSkills/shapeshifter.ts"
+   ]
+  },
+  {
    "key": "Rush up to 8m in a straight line and bite what is at the end: 130% weapon damage (+20% per rank). The bite throws it back 1.5m.",
    "files": [
     "data/classSkills/shapeshifter.ts"
@@ -7085,12 +7086,6 @@
   },
   {
    "key": "Scar Tissue",
-   "files": [
-    "data/classSkills/shapeshifter.ts"
-   ]
-  },
-  {
-   "key": "Scent of Weakness",
    "files": [
     "data/classSkills/shapeshifter.ts"
    ]
@@ -7135,6 +7130,12 @@
   },
   {
    "key": "Taste of Blood",
+   "files": [
+    "data/classSkills/shapeshifter.ts"
+   ]
+  },
+  {
+   "key": "Tear into everything near: 5 bites (+1 every 5 ranks), each 70% weapon damage (+10% per rank), each at the next enemy within 3m that has not been bitten yet. Every bite that lands adds a stack of Pack Frenzy.",
    "files": [
     "data/classSkills/shapeshifter.ts"
    ]
@@ -7212,7 +7213,7 @@
    ]
   },
   {
-   "key": "Turn on the spot with both paws out: 130% weapon damage (+20% per rank) to everything within 3.4m, +8% for every enemy it hits (up to 5).",
+   "key": "Turn on the spot with both paws out: 130% weapon damage (+20% per rank) to everything within 3.4m, +8% for every enemy it hits (up to 5). Everything it hits is dragged 1.2m in toward you (+0.04m per rank).",
    "files": [
     "data/classSkills/shapeshifter.ts"
    ]
@@ -17113,6 +17114,12 @@
   },
   {
    "key": "The hunt is called: more damage and a surer bite.",
+   "files": [
+    "data/shifterStatuses.ts"
+   ]
+  },
+  {
+   "key": "Your wolves stand with you: you and they deal more damage for each one.",
    "files": [
     "data/shifterStatuses.ts"
    ]

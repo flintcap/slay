@@ -1082,8 +1082,8 @@ Changed from the source: `sounds/block/01.ogg` to `06.ogg` were peak-limited
 | sounds/skill.shift.callThePack.bite/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/skill.shift.callThePack/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck | CC0 |
 | sounds/skill.shift.catForm/01.ogg | https://opengameart.org/content/80-cc0-creature-sfx | rubberduck + SketchMan3 (opengameart.org/content/wind-whoosh-loop) | CC0 |
-| sounds/skill.shift.goForTheThroat.hit/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
-| sounds/skill.shift.goForTheThroat/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + TinyWorlds (opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | CC0 |
+| sounds/skill.shift.ravening.hit/01.ogg | https://opengameart.org/content/40-cc0-water-splash-slime-sfx | rubberduck + rubberduck (opengameart.org/content/80-cc0-creature-sfx) + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
+| sounds/skill.shift.ravening/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck + TinyWorlds (opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | CC0 |
 | sounds/skill.shift.hammerfall.hit/01.ogg | https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx | rubberduck + Kenney (kenney.nl/assets/impact-sounds) | CC0 |
 | sounds/skill.shift.hammerfall/01.ogg | https://opengameart.org/content/80-cc0-creture-sfx-2 | rubberduck | CC0 |
 | sounds/skill.shift.hamstring.hit/01.ogg | https://kenney.nl/assets/rpg-audio | Kenney + rubberduck (opengameart.org/content/25-cc0-mud-sfx) + TinyWorlds (opengameart.org/content/5-hit-sounds-dying) | CC0 |

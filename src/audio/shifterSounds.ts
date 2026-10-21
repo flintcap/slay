@@ -34,7 +34,7 @@ export const SHIFTER_SOUNDS: Readonly<Record<string, SkillSound>> = {
   worry: blow('worry'),
   callThePack: s('skill.shift.callThePack', null, 'skill.shift.callThePack.bite'),
   bloodHowl: call('bloodHowl'),
-  goForTheThroat: blow('goForTheThroat'),
+  ravening: blow('ravening'),
   bloodmoon: call('bloodmoon'),
   // Claw
   maul: blow('maul'),

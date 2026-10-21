@@ -83,8 +83,8 @@ export const SHIFTER_TAKES = {
   'skill.shift.callThePack.bite': x('creat', 'barking_02.ogg', { rate: 1.15, ss: 0, t: 0.4, mix: [x('creat', 'eat_03.ogg', { rate: 1.2, gain: -4 })] }),
   // Blood Howl: a wet, gargled howl.
   'skill.shift.bloodHowl': x('creat', 'howl.ogg', { rate: 0.72, lp: 1800, mix: [x('creat', 'burble_02.ogg', { rate: 0.8, gain: -3 }), x('water', 'splash_09.ogg', { delay: 200, rate: 0.7, gain: -10 })] }),
-  'skill.shift.goForTheThroat': x('creat2', 'attack_05.ogg', { rate: 0.95, mix: [x('dsteps', 'leaves01.ogg', { rate: 1.1, gain: -8 })] }),
-  'skill.shift.goForTheThroat.hit': x('water', 'splash_04.ogg', { rate: 0.75, mix: [x('creat', 'eat_02.ogg', { rate: 0.85, gain: -2 }), x('ki', 'impactPunch_heavy_003.ogg', { rate: 0.95, gain: -5 })] }),
+  'skill.shift.ravening': x('creat2', 'attack_05.ogg', { rate: 0.95, mix: [x('dsteps', 'leaves01.ogg', { rate: 1.1, gain: -8 })] }),
+  'skill.shift.ravening.hit': x('water', 'splash_04.ogg', { rate: 0.75, mix: [x('creat', 'eat_02.ogg', { rate: 0.85, gain: -2 }), x('ki', 'impactPunch_heavy_003.ogg', { rate: 0.95, gain: -5 })] }),
   // Bloodmoon: a heartbeat under a rising red howl.
   'skill.shift.bloodmoon': x('heart', 'heartbeat_fast_0.wav', { ss: 0, t: 1.4, rate: 0.9, mix: [x('creat', 'howl.ogg', { delay: 220, rate: 0.9, hp: 300, gain: -4 })] }),
 
