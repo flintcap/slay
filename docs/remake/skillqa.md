@@ -194,10 +194,11 @@ Rogue (sk-rogue, done):
   nothing named them.)
 
 Knight (sk-knight, done):
-- Gatefall was refused in `check-skills` only because the audit keeps
+- [x] Gatefall was refused in `check-skills` only because the audit keeps
   statuses between skills (Fortress Stance still had the Knight rooted).
   Clear statuses between skills in the audit (`scenes/debug.ts`) and
-  check Gatefall fires.
+  check Gatefall fires. (7d1be27 clears them; run alone it fires, plays
+  its clip, hits and deals damage: working 1 of 1.)
 - Never seen in motion: every new Knight gesture, the Whirlwind walk, the
   Shield Charge run, the Gatefall arc and landing, Massacre's five cuts,
   the standard, the steel arcs, Sworn Brother's ghost look.
