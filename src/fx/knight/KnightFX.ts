@@ -19,6 +19,7 @@
  * linked behind the loading curtain and not on the first cast.
  */
 import * as THREE from 'three';
+import { mergeGeometries } from '../../art/Meshes';
 
 /** The Knight's gold, and the pale steel of a blade's edge. */
 export const KNIGHT_GOLD = 0xd8a640;
@@ -170,12 +171,12 @@ export class SteelArcs {
 // ---------------------------------------------------------------------------
 
 let parts: {
-  pole: THREE.CylinderGeometry;
-  bar: THREE.CylinderGeometry;
-  finial: THREE.ConeGeometry;
+  /** Pole and foot, one iron mesh. */
+  iron: THREE.BufferGeometry;
+  /** Crossbar and finial, one gold mesh. */
+  gold: THREE.BufferGeometry;
   cloth: THREE.PlaneGeometry;
   line: THREE.RingGeometry;
-  base: THREE.CylinderGeometry;
 } | null = null;
 
 function standardParts(): NonNullable<typeof parts> {
@@ -201,7 +202,8 @@ function standardParts(): NonNullable<typeof parts> {
   line.rotateX(-Math.PI / 2);
   const base = new THREE.CylinderGeometry(0.22, 0.3, 0.12, 8, 1);
   base.translate(0, 0.06, 0);
-  parts = { pole, bar, finial, cloth, line, base };
+  // One mesh per material: three draws (and three shadow draws), not five.
+  parts = { iron: mergeGeometries([pole, base]), gold: mergeGeometries([bar, finial]), cloth, line };
   return parts;
 }
 
@@ -227,23 +229,21 @@ export class Standard {
       color: 0xa8741e, roughness: 0.85, metalness: 0, emissive: 0x2a1604, emissiveIntensity: 0.5, side: THREE.DoubleSide, transparent: true,
     });
     this.lineMat = glowMat(KNIGHT_GOLD);
-    const pole = new THREE.Mesh(g.pole, this.iron);
-    const base = new THREE.Mesh(g.base, this.iron);
-    const bar = new THREE.Mesh(g.bar, this.gold);
-    const finial = new THREE.Mesh(g.finial, this.gold);
+    const iron = new THREE.Mesh(g.iron, this.iron);
+    const gold = new THREE.Mesh(g.gold, this.gold);
     const cloth = new THREE.Mesh(g.cloth, this.clothMat);
     cloth.position.set(0, 2.42, 0.02);
     this.flag.add(cloth);
     this.line = new THREE.Mesh(g.line, this.lineMat);
     this.line.position.y = 0.03;
     this.line.renderOrder = 3;
-    for (const m of [pole, base, bar, finial, cloth]) {
+    for (const m of [iron, gold, cloth]) {
       m.castShadow = true;
       m.frustumCulled = false;
     }
     this.line.frustumCulled = false;
     const stand = new THREE.Group();
-    stand.add(pole, base, bar, finial, this.flag);
+    stand.add(iron, gold, this.flag);
     stand.rotation.y = facing;
     this.group.add(stand, this.line);
     this.group.position.set(x, 0, z);

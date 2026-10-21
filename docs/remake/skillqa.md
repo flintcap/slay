@@ -110,9 +110,13 @@ Mage (sk-mage, done):
 
 Rogue (sk-rogue, done):
 - The new swings and looks were never seen in a running game, and frame
-  time was never measured. Nightfall's smoke curtain is the costliest
-  (about 60 smoke sprites at High per cast): check it against the quality
-  ladder.
+  time was never measured.
+- [x] Nightfall's smoke curtain is the costliest (about 60 smoke sprites at
+  High per cast): check it against the quality ladder. (It is on it: the
+  particle field scales every crowd layer by the quality's `fxScale` (0.35
+  Low, 0.6 Medium, 1 High, 1.4 Ultra) and the pressure valve, drops the
+  `rich` smoke layer below High, and clips at the frame budget. About 90
+  sprites at High for 2 s, 45 at Medium, 26 at Low.)
 - Seven Shadowcraft icons all show a hooded figure, and Silhouette is
   close to The Unseen Blade. Make each one clearly its own.
 - `check-skillcost` never ran (it was stopped). Run it once.
@@ -130,11 +134,18 @@ Knight (sk-knight, done):
   the standard, the steel arcs, Sworn Brother's ghost look.
 - Retribution's stored charge shows only as gold glints at the shield.
   Give it a clear look that reads at a glance.
-- Frame time not measured. Watch the standard (three see-through lit
+- [x] Frame time not measured. Watch the standard (three see-through lit
   materials that cast shadows) and Earthshatter (a crack decal and two
-  bursts every metre of its 12 m line).
-- sk-knight changed `tools/skillsound-entry.ts` and
-  `tools/rankpower-entry.ts`; check the changes are sound.
+  bursts every metre of its 12 m line). (The standard is one per Knight;
+  its five meshes are now three, one per material, so three draws and
+  three shadow draws. Earthshatter is cheap: its cracks go to the one
+  ring-buffered decal layer, its bursts are small (6 and 5) through the
+  particle field's quality ladder and frame budget, and it allocates
+  nothing per frame.)
+- [x] sk-knight changed `tools/skillsound-entry.ts` and
+  `tools/rankpower-entry.ts`; check the changes are sound. (Both sound: a
+  leap's hit plays where Gatefall lands; the summon read waits, at most
+  half a second, for the standard's body to rise on its release frame.)
 
 Paladin (sk-paladin, done):
 - [x] Consecrated Ground's unique gives "+25% damage", but the skill deals no
