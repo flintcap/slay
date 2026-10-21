@@ -400,7 +400,29 @@ background chain writing `skills-<class>.txt` in the scratchpad). Then
 
 ## For the owner to test
 
-(empty)
+- Knight: take Retribution, block a few hits; a warm gold light should
+  grow on the shield's face. Gatefall while Fortress Stance holds you
+  should say "Rooted" and spend nothing; once the stance ends it should
+  leap and land.
+- Mage: Dragon's Breath and Winter's Breath should pour a wedge from the
+  hands, narrow at the mouth, wide at the end, with crystals rising for
+  Winter's. Frozen Orb should fly as a round ball of ice. Open the skill
+  board after a few seconds in town: no stall.
+- Rogue: the Shadowcraft icons should each be their own picture (only
+  Veil, Vanish and Shadow Clone keep a hood). Cast Nightfall at Low and at
+  High: the smoke should thin at Low with no frame drop.
+- Paladin: Mercy Stroke with Saint's Reach should carry at most x0.6 to
+  the enemy behind. Consecrated Ground's unique should grow its area and
+  slows, with no damage line.
+- Revenant: Corpse Explosion, Sanguine Nova and Doom should each sound
+  where they burst.
+- Ranger: Kestrel should circle, small and high; judge whether it reads.
+- Shapeshifter: Rake's first swipe (about 0.3 s in) should feel quick;
+  Killing Dance should flow with no hitch between blows; the first change
+  into each form on a fresh hero should not hitch. Look at Reaping Swipe's
+  ring and Ursa Major's stars, which no probe here could catch.
+- Every class: swing, and dodge just after the blow lands. The next swing
+  should not come any sooner than if you had stood still.
 
 ## Handover
 
