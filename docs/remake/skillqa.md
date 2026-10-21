@@ -56,30 +56,41 @@ sheet per class only where a "For skillqa" note asks for a look. Run
 ## Known issues (lead, from the reports so far; add each stream's as it lands)
 
 Shared code:
-- The shared area-effect code puts a blank buff on the caster.
-- Area damage falls to 65% at the edge and no tooltip says so. Say it, or
-  drop the falloff.
-- Spells and throws that still resolve on the key press instead of on the
+- [x] The shared area-effect code puts a blank buff on the caster.
+  (7d1be27: the `aoe` branch buffs only skills in `SELF_POWER` or
+  `SELF_BUFF_STATUS`.)
+- [x] Area damage falls to 65% at the edge and no tooltip says so. Say it, or
+  drop the falloff. (Said: `data/areaFalloff.ts` lists the 33 skills, the
+  skill board shows a line under each, check-rankpower keeps the list
+  true. The falloff stays: dropping it raises area damage about 30%.)
+- [x] Spells and throws that still resolve on the key press instead of on the
   gesture's release (`SkillRunner.atRelease`). sk-mage moved the Mage's;
-  find every other class's that remain.
-- Dodging after the key press and before a spell lets go still spends the
+  find every other class's that remain. (7d1be27: Rogue, Ranger, the
+  shifter's howls and buffs. This run: Shield Throw and the Paladin's two
+  vows. A probe casting every skill found no other. Vanish, rushes, leaps,
+  blinks, channels and form changes go on the press on purpose.)
+- [x] Dodging after the key press and before a spell lets go still spends the
   mana. Charge on release, or give it back when the cast is cancelled.
+  (7d1be27: `SkillRunner.refund` gives mana and cooldown back.)
 - Skill passives, buffs, boons and statuses that give speed were not
   retuned by skillcore. Check every one fits under the ceilings in
   `sim/Speed.ts`.
-- `check-curve` logs "[feel] hit report failed TypeError: Cannot convert
+- [x] `check-curve` logs "[feel] hit report failed TypeError: Cannot convert
   object to primitive value" from `CombatFeel.onKill` about 1500 times a
-  run. Find the cause and fix it.
-- The curve bot dodges mid-swing, which cancels heavy blows. Make the bot
-  fair (it is a test tool) so the curve reads true.
+  run. Find the cause and fix it. (e75c312: the sim's effects answer
+  `fxScale` with a number. 0 lines in this run's log.)
+- [x] The curve bot dodges mid-swing, which cancels heavy blows. Make the bot
+  fair (it is a test tool) so the curve reads true. (e75c312: a blow on its
+  way lands first when the hit coming lands late enough.)
 - `check-economy` fails once on a seeded path ("shapeshifter: no set or
   unique in a whole descent at depth 30"). Drop rates are unchanged. Find
   out whether it is the seed or a real gap and fix the right one.
 - Skill icons now bake in idle time 3 s after the town loads; never tested
   in a browser. Check the skill board opens with no stall.
-- `check-skills` exits 1 when there is no `shots/` folder; make it create
+- [x] `check-skills` exits 1 when there is no `shots/` folder; make it create
   it. One class takes about 40 minutes; make it faster if you can without
-  testing less.
+  testing less. (7d1be27: makes `shots/`, a 480x300 page, and
+  `--skills=a,b` audits only those.)
 - `check-skillparams` failed on phalanx, vanish, momentum and perfectForm
   (before sk-knight and sk-rogue finished). Rerun once after them.
 
@@ -134,9 +145,11 @@ Revenant (sk-revenant, done):
   Tether, Revenant Form and the skull projectile. One `check-perf` look
   with Bone Storm, Bone Cage and Soul Tether all up (about 14 shards, 18
   ribs, 14 hands, 44 links, 3 skulls).
-- Blinded, silenced and disarmed still root monsters (their `control`
+- [x] Blinded, silenced and disarmed still root monsters (their `control`
   holds set `rootTimer`); only fear and confusion were freed. Free them
-  the same way unless the status means to hold the body.
+  the same way unless the status means to hold the body. (e75c312: only
+  holds that incapacitate or immobilise pin; blind stops a monster finding
+  you past arm's length, silence leaves only its plain blow.)
 - Corpse Explosion and Sanguine Nova have no hit sound (the sound checker
   forbids one); Doom's burst replays its cast sound. Give each a real
   sound, and fix the checker rule if it is what stops it.
@@ -147,30 +160,35 @@ Ranger (sk-ranger, done):
 - Never seen in motion: traps, brambles, Kestrel, standing arrows, the
   rains, and the 21 new skills. Frame time not measured; one `check-perf`
   look with Arrow Rain or Darken The Sky up.
-- sk-ranger traced the `check-curve` "hit report failed" line: a shared
+- [x] sk-ranger traced the `check-curve` "hit report failed" line: a shared
   line in `CombatFeel.onKill` compares the test harness's stand-in
-  `fxScale` to a number. Fix the stand-in or the compare.
+  `fxScale` to a number. Fix the stand-in or the compare. (e75c312.)
 - `check-beats` fails on other classes' skills. Run it and fix each.
 
 Shapeshifter (sk-shifter, done):
-- Game wide: knockback tooltips say metres, but `Enemy.takeHit` pushes
+- [x] Game wide: knockback tooltips say metres, but `Enemy.takeHit` pushes
   knockback x 0.35, so every "knocks back N m" reads about three times too
-  far. Make the text and the push agree.
-- Bristle's HUD text shows the base 30% reflect, not the ranked number.
+  far. Make the text and the push agree. (e75c312: the push is
+  `KNOCKBACK_METRES` a point, a short slide stopped by walls and props;
+  the two Ranger shoves that name 1.5 m now push 1.5 m. No other text
+  names metres for a packet shove.)
+- [x] Bristle's HUD text shows the base 30% reflect, not the ranked number.
+  (e75c312: buff chips read the application's own magnitude, mods, ward.)
 - The character panel's attack speed shows the weapon's pace, not the
   beast's (`FORM_PACE` in `data/shifterPower.ts` is read by the runner and
   `ui/AttackEstimate.ts`, not by `CharacterPanel.ts`).
 - Rake's first swipe waits about 0.3 s (blow at 35% of the action): check
   the cat's flurry feels quick. Killing Dance replays its gesture per
   blow: look for a hitch between blows.
-- Worry's wrench and Reaping Swipe's pull: the end point is not checked
+- [x] Worry's wrench and Reaping Swipe's pull: the end point is not checked
   against props smaller than the step. Make sure a pulled body never ends
-  inside a wall or prop.
+  inside a wall or prop. (e75c312: every `knock` slide stops at a wall or
+  a prop it was not already against, `Enemy.knockBlocked`.)
 - The first change into each form should no longer hitch (warmed in
   `DungeonScene.warmup()`); confirm with a fresh shapeshifter.
-- The curve tool error: `tools/sim-effects.ts` answers every read with a
+- [x] The curve tool error: `tools/sim-effects.ts` answers every read with a
   function, so `this.effects.fxScale >= 0.9` in `CombatFeel.onKill`
-  throws. Give the stand-in a number for `fxScale`.
+  throws. Give the stand-in a number for `fxScale`. (e75c312.)
 - Never seen in motion: claw scores, jaws, Reaping Swipe's ring, Ursa
   Major's stars, the pack's fog, the four rushes. Frame time not measured
   (Bloodmoon, Bristle and Slink's bursts plus four claw trails and a
@@ -187,11 +205,24 @@ clears statuses between skills.
 
 ## Next up
 
-Wait for skillcore and the seven class streams. Then start milestone 1.
+Milestone 1: check-perf "before" from the build at 49ada73 (built in
+the scratchpad worktree `old49`, served with `SLAY_OUTDIR`), once the
+static run is done. Then work down the unticked "Known issues".
 
 ## Notes for resume
 
-(empty)
+- Recovery: 7d1be27 and e75c312 (an earlier skillqa run) were read
+  against the code; every change is sound and its items are ticked above.
+- A scratch probe (`tools/press-entry.ts`, not committed, delete at the
+  end) casts every active skill in the sim and lists what lands on the
+  key press. Only press families (rush, leap, blink, channel, form) plus
+  Vanish (an escape) still do.
+- Static checkers, first run (after the recovery commits): curve 11 of 35
+  walled (information only), economy (shapeshifter depth 30), beats
+  (feint REFUSED); the rest of the list is in the log.
+- `check-curve` walled after the recovery commits: warden d1, d5, d12;
+  revenant d12; ranger d5, d12; paladin d5, d12, d25; shapeshifter d12,
+  d40. Mage and rogue clear.
 
 ## For the owner to test
 

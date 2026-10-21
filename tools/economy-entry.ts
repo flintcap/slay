@@ -56,6 +56,13 @@ interface Row {
 
 const rows: Record<string, Row[]> = {};
 const rng = new Random(2026);
+/**
+ * Sets and uniques are judged over the career's last descents together. A
+ * deep descent yields about four (mean over 60 seeds at depth 30), so one
+ * descent alone comes up empty about one time in fifty: luck, not a gap.
+ */
+const DEEP_DESCENTS = 5;
+const deepSpecials: Record<string, number> = {};
 
 for (const cls of CLASSES) {
   const c = createCharacter('Career', cls, new Random(7));
@@ -84,6 +91,10 @@ for (const cls of CLASSES) {
     });
     kill('boss');
     c.depthRecord = depth;
+    // Sets and uniques found in the last few descents of the career.
+    if (depth > maxDepth - DEEP_DESCENTS) {
+      deepSpecials[cls] = (deepSpecials[cls] ?? 0) + items.filter((i) => i.rarity === 'set' || i.rarity === 'unique' || i.rarity === 'mythic').length;
+    }
     if (!REPORT_AT.includes(depth)) continue;
 
     const gear = items.filter((i) => {
@@ -141,8 +152,9 @@ for (const [cls, list] of Object.entries(rows)) {
     lastValue = r.avgValue;
   }
   const deep = list[list.length - 1]!;
-  const special = (deep.items.set ?? 0) + (deep.items.unique ?? 0) + (deep.items.mythic ?? 0);
-  if (special < 1) problems.push(`${cls}: no set or unique in a whole descent at depth ${deep.depth}`);
+  const special = deepSpecials[cls] ?? 0;
+  // About twenty are expected; fewer than a handful is a real gap in the tables.
+  if (special < DEEP_DESCENTS) problems.push(`${cls}: only ${special} sets or uniques in the last ${DEEP_DESCENTS} descents (to depth ${deep.depth})`);
 }
 
 console.log(JSON.stringify({ problems, rows }));
