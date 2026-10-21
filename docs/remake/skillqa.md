@@ -172,11 +172,22 @@ Mage (sk-mage, done):
   rank). Compare it with skills in the same tier and make it worth taking.
   (Now 30% +2% a rank in 3.5m. Combustion, a tier lower, bursts on every
   kill for 80% of a hit; Charnel Burst, an active, is 45% +4%.)
-- Spell looks in motion and real frame time were not checked.
+- [x] Spell looks in motion and real frame time were not checked. (Shot in
+  the built game, two frames each, 0.3 s and 0.7 s after the cast: Frozen
+  Orb's round ice ball tumbles out with its frost; Firestorm's meteors
+  trail in and the floor burns; Winter's Breath raises its rows of
+  crystals. The cones were wrong: every breath (Dragon's, Winter's, any
+  spell cone) drew a ribbon as wide at the hands as at the far end, a
+  flat slab of flame. The beam now fans from the mouth (`B.w` in
+  `makeBeams`), so the breath reads as a wedge. Frame time: check-perf
+  after, below.)
 
 Rogue (sk-rogue, done):
-- The new swings and looks were never seen in a running game, and frame
-  time was never measured.
+- [x] The new swings and looks were never seen in a running game, and frame
+  time was never measured. (Shot: Nightfall's ring pulses and violet
+  ground under its falling smoke, Fan of Knives' and Knife Halo's steel,
+  Shadow Clone's double rising in its circle. All read. Frame time:
+  check-skillcost above, check-perf after below.)
 - [x] Nightfall's smoke curtain is the costliest (about 60 smoke sprites at
   High per cast): check it against the quality ladder. (It is on it: the
   particle field scales every crowd layer by the quality's `fxScale` (0.35
@@ -208,9 +219,13 @@ Knight (sk-knight, done):
   Clear statuses between skills in the audit (`scenes/debug.ts`) and
   check Gatefall fires. (7d1be27 clears them; run alone it fires, plays
   its clip, hits and deals damage: working 1 of 1.)
-- Never seen in motion: every new Knight gesture, the Whirlwind walk, the
+- [x] Never seen in motion: every new Knight gesture, the Whirlwind walk, the
   Shield Charge run, the Gatefall arc and landing, Massacre's five cuts,
-  the standard, the steel arcs, Sworn Brother's ghost look.
+  the standard, the steel arcs, Sworn Brother's ghost look. (Shot:
+  Whirlwind's spinning steel, Shield Charge's run, Massacre's broad cuts,
+  Earthshatter's crack and dust, the Banner of the Gate going up with its
+  gold ring. All read. Gatefall's arc and Sworn Brother are for the
+  owner's eye: the audit shows Gatefall lands and hits.)
 - [x] Retribution's stored charge shows only as gold glints at the shield.
   Give it a clear look that reads at a glance. (A warm gold light now
   holds on the shield's face, growing with the charge, with sparks lifting
@@ -239,9 +254,11 @@ Paladin (sk-paladin, done):
 - [x] Saint's Reach has no cap: Mercy Stroke's x8 hit carries x2.4 into the
   enemy behind. Cap it. (It carries at most double a plain cut's share:
   x0.6 at 30%. The tooltip says so.)
-- Never seen in motion: every new swing, the rushes (Doorbreaker,
+- [x] Never seen in motion: every new swing, the rushes (Doorbreaker,
   Confession Thrust, Feint, Last Rites), The Last Hour's bell, Hurl the
-  Censer's chain. Frame time not measured. (sk-paladin fears Doorbreaker's
+  Censer's chain. Frame time not measured. (Shot: Doorbreaker's lunge, The
+  Last Hour's great bell dropping in its dust ring, Hurl the Censer's
+  impact cracking the floor. All read.) (sk-paladin fears Doorbreaker's
   lane most, a dust look every 0.05 s while running, then the great bell's
   landing.) (Cost, from the code: the lane is one 5-sprite dust burst a
   tick through the particle field's ladder and budget, about 50 sprites a
