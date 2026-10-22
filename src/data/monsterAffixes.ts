@@ -229,11 +229,13 @@ affix({
 
 affix({
   id: 'knockback',
-  name: tr('Knockback'),
-  desc: tr('Every blow sends you flying.'),
+  // Its shove was taken away (only bosses throw the hero back now); the
+  // weight of it went into the blows themselves.
+  name: tr('Heavy-Handed'),
+  desc: tr('Every blow lands hard.'),
   minDepth: 3,
   weight: 9,
-  mods: { damage: 1.1 },
+  mods: { damage: 1.3 },
   behavior: 'knockback',
   params: { force: 6 },
   color: 0xd0d0f0,

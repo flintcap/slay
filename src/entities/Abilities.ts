@@ -442,6 +442,11 @@ export function hitPlayer(
   }
   if (opts?.applies) packet.applies = opts.applies;
   affixRiders(self, ctx, packet);
+  // Only a boss throws the hero back. A pack's blows (and an elite's
+  // "sends you flying") land where the hero stands: a crowd shoving from
+  // all sides walked the hero into walls and out of their own fight.
+  // Pulls (a grapple, a vortex) still drag.
+  if (!self.isBoss && (packet.knockback ?? 0) > 0) delete packet.knockback;
   noteControl(ctx, packet);
   ctx.damagePlayer(packet);
   return packet;

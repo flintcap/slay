@@ -10955,13 +10955,13 @@
    ]
   },
   {
-   "key": "Every blow lays a curse that strips your resistances.",
+   "key": "Every blow lands hard.",
    "files": [
     "data/monsterAffixes.ts"
    ]
   },
   {
-   "key": "Every blow sends you flying.",
+   "key": "Every blow lays a curse that strips your resistances.",
    "files": [
     "data/monsterAffixes.ts"
    ]
@@ -11088,6 +11088,12 @@
    ]
   },
   {
+   "key": "Heavy-Handed",
+   "files": [
+    "data/monsterAffixes.ts"
+   ]
+  },
+  {
    "key": "Hemming",
    "files": [
     "data/monsterAffixes.ts"
@@ -11161,12 +11167,6 @@
   },
   {
    "key": "Knits itself back together between exchanges.",
-   "files": [
-    "data/monsterAffixes.ts"
-   ]
-  },
-  {
-   "key": "Knockback",
    "files": [
     "data/monsterAffixes.ts"
    ]
