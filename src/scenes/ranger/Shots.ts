@@ -20,7 +20,7 @@ import type { HitKind } from '../../fx/CombatFeel';
 import type { School } from '../../fx/Effects';
 import { tr } from '../../core/I18n';
 import { addBonus } from '../../sim/Combat';
-import { rainVolley, shatter, splinterFly, thicketStand, clearThickets } from '../../fx/ranger/RangerFX';
+import { punchThrough, rainVolley, shatter, splinterFly, thicketStand, clearThickets } from '../../fx/ranger/RangerFX';
 import { EXTRA, PIERCE_ALL, type RangerCast, type RangerHost, type RangerWorld, type Target } from './RangerTypes';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -270,6 +270,8 @@ export interface Loose {
   element?: School;
   color?: number;
   shed?: string;
+  /** Ribbon behind the shaft in place of the plain arrow's (`RIBBON_PRESETS`). */
+  trail?: string;
 }
 
 /** Enemies on a lane from `from` along `dir`, nearest first, with how far along each is met. */
@@ -309,6 +311,7 @@ export function loose(v: Volley, o: Loose): { stop: number; struck: Target[] } {
   const fly = (): void => {
     quiet(host, () => host.effects.projectile(from, to, {
       element: o.element ?? v.school, color: o.color ?? v.color, shape: 'arrow', shed: o.shed ?? v.shed, flare: false, speed, size: o.size ?? 0.28,
+      trail: o.trail,
     }));
   };
   if (delay > 0) host.later(delay, fly);
@@ -381,6 +384,9 @@ function lineShot(v: Volley, r: RangerCast, share?: number): void {
     loose(v, {
       from: bowHand(r.player, dir), dir, range: r.num('range', 22), speed: r.num('speed', 40),
       pierce: Math.floor(r.num('pierce', 99)), width: 0.6, sure: true, size: r.def.id === 'oneShot' ? 0.36 : 0.3,
+      trail: 'heavyArrow',
+      // The shaft goes on through: splinters and grit out of the far side.
+      onStrike: (t) => punchThrough(v.host.effects, t.root.position.x, t.root.position.z, dir),
     });
   }, share);
 }
@@ -529,7 +535,7 @@ export function arrowsOf(r: RangerCast, base: number): number {
   if (!EXTRA.has(r.def.id)) return base;
   const quiver = r.player.status.has('skill.openQuiver') ? (quiverArrows.get(r.player) ?? 0) : 0;
   const extra = Math.floor(r.player.passives.extraArrows) + quiver;
-  return Math.min(base + extra, base + 6, 24);
+  return Math.min(base + extra, base + 6, 30);
 }
 
 /** Open Quiver's extra arrows on each hero, read from the skill when cast. */
@@ -563,18 +569,23 @@ function twinShot(v: Volley, r: RangerCast): void {
   });
 }
 
-/** Fan Fire and Arrow Wheel: arrows fanned across an arc in one sweep, each into the first enemy it meets. */
-function fan(v: Volley, r: RangerCast, count: number, arc: number, range: number, speed: number, whole: boolean): void {
+/**
+ * Fan Fire and Arrow Wheel: arrows fanned across an arc in one sweep, each
+ * through `pierce` enemies past the first it meets.
+ */
+function fan(v: Volley, r: RangerCast, count: number, arc: number, range: number, speed: number, whole: boolean, pierce = 0): void {
   const dir = r.dir.clone();
+  // A big fan sweeps no slower than five arrows: they leave closer together.
+  const step = whole ? 0.012 : Math.min(0.025, 0.1 / Math.max(1, count - 1));
   draw(r, v.host, () => {
     for (let i = 0; i < count; i++) {
       const a = whole ? (i / count) * Math.PI * 2 : count === 1 ? 0 : (i / (count - 1) - 0.5) * arc;
       const d = dir.clone().applyAxisAngle(UP, a);
       const go = (): void => {
-        loose(v, { from: whole ? r.player.position.clone().setY(1.2) : bowHand(r.player, d), dir: d, range, speed, pierce: 0 });
+        loose(v, { from: whole ? r.player.position.clone().setY(1.2) : bowHand(r.player, d), dir: d, range, speed, pierce });
       };
       if (i === 0) go();
-      else v.host.later(i * (whole ? 0.012 : 0.025), () => quiet(v.host, go));
+      else v.host.later(i * step, () => quiet(v.host, go));
     }
   });
 }
@@ -805,9 +816,11 @@ export function castShot(v: Volley, r: RangerCast): boolean {
     case 'twinShot': twinShot(v, r); return true;
     case 'scattershot': scattershot(v, r); return true;
     case 'fanFire': {
-      const n = arrowsOf(r, Math.max(1, Math.floor(r.num('count', 5))));
-      const spread = r.num('spread', 0.2);
-      fan(v, r, n, spread * Math.max(1, n - 1), r.num('range', 18), r.num('speed', 34), false);
+      // One more arrow every rank. Past a point the fan stops widening and
+      // packs them closer, so more of them find what is in front.
+      const n = arrowsOf(r, Math.max(1, Math.floor(r.num('count', 5) + r.num('countPerRank', 1) * Math.max(0, r.rank - 1))));
+      const arc = Math.min(r.num('spread', 0.2) * Math.max(1, n - 1), r.num('arc', 1.4));
+      fan(v, r, n, arc, r.num('range', 18), r.num('speed', 34), false, r.num('pierce', 99));
       return true;
     }
     case 'arrowWheel': {

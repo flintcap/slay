@@ -10,6 +10,8 @@
  *  - Thicket of Shafts: arrows left standing in the floor (`thicketStand`).
  *  - Splinter Shot: the shaft bursting in the enemy, splinters flying on
  *    (`shatter`, `splinterFly`).
+ *  - Pierce Shot: torn air down its line (the `rn.wake` motif) and the
+ *    shaft punching out of the far side of each enemy (`punchThrough`).
  *  - The traps: a noose, a plate, a wire on two stakes, a hanging nest, each
  *    with a glint as it arms and its own burst as it goes (`trapLook`,
  *    `trapSpring`); spikes driven up through the floor (`spikesUp`); the
@@ -82,6 +84,26 @@ const EM: Record<string, Emitter> = {
     layers: [
       L({ sprite: SPRITE.shard, count: 12, ramp: BONE, speed: [3, 6], spread: 0.5, up: 0.2, radius: 0.1, size: [0.035, 0.06], grow: 0.7, life: [0.3, 0.5], heat: [0.8, 0.4], emit: 0.7, occl: 0.6, gravity: -9, drag: 1.2, spin: 10, ground: true, bounce: 0.2, tint: false }),
       L({ sprite: SPRITE.smoke, count: 3, ramp: DUST, speed: [0.4, 1], radius: 0.15, size: [0.25, 0.4], grow: 1.8, life: [0.4, 0.6], heat: [0.05, 0], emit: 0.04, occl: 0.5, drag: 2, tint: false }),
+    ],
+  },
+  /**
+   * Pierce Shot's wake: thin streaks of torn air rushing on after the shaft,
+   * and a breath of dust it drags behind. Thrown along the shot.
+   */
+  'rn.wake': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.glint, variants: 4, count: 4, ramp: STEEL, speed: [7, 12], spread: 0.06, radius: 0.22, size: [0.018, 0.03], grow: 0.6, life: [0.12, 0.2], heat: [0.6, 0.2], emit: 0.35, occl: 0.3, stretch: 4.5, drag: 7, fade: 2.2, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 1, ramp: DUST, speed: [1.5, 2.5], spread: 0.3, radius: 0.15, size: [0.25, 0.35], grow: 1.6, life: [0.35, 0.55], heat: [0.04, 0], emit: 0.03, occl: 0.4, drag: 3, turb: 0.2, fade: 1.3, tint: false }),
+    ],
+  },
+  /** Pierce Shot going through what it struck: splinters, grit and a streak out of the far side. */
+  'rn.punch': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.glint, variants: 4, count: 5, ramp: STEEL, speed: [9, 15], spread: 0.12, radius: 0.08, size: [0.025, 0.04], grow: 0.5, life: [0.08, 0.14], heat: [1, 0.5], emit: 0.9, occl: 0.2, stretch: 3.5, drag: 5, fade: 2.4, tint: false }),
+      L({ sprite: SPRITE.shard, count: 8, ramp: BONE, speed: [4, 8], spread: 0.35, up: 0.15, radius: 0.1, size: [0.03, 0.05], grow: 0.7, life: [0.3, 0.5], heat: [0.7, 0.3], emit: 0.6, occl: 0.6, gravity: -9, drag: 1.2, spin: 10, ground: true, bounce: 0.2, tint: false }),
+      L({ sprite: SPRITE.smoke, count: 2, ramp: DUST, speed: [1.2, 2.4], spread: 0.45, radius: 0.15, size: [0.25, 0.4], grow: 1.8, life: [0.35, 0.6], heat: [0.05, 0], emit: 0.04, occl: 0.5, drag: 2.4, fade: 1.2, tint: false }),
     ],
   },
   /** A trap snapping shut: cord and leaf thrown up. */
@@ -257,6 +279,11 @@ function stuckTick(dt: number): void {
 /** The shaft bursting inside what it struck at (x, z), thrown on along `dir`. */
 export function shatter(effects: EffectSystem, x: number, z: number, dir: THREE.Vector3): void {
   effects.fx.burst('rn.shatter', x, 1.1, z, { count: 14, dir });
+}
+
+/** Pierce Shot passing through what stands at (x, z), going on along `dir`. */
+export function punchThrough(effects: EffectSystem, x: number, z: number, dir: THREE.Vector3): void {
+  effects.fx.burst('rn.punch', x + dir.x * 0.35, 1.15, z + dir.z * 0.35, { count: 15, dir });
 }
 
 /** One splinter flying `stop` metres from `from` along `dir`. */

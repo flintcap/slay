@@ -16,7 +16,7 @@ const m = (shape: SkillMotif['shape'], motion: SkillMotif['motion'], at?: SkillM
  */
 export const RANGER_MOTIFS: Readonly<Record<string, SkillMotif>> = {
   // Marksman: one arrow, placed.
-  pierceShot: m('wedges', 'line'),
+  pierceShot: m('wind streaks', 'lance'),
   huntersMark: m('hoops', 'pulse', 'target'),
   aimedShot: m('hoops', 'converge', 'target'),
   bleedingArrow: m('blood spray', 'line'),

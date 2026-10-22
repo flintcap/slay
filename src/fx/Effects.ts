@@ -131,6 +131,8 @@ export interface RibbonPreset {
 export const RIBBON_PRESETS: Record<string, RibbonPreset> = {
   sword: { kind: 'swing', width: 1, life: 0.16, school: 'physical', emit: 0.9 },
   arrow: { kind: 'trail', width: 0.35, life: 0.12, school: 'physical', emit: 0.5 },
+  /** A heavy shaft that goes through the line: a longer, paler streak of torn air. */
+  heavyArrow: { kind: 'trail', width: 0.55, life: 0.3, school: 'physical', emit: 0.7 },
   /** A steel glint behind a thrown knife or shield. */
   thrown: { kind: 'trail', width: 0.5, life: 0.1, school: 'physical', emit: 0.7 },
   fire: { kind: 'trail', width: 1.1, life: 0.22, school: 'fire', emit: 1 },
@@ -1911,12 +1913,14 @@ export class EffectSystem {
         this.delay(lead + (ps[0]?.delay ?? 0), () => this.chainLightning(pts, { color: tint, duration: 0.4, jumpDelay: 0.03, width: draw.width * size, silent: true }));
         break;
       }
-      case 'puff':
+      case 'puff': {
+        const dir = 'aim' in draw && draw.aim ? new THREE.Vector3(frame.fx, 0, frame.fz) : undefined;
         for (const p of ps) {
           const [x, y, z] = pieceEnd(p);
-          this.delay(lead + p.delay, () => this.fx.burst(draw.emitter, x, fy + Math.max(0.2, y), z, { scale: draw.scale * size * p.grow, color: tint, school }));
+          this.delay(lead + p.delay, () => this.fx.burst(draw.emitter, x, fy + Math.max(0.2, y), z, { scale: draw.scale * size * p.grow, color: tint, school, dir }));
         }
         break;
+      }
     }
     if (crowd >= 1) this.delay(lead, () => this.flash(frame.x, fy + 1.3, frame.z, l.light, 5, 6, 0.22));
   }

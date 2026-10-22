@@ -321,10 +321,10 @@ const VOLLEY = build('volley', [
   },
   {
     id: 'fanFire', name: tr('Fan Fire'),
-    desc: tr('Five arrows in one flat sweep of the bow, fanned wide. Every one can crit, and up close several find the same target.'),
+    desc: tr('Five arrows (+1 per rank) in one flat sweep of the bow, fanned wide. Each one flies through every enemy in its path, every one can crit, and up close several find the same target.'),
     tier: 2, col: 2, icon: 'rn-fan-fire', req: ['scattershot'], t: 'direction',
     mana: [11, 0.7], cd: [5, 0.15, 2], dmg: [1.3, 0.2], type: 'physical',
-    fx: 'projectile.fan', p: { count: 5, spread: 0.2, speed: 34, range: 18 },
+    fx: 'projectile.fan', p: { count: 5, countPerRank: 1, spread: 0.2, arc: 1.4, pierce: 99, speed: 34, range: 18 },
     attackTime: 1.15,
   },
   // --------------------------------------------------------------- tier 3

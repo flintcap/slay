@@ -37,8 +37,8 @@ export type MotifDraw =
   | { k: 'arc'; width: number }
   /** A crescent of light swept round each piece. */
   | { k: 'slash'; size: number }
-  /** A particle burst at each piece. */
-  | { k: 'puff'; emitter: string; scale: number };
+  /** A particle burst at each piece; `aim` throws it along the caster's facing. */
+  | { k: 'puff'; emitter: string; scale: number; aim?: boolean };
 
 /**
  * Every shape a motif can draw, by its plain name. Each name is a different
@@ -129,6 +129,8 @@ export const MOTIF_SHAPES = {
   bubbles: { k: 'puff', emitter: 'puff.bubbles', scale: 1.8 },
   'ash flurries': { k: 'puff', emitter: 'ash', scale: 1.5 },
   motes: { k: 'puff', emitter: 'puff.motes', scale: 1.6 },
+  /** Air torn along behind a heavy shaft (the Ranger's `rn.wake`). */
+  'wind streaks': { k: 'puff', emitter: 'rn.wake', scale: 1, aim: true },
 } as const satisfies Record<string, MotifDraw>;
 
 export type MotifShape = keyof typeof MOTIF_SHAPES;
@@ -478,6 +480,20 @@ export const MOTIF_MOTIONS = {
       const x = f.x + (f.fx * c - f.fz * s) * 1.6;
       const z = f.z + (f.fx * s + f.fz * c) * 1.6;
       out.push(piece(x, 1.0, z, x, 1.0, z, i * 0.035, 0.4, Path.Hold));
+    }
+    return out;
+  },
+  /**
+   * One file straight down the facing at chest height, each piece a beat
+   * after the one before, as if something fast had just gone through them.
+   */
+  lance: (f) => {
+    const out: Piece[] = [];
+    for (let i = 0; i < 9; i++) {
+      const d = 0.3 + f.radius * 2.6 * (i / 8);
+      const x = f.x + f.fx * d;
+      const z = f.z + f.fz * d;
+      out.push(piece(x, 1.15, z, x, 1.15, z, d / 40, 0.3, Path.Hold));
     }
     return out;
   },
