@@ -184,7 +184,8 @@ export class VendorPanel {
     this.stockGrid = new ItemGrid({
       cols: SHOP_COLS,
       rows: SHOP_ROWS,
-      size: 44,
+      // The Equipment bag's cells, so wares and pack read at one size.
+      size: 50,
       source: 'vendor',
       // Dropping something from your pack onto the shelf sells it.
       accepts: (p) => p.kind === 'inventory' && !!p.item,
