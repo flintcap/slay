@@ -56,6 +56,13 @@ const inner = (gl: THREE.WebGPURenderer): Inner => gl as unknown as Inner;
 
 export const HOOKS: readonly ThreeHook[] = [
   {
+    id: 'VelocityNode.projectionMatrix',
+    ours: 'src/core/Renderer.ts',
+    theirs: 'src/nodes/accessors/VelocityNode.js',
+    needs: ['this.projectionMatrix = null;', 'setProjectionMatrix( projectionMatrix )', 'uniform( this.projectionMatrix )'],
+    check: { on: 'use' },
+  },
+  {
     id: 'WGSLNodeBuilder.getUniformFromNode',
     ours: 'src/core/NodeNames.ts',
     theirs: 'src/renderers/webgpu/nodes/WGSLNodeBuilder.js',

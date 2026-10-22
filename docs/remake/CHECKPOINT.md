@@ -722,6 +722,24 @@ Update this file and push it after every finished step.
   build tabs. Short screens (body < 640 px) drop the facts and attribute
   notes and split stats into Offense / Defense tabs. Pictured at 1366x768,
   1920x1080 and 2560x1270 (uilab), rogue and mage.
+- #196 Flicker with the hero standing still (owner). The camera was proven
+  still frame to frame; the picture was not. three's motion node bakes in
+  the projection it holds when a shader is built, and TRAA hands it the
+  clean (unjittered) one only while the scene pass draws, so every shader
+  the gate built between frames took the jittered one: still pixels "moved"
+  by the jitter and every edge shimmered. One clean projection is now kept
+  for good (`Renderer.ts`, hook `VelocityNode.projectionMatrix`). Contact
+  shadows and AO are laid on before the blend instead of after, so their
+  depth marches no longer sparkle at contact edges. Idle town frame to frame:
+  edge pixels changing went from 1-4 per mille to only the moving people.
+  Also: Shadow Step's view no longer trails (the camera stays locked across
+  the ground for any jump), and auto quality's sharpness steps back off
+  (the wait doubles) when a step up fails within 30 s.
+- #199 Choir of Rot could not be finished (owner): its High Voice backed
+  away out of the arena and the boss kneels until it falls. A linked
+  partner is now held inside the boss room, is called beside the boss when
+  it kneels, and hits on a kneeling boss no longer restart its count and
+  warning. check-roomrules passes.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

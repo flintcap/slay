@@ -5154,9 +5154,9 @@ input.slider::-moz-range-thumb {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto auto;
-  column-gap: 6px;
+  column-gap: var(--s2);
   align-items: center;
-  padding: 4px 8px;
+  padding: var(--s1) 8px;
   background: rgb(var(--shade-rgb) / 0.32);
   border-radius: var(--radius-sm);
   box-shadow: var(--hairline);
@@ -5286,7 +5286,7 @@ input.slider::-moz-range-thumb {
 .attr-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s2);
   color: var(--gold-lo);
 }
 .attr-name {
@@ -5361,7 +5361,7 @@ input.slider::-moz-range-thumb {
   flex-direction: column;
 }
 .tabs-char .tab {
-  padding: 6px 14px 5px;
+  padding: var(--s2) 14px 5px;
   font-size: var(--fs-xs);
 }
 .char-statarea {
@@ -5415,7 +5415,7 @@ input.slider::-moz-range-thumb {
   grid-column: 1 / -1;
 }
 .char-statarea .section-hd {
-  margin-bottom: 4px;
+  margin-bottom: var(--s1);
 }
 .char-statarea .statline {
   padding-top: 2px;
@@ -5423,8 +5423,8 @@ input.slider::-moz-range-thumb {
 }
 /* The right-click attack heads Offense in gold. */
 .char-statarea .statline-attack {
-  margin-bottom: 4px;
-  padding: 4px 6px;
+  margin-bottom: var(--s1);
+  padding: var(--s1) var(--s2);
   background: linear-gradient(90deg, rgb(var(--gold-rgb) / 0.14), transparent);
   border-radius: var(--radius-sm);
 }
@@ -5567,7 +5567,7 @@ input.slider::-moz-range-thumb {
   gap: var(--s2);
 }
 .char-resists .resist-cell {
-  padding: 5px 7px 6px;
+  padding: 5px 7px var(--s2);
 }
 .char-resists .resist-name {
   min-width: 0;
@@ -5686,7 +5686,7 @@ input.slider::-moz-range-thumb {
   flex: 1 1 0;
   min-width: 0;
   justify-content: center;
-  padding: 9px 10px 8px;
+  padding: var(--s3) 10px 8px;
 }
 .skill-head .tabs-trees .tab-label {
   min-width: 0;
@@ -5718,8 +5718,8 @@ input.slider::-moz-range-thumb {
 .skill-points {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 11px;
+  gap: var(--s2);
+  padding: var(--s1) 11px;
   font-size: var(--fs-sm);
   white-space: nowrap;
   color: var(--ink-4);
@@ -6216,7 +6216,7 @@ input.slider::-moz-range-thumb {
 }
 .skdetail-rankfill {
   height: 100%;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, #000), var(--accent));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, var(--shade)), var(--accent));
   box-shadow: 0 0 8px var(--accent);
   transition: width var(--dur-3) var(--ease);
 }
@@ -6311,7 +6311,7 @@ input.slider::-moz-range-thumb {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 12px auto;
   align-items: center;
-  gap: 6px;
+  gap: var(--s2);
   padding: 2px var(--s1);
   font-size: var(--fs-xs);
   border-radius: var(--radius-sm);
@@ -6331,7 +6331,7 @@ input.slider::-moz-range-thumb {
   text-transform: uppercase;
   color: var(--gold);
   border-bottom: 1px solid rgb(var(--gold-rgb) / 0.14);
-  padding-bottom: 4px;
+  padding-bottom: var(--s1);
   margin-bottom: 2px;
 }
 .skdetail-trow.is-head .skdetail-tc,
@@ -6400,7 +6400,7 @@ input.slider::-moz-range-thumb {
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--s2);
   padding-top: var(--s3);
   margin-top: var(--s2);
   border-top: 1px solid rgb(var(--gold-rgb) / 0.14);
@@ -6408,7 +6408,7 @@ input.slider::-moz-range-thumb {
 .skdetail-actrow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: var(--s2);
 }
 .skdetail-locked {
   font-size: var(--fs-xs);

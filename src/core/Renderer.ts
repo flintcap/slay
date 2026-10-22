@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {
   Fn, dot, emissive, float, fract, max, mix, mrt, normalize, output, pass, positionLocal, positionView,
-  pow, reference, renderGroup, renderOutput, screenCoordinate, screenSize, sin, smoothstep, texture3D, uniform, uv, vec2, vec3, vec4, velocity,
+  pow, reference, renderGroup, renderOutput, rtt, screenCoordinate, screenSize, sin, smoothstep, texture3D, uniform, uv, vec2, vec3, vec4, velocity,
 } from 'three/tsl';
 import { lut3D } from 'three/addons/tsl/display/Lut3DNode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -529,6 +529,26 @@ class WritesDepth extends THREE.Node {
   }
 }
 
+/**
+ * The camera's projection without the temporal blend's sub-pixel jitter,
+ * copied each frame before the scene draws. three's motion node bakes in
+ * whichever projection it holds when a shader is built: TRAA hands it the
+ * clean one only while the scene pass draws and takes it away after, so every
+ * shader built anywhere else (the shader gate builds them between frames)
+ * took the jittered one. Every still pixel then "moved" by the jitter each
+ * frame, the blend followed it, and every edge in the picture shimmered while
+ * the hero stood still. This one matrix is kept for good and every shader
+ * reads it.
+ */
+const cleanProjection = new THREE.Matrix4();
+const motionNode = velocity as unknown as { projectionMatrix: THREE.Matrix4 | null; setProjectionMatrix(m: THREE.Matrix4 | null): void };
+if (hookSeen('VelocityNode.projectionMatrix', 'projectionMatrix' in motionNode)) {
+  motionNode.projectionMatrix = cleanProjection;
+  motionNode.setProjectionMatrix = (m) => {
+    if (m) cleanProjection.copy(m);
+  };
+}
+
 /** The motion of each pixel, kept only where a solid surface wrote it (see `WritesDepth`). */
 const sceneVelocity = vec4((velocity as unknown as V2).xy, outlined, new WritesDepth() as unknown as THREE.Node<'float'>);
 
@@ -575,6 +595,8 @@ export class Renderer {
   /** The blend in the chain upscales (TAAU), drawn below full size; otherwise it is TRAA. */
   private taaUpscales = false;
   private sssNode: SSSNode | null = null;
+  /** The lit frame with contact shadows and AO laid on, ahead of the temporal blend. */
+  private litPass: ReturnType<typeof rtt> | null = null;
   /**
    * Stands in for the scene's sun or moon in the contact-shadow pass, so the
    * chain is not rebuilt for every new level's light: its matrices are
@@ -748,30 +770,6 @@ export class Renderer {
     m.setBlendMode('emission', blendAsMaterial);
     sp.setMRT(m);
     const mask: THREE.TextureNode = sp.getTextureNode('velocity');
-    if (q.taa) {
-      // The resolve runs on the lit frame, before AO, bloom and the grade:
-      // bloom then glows from a steady picture, and grain stays fresh.
-      // The scene draws at the render scale; the resolve writes full size.
-      // Drawn at full size the plain blend is used: the upscaling one also
-      // softens each new frame and holds thin shapes from older frames
-      // (its "lock"), which smeared the hero's arms and legs as they moved.
-      const k = this.drawScale();
-      sp.setResolutionScale(k);
-      this.taaUpscales = k < 1;
-      const depth = sp.getTextureNode('depth');
-      const motion = sp.getTextureNode('velocity');
-      let t: TAAUNode;
-      if (this.taaUpscales) {
-        const u = taau(color, depth, motion, camera);
-        u.currentFrameWeight = TAAU_FRAME_WEIGHT;
-        t = u;
-      } else {
-        t = traa(color, depth, motion, camera);
-      }
-      this.taaNode = t;
-      color = (t as unknown as { getTextureNode(): THREE.TextureNode }).getTextureNode();
-    }
-
     let aoTex: THREE.TextureNode | null = null;
     if (q.ao) {
       // Normals rebuilt from depth: a normal pass would draw every mesh a
@@ -807,6 +805,54 @@ export class Renderer {
       contactTex = s.getTextureNode();
     }
 
+    // Contact shadows and AO march the depth, which the temporal blend
+    // jitters a fraction of a pixel every frame. Laid over the picture after
+    // the blend, they sparkled along every edge where a thing meets the
+    // floor, even with the hero standing still; laid on before it, the blend
+    // smooths them with everything else.
+    const shade = (c: V3, p: V2): V3 => {
+      if (aoTex) c = c.mul(mix(float(1.0), aoTex.sample(p).r, 0.85));
+      if (contactTex) {
+        // Four taps a half texel apart: soft edges instead of the march's dither.
+        const h = vec2(0.5).div(screenSize).div(POST_SCALE);
+        const t = contactTex;
+        const lit = t.sample(p.add(h)).r.add(t.sample(p.sub(h)).r)
+          .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
+        c = c.mul(mix(float(1.0), lit, uContact));
+      }
+      return c;
+    };
+    if (q.taa) {
+      // The resolve runs on the lit frame, before bloom and the grade:
+      // bloom then glows from a steady picture, and grain stays fresh.
+      // The scene draws at the render scale; the resolve writes full size.
+      // Drawn at full size the plain blend is used: the upscaling one also
+      // softens each new frame and holds thin shapes from older frames
+      // (its "lock"), which smeared the hero's arms and legs as they moved.
+      const k = this.drawScale();
+      sp.setResolutionScale(k);
+      this.taaUpscales = k < 1;
+      const depth = sp.getTextureNode('depth');
+      const motion = sp.getTextureNode('velocity');
+      let beauty: THREE.TextureNode = color;
+      if (aoTex || contactTex) {
+        const scene = color;
+        const lit = rtt(vec4(shade(scene.sample(uv()).rgb, uv()), 1.0), null, null, { resolutionScale: k });
+        this.litPass = lit;
+        beauty = lit;
+      }
+      let t: TAAUNode;
+      if (this.taaUpscales) {
+        const u = taau(beauty, depth, motion, camera);
+        u.currentFrameWeight = TAAU_FRAME_WEIGHT;
+        t = u;
+      } else {
+        t = traa(beauty, depth, motion, camera);
+      }
+      this.taaNode = t;
+      color = (t as unknown as { getTextureNode(): THREE.TextureNode }).getTextureNode();
+    }
+
     let bloomTex: THREE.TextureNode | null = null;
     if (q.bloom) {
       // Glow from what glows (`Emission`), and only where it is bright: a
@@ -820,15 +866,7 @@ export class Renderer {
 
     const src = (p: V2): V3 => {
       let c: V3 = color.sample(p).rgb;
-      if (aoTex) c = c.mul(mix(float(1.0), aoTex.sample(p).r, 0.85));
-      if (contactTex) {
-        // Four taps a half texel apart: soft edges instead of the march's dither.
-        const h = vec2(0.5).div(screenSize).div(POST_SCALE);
-        const t = contactTex;
-        const lit = t.sample(p.add(h)).r.add(t.sample(p.sub(h)).r)
-          .add(t.sample(p.add(vec2(h.x, h.y.negate()))).r).add(t.sample(p.sub(vec2(h.x, h.y.negate()))).r).mul(0.25);
-        c = c.mul(mix(float(1.0), lit, uContact));
-      }
+      if (!q.taa) c = shade(c, p);
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
@@ -857,6 +895,8 @@ export class Renderer {
     this.aoNode?.dispose();
     this.bloomNode?.dispose();
     this.taaNode?.dispose();
+    this.litPass?.dispose();
+    this.litPass = null;
     this.sssNode?.dispose();
     this.sssNode = null;
     this.scenePass = null;
@@ -982,6 +1022,7 @@ export class Renderer {
     if (q.taa) {
       this.gl.setPixelRatio(basePixelRatio(q));
       this.scenePass?.setResolutionScale(k);
+      this.litPass?.setResolutionScale(k);
       // Across full size the chain swaps between its two blends.
       if (this.taaNode && k < 1 !== this.taaUpscales) this.chainDirty = true;
     } else {
@@ -1290,6 +1331,8 @@ export class Renderer {
     const sceneChanged = this.currentScene !== scene;
     this.bind(scene, camera);
     camera.updateMatrixWorld();
+    // The blend clears its jitter after each frame, so this is the clean one.
+    cleanProjection.copy(camera.projectionMatrix);
     viewEye.value.setFromMatrixPosition(camera.matrixWorld);
 
     // Hurt decays fast: a long flash reads as a bug, not a hit.
