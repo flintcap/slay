@@ -63,6 +63,8 @@ export class TownScene extends GameScene {
   private interactables: Interactable[] = [];
   private nearby: Interactable | null = null;
   private keyDir = new THREE.Vector3();
+  /** The left button went down on the town itself, not on a menu. */
+  private leftFromWorld = false;
   /** Hoisted out of the per-frame path; these ran every single frame. */
   private static readonly UP = new THREE.Vector3(0, 1, 0);
   private tmpDir = new THREE.Vector3();
@@ -373,7 +375,11 @@ export class TownScene extends GameScene {
     // Keyboard wins. Issuing a move order while a key is held leaves a stale
     // destination that the player resumes running to after the key is released.
     const steering = this.keyDir.lengthSq() > 0;
-    if (input.mouseLeft && !input.pointerOverUI && !steering) {
+    // Only a press that began on the ground walks: one that began on a menu
+    // and slid off it does not.
+    if (input.mouseLeftPressed) this.leftFromWorld = !input.pointerOverUI;
+    else if (!input.mouseLeft) this.leftFromWorld = false;
+    if (input.mouseLeft && this.leftFromWorld && !input.pointerOverUI && !steering) {
       this.player.moveTo(input.worldPoint.x, input.worldPoint.z);
     }
 

@@ -95,7 +95,10 @@ export class Input {
     // scenes already gate every click on `pointerOverUI`, so listening wider is
     // safe and it is what makes clicking *through* a label possible.
     window.addEventListener('pointerdown', this.onPointerDown);
-    window.addEventListener('pointerup', this.onPointerUp);
+    // Caught on the way down, before any panel sees it. Dropping a carried
+    // item or skill stops the release there, and missed, the button stayed
+    // held and the hero walked after the cursor once it left the panel.
+    window.addEventListener('pointerup', this.onPointerUp, { capture: true });
     // A second button pressed or let go while one is held comes as a move.
     window.addEventListener('pointermove', this.onPointerChord);
     // The back and forward buttons can be game buttons: the page never goes back.
@@ -279,7 +282,7 @@ export class Input {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('pointerdown', this.onPointerDown);
-    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointerup', this.onPointerUp, { capture: true });
     window.removeEventListener('pointermove', this.onPointerChord);
     window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('mousedown', this.onMouseDown);
