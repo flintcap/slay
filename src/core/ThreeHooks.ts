@@ -270,6 +270,13 @@ export const HOOKS: readonly ThreeHook[] = [
     check: { on: 'use' },
   },
   {
+    id: 'Skinning previous bone matrices',
+    ours: 'src/core/SkinMotion.ts',
+    theirs: 'src/nodes/accessors/Skinning.js',
+    needs: ['if ( builder.needsPreviousData() ) {', 'positionPrevious.assign( previousSkinnedPosition );', 'const skinVertex = bindMatrix.mul( position );', 'skeleton.update();'],
+    check: { on: 'use' },
+  },
+  {
     id: 'skinning boneMatrices buffer',
     ours: 'src/art/creatures/Packs.ts',
     theirs: 'src/nodes/accessors/Skinning.js',

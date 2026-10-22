@@ -21,6 +21,7 @@
  * and out of its pack draw on every hit.
  */
 import * as THREE from 'three';
+import { keepLastPose } from '../../core/SkinMotion';
 import { hookSeen } from '../../core/ThreeHooks';
 
 /**
@@ -50,9 +51,12 @@ const PACK_FLOATS = PACK_BONES * 16;
  */
 class PackSkeleton extends THREE.Skeleton {
   reach = 0;
+  /** The pose before the last update, for the motion target (`SkinMotion.ts`). */
+  declare previousBoneMatrices?: Float32Array;
 
   override update(): void {
     const m = this.boneMatrices!;
+    keepLastPose(this, this.reach * 16);
     for (let i = 0; i < this.reach; i++) OFFSET.multiplyMatrices(this.bones[i]!.matrixWorld, this.boneInverses[i]!).toArray(m, i * 16);
   }
 }
@@ -65,8 +69,8 @@ let widest = 0;
  * three.js sends a bone buffer whole for every draw in every pass: 48 KB a
  * pack, twice over with last frame's copy. Its update ranges let a buffer
  * send part of itself, so a pack's buffers send only the bones in reach.
- * Last frame's copy is not ours to name; any buffer of a pack's size that is
- * not a pack's own is that copy, and sends as far as the widest pack.
+ * Last frame's copy is the pack's own too (`SkinMotion.ts`); any other
+ * buffer of a pack's size sends as far as the widest pack.
  */
 {
   type Ranged = { value: unknown; _ranges: { start: number; count: number }[]; _packRange?: { start: number; count: number }[] };
@@ -279,6 +283,9 @@ export class PackDraws {
       Array.from({ length: PACK_BONES }, () => IDENTITY),
     );
     reachOf.set(skeleton.boneMatrices!, skeleton);
+    // Its last pose (`SkinMotion.ts`) sends only the bones in reach too.
+    skeleton.previousBoneMatrices = new Float32Array(skeleton.boneMatrices!);
+    reachOf.set(skeleton.previousBoneMatrices, skeleton);
     const mesh = new THREE.SkinnedMesh(packGeometry(first.geometry, copies, bones), first.material);
     mesh.name = `pack:${first.name}`;
     mesh.castShadow = first.castShadow;

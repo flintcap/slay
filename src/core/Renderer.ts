@@ -19,6 +19,7 @@ import { airLight, makeLighting, setScatterLimit } from './Lighting';
 import { Motes } from './Motes';
 import { hideShadowBodies, watchShadowLight } from './ShadowBodies';
 import { installShadowCache } from './ShadowCache';
+import { installSkinMotion } from './SkinMotion';
 import { hookSeen, selfTest, type HookReport } from './ThreeHooks';
 import { drawnFrames, nodeTexturesOf, viewEye, floorDepth, coverShare, waterRays, worldLite } from './Tsl';
 import type { GameSettings, VideoEffect } from '../types';
@@ -117,8 +118,11 @@ function withoutEffects(q: QualityProfile, off: ReadonlySet<EffectId>): QualityP
  * Two rings of taps, a tight bright edge and a softer one around it; the
  * mask is filtered, so the edge comes out smooth rather than in steps.
  */
-function outlineOf(mask: THREE.TextureNode): (p: V2) => V3 {
-  const at = (p: V2): F => mask.sample(p).z;
+function outlineOf(mask: THREE.TextureNode, smoothed = false): (p: V2) => V3 {
+  // Under temporal smoothing the mask rides through the resolve in the
+  // picture's alpha (`buildChain`): read raw, it moved with each frame's
+  // sub-pixel jitter and the outline round every body shimmered.
+  const at = (p: V2): F => (smoothed ? mask.sample(p).a : mask.sample(p).z);
   return (p: V2): V3 => {
     const px = vec2(1.0).div(screenSize).mul(max(screenSize.y.div(1080.0), 1.0));
     let near: F = float(0.0);
@@ -712,6 +716,7 @@ export class Renderer {
     this.gate = new ShaderGate(this.gl);
     // The sun's shadow of still things is kept between updates (`ShadowCache`).
     installShadowCache(this.gate);
+    installSkinMotion();
     this.buildEnvironment();
     // A thrown-away draw record lets go of its mesh and scene (`cutLoose`).
     cutLooseOnDispose(this.gl);
@@ -834,13 +839,13 @@ export class Renderer {
       this.taaUpscales = k < 1;
       const depth = sp.getTextureNode('depth');
       const motion = sp.getTextureNode('velocity');
-      let beauty: THREE.TextureNode = color;
-      if (aoTex || contactTex) {
-        const scene = color;
-        const lit = rtt(vec4(shade(scene.sample(uv()).rgb, uv()), 1.0), null, null, { resolutionScale: k });
-        this.litPass = lit;
-        beauty = lit;
-      }
+      // The outline mask goes in as alpha, so it is smoothed with the
+      // picture and the outline is drawn from the steady one.
+      const scene = color;
+      const rgb = aoTex || contactTex ? shade(scene.sample(uv()).rgb, uv()) : scene.sample(uv()).rgb;
+      const lit = rtt(vec4(rgb, mask.sample(uv()).z), null, null, { resolutionScale: k });
+      this.litPass = lit;
+      const beauty: THREE.TextureNode = lit;
       let t: TAAUNode;
       if (this.taaUpscales) {
         const u = taau(beauty, depth, motion, camera);
@@ -870,7 +875,7 @@ export class Renderer {
       if (bloomTex) c = c.add(bloomTex.sample(p).rgb);
       return c;
     };
-    const graded = gradeNode(src, outlineOf(mask));
+    const graded = gradeNode(src, q.taa ? outlineOf(color, true) : outlineOf(mask));
     this.applyGrade();
 
     // AgX rolls bright light off gently and keeps a hue as it brightens (a
