@@ -579,6 +579,7 @@ export type PillarStyle = 'plain' | 'fluted' | 'carved' | 'broken' | 'twisted' |
  * A column with a plinth, shaft and capital. The profile is built first, then
  * the style modulates it: flutes cut vertical channels, carved adds banding,
  * broken truncates and rubbles the top, twisted spirals the whole shaft.
+ * The foot of the plinth is at y = 0.
  */
 export function pillar(
   radius: number,

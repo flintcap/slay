@@ -155,7 +155,8 @@ export class TitleScene extends GameScene {
     ] as Array<[number, number, boolean]>) {
       const h = broken ? rng.range(3.2, 4.6) : rng.range(7.5, 8.6);
       const col = new THREE.Mesh(pillar(0.78, h, 12, rng.fork(`col${x}`), broken ? 'broken' : 'fluted'), stoneMat);
-      col.position.set(x, h * 0.5, z);
+      // The column's foot is its origin: stand it on the floor.
+      col.position.set(x, 0, z);
       col.castShadow = true;
       col.receiveShadow = true;
       scene.add(col);
