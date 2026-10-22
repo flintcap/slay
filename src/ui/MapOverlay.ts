@@ -78,6 +78,7 @@ export class MapOverlay {
     this.root.setAttribute('aria-hidden', 'true');
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d');
+    runtime.onView = () => this.tick(0);
     this.root.appendChild(this.canvas);
   }
 
@@ -96,7 +97,10 @@ export class MapOverlay {
     this.chartSeed = -1;
   }
 
-  /** Driven by the UI tick; draws only while it is up and there is a floor. */
+  /**
+   * Driven by the UI tick and by the dungeon as it places the camera
+   * (`runtime.onView`); draws only while it is up and there is a floor.
+   */
   tick(dt: number): void {
     const level = runtime.level;
     const show = this.isOn && !runtime.inTown && !!level && !this.hiddenBy();

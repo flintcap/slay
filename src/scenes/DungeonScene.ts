@@ -1839,17 +1839,6 @@ export class DungeonScene extends GameScene {
       );
     }
 
-    // Where the hero stands on screen and how the camera turns, so the
-    // see-through map lies over the floor it charts (ui/MapOverlay.ts).
-    const view = hudRuntime.view;
-    const onScreen = _heroScreen.copy(this.player.position).project(this.camera);
-    view.x = (onScreen.x * 0.5 + 0.5) * window.innerWidth;
-    view.y = (0.5 - onScreen.y * 0.5) * window.innerHeight;
-    view.tx = this.player.position.x / TILE_SIZE + this.level.width / 2;
-    view.ty = this.player.position.z / TILE_SIZE + this.level.height / 2;
-    view.yaw = this.rig.yaw;
-    view.squash = Math.sin(this.rig.pitch);
-
     this.portalLook?.update(dt, this.camera);
     if (this.homeDoor) {
       this.homeDoor.look.update(dt, this.camera);
@@ -1877,6 +1866,20 @@ export class DungeonScene extends GameScene {
     this.passiveTick(dt, ctx);
     this.rig.follow(this.player.root);
     this.rig.update(rawDt, elapsed);
+    // Where the hero stands on screen and how the camera turns, so the
+    // see-through map lies over the floor it charts (ui/MapOverlay.ts).
+    // Read after the rig has placed the camera for this frame: read before,
+    // a locked camera trails the hero by a frame and the map shook.
+    this.camera.updateMatrixWorld();
+    const view = hudRuntime.view;
+    const onScreen = _heroScreen.copy(this.player.position).project(this.camera);
+    view.x = (onScreen.x * 0.5 + 0.5) * window.innerWidth;
+    view.y = (0.5 - onScreen.y * 0.5) * window.innerHeight;
+    view.tx = this.player.position.x / TILE_SIZE + this.level.width / 2;
+    view.ty = this.player.position.z / TILE_SIZE + this.level.height / 2;
+    view.yaw = this.rig.yaw;
+    view.squash = Math.sin(this.rig.pitch);
+    hudRuntime.onView?.();
     // Real time, so numbers keep moving through slow motion.
     if (this.player) this.combatText?.update(rawDt, this.camera, this.player.position);
     this.skills.feel.update(

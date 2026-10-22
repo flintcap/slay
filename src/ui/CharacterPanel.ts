@@ -298,6 +298,8 @@ export class CharacterPanel {
   private showView(view: StatView): void {
     this.view = view;
     this.statArea.dataset.view = view;
+    // Each page is its own height.
+    this.panel.fitBody();
   }
 
   /**
@@ -308,16 +310,23 @@ export class CharacterPanel {
   private fitStats(): void {
     // A short screen first drops the run facts and the attribute notes (both
     // still in tooltips and the HUD), then splits the stats over tabs.
+    // Measured at full size, the stats free to shrink to the room left.
+    this.panel.body.style.setProperty('--fit', '1');
+    this.statArea.style.minHeight = '0';
     const body = this.panel.body.clientHeight;
     if (body > 0) this.wrap.classList.toggle('is-compact', body < COMPACT_BELOW);
     const room = this.statArea.clientHeight;
-    if (room <= 0) return;
-    const was = this.split;
-    const need = Math.max(this.colOffense.scrollHeight, this.colDefense.scrollHeight + this.colUtility.scrollHeight + 10);
-    // Measured side by side; once split, each column alone must still fit to come back.
-    if (!this.split && need > room + 1) this.split = true;
-    else if (this.split && need <= room - 8) this.split = false;
-    if (this.split !== was) this.setTabs();
+    this.statArea.style.minHeight = '';
+    if (room > 0) {
+      const was = this.split;
+      const need = Math.max(this.colOffense.scrollHeight, this.colDefense.scrollHeight + this.colUtility.scrollHeight + 10);
+      // Measured side by side; once split, each column alone must still fit to come back.
+      if (!this.split && need > room + 1) this.split = true;
+      else if (this.split && need <= room - 8) this.split = false;
+      if (this.split !== was) this.setTabs();
+    }
+    // Still too short even split: the whole sheet is drawn smaller to fit.
+    this.panel.fitBody();
   }
 
   // -- identity ------------------------------------------------------------

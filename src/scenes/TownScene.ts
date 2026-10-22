@@ -18,7 +18,7 @@ import { folkMeshed, heroMeshed } from '../art/npc/Prewarm';
 import { townSteps, type TownBuild } from '../world/Town';
 import { setActiveDifficulty } from '../data/difficulties';
 import { settleLevels } from '../sim/Character';
-import { dialogue, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
+import { dialogue, npcForInteract, openDialogueFor, stationPrompt, storyTalkSpots } from '../ui/DialoguePanel';
 import { npcForStation } from '../data/story/npcs';
 import { STATIONS, mountTownStations } from './TownStations';
 import { QuestMarkerLayer } from '../fx/QuestMarkers';
@@ -440,6 +440,17 @@ export class TownScene extends GameScene {
     this.fx.update(dt, elapsed);
     this.decals.update(dt);
     audio.setListener(this.player.position.x, this.player.position.z, this.player.root.rotation.y);
+  }
+
+  /**
+   * The quest mark of whoever keeps an interaction spot, for the minimap
+   * (HUD `drawCampChart`): the same one drawn over their head.
+   */
+  spotMarker(id: string): QuestMarker {
+    const key = id.startsWith('station:') ? id.slice('station:'.length) : id;
+    if (key === BOARD) return this.markerState[BOARD] ?? null;
+    const npc = npcForInteract(key);
+    return npc ? this.markerState[npc.id] ?? null : null;
   }
 
   /**

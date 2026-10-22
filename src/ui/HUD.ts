@@ -2051,6 +2051,7 @@ export class HUD {
     const town = scene?.town as { colliders?: Array<{ x: number; z: number; w: number; d: number; r?: number }> } | undefined;
     const spots = scene?.interactables as Array<{ id: string; pos: { x: number; z: number } }> | undefined;
     const pl = scene?.player as { position?: { x: number; z: number } } | undefined;
+    const marker = scene?.spotMarker as ((id: string) => 'offer' | 'turnIn' | null) | undefined;
     if (!town?.colliders || !Array.isArray(spots) || !pl?.position) return false;
     let box = this.campBox.get(town);
     if (!box) {
@@ -2082,7 +2083,9 @@ export class HUD {
       if (x > S || y > S || x + hw * 2 * k < 0 || y + hd * 2 * k < 0) continue;
       ctx.fillRect(x, y, Math.max(1, hw * 2 * k), Math.max(1, hd * 2 * k));
     }
-    // Stations and the portal.
+    // Stations and the portal. Someone with work wears the colour of the
+    // mark over their head, a size up: gold for work to take, green for work
+    // to hand in.
     for (const s of spots) {
       const x = sx(s.pos.x);
       const y = sy(s.pos.z);
@@ -2094,13 +2097,20 @@ export class HUD {
         ctx.stroke();
         continue;
       }
-      ctx.moveTo(x, y - 3.4);
-      ctx.lineTo(x + 3.4, y);
-      ctx.lineTo(x, y + 3.4);
-      ctx.lineTo(x - 3.4, y);
+      const work = marker?.call(scene, s.id) ?? null;
+      const r = work ? 4.6 : 3.4;
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r, y);
+      ctx.lineTo(x, y + r);
+      ctx.lineTo(x - r, y);
       ctx.closePath();
-      ctx.fillStyle = '#f0d79a';
+      ctx.fillStyle = work === 'turnIn' ? '#5cff6e' : work === 'offer' ? '#ffd23a' : 'rgba(214,198,160,0.8)';
       ctx.fill();
+      if (work) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
     }
     // You.
     ctx.save();

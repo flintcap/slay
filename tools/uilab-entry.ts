@@ -263,10 +263,13 @@ const scenarios2: Record<string, () => void> = {
   },
   /** The blacksmith with a rare weapon on the anvil. */
   smith() {
+    // A town service: it opens only off the dungeon.
+    engine.currentSceneId = 'town';
     events.emit('ui:open', { panel: 'blacksmith' });
     setTimeout(() => {
-      const slots = [...document.querySelectorAll<HTMLElement>('.itemgrid .islot:not(.is-empty)')];
-      const pick = slots.find((x) => x.dataset.rarity === 'rare') ?? slots[3];
+      // Something worn: the smith's own row, so it does not hang on the bag's layout.
+      const slots = [...document.querySelectorAll<HTMLElement>('.smith-worn .islot[data-rarity]')];
+      const pick = slots.find((x) => x.dataset.rarity === 'rare') ?? slots[0];
       pick?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     }, 300);
   },

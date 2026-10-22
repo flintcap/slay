@@ -77,6 +77,8 @@ export class BlacksmithPanel {
   private worn = new Map<EquipSlot, ItemSlot>();
   private preview: HTMLDivElement;
   private actions: HTMLDivElement;
+  /** The services that read off the preview, under it: upgrade, socket, the wallet. */
+  private beside: HTMLDivElement;
   private selected: Item | null = null;
   /** Indexes of the lines bound through the next reroll, for the item on the anvil. */
   private locks = new Set<number>();
@@ -131,9 +133,15 @@ export class BlacksmithPanel {
     registerDrop(this.preview, (p) => !!p.item, (p) => this.pick(p));
 
     // --- services ---------------------------------------------------------
+    // Two even columns, so the panel fits a screen's height: the item with
+    // what its preview shows (upgrade, sockets, materials) on the left, the
+    // rerolls and the salvage on the right.
+    this.beside = div('smith-actions');
+    const itemCol = div('smith-col');
+    add(itemCol, this.preview, this.beside);
     this.actions = div('smith-actions');
 
-    add(wrap, left, this.preview, this.actions);
+    add(wrap, left, itemCol, this.actions);
     this.panel.body.appendChild(wrap);
 
     events.on('ui:refresh', () => {
@@ -432,6 +440,7 @@ export class BlacksmithPanel {
 
   private renderActions(): void {
     clear(this.actions);
+    clear(this.beside);
     const item = this.selected;
     const c = save.account.current;
     if (!item || !c) {
@@ -441,7 +450,7 @@ export class BlacksmithPanel {
 
     const cost = attempt(() => upgradeCost(item), { gold: 0, materials: {} as Record<string, number> });
 
-    this.actions.appendChild(
+    this.beside.appendChild(
       this.card('upgrade', tr('Upgrade'), 'hammer', tr('Raise this item to +{0}. Scales its base values and every rolled mod.', item.upgrade + 1), cost, () => {
         const r = attempt(() => upgradeItem(item, new Random(randomSeed())), { ok: false, reason: tr('Failed') });
         return r.ok ? null : r.reason ?? tr('The smith shakes his head.');
@@ -531,7 +540,7 @@ export class BlacksmithPanel {
       this.actions.appendChild(hone);
     }
 
-    this.actions.appendChild(
+    this.beside.appendChild(
       this.card(
         'socket',
         tr('Add Socket'),
@@ -580,7 +589,7 @@ export class BlacksmithPanel {
     if (!mats.length) chips.appendChild(span('craftcard-desc', tr('None yet — salvage something.')));
     for (const [id, n] of mats.slice(0, 12)) chips.appendChild(this.matChip(id, n, 0));
     wallet.appendChild(chips);
-    this.actions.appendChild(wallet);
+    this.beside.appendChild(wallet);
   }
 
   private card(

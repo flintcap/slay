@@ -1289,6 +1289,10 @@ input.slider::-moz-range-thumb {
   padding: var(--s4);
   align-content: safe center;
 }
+/* Drawn smaller to fit a short window (Widgets `Panel.fitBody`). */
+.panel-side .panel-body > * {
+  zoom: var(--fit, 1);
+}
 /* A side panel of a few lines (a conversation, the contract) sets them larger. */
 .panel-side .panel-text .empty-state-text {
   font-size: var(--fs-lg);
@@ -5364,9 +5368,12 @@ input.slider::-moz-range-thumb {
   padding: var(--s2) 14px 5px;
   font-size: var(--fs-xs);
 }
+/* Never shorter than the page it shows: past the split over tabs, a short
+   window draws the sheet smaller (Widgets `Panel.fitBody`) rather than cut
+   the stats off. */
 .char-statarea {
   flex: 1;
-  min-height: 0;
+  min-height: min-content;
   padding: var(--s3) var(--s3) 0;
   background: linear-gradient(180deg, rgb(var(--shade-rgb) / 0.32), rgb(var(--shade-rgb) / 0.12));
   border-radius: 0 0 var(--radius) var(--radius);
@@ -5703,6 +5710,7 @@ input.slider::-moz-range-thumb {
 }
 .skill-boardcol .skill-boardwrap {
   flex: 1;
+  min-height: calc(6 * 64px);
 }
 /* Points to spend and the respec, in one strip under the board. */
 .skill-boardfoot {
@@ -6612,9 +6620,15 @@ input.slider::-moz-range-thumb {
 /* Worn gear across the top, the anvil and the services under it. */
 .smith-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 236px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s4);
   align-items: start;
+}
+.smith-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  min-width: 0;
 }
 .smith-wrap > .trade-col {
   grid-column: 1 / -1;
@@ -6630,6 +6644,10 @@ input.slider::-moz-range-thumb {
     rgb(var(--shade-rgb) / 0.3);
   border-radius: var(--radius);
   box-shadow: var(--hairline);
+}
+/* Room for the empty anvil's note; an item takes only what it shows. */
+.smith-preview:has(.smith-item) {
+  min-height: 0;
 }
 .smith-item {
   display: flex;
@@ -7523,9 +7541,12 @@ input.slider::-moz-range-thumb {
   flex-direction: column;
   overflow: hidden;
 }
+/* Never shorter than the board's six smallest tiers or the picked skill's
+   card: on a short window the panel draws them smaller (Widgets
+   `Panel.fitBody`) rather than cutting them off. */
 .panel-skills .skill-body {
   flex: 1;
-  min-height: 0;
+  min-height: min-content;
 }
 
 /* --------------------------------------------------------------------------

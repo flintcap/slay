@@ -712,6 +712,12 @@ export const runtime = {
    * dungeon every frame.
    */
   view: { x: 0, y: 0, tx: 0, ty: 0, yaw: 0, squash: 1 },
+  /**
+   * Called by the dungeon each time it writes `view`, so the see-through map
+   * is drawn from the frame being drawn: drawn only on the UI's own tick,
+   * a frame apart from the picture, it shook against the floor under it.
+   */
+  onView: null as (() => void) | null,
   depth: 0,
   levelIndex: 0,
   levelsTotal: 0,
@@ -1067,13 +1073,16 @@ const SIDE_TOP = 8;
 const SIDE_GAP = 16;
 /** The most of the window's width one side panel may take, so the hero keeps the middle. */
 const SIDE_MAX_COVER = 0.4;
+/** The smallest a side panel's contents are drawn to fit; past it, it scrolls. */
+const SIDE_FIT_MIN = 0.6;
 
 /**
  * Sizes the side panels to the window. Each runs from the top to a gap above
  * the orbs (`--hud-reach`, HUD `measureReach`); on a window taller than its
  * layout the whole panel is drawn bigger (`--side-zoom`) so it fills that
- * height rather than leaving its lower part empty. Never smaller than drawn:
- * a short window scrolls the panel instead, so the text stays readable.
+ * height rather than leaving its lower part empty. On a short window the
+ * panel keeps its frame and its contents are drawn smaller to fit
+ * (`Panel.fitBody`).
  */
 export function fitSidePanels(): void {
   const root = document.documentElement;
@@ -1214,6 +1223,7 @@ export class Panel {
 
     add(this.frame, this.header, this.body, this.footer, frameOrn);
     this.root.appendChild(this.frame);
+    if (this.side) this.watchFit();
 
     const movable = opts.draggable !== false && !opts.fullscreen && !this.side;
     if (movable) this.enableDrag();
@@ -1380,6 +1390,49 @@ export class Panel {
     return this.openState;
   }
 
+  /**
+   * A side panel's contents drawn smaller (`--fit`) until they fit its
+   * height, so a short window shows all of it without scrolling. Refit when
+   * the panel or anything in it changes size, or its contents are redrawn.
+   */
+  private watchFit(): void {
+    let queued = false;
+    const refit = (): void => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        this.fitBody();
+      });
+    };
+    const sizes = new ResizeObserver(refit);
+    const watch = (): void => {
+      sizes.disconnect();
+      sizes.observe(this.body);
+      for (const c of this.body.children) sizes.observe(c);
+    };
+    watch();
+    new MutationObserver(() => {
+      watch();
+      refit();
+    }).observe(this.body, { childList: true, subtree: true });
+  }
+
+  /** Fits a side panel's contents to its height now (`--fit`). */
+  fitBody(): void {
+    if (!this.openState || !this.side) return;
+    const b = this.body;
+    let fit = 1;
+    b.style.setProperty('--fit', '1');
+    // Each pass measures the contents at the size they were last drawn: text
+    // drawn smaller wraps less, so one shrink overshoots a little.
+    for (let pass = 0; pass < 3 && b.scrollHeight > b.clientHeight + 1 && fit > SIDE_FIT_MIN; pass++) {
+      fit = Math.max(SIDE_FIT_MIN, fit * (b.clientHeight / b.scrollHeight) - 0.005);
+      b.style.setProperty('--fit', fit.toFixed(3));
+    }
+    b.classList.toggle('is-fit', fit < 1);
+  }
+
   open(): void {
     if (this.openState) return;
     // One panel to a side: the one already there steps aside.
@@ -1390,7 +1443,10 @@ export class Panel {
     this.raise();
     if (!this.opts.quiet) uiSfx('ui.open', 0.8);
     this.opts.onOpen?.();
-    if (this.side) fitSidePanels();
+    if (this.side) {
+      fitSidePanels();
+      this.fitBody();
+    }
   }
 
   close(): void {

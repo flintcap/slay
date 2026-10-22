@@ -247,7 +247,8 @@ export function dialogue(): DialoguePanel {
 // Town hooks
 // ---------------------------------------------------------------------------
 
-function npcForInteract(id: string): NpcDef | undefined {
+/** Who keeps an interaction spot (`talk:<npc>` or a station id), if anyone. */
+export function npcForInteract(id: string): NpcDef | undefined {
   if (id.startsWith('talk:')) return NPCS[id.slice(5) as NpcId];
   return npcForStation(id);
 }
