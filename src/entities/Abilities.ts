@@ -261,6 +261,12 @@ export interface AbilityDef {
   aboveLife?: number;
   /** Only offered when at least this many allies are nearby. */
   needsAllies?: number;
+  /**
+   * Seconds after this blow lands that a second marked blow it starts then
+   * lands too (a meteor's fall, a burrower's emerging). Kept in the monsters'
+   * landing schedule with the first, so no one else's lands on top of it.
+   */
+  followUp?: number;
   /** Caster cannot move during windup. */
   rooted?: boolean;
   /** Taking damage during windup cancels it. */
@@ -2372,6 +2378,7 @@ def({
   rooted: true,
   priority: 0.85,
   telegraph: { shape: 'circle', size: 3.8, color: 0xff5a20 },
+  followUp: 0.75,
   onStart: (_s, ctx, inst) => {
     inst.targetX = ctx.playerPos.x;
     inst.targetZ = ctx.playerPos.z;
@@ -3112,6 +3119,7 @@ def({
   priority: 0.85,
   rooted: true,
   telegraph: { shape: 'circle', size: 3, color: 0xc0a070 },
+  followUp: 0.55,
   onStart: (self, ctx, inst) => {
     inst.targetX = ctx.playerPos.x;
     inst.targetZ = ctx.playerPos.z;

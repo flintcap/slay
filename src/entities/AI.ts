@@ -756,7 +756,10 @@ export class AIBrain {
       const speed = Math.max(0.35, self.stats.attackSpeed);
       const lands = ctx.elapsed + chosen.windup / speed;
       if (self.beginAbility(chosen, ctx)) {
-        if (chosen.telegraph && chosen.windup >= BIG_WINDUP) landings.push({ at: lands, by: self.id });
+        if (chosen.telegraph && chosen.windup >= BIG_WINDUP) {
+          landings.push({ at: lands, by: self.id });
+          if (chosen.followUp) landings.push({ at: lands + chosen.followUp, by: self.id });
+        }
         // A special move earns a few plain blows before the next one.
         // Bosses and floor wardens keep their own rhythm.
         if (!isBasic(chosen) && !self.isBoss && !self.miniBoss) {
@@ -1238,8 +1241,10 @@ export class AIBrain {
       // A flanker saves its leap for when it is round the side.
       if (this.archetype === 'flanker' && a.kind === 'movement' && this.commit <= 0 && (ctx.heroLifeFrac ?? 1) >= PRESS_AT) continue;
       // Two big blows landing in the same instant cannot be read. Wait a beat.
-      if (a.telegraph && a.windup >= BIG_WINDUP && telegraphClash(ctx.elapsed + a.windup / speed, self.id, ctx.elapsed)) {
-        continue;
+      if (a.telegraph && a.windup >= BIG_WINDUP) {
+        const at = ctx.elapsed + a.windup / speed;
+        if (telegraphClash(at, self.id, ctx.elapsed)) continue;
+        if (a.followUp && telegraphClash(at + a.followUp, self.id, ctx.elapsed)) continue;
       }
       // Healing nobody is a wasted turn: mend only when someone is hurt.
       let healNeed = 1;

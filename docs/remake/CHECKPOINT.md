@@ -740,6 +740,45 @@ Update this file and push it after every finished step.
   partner is now held inside the boss room, is called beside the boss when
   it kneels, and hits on a kneeling boss no longer restart its count and
   warning. check-roomrules passes.
+- #200 Characters, townsfolk and monsters still flickered, worst in town
+  (owner). three.js keeps a skinned body's last pose in a bone buffer made
+  when its shader is built, so every body sharing a look (a pack, the
+  townsfolk, the hero and the paperdoll) read the last pose of whichever
+  body built it: a body standing still read as moving up to 771 px, temporal
+  smoothing threw its history away every frame and it shimmered. Each
+  skeleton now keeps its own last pose (`SkinMotion.ts`, hook `Skinning
+  previous bone matrices`; packs keep theirs in `Packs.ts`). Paused town:
+  greatest motion 771 px to 0.1 px; hero frame-to-frame change 1.9 to 0.35
+  (0.14 with no jitter at all). The outline mask now rides the smoothed
+  picture's alpha, so it holds still too.
+- #203 Stuck in a wall after a hit (owner). A shove moved the hero with no
+  wall check; it now slides through the walk check over 0.12 s, at most
+  0.45 m, and a hero found inside a wall is set on the nearest open spot.
+  Hurt flinch 1 to 0.55, mid-swing stagger 1.4 to 0.8, and it plays only
+  for hard hits. Packs never shove (owner); bosses still do. The pack power
+  that shoved, now "Heavy-Handed", hits 30% harder instead.
+- #201 See-through map shook with the camera locked (owner). It read the
+  hero's place on screen before the camera moved for the frame, and drew on
+  the UI's own tick; it is now read after the camera is placed and drawn
+  right then (`runtime.onView`).
+- #197 / #202 Side menus fit short screens (owner). A side panel's contents
+  are drawn smaller until they fit its height (`Panel.fitBody`, down to
+  60%, refit on any size or content change). Skills keeps its six smallest
+  tiers and Character its current stats page as floors, so they shrink
+  rather than cut off; Character still splits into tabs first. Blacksmith
+  is two even columns: the item with upgrade, socket and materials; the
+  rerolls and salvage beside it. Pictured at 1024x600, 1366x768 and
+  1920x1080 (uilab); at 1024x600 the Blacksmith still scrolls a little at
+  the 60% floor.
+- #204 Town minimap marks show quest status (owner): whoever has work to
+  give is a larger gold diamond, work to hand in a larger green one, the
+  same colours as the marks over their heads (`TownScene.spotMarker`).
+- #198 Big monster blows never land together: a meteor's fall and a
+  burrower's emerging start a second marked blow when the first lands, and
+  the landing schedule never knew of it. Abilities now name it
+  (`followUp`); both landings are checked and kept. check-tactics passes and
+  is off the known-failures list.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
