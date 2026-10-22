@@ -711,6 +711,17 @@ Update this file and push it after every finished step.
   and the whole picture shook with them). Frame steps are timed by the
   frame's vsync stamp, not when the callback ran, so the locked world no
   longer wobbles with callback jitter. Drag-off-a-menu test: 3 of 3 pass.
+- #195 Skills and Character menus remade to fit with no scroll
+  (owner). Skills: board and detail card side by side, tree tabs on top,
+  points and respec under the board; card holds art, rank bar and pace,
+  chips, now-vs-next table, synergies (total on the heading), combo,
+  requires/unlocks, buttons pinned at the foot. Prerequisite lines run
+  square through the gaps between tiers and down the column lanes, so none
+  cross a name. Character: hero band with level medallion, XP bar and four
+  run facts; four attribute cards; six-across resist strip; Stats / Your
+  build tabs. Short screens (body < 640 px) drop the facts and attribute
+  notes and split stats into Offense / Defense tabs. Pictured at 1366x768,
+  1920x1080 and 2560x1270 (uilab), rogue and mage.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

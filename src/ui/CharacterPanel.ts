@@ -1,10 +1,12 @@
 /**
  * SLAY — the character sheet.
  *
- * Attribute allocation on the left, the full derived stat block on the right,
- * grouped Offense / Defense / Utility with an explanation on hover for every
- * line, because "where does this number come from" is the question players
- * actually ask.
+ * One page that fits the panel without scrolling: the hero's name, level and
+ * record on top, the four attributes side by side, the six resistances in one
+ * strip, then the derived stats in two columns (Offense; Defense and Utility)
+ * with "Your build" on a second tab. Every line explains itself on hover,
+ * because "where does this number come from" is the question players actually
+ * ask. On a short screen the stats split over three tabs instead (`fitStats`).
  */
 
 import type { Character, Stats, StatKey, DamageType } from '../types';
@@ -18,6 +20,7 @@ import { depthCurve } from '../sim/Difficulty';
 import {
   scheduleRefresh,
   Panel,
+  Tabs,
   add,
   clear,
   div,
@@ -45,6 +48,9 @@ import { formHands } from '../data/shifterPower';
 import { castsOnly } from '../data/itemBases';
 
 type AttrKey = 'strength' | 'dexterity' | 'vitality' | 'energy';
+
+/** Panel body height (own px) under which the compact layout is used. */
+const COMPACT_BELOW = 640;
 
 const ATTRS: AttrKey[] = ['strength', 'dexterity', 'vitality', 'energy'];
 
@@ -165,16 +171,25 @@ const RESIST_LABEL: Record<DamageType, string> = {
   arcane: tr('Arcane'),
 };
 
+type StatView = 'stats' | 'offense' | 'defense' | 'build';
+
 export class CharacterPanel {
   readonly panel: Panel;
   private identity: HTMLDivElement;
+  private attrHead: HTMLDivElement;
   private attrBox: HTMLDivElement;
   private colOffense: HTMLDivElement;
   private colDefense: HTMLDivElement;
   private colUtility: HTMLDivElement;
   private resistBox: HTMLDivElement;
   private buildBox: HTMLDivElement;
-  private pointsBanner: HTMLDivElement;
+  private statTabs: Tabs;
+  private statArea: HTMLDivElement;
+  private wrap: HTMLDivElement;
+  private statCols: HTMLDivElement;
+  /** Offense beside Defense and Utility when they fit; three tabs when they do not. */
+  private split = false;
+  private view: StatView = 'stats';
 
   constructor() {
     this.panel = new Panel({
@@ -187,24 +202,33 @@ export class CharacterPanel {
     this.panel.frame.classList.add('panel-character');
 
     const wrap = div('char-wrap');
-    const left = div('char-left');
+    this.wrap = wrap;
     this.identity = div('char-identity');
-    this.pointsBanner = div('char-points');
-    this.attrBox = div('char-attrs');
-    add(left, this.identity, this.pointsBanner, this.attrBox);
 
-    const right = div('char-right');
+    const attrs = div('char-attrsec');
+    this.attrHead = div('char-attrhead');
+    this.attrBox = div('char-attrs');
+    add(attrs, this.attrHead, this.attrBox);
+
+    this.resistBox = div('char-resists');
+
     this.colOffense = div('char-col');
     this.colDefense = div('char-col');
     this.colUtility = div('char-col');
-    this.resistBox = div('char-resists');
     this.buildBox = div('char-build');
-    const cols = div('char-cols');
-    add(cols, this.colOffense, this.colDefense, this.colUtility);
-    add(right, cols, this.resistBox, this.buildBox);
+    this.statCols = div('char-cols');
+    const side = div('char-col-stack');
+    add(side, this.colDefense, this.colUtility);
+    add(this.statCols, this.colOffense, side);
+    this.statArea = div('char-statarea');
+    add(this.statArea, this.statCols, this.buildBox);
+    this.statTabs = new Tabs([], 'stats', (id) => this.showView(id as StatView), 'tabs-char');
+    const stats = div('char-stats');
+    add(stats, this.statTabs.root, this.statArea);
 
-    add(wrap, left, right);
+    add(wrap, this.identity, attrs, this.resistBox, stats);
     this.panel.body.appendChild(wrap);
+    this.setTabs();
 
     events.on('ui:refresh', () => {
       if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
@@ -212,11 +236,16 @@ export class CharacterPanel {
     events.on('player:levelUp', () => {
       if (this.panel.isOpen) scheduleRefresh(this.boundRefresh);
     });
+    window.addEventListener('resize', () => {
+      if (this.panel.isOpen) this.fitStats();
+    });
   }
 
   open(): void {
     this.refresh();
     this.panel.open();
+    // Laid out now: see whether the stats fit side by side.
+    this.fitStats();
   }
 
   close(): void {
@@ -243,6 +272,52 @@ export class CharacterPanel {
     this.renderGroup(this.colUtility, tr('Utility'), 'sparkle', UTILITY, st);
     this.renderResists(st);
     this.renderBuild(c, st);
+    if (this.panel.isOpen) this.fitStats();
+  }
+
+  // -- stat tabs -------------------------------------------------------------
+
+  private setTabs(): void {
+    const defs = this.split
+      ? [
+          { id: 'offense', label: tr('Offense'), icon: 'sword' },
+          { id: 'defense', label: tr('Defense'), icon: 'shield' },
+          { id: 'build', label: tr('Your build'), icon: 'sparkle' },
+        ]
+      : [
+          { id: 'stats', label: tr('Stats'), icon: 'strength' },
+          { id: 'build', label: tr('Your build'), icon: 'sparkle' },
+        ];
+    // Keep the reader on the same page across a switch.
+    if (this.split && this.view === 'stats') this.view = 'offense';
+    if (!this.split && (this.view === 'offense' || this.view === 'defense')) this.view = 'stats';
+    this.statTabs.setTabs(defs, this.view);
+    this.showView(this.view);
+  }
+
+  private showView(view: StatView): void {
+    this.view = view;
+    this.statArea.dataset.view = view;
+  }
+
+  /**
+   * Offense beside Defense and Utility while both columns fit the room under
+   * the resistances; on a short screen they take a tab each instead, so the
+   * sheet still never scrolls.
+   */
+  private fitStats(): void {
+    // A short screen first drops the run facts and the attribute notes (both
+    // still in tooltips and the HUD), then splits the stats over tabs.
+    const body = this.panel.body.clientHeight;
+    if (body > 0) this.wrap.classList.toggle('is-compact', body < COMPACT_BELOW);
+    const room = this.statArea.clientHeight;
+    if (room <= 0) return;
+    const was = this.split;
+    const need = Math.max(this.colOffense.scrollHeight, this.colDefense.scrollHeight + this.colUtility.scrollHeight + 10);
+    // Measured side by side; once split, each column alone must still fit to come back.
+    if (!this.split && need > room + 1) this.split = true;
+    else if (this.split && need <= room - 8) this.split = false;
+    if (this.split !== was) this.setTabs();
   }
 
   // -- identity ------------------------------------------------------------
@@ -254,26 +329,26 @@ export class CharacterPanel {
     this.identity.style.setProperty('--accent', accent);
 
     const crest = div('char-crest');
-    crest.innerHTML = classCrestSvg(c.classId, accent, 74);
+    crest.innerHTML = classCrestSvg(c.classId, accent, 58);
     const names = div('char-names');
     names.appendChild(div('char-name', c.name));
     names.appendChild(div('char-class', `${def?.title ?? ''} · ${def?.name ?? c.classId}`));
-    const head = div('char-head');
-    add(head, crest, names);
-    this.identity.appendChild(head);
 
-    const need = attempt(() => xpForLevel(c.level), 100);
-    const xpRow = div('char-xp');
+    // Level on a gilt medallion at the right of the name.
     const lvl = div('char-level');
     lvl.appendChild(span('char-level-n', String(c.level)));
     lvl.appendChild(span('char-level-w', tr('LEVEL')));
+    const head = div('char-head');
+    add(head, crest, names, lvl);
+    this.identity.appendChild(head);
+
+    const need = attempt(() => xpForLevel(c.level), 100);
     const track = div('char-xp-track');
     const fill = div('char-xp-fill');
     fill.style.width = `${Math.max(0, Math.min(100, (c.xp / Math.max(1, need)) * 100))}%`;
     track.appendChild(fill);
-    track.appendChild(span('char-xp-text', `${fmtInt(c.xp)} / ${fmtInt(need)}`));
-    add(xpRow, lvl, track);
-    this.identity.appendChild(xpRow);
+    track.appendChild(span('char-xp-text', tr('{0} / {1} experience', fmtInt(c.xp), fmtInt(need))));
+    this.identity.appendChild(track);
 
     const facts = div('char-facts');
     facts.appendChild(this.fact(tr('Deepest'), tr('Tier {0}', c.depthRecord), 'descend'));
@@ -285,48 +360,51 @@ export class CharacterPanel {
 
   private fact(label: string, value: string, iconName: string): HTMLElement {
     const f = div('char-fact');
-    f.appendChild(icon(iconName, { size: 14 }));
-    const t = div('char-fact-text');
-    t.appendChild(div('char-fact-v', value));
-    t.appendChild(div('char-fact-l', label));
-    f.appendChild(t);
+    const ic = div('char-fact-i');
+    ic.appendChild(icon(iconName, { size: 13 }));
+    f.appendChild(ic);
+    f.appendChild(span('char-fact-v', value));
+    f.appendChild(span('char-fact-l', label));
     return f;
   }
 
   // -- attributes ----------------------------------------------------------
 
   private renderAttrs(c: Character, st: Stats): void {
-    clear(this.pointsBanner);
+    clear(this.attrHead);
     const hasPoints = c.statPoints > 0;
-    this.pointsBanner.classList.toggle('is-live', hasPoints);
-    this.pointsBanner.appendChild(icon(hasPoints ? 'sparkle' : 'info', { size: 14 }));
-    this.pointsBanner.appendChild(
-      span('', hasPoints ? trn(c.statPoints, '{0} attribute point unspent', '{0} attribute points unspent', c.statPoints) : tr('No unspent attribute points'))
-    );
+    const title = div('char-sechd');
+    title.appendChild(icon('strength', { size: 13 }));
+    title.appendChild(span('char-sectitle', tr('Attributes')));
+    title.appendChild(div('section-rule'));
+    this.attrHead.appendChild(title);
+    const pts = span(`char-points ${hasPoints ? 'is-live' : ''}`.trim());
+    pts.appendChild(icon(hasPoints ? 'sparkle' : 'info', { size: 12 }));
+    pts.appendChild(span('', hasPoints ? trn(c.statPoints, '{0} point to spend', '{0} points to spend', c.statPoints) : tr('No points to spend')));
+    this.attrHead.appendChild(pts);
     if (c.skillPoints > 0) {
       const b = span('char-points-skill', trn(c.skillPoints, '{0} skill point', '{0} skill points', c.skillPoints));
       b.addEventListener('click', () => events.emit('ui:open', { panel: 'skills' }));
-      this.pointsBanner.appendChild(b);
+      this.attrHead.appendChild(b);
     }
 
     clear(this.attrBox);
+    this.attrBox.classList.toggle('has-points', hasPoints);
     const def = classById(c.classId);
     for (const key of ATTRS) {
-      const rowEl = div('attr-row');
+      const card = div(`attr-row attr-${key}`);
       const head = div('attr-head');
-      head.appendChild(icon(STAT_ICON[key] ?? 'star', { size: 15 }));
+      head.appendChild(icon(STAT_ICON[key] ?? 'star', { size: 14 }));
       head.appendChild(span('attr-name', STAT_LABEL[key]));
       const base = c.allocated?.[key] ?? 0;
       const total = st[key];
       const value = div('attr-value');
-      const v = span('attr-total', String(Math.round(total)));
-      value.appendChild(v);
-      if (base > 0) value.appendChild(span('attr-alloc', tr('({0} spent)', base)));
+      value.appendChild(span('attr-total', String(Math.round(total))));
 
       const btn = document.createElement('button');
       btn.className = 'attr-plus';
       btn.type = 'button';
-      btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5.4v13.2M5.4 12h13.2"/></svg>';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5.4v13.2M5.4 12h13.2"/></svg>';
       btn.disabled = c.statPoints <= 0;
       btn.title = c.statPoints > 0 ? tr('Spend a point on {0}', STAT_LABEL[key]) : tr('No points to spend');
       btn.addEventListener('click', () => {
@@ -340,6 +418,7 @@ export class CharacterPanel {
           btn.classList.add('pop');
         }
       });
+      value.appendChild(btn);
 
       const derived = div('attr-derived');
       if (key === 'vitality' && def) derived.textContent = tr('+{0} life per point', def.lifePerVit);
@@ -347,9 +426,9 @@ export class CharacterPanel {
       else if (key === 'strength') derived.textContent = tr('scales physical damage');
       else derived.textContent = tr('scales attack rating & block');
 
-      add(rowEl, head, value, btn, derived);
-      tip(rowEl, STAT_LABEL[key], tr('<p>{0}</p><p class="tt-explain-how">Total {1} — {2} allocated by you, the rest from your class, level and gear.</p>', ATTR_BLURB[key], Math.round(total), base));
-      this.attrBox.appendChild(rowEl);
+      add(card, head, value, derived);
+      tip(card, STAT_LABEL[key], tr('<p>{0}</p><p class="tt-explain-how">Total {1} — {2} allocated by you, the rest from your class, level and gear.</p>', ATTR_BLURB[key], Math.round(total), base));
+      this.attrBox.appendChild(card);
     }
   }
 

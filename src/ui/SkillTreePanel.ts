@@ -2,7 +2,9 @@
  * SLAY — the skill tree.
  *
  * Three trees per class, six tiers deep, prerequisites drawn as real lines
- * between nodes. A detail pane above the board shows what the next rank
+ * between nodes. The board and the picked skill's details sit side by side and
+ * both fit the panel, so nothing scrolls: the board sizes its tiers and nodes
+ * to the room it has (`fitBoard`). The details show what the next rank
  * actually buys you, because "+1 rank" means nothing without the numbers next
  * to it.
  *
@@ -33,7 +35,6 @@ import {
   fmt,
   signed,
   attempt,
-  section,
   STAT_LABEL,
   STAT_ICON,
   PERCENT_STATS,
@@ -54,27 +55,31 @@ import { tr, trn, numText } from '../core/I18n';
 import { uiHeight } from '../core/UiScale';
 import { edgeFalloffNote } from '../data/areaFalloff';
 
-const CELL_W = 132;
 const TIERS = 6;
 const COLS = 3;
+/** The left strip that carries each tier's numeral and point gate. */
+const GUTTER = 26;
 
 /**
- * Tier height, node size and rank arc. The tier height fits the screen: 104
- * px where there is room, down to 84 on a short one, so all six tiers show
- * at full text size instead of the board shrinking as one piece (which took
- * its labels under 8 px at 1280 by 800). Short tiers take smaller nodes.
+ * Column width, tier height, node size and rank arc, all from the room the
+ * board has: the six tiers always fill its height and the three columns its
+ * width, so the board never scrolls and never leaves a bare band. Nodes grow
+ * with the room, from 40 px on a short screen to 60 where there is space,
+ * and always leave a line under them for the name.
  */
-const TIER_H_MAX = 104;
-const TIER_H_MIN = 84;
-/** What the action bar, the panel frame and the skill details above the board take, before it is laid out. */
-const BOARD_CHROME = 540;
-const geo = { cellH: TIER_H_MAX, node: 58, arcR: 32, arcLen: 2 * Math.PI * 32 };
+const TIER_H_MIN = 64;
+const CELL_W_MIN = 86;
+/** What the panel frame and the tree tabs take, before the board is laid out. */
+const BOARD_CHROME = 230;
+const geo = { cellW: 96, cellH: 104, node: 58, arcR: 32, arcLen: 2 * Math.PI * 32 };
 
-/** Sizes the board for `room` px of height. */
-function fitBoard(room: number): void {
-  const cellH = Math.max(TIER_H_MIN, Math.min(TIER_H_MAX, Math.floor(room / TIERS)));
-  geo.cellH = cellH;
-  geo.node = cellH >= 96 ? 58 : 52;
+/** Sizes the board for `w` by `h` px. */
+function fitBoard(w: number, h: number): void {
+  geo.cellW = Math.max(CELL_W_MIN, Math.floor((w - GUTTER) / COLS));
+  geo.cellH = Math.max(TIER_H_MIN, Math.floor(h / TIERS));
+  // Room under the node for its rank plate and a name.
+  const node = Math.min(60, geo.cellH - 34, geo.cellW - 30);
+  geo.node = Math.max(40, Math.round(node / 2) * 2);
   geo.arcR = geo.node / 2 + 3;
   geo.arcLen = 2 * Math.PI * geo.arcR;
 }
@@ -99,9 +104,7 @@ export class SkillTreePanel {
   private pointsEl: HTMLDivElement;
 
   private nodes = new Map<string, NodeView>();
-  private card = div('skcard');
-  /** The node under the pointer, so its card survives a board rebuild. */
-  private hoverId: string | null = null;
+  private boardWrap: HTMLDivElement;
   private respecBtn: Button;
   private activeTree = '';
   private focused: string | null = null;
@@ -125,8 +128,9 @@ export class SkillTreePanel {
     }, 'tabs-trees');
 
     this.pointsEl = div('skill-points');
-    // Respec lives in plain sight beside the point counter, with its price on
-    // the button, so changing your mind is a known cost rather than a mystery.
+    // Points and respec sit under the board, the price on the button (the
+    // full terms in its tooltip), so changing your mind is a known cost rather
+    // than a mystery.
     this.respecBtn = new Button({
       label: tr('Respec'),
       variant: 'ghost',
@@ -135,27 +139,29 @@ export class SkillTreePanel {
       onClick: () => this.confirmRespec(),
     });
     this.respecBtn.root.classList.add('skill-respec');
-    const right = div('skill-head-right');
-    add(right, this.respecBtn.root, this.pointsEl);
+    const foot = div('skill-boardfoot');
+    add(foot, this.pointsEl, this.respecBtn.root);
     const head = div('skill-head');
-    add(head, this.tabs.root, right);
+    add(head, this.tabs.root);
 
     const body = div('skill-body');
 
-    // The picked skill reads on top and the board fits itself under it. The
-    // hotbar is the HUD's own, just below the panel, and takes drops there.
-    const boardWrap = div('skill-boardwrap');
+    // The board on the left fills its column; the picked skill reads beside
+    // it. The hotbar is the HUD's own, just below the panel, and takes drops.
+    this.boardWrap = div('skill-boardwrap');
     this.board = div('skill-board');
     this.lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.lines.classList.add('skill-lines');
     this.board.appendChild(this.lines as unknown as Node);
-    boardWrap.appendChild(this.board);
+    this.boardWrap.appendChild(this.board);
+    const boardCol = div('skill-boardcol');
+    add(boardCol, this.boardWrap, foot);
 
     const rail = div('skill-rail');
     this.detail = div('skill-detail');
     rail.appendChild(this.detail);
 
-    add(body, rail, boardWrap);
+    add(body, boardCol, rail);
     add(this.panel.body, head, body);
 
     events.on('ui:refresh', () => {
@@ -174,12 +180,12 @@ export class SkillTreePanel {
     this.refit();
   }
 
-  /** Rebuilds the board if the room it has now wants another tier height. */
+  /** Rebuilds the board if the room it has now wants another size. */
   private refit(): void {
     if (!this.panel.isOpen) return;
-    const was = geo.cellH;
-    fitBoard(this.boardRoom());
-    if (geo.cellH !== was) this.buildBoard();
+    const was = `${geo.cellW}x${geo.cellH}`;
+    this.fit();
+    if (`${geo.cellW}x${geo.cellH}` !== was) this.buildBoard();
   }
 
   close(): void {
@@ -236,8 +242,13 @@ export class SkillTreePanel {
     const used = c.respecs ?? 0;
     const cost = attempt(() => respecCost(c, used), { gold: 0, materials: {}, free: true });
     this.respecBtn.setDisabled(spent === 0);
-    this.respecBtn.setLabel(cost.free ? tr('Respec · free ({0} left)', FREE_RESPECS - used) : tr('Respec · {0}g', fmtInt(cost.gold)));
-    this.respecBtn.root.title = spent === 0 ? tr('Nothing to refund yet') : tr('Refund every skill point');
+    this.respecBtn.setLabel(cost.free ? tr('Respec · {0} free', FREE_RESPECS - used) : tr('Respec · {0}g', fmtInt(cost.gold)));
+    this.respecBtn.root.title =
+      spent === 0
+        ? tr('Nothing to refund yet')
+        : cost.free
+          ? trn(FREE_RESPECS - used, 'Refund every skill point. Free: {0} free respec left.', 'Refund every skill point. Free: {0} free respecs left.', FREE_RESPECS - used)
+          : tr('Refund every skill point for {0} gold.', fmtInt(cost.gold));
   }
 
   private confirmRespec(): void {
@@ -292,27 +303,32 @@ export class SkillTreePanel {
     this.pointsEl.appendChild(span('skill-points-l', has ? tr('points to spend') : tr('no points')));
   }
 
-  /** Height the board can take without the panel scrolling. */
-  private boardRoom(): number {
-    const body = this.panel.body;
-    const box = body.getBoundingClientRect();
-    if (!body.offsetHeight || box.height <= 0) return uiHeight() - BOARD_CHROME;
-    // The panel may be mid-way through its opening zoom; measure unscaled.
-    const k = box.height / body.offsetHeight;
-    return (box.bottom - this.board.getBoundingClientRect().top) / k - 12;
+  /**
+   * Sizes the board to its column. Layout sizes (`offsetWidth`) are the
+   * panel's own pixels, before its zoom and its opening slide.
+   */
+  private fit(): void {
+    const w = this.boardWrap.offsetWidth;
+    const h = this.boardWrap.offsetHeight;
+    // A short board means a short card too: it drops the drag hint and tightens up.
+    if (h > 0) this.panel.frame.classList.toggle('is-compact', h < 520);
+    if (w > 0 && h > 0) fitBoard(w, h);
+    else fitBoard(300, uiHeight() - BOARD_CHROME);
   }
 
   private buildBoard(): void {
     const c = save.account.current;
-    fitBoard(this.boardRoom());
+    this.fit();
     clear(this.board);
     this.nodes.clear();
     this.board.appendChild(this.lines as unknown as Node);
-    this.board.style.width = `${COLS * CELL_W}px`;
-    this.board.style.height = `${TIERS * geo.cellH}px`;
-    this.lines.setAttribute('viewBox', `0 0 ${COLS * CELL_W} ${TIERS * geo.cellH}`);
-    this.lines.setAttribute('width', String(COLS * CELL_W));
-    this.lines.setAttribute('height', String(TIERS * geo.cellH));
+    const boardW = GUTTER + COLS * geo.cellW;
+    const boardH = TIERS * geo.cellH;
+    this.board.style.width = `${boardW}px`;
+    this.board.style.height = `${boardH}px`;
+    this.lines.setAttribute('viewBox', `0 0 ${boardW} ${boardH}`);
+    this.lines.setAttribute('width', String(boardW));
+    this.lines.setAttribute('height', String(boardH));
     clear(this.lines as unknown as Element);
 
     const list = skillsInTree(this.activeTree);
@@ -343,8 +359,9 @@ export class SkillTreePanel {
     for (const s of list) {
       const col = Math.max(0, Math.min(COLS - 1, s.column));
       const tier = Math.max(1, Math.min(TIERS, s.tier));
-      const x = col * CELL_W + CELL_W / 2;
-      const y = (tier - 1) * geo.cellH + geo.cellH / 2;
+      const x = GUTTER + col * geo.cellW + geo.cellW / 2;
+      // A little above the tier's middle: the node and its name below it are centred together.
+      const y = (tier - 1) * geo.cellH + geo.cellH / 2 - 9;
 
       const node = div('sknode');
       node.style.left = `${x - geo.node / 2}px`;
@@ -390,14 +407,10 @@ export class SkillTreePanel {
         this.focused = s.id;
         this.highlightSynergies(s.id, true);
         if (!this.pinned) this.showDetail(s.id);
-        this.hoverId = s.id;
-        this.showCard(s.id);
       });
       node.addEventListener('pointerleave', () => {
         this.highlightSynergies(s.id, false);
         if (!this.pinned) this.showDetail(this.focused ?? this.defaultFocus());
-        this.hoverId = null;
-        this.hideCard();
       });
       node.addEventListener('click', () => this.spend(s));
       node.addEventListener('contextmenu', (e) => {
@@ -411,9 +424,9 @@ export class SkillTreePanel {
       // The rank badge straddles the bottom of the ring; the name sits clear
       // of it underneath.
       const label = div('sknode-label', s.name);
-      label.style.left = `${x - CELL_W / 2}px`;
+      label.style.left = `${x - geo.cellW / 2}px`;
       label.style.top = `${y + geo.node / 2 + 9}px`;
-      label.style.width = `${CELL_W}px`;
+      label.style.width = `${geo.cellW}px`;
 
       this.board.appendChild(node);
       this.board.appendChild(label);
@@ -422,7 +435,6 @@ export class SkillTreePanel {
 
     this.drawLines();
     this.syncStates();
-    if (this.hoverId && this.nodes.has(this.hoverId)) this.showCard(this.hoverId);
   }
 
   private enableDrag(node: HTMLDivElement, s: SkillDef): void {
@@ -449,85 +461,6 @@ export class SkillTreePanel {
     });
   }
 
-  // -- hover card ------------------------------------------------------------
-
-  /**
-   * A small card beside the hovered node: what the next point buys, in
-   * numbers, without the eye leaving the board. The detail pane on the right
-   * keeps the long form.
-   */
-  private showCard(id: string): void {
-    const c = save.account.current;
-    const view = this.nodes.get(id);
-    const s = skillById(id);
-    if (!c || !view || !s) return;
-    const card = this.card;
-    clear(card);
-    const rank = c.skills[id] ?? 0;
-    const maxed = rank >= s.maxRank;
-    const check = attempt(() => canAllocateSkill(c, id), { ok: false, reason: '' } as { ok: boolean; reason?: string });
-
-    const hd = div('skcard-hd');
-    hd.appendChild(span('skcard-name', s.name));
-    hd.appendChild(span(`skcard-rank ${maxed ? 'is-max' : ''}`.trim(), `${rank}/${s.maxRank}`));
-    card.appendChild(hd);
-
-    const rows = rankRows(s, rank);
-    if (rows.length) {
-      const list = div('skcard-rows');
-      for (const r of rows.slice(0, 4)) {
-        const line = div('skcard-row');
-        line.appendChild(span('skcard-l', r.label));
-        if (maxed) {
-          line.appendChild(span('skcard-n', r.cur));
-        } else {
-          if (rank > 0) {
-            line.appendChild(span('skcard-c', r.cur));
-            const arrow = span('skcard-a');
-            arrow.innerHTML = iconSvg('chevronRight', { size: 9 });
-            line.appendChild(arrow);
-          }
-          line.appendChild(span(`skcard-n ${r.cur !== r.nxt ? 'is-better' : ''}`.trim(), r.nxt));
-        }
-        list.appendChild(line);
-      }
-      card.appendChild(list);
-    }
-
-    let foot = '';
-    let tone = '';
-    if (maxed) {
-      foot = tr('Mastered');
-      tone = 'is-max';
-    } else if (rank === 0 && !check.ok) {
-      foot = check.reason || tr('Locked');
-      tone = 'is-bad';
-    } else if (c.skillPoints <= 0) {
-      foot = tr('No points to spend');
-      tone = 'is-dim';
-    } else {
-      foot = rank > 0 ? tr('Click to raise to rank {0}', rank + 1) : tr('Click to learn');
-      tone = 'is-go';
-    }
-    card.appendChild(div(`skcard-foot ${tone}`, foot));
-
-    // Beside the node, on whichever side has room; nudged up near the bottom.
-    const right = view.x < (COLS * CELL_W) / 2 + 1;
-    card.classList.toggle('on-left', !right);
-    card.style.left = right ? `${view.x + geo.node / 2 + 14}px` : '';
-    card.style.right = right ? '' : `${COLS * CELL_W - view.x + geo.node / 2 + 14}px`;
-    card.style.top = `${Math.min(view.y - geo.node / 2 - 6, TIERS * geo.cellH - 150)}px`;
-    this.board.appendChild(card);
-    card.classList.remove('is-shown');
-    void card.offsetWidth;
-    card.classList.add('is-shown');
-  }
-
-  private hideCard(): void {
-    this.card.classList.remove('is-shown');
-    this.card.remove();
-  }
-
   private drawLines(): void {
     const svg = this.lines;
     clear(svg as unknown as Element);
@@ -537,11 +470,7 @@ export class SkillTreePanel {
         const from = this.nodes.get(reqId);
         if (!from) continue;
         const path = document.createElementNS(ns, 'path');
-        const midY = (from.y + view.y) / 2;
-        // A vertical S-curve reads as a dependency without cluttering the grid.
-        const d =
-          `M${from.x} ${from.y + geo.node / 2 - 6} ` +
-          `C${from.x} ${midY}, ${view.x} ${midY}, ${view.x} ${view.y - geo.node / 2 + 6}`;
+        const d = linkPath(from.x, from.y, view.x, view.y);
         path.setAttribute('d', d);
         path.setAttribute('class', 'skline');
         path.dataset.to = view.def.id;
@@ -667,6 +596,11 @@ export class SkillTreePanel {
 
   // -- detail pane ---------------------------------------------------------
 
+  /**
+   * The picked skill beside the board, in one column that fits the panel:
+   * name and facts, what it does, what the next rank buys, then how it ties
+   * to the rest of the tree, with the buttons held at the foot.
+   */
   private showDetail(id: string | null): void {
     clear(this.detail);
     const c = save.account.current;
@@ -677,59 +611,25 @@ export class SkillTreePanel {
     const s = skillById(id);
     if (!s) return;
     const rank = c.skills[id] ?? 0;
+    const maxed = rank >= s.maxRank;
     const next = Math.min(s.maxRank, rank + 1);
     const accent = classAccent(c.classId);
     this.detail.style.setProperty('--accent', accent);
+    this.detail.classList.toggle('is-learned', rank > 0);
+    this.detail.classList.toggle('is-pinned', this.pinned === id);
 
+    // --- head: art, name, rank --------------------------------------------
     const hd = div('skdetail-hd');
     const art = div('skdetail-art');
-    art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" style="width:62px;height:62px" draggable="false">`;
+    art.innerHTML = `<img class="skill-img" src="${skillIconUri(s.id, skillDefFor(s.id)?.effect, skillDefFor(s.id)?.damageType, skillDefFor(s.id)?.targeting === 'passive', skillDefFor(s.id)?.icon)}" alt="" draggable="false">`;
     const titles = div('skdetail-titles');
     titles.appendChild(div('skdetail-name', s.name));
-    const meta = div('skdetail-meta');
-    meta.appendChild(span('skdetail-chip', tr('Tier {0}', s.tier)));
-    meta.appendChild(span('skdetail-chip', TARGETING_LABEL[s.targeting] ?? s.targeting));
-    if (s.damageType) meta.appendChild(span(`skdetail-chip dmg-${s.damageType}`, capitalize(s.damageType)));
-    meta.appendChild(span(`skdetail-chip ${rank > 0 ? 'is-on' : ''}`, tr('Rank {0} / {1}', rank, s.maxRank)));
-    titles.appendChild(meta);
-    add(hd, art, titles);
-    this.detail.appendChild(hd);
-
-    this.detail.appendChild(div('skdetail-desc', s.desc));
-    // A blast that weakens toward its rim says so (`data/areaFalloff.ts`).
-    const edge = edgeFalloffNote(s.id);
-    if (edge) this.detail.appendChild(div('skdetail-note', edge));
-
-    // --- current vs next ---------------------------------------------------
-    const rows = rankRows(s, rank);
-
-    if (rows.length) {
-      const sec = section(rank >= s.maxRank ? tr('At Maximum Rank') : tr('This Rank → Next Rank'), 'chevronRight');
-      const table = div('skdetail-table');
-      const head = div('skdetail-trow is-head');
-      head.appendChild(span('skdetail-tl', ''));
-      head.appendChild(span('skdetail-tc', tr('Rank {0}', Math.max(1, rank))));
-      head.appendChild(span('skdetail-ta', ''));
-      head.appendChild(span('skdetail-tn', rank >= s.maxRank ? '—' : tr('Rank {0}', next)));
-      table.appendChild(head);
-      for (const r of rows) {
-        const line = div('skdetail-trow');
-        const l = span('skdetail-tl');
-        if (r.icon) l.appendChild(icon(r.icon, { size: 12 }));
-        l.appendChild(span('', r.label));
-        line.appendChild(l);
-        line.appendChild(span('skdetail-tc', r.cur));
-        const arrow = span('skdetail-ta');
-        arrow.innerHTML = iconSvg('chevronRight', { size: 11 });
-        line.appendChild(arrow);
-        line.appendChild(span(`skdetail-tn ${r.cur !== r.nxt ? 'is-better' : ''}`.trim(), rank >= s.maxRank ? '—' : r.nxt));
-        table.appendChild(line);
-      }
-      sec.body.appendChild(table);
-      this.detail.appendChild(sec.root);
-    }
-
-    // --- speed ---------------------------------------------------------------
+    const rankLine = div('skdetail-rankline');
+    const bar = div('skdetail-rankbar');
+    const fill = div('skdetail-rankfill');
+    fill.style.width = `${s.maxRank > 0 ? Math.min(100, (rank / s.maxRank) * 100) : 0}%`;
+    bar.appendChild(fill);
+    add(rankLine, span(`skdetail-rank ${maxed ? 'is-max' : ''}`.trim(), tr('Rank {0} / {1}', rank, s.maxRank)), bar);
     // How long one use takes with what is held now (`sim/Speed.ts`): an attack
     // at the weapon's pace, a spell on its cast time.
     if (s.targeting !== 'passive') {
@@ -737,19 +637,57 @@ export class SkillTreePanel {
       const st = def ? attempt(() => computeStats(c), null) : null;
       const pace = def && st ? attempt(() => paceFor(c, st, def), null) : null;
       if (pace && pace.time > 0) {
-        const each = numText(pace.time, 2);
-        const rate = numText(1 / pace.time, 2);
-        const sec = section(tr('Speed'), 'speed');
-        sec.body.appendChild(
-          div(
-            'skdetail-note',
-            pace.timing === 'attack'
-              ? tr('An attack: one use takes {0} s with what you hold now, {1} a second. Attack speed makes it quicker.', each, rate)
-              : tr('A spell: one cast takes {0} s, {1} a second. Cast speed makes it quicker.', each, rate),
-          ),
-        );
-        this.detail.appendChild(sec.root);
+        const p = span('skdetail-pace');
+        p.appendChild(icon('speed', { size: 10 }));
+        p.appendChild(span('', tr('{0}s', numText(pace.time, 2))));
+        p.title =
+          pace.timing === 'attack'
+            ? tr('An attack: one use takes {0} s with what you hold now, {1} a second. Attack speed makes it quicker.', numText(pace.time, 2), numText(1 / pace.time, 2))
+            : tr('A spell: one cast takes {0} s, {1} a second. Cast speed makes it quicker.', numText(pace.time, 2), numText(1 / pace.time, 2));
+        rankLine.appendChild(p);
       }
+    }
+    titles.appendChild(rankLine);
+    add(hd, art, titles);
+    this.detail.appendChild(hd);
+
+    // --- facts: tier, kind, element, pace ------------------------------------
+    const meta = div('skdetail-meta');
+    meta.appendChild(span('skdetail-chip', tr('Tier {0}', s.tier)));
+    meta.appendChild(span('skdetail-chip', TARGETING_LABEL[s.targeting] ?? s.targeting));
+    if (s.damageType) meta.appendChild(span(`skdetail-chip dmg-${s.damageType}`, capitalize(s.damageType)));
+    this.detail.appendChild(meta);
+
+    const scroll = div('skdetail-flow');
+    scroll.appendChild(div('skdetail-desc', s.desc));
+    // A blast that weakens toward its rim says so (`data/areaFalloff.ts`).
+    const edge = edgeFalloffNote(s.id);
+    if (edge) scroll.appendChild(div('skdetail-note', edge));
+
+    // --- current vs next ---------------------------------------------------
+    const rows = rankRows(s, rank);
+    if (rows.length) {
+      const table = div('skdetail-table');
+      const head = div('skdetail-trow is-head');
+      head.appendChild(span('skdetail-tl', maxed ? tr('At maximum rank') : tr('Next rank')));
+      head.appendChild(span('skdetail-tc', rank > 0 ? tr('Now') : ''));
+      head.appendChild(span('skdetail-ta', ''));
+      head.appendChild(span('skdetail-tn', maxed ? '' : tr('Rank {0}', next)));
+      table.appendChild(head);
+      for (const r of rows) {
+        const line = div('skdetail-trow');
+        const l = span('skdetail-tl');
+        if (r.icon) l.appendChild(icon(r.icon, { size: 11 }));
+        l.appendChild(span('', r.label));
+        line.appendChild(l);
+        line.appendChild(span('skdetail-tc', r.cur));
+        const arrow = span('skdetail-ta');
+        if (!maxed) arrow.innerHTML = iconSvg('chevronRight', { size: 10 });
+        line.appendChild(arrow);
+        line.appendChild(span(`skdetail-tn ${r.cur !== r.nxt ? 'is-better' : ''}`.trim(), maxed ? '' : r.nxt));
+        table.appendChild(line);
+      }
+      scroll.appendChild(table);
     }
 
     // --- synergies ----------------------------------------------------------
@@ -758,48 +696,51 @@ export class SkillTreePanel {
     const gains = synergiesFor(s.id);
     const gives = synergiesFrom(s.id);
     if (gains.length || gives.length) {
-      const sec = section(tr('Synergies'), 'plus');
+      const box = div('skdetail-block');
+      const hd = div('skdetail-blockhd', tr('Synergies'));
+      box.appendChild(hd);
       if (gains.length) {
         const total = synergyPct(s.id, c.skills);
         const what = s.damageScale || s.targeting !== 'passive' ? 'damage' : 'power';
-        sec.body.appendChild(
-          div('skdetail-note', total > 0 ? tr('Ranks in these skills add {0} to this one: +{1}% now.', what, fmt(total)) : tr('Ranks in these skills add {0} to this one.', what)),
-        );
+        // The running total sits on the heading; the sentence is its tooltip.
+        if (total > 0) hd.appendChild(span('skdetail-blockval', tr('+{0}% {1} now', fmt(total), what)));
+        box.title = tr('Ranks in these skills add {0} to this one.', what);
         const r = div('skdetail-links');
         for (const l of gains) {
           const have = c.skills[l.source] ?? 0;
           const name = skillById(l.source)?.name ?? l.source;
           r.appendChild(span(`skdetail-link ${have > 0 ? 'ok' : ''}`.trim(), tr('{0} +{1}% a rank{2}', name, fmt(l.pctPerRank), have > 0 ? ` (+${fmt(l.pctPerRank * have)}%)` : '')));
         }
-        sec.body.appendChild(r);
+        box.appendChild(r);
       }
       if (gives.length) {
         const r = div('skdetail-links');
         r.appendChild(span('skdetail-linklabel', tr('Each rank adds')));
         for (const l of gives) r.appendChild(span('skdetail-link', tr('+{0}% to {1}', fmt(l.pctPerRank), skillById(l.target)?.name ?? l.target)));
-        sec.body.appendChild(r);
+        box.appendChild(r);
       }
-      this.detail.appendChild(sec.root);
+      scroll.appendChild(box);
     }
 
     // --- combo ---------------------------------------------------------------
     const combo = comboForSkill(s);
     if (combo && canCombo(s)) {
-      const sec = section(tr('Combo: {0}', combo.name), 'sparkle');
-      sec.body.appendChild(
+      const box = div('skdetail-block');
+      box.appendChild(div('skdetail-blockhd', tr('Combo: {0}', combo.name)));
+      box.appendChild(
         div(
           'skdetail-note',
           tr('Land this on a target another of your skills hit in the last {0}s: +{1}% damage. {2} The same skill twice in a row does not combo.', COMBO_WINDOW, comboBonusPct(s), combo.desc),
         ),
       );
-      this.detail.appendChild(sec.root);
+      scroll.appendChild(box);
     }
 
     // --- prerequisites -------------------------------------------------------
     const reqs = s.requires ?? [];
     const dependents = skillsInTree(s.treeId).filter((o) => (o.requires ?? []).includes(s.id));
     if (reqs.length || dependents.length) {
-      const sec = section(tr('Connections'), 'skillLevels');
+      const box = div('skdetail-block');
       if (reqs.length) {
         const r = div('skdetail-links');
         r.appendChild(span('skdetail-linklabel', tr('Requires')));
@@ -808,43 +749,43 @@ export class SkillTreePanel {
           const got = (c.skills[q] ?? 0) > 0;
           r.appendChild(span(`skdetail-link ${got ? 'ok' : 'missing'}`, d?.name ?? q));
         }
-        sec.body.appendChild(r);
+        box.appendChild(r);
       }
       if (dependents.length) {
         const r = div('skdetail-links');
         r.appendChild(span('skdetail-linklabel', tr('Unlocks')));
         for (const d of dependents) r.appendChild(span('skdetail-link', d.name));
-        sec.body.appendChild(r);
+        box.appendChild(r);
       }
-      this.detail.appendChild(sec.root);
+      scroll.appendChild(box);
     }
+    this.detail.appendChild(scroll);
 
-    // --- actions -----------------------------------------------------------
+    // --- actions, held at the foot ---------------------------------------------
     const actions = div('skdetail-actions');
     const check = attempt(() => canAllocateSkill(c, s.id), { ok: false, reason: '' } as { ok: boolean; reason?: string });
+    if (!check.ok && rank === 0 && check.reason) {
+      actions.appendChild(div('skdetail-locked', check.reason));
+    } else if (c.skillPoints <= 0 && !maxed) {
+      actions.appendChild(div('skdetail-locked', tr('No skill points — level up to earn more.')));
+    }
     const spend = document.createElement('button');
     spend.type = 'button';
     spend.className = 'btn btn-primary btn-wide';
-    const canSpend = check.ok && c.skillPoints > 0 && rank < s.maxRank;
+    const canSpend = check.ok && c.skillPoints > 0 && !maxed;
     spend.disabled = !canSpend;
-    spend.innerHTML = `<span class="btn-label">${rank >= s.maxRank ? tr('Mastered') : rank > 0 ? tr('Raise to Rank {0}', next) : tr('Learn Skill')}</span>`;
+    spend.innerHTML = `<span class="btn-label">${maxed ? tr('Mastered') : rank > 0 ? tr('Raise to Rank {0}', next) : tr('Learn Skill')}</span>`;
     spend.addEventListener('click', () => this.spend(s));
     actions.appendChild(spend);
 
-    if (!check.ok && rank === 0 && check.reason) {
-      actions.appendChild(div('skdetail-locked', check.reason));
-    } else if (c.skillPoints <= 0 && rank < s.maxRank) {
-      actions.appendChild(div('skdetail-locked', tr('No skill points — level up to earn more.')));
-    }
-
     if (s.targeting !== 'passive' && rank > 0) {
+      const row = div('skdetail-actrow');
       const isPrimary = c.primaryAttack === s.id;
       const rc = document.createElement('button');
       rc.type = 'button';
-      rc.className = `btn btn-wide btn-sm ${isPrimary ? 'btn-primary' : 'btn-ghost'}`;
-      rc.innerHTML = `<span class="btn-label">${
-        isPrimary ? tr('On right click') : tr('Set as right click attack')
-      }</span>`;
+      rc.className = `btn btn-sm ${isPrimary ? 'btn-primary' : 'btn-ghost'}`;
+      rc.innerHTML = `<span class="btn-label">${isPrimary ? tr('On right click') : tr('Right click')}</span>`;
+      rc.title = tr('Set as right click attack');
       rc.disabled = isPrimary;
       rc.addEventListener('click', () => {
         if (setPrimaryAttack(c, s.id)) {
@@ -854,14 +795,14 @@ export class SkillTreePanel {
           this.refresh();
         }
       });
-      actions.appendChild(rc);
-
       const bind = document.createElement('button');
       bind.type = 'button';
-      bind.className = 'btn btn-ghost btn-wide btn-sm';
-      bind.innerHTML = tr('<span class="btn-label">Bind to a number key</span>');
+      bind.className = 'btn btn-ghost btn-sm';
+      bind.innerHTML = tr('<span class="btn-label">Number key</span>');
+      bind.title = tr('Bind to a number key');
       bind.addEventListener('click', () => this.bindToHotbar(s.id));
-      actions.appendChild(bind);
+      add(row, rc, bind);
+      actions.appendChild(row);
       actions.appendChild(div('skdetail-draghint', tr('or drag the node onto a hotbar slot')));
     }
     this.detail.appendChild(actions);
@@ -994,4 +935,57 @@ function prettify(id: string): string {
 /** Look up a skill definition by id for icon generation. */
 function skillDefFor(id: string) {
   return SKILL_BY_ID?.[id];
+}
+
+/** Room under a node for its rank badge and name (`.sknode-label`). */
+const LABEL_DROP = 27;
+
+/**
+ * A prerequisite line, drawn square like a circuit: down from under the
+ * name, across only in the gaps between tiers, and down into the target. A
+ * line that skips a tier runs down the lane between columns, so no line
+ * ever crosses a node or a name.
+ */
+function linkPath(x1: number, y1: number, x2: number, y2: number): string {
+  const top = y1 + geo.node / 2 + LABEL_DROP;
+  const end = y2 - geo.node / 2 + 6;
+  // The middle of the gap under a tier whose nodes sit at `y`.
+  const gapUnder = (y: number): number => (y + geo.node / 2 + LABEL_DROP + y + geo.cellH - geo.node / 2) / 2;
+  const busIn = gapUnder(y2 - geo.cellH);
+  const pts: [number, number][] = [[x1, top]];
+  if (y2 - y1 > geo.cellH * 1.5) {
+    const busOut = gapUnder(y1);
+    const lastCol = GUTTER + (COLS - 1) * geo.cellW + geo.cellW / 2;
+    const side = x2 > x1 || (x2 === x1 && x1 < lastCol - 1) ? 1 : -1;
+    const lane = x1 + (side * geo.cellW) / 2;
+    pts.push([x1, busOut], [lane, busOut], [lane, busIn], [x2, busIn]);
+  } else if (Math.abs(x2 - x1) >= 1) {
+    pts.push([x1, busIn], [x2, busIn]);
+  }
+  pts.push([x2, end]);
+  return roundedPath(pts, 8);
+}
+
+/** A polyline with each corner rounded off by up to `radius`. */
+function roundedPath(pts: [number, number][], radius: number): string {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1];
+    const [cx, cy] = pts[i];
+    const [nx, ny] = pts[i + 1];
+    const inLen = Math.hypot(cx - px, cy - py);
+    const outLen = Math.hypot(nx - cx, ny - cy);
+    const r = Math.min(radius, inLen / 2, outLen / 2);
+    if (r <= 0.5) {
+      d += ` L${cx} ${cy}`;
+      continue;
+    }
+    const ax = cx - ((cx - px) / inLen) * r;
+    const ay = cy - ((cy - py) / inLen) * r;
+    const bx = cx + ((nx - cx) / outLen) * r;
+    const by = cy + ((ny - cy) / outLen) * r;
+    d += ` L${ax.toFixed(1)} ${ay.toFixed(1)} Q${cx} ${cy} ${bx.toFixed(1)} ${by.toFixed(1)}`;
+  }
+  const [lx, ly] = pts[pts.length - 1];
+  return `${d} L${lx} ${ly}`;
 }

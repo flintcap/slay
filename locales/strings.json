@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9276,
+ "count": 9275,
  "strings": [
   {
    "key": "Beating iron…",
@@ -48472,7 +48472,8 @@
   {
    "key": "Now",
    "files": [
-    "ui/BlacksmithPanel.ts"
+    "ui/BlacksmithPanel.ts",
+    "ui/SkillTreePanel.ts"
    ]
   },
   {
@@ -49006,7 +49007,8 @@
    "files": [
     "ui/CharSelectPanel.ts",
     "ui/Onboarding.ts",
-    "ui/SettingsPanel.ts"
+    "ui/SettingsPanel.ts",
+    "ui/SkillTreePanel.ts"
    ]
   },
   {
@@ -49088,12 +49090,6 @@
    "key": "{0} takes up the torch.",
    "files": [
     "ui/CharSelectPanel.ts"
-   ]
-  },
-  {
-   "key": "({0} spent)",
-   "files": [
-    "ui/CharacterPanel.ts"
    ]
   },
   {
@@ -49200,6 +49196,12 @@
   },
   {
    "key": "Adds ranks to every skill you have already invested in.",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
+   "key": "Attributes",
    "files": [
     "ui/CharacterPanel.ts"
    ]
@@ -49357,13 +49359,6 @@
   {
    "key": "No points to spend",
    "files": [
-    "ui/CharacterPanel.ts",
-    "ui/SkillTreePanel.ts"
-   ]
-  },
-  {
-   "key": "No unspent attribute points",
-   "files": [
     "ui/CharacterPanel.ts"
    ]
   },
@@ -49454,6 +49449,12 @@
    ]
   },
   {
+   "key": "Stats",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
    "key": "Survived",
    "files": [
     "ui/CharacterPanel.ts"
@@ -49538,6 +49539,12 @@
    ]
   },
   {
+   "key": "{0} / {1} experience",
+   "files": [
+    "ui/CharacterPanel.ts"
+   ]
+  },
+  {
    "key": "{0} Resistance",
    "files": [
     "ui/CharacterPanel.ts"
@@ -49550,15 +49557,15 @@
    ]
   },
   {
-   "key": "{0} attribute point unspent|{0} attribute points unspent",
-   "one": "{0} attribute point unspent",
-   "other": "{0} attribute points unspent",
+   "key": "{0} blows to fall",
    "files": [
     "ui/CharacterPanel.ts"
    ]
   },
   {
-   "key": "{0} blows to fall",
+   "key": "{0} point to spend|{0} points to spend",
+   "one": "{0} point to spend",
+   "other": "{0} points to spend",
    "files": [
     "ui/CharacterPanel.ts"
    ]
@@ -52993,7 +53000,13 @@
    ]
   },
   {
-   "key": "<span class=\"btn-label\">Bind to a number key</span>",
+   "key": "+{0}% {1} now",
+   "files": [
+    "ui/SkillTreePanel.ts"
+   ]
+  },
+  {
+   "key": "<span class=\"btn-label\">Number key</span>",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
@@ -53029,31 +53042,19 @@
    ]
   },
   {
-   "key": "At Maximum Rank",
+   "key": "At maximum rank",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
   },
   {
-   "key": "Click to learn",
-   "files": [
-    "ui/SkillTreePanel.ts"
-   ]
-  },
-  {
-   "key": "Click to raise to rank {0}",
+   "key": "Bind to a number key",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
   },
   {
    "key": "Combo: {0}",
-   "files": [
-    "ui/SkillTreePanel.ts"
-   ]
-  },
-  {
-   "key": "Connections",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
@@ -53155,6 +53156,12 @@
    ]
   },
   {
+   "key": "Next rank",
+   "files": [
+    "ui/SkillTreePanel.ts"
+   ]
+  },
+  {
    "key": "No skill points to spend.",
    "files": [
     "ui/SkillTreePanel.ts"
@@ -53233,13 +53240,15 @@
    ]
   },
   {
-   "key": "Ranks in these skills add {0} to this one: +{1}% now.",
+   "key": "Refund every skill point for {0} gold.",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
   },
   {
-   "key": "Refund every skill point",
+   "key": "Refund every skill point. Free: {0} free respec left.|Refund every skill point. Free: {0} free respecs left.",
+   "one": "Refund every skill point. Free: {0} free respec left.",
+   "other": "Refund every skill point. Free: {0} free respecs left.",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
@@ -53258,7 +53267,7 @@
    ]
   },
   {
-   "key": "Respec · free ({0} left)",
+   "key": "Respec · {0} free",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
@@ -53288,19 +53297,7 @@
    ]
   },
   {
-   "key": "Speed",
-   "files": [
-    "ui/SkillTreePanel.ts"
-   ]
-  },
-  {
    "key": "Synergies",
-   "files": [
-    "ui/SkillTreePanel.ts"
-   ]
-  },
-  {
-   "key": "This Rank → Next Rank",
    "files": [
     "ui/SkillTreePanel.ts"
    ]
