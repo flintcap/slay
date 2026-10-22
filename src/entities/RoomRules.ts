@@ -397,6 +397,8 @@ class Linked extends RoomRule {
   private window = 0;
   private kneel = 0;
   static readonly WINDOW = 8;
+  /** Farther from the kneeling boss than this (m), its partner is called to it. */
+  static readonly CALL_RANGE = 8;
 
   override start(ctx: CombatContext): void {
     if (this.partner) return;
@@ -415,14 +417,28 @@ class Linked extends RoomRule {
   }
 
   override holdDeath(ctx: CombatContext): boolean {
-    if (!this.partner?.alive) return false;
+    const partner = this.partner;
+    if (!partner?.alive) return false;
+    // Already kneeling: a blow or a bleed that lands now changes nothing. It
+    // used to restart the count and the warning with every tick of damage.
+    if (this.kneel > 0) return true;
     // Down, not dead: it waits on its other half.
     this.kneel = Linked.WINDOW;
     this.boss.buff('kneel', Linked.WINDOW, { invulnerable: 1 });
     this.boss.channel = Linked.WINDOW;
     this.boss.rootTimer = Linked.WINDOW;
-    this.say(tr('{0} kneels. Bring down {1} before it rises!', this.boss.bossDef.name, this.partner.name), 'bad');
-    void ctx;
+    // The other half comes to it, so the hero never has to hunt for it in
+    // the dark with the clock running.
+    const b = this.boss.root.position;
+    const p = partner.root.position;
+    if (dist(p.x, p.z, b.x, b.z) > Linked.CALL_RANGE) {
+      const a = angleTo(b.x, b.z, p.x, p.z);
+      const t = ctx.nav.clampToWalkable(b.x + Math.sin(a) * 3, b.z + Math.cos(a) * 3);
+      p.set(t.x, p.y, t.y);
+      ctx.fx.burst('portal', t.x, 0.6, t.y, { count: 18, color: 0x9060ff });
+    }
+    partner.rootTimer = Math.max(partner.rootTimer, 2);
+    this.say(tr('{0} kneels. Bring down {1} before it rises!', this.boss.bossDef.name, partner.name), 'bad');
     return true;
   }
 
@@ -433,6 +449,19 @@ class Linked extends RoomRule {
   override tick(dt: number, ctx: CombatContext): void {
     const partner = this.partner;
     if (!partner) return;
+    // The partner keeps to the boss's room: a healer backing away from the
+    // hero walked out of the arena and down the halls, and with the boss
+    // unable to fall until it did, the fight could not be finished.
+    if (partner.alive) {
+      const p = partner.root.position;
+      const reach = Math.max(4, this.boss.arenaRadius - 1.5);
+      const d = dist(p.x, p.z, this.home.x, this.home.z);
+      if (d > reach) {
+        const a = angleTo(this.home.x, this.home.z, p.x, p.z);
+        const t = ctx.nav.clampToWalkable(this.home.x + Math.sin(a) * reach, this.home.z + Math.cos(a) * reach);
+        p.set(t.x, p.y, t.y);
+      }
+    }
     if (this.kneel > 0) {
       this.kneel -= dt;
       this.meter(tr('Bring them down together'), this.kneel / Linked.WINDOW);
