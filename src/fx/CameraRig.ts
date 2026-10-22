@@ -417,11 +417,17 @@ export class CameraRig {
     }
 
     // --- follow ------------------------------------------------------------
-    // Locked on the hero. A jump (a warp, a scene load) still eases in on the
+    // Locked on the hero across the ground. Height stays on the spring: the
+    // hero's feet ride every bump in the floor, and a view copying them shook
+    // the whole picture. A jump (a warp, a scene load) still eases in on the
     // critically damped spring below so it never snaps across the map.
-    if (this.goal.distanceToSquared(this.smooth) < LOCK_RANGE * LOCK_RANGE) {
-      this.smooth.copy(this.goal);
-      this.smoothVel.set(0, 0, 0);
+    const gx = this.goal.x - this.smooth.x;
+    const gz = this.goal.z - this.smooth.z;
+    if (gx * gx + gz * gz < LOCK_RANGE * LOCK_RANGE) {
+      this.smooth.x = this.goal.x;
+      this.smooth.z = this.goal.z;
+      this.smoothVel.x = 0;
+      this.smoothVel.z = 0;
     }
     const k = this.opts.stiffness;
     const step = Math.min(camDt, 1 / 30);

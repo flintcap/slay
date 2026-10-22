@@ -637,7 +637,7 @@ export class Engine {
     cancelAnimationFrame(this.rafId);
   }
 
-  private loop = (): void => {
+  private loop = (frameTime?: number): void => {
     if (!this.running) return;
     this.rafId = requestAnimationFrame(this.loop);
 
@@ -652,9 +652,12 @@ export class Engine {
     }
     let drew = false;
 
+    // Steps are timed by the frame's own vsync stamp, not the moment this
+    // callback happened to run: that wobbles by a millisecond or two, and
+    // with the camera locked on the hero the whole world wobbled with it.
     // Clamp dt so a tab-switch or a long generation pause cannot teleport
     // entities through walls when the loop resumes.
-    const raw = this.clock.update().getDelta();
+    const raw = Math.max(0, this.clock.update(frameTime).getDelta());
     const dt = Math.min(raw, 1 / 20);
 
     if (!this.paused) this.elapsed += dt;

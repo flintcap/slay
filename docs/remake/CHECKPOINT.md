@@ -706,6 +706,11 @@ Update this file and push it after every finished step.
 - #192 Camera locked on the hero at all times: no cursor look-ahead, and
   within 3 m the view snaps to the hero each frame (the spring only
   carries warps). The side-panel shift that keeps the hero in view stays.
+- #194 Flicker after the lock (owner): the view now locks only across the
+  ground; height stays on the spring (the hero's feet ride every floor bump
+  and the whole picture shook with them). Frame steps are timed by the
+  frame's vsync stamp, not when the callback ran, so the locked world no
+  longer wobbles with callback jitter. Drag-off-a-menu test: 3 of 3 pass.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
