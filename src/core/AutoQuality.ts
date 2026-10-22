@@ -60,6 +60,14 @@ const RES_SLOW_MEDIAN = 19;
 const RES_SLOW_P90 = 26;
 /** Calm seconds before a resolution step back up. */
 const RES_WAIT_S = 8;
+/**
+ * A step back up that turns slow again this soon (ms) doubles the wait
+ * before the next try, up to `RES_WAIT_MAX_S`. Without it a machine at the
+ * edge swapped sharpness every ten seconds, and each swap rebuilt the
+ * smoothing pass: the picture pulsed while the hero stood still.
+ */
+const RES_RETRY_MS = 30000;
+const RES_WAIT_MAX_S = 600;
 /** A resolution change is a small hitch (render targets are resized). */
 const RES_SETTLE_MS = 2500;
 /**
@@ -97,6 +105,8 @@ export class AutoQuality {
   private lastUpAt = -Infinity;
   /** Index into RES_STEPS. */
   private res = 0;
+  private resWaitS = RES_WAIT_S;
+  private lastResUpAt = -Infinity;
   private readonly enabled: boolean;
   /** The last step down, waiting to show it helped: the median before it, and how to undo it. */
   private trial: { median: number; undo: () => void } | null = null;
@@ -167,6 +177,7 @@ export class AutoQuality {
       if (gpu > 0 && gpu < median * GPU_BOUND_SHARE) return;
       // Fewer pixels first; the look goes only when that is not enough.
       if (this.res < RES_STEPS.length - 1) {
+        if (now - this.lastResUpAt < RES_RETRY_MS) this.resWaitS = Math.min(this.resWaitS * 2, RES_WAIT_MAX_S);
         const back = this.res;
         this.setRes(this.res + 1);
         this.trial = { median, undo: () => this.setRes(back) };
@@ -189,7 +200,10 @@ export class AutoQuality {
     }
     if (this.res > 0 && median < CALM_MEDIAN && p90 < CALM_P90) {
       this.calmS += Math.min(elapsedS, 2);
-      if (this.calmS >= RES_WAIT_S) this.setRes(this.res - 1);
+      if (this.calmS >= this.resWaitS) {
+        this.lastResUpAt = now;
+        this.setRes(this.res - 1);
+      }
       return;
     }
     if (cur < top && median < CALM_MEDIAN && p90 < CALM_P90) {
