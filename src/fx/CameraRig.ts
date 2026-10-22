@@ -65,9 +65,6 @@ const DEFAULTS: Required<CameraRigOptions> = {
   stiffness: 9.5,
 };
 
-/** Within this many metres the view sits right on the hero; farther (a warp) it eases there. */
-const LOCK_RANGE = 3;
-
 const _target = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _dir = new THREE.Vector3();
@@ -417,18 +414,15 @@ export class CameraRig {
     }
 
     // --- follow ------------------------------------------------------------
-    // Locked on the hero across the ground. Height stays on the spring: the
-    // hero's feet ride every bump in the floor, and a view copying them shook
-    // the whole picture. A jump (a warp, a scene load) still eases in on the
-    // critically damped spring below so it never snaps across the map.
-    const gx = this.goal.x - this.smooth.x;
-    const gz = this.goal.z - this.smooth.z;
-    if (gx * gx + gz * gz < LOCK_RANGE * LOCK_RANGE) {
-      this.smooth.x = this.goal.x;
-      this.smooth.z = this.goal.z;
-      this.smoothVel.x = 0;
-      this.smoothVel.z = 0;
-    }
+    // Locked on the hero across the ground, always: a blink, a dash or a
+    // warp moves the view with the hero in the same frame (owner's rule; a
+    // spring for long jumps left Shadow Step's view trailing behind). Height
+    // stays on the spring below: the hero's feet ride every bump in the
+    // floor, and a view copying them shook the whole picture.
+    this.smooth.x = this.goal.x;
+    this.smooth.z = this.goal.z;
+    this.smoothVel.x = 0;
+    this.smoothVel.z = 0;
     const k = this.opts.stiffness;
     const step = Math.min(camDt, 1 / 30);
     _tmp.copy(this.goal).sub(this.smooth).multiplyScalar(k * k * step);
