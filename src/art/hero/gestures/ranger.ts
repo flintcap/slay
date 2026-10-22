@@ -8,62 +8,70 @@
  * aims, how far it draws, how the bow is canted, how low the body goes, how
  * many times the string comes back, and what the hands do before and after.
  */
-import type { Arm } from '../Actions';
+import { kit } from '../Actions';
+import { SIDE_ON, drawPlaces, loosePlaces, restPlace, type BowAim } from '../Archery';
 import { defineGestures, type G, type Spec, step } from '../SkillActions';
 
-interface Aim {
-  /** Aim above level, radians-ish: 0.85 is a high lob, -0.3 at the legs. */
-  up?: number;
-  /** Bow canted over, 0 upright, 1 lying flat. */
-  cant?: number;
-  /** Extra trunk turn, lean and drop, heads. */
-  turn?: number;
-  lean?: number;
+const { bowReach } = kit;
+
+interface Aim extends BowAim {
+  /** Weight down, to the left and forward, heads. */
   down?: number;
   side?: number;
   fwd?: number;
+  /** Extra head tip, + down. */
   head?: number;
 }
 
-/** The bow arm out at the target. */
-function bowArm(o: Aim): Arm {
-  const up = o.up ?? 0;
-  return [1.55 + up, 0.75, 0.15, 0.1, 0.3 + 1.1 * (o.cant ?? 0)];
-}
+/** The bow held low by the hip while the string hand does something else. */
+const BOW_LOW = bowReach('L', restPlace());
+/** The bow stood upright before the face, to hide behind. */
+const BOW_UP = bowReach('L', { at: [0.15, 5.5, 1.5], dir: [0, 1, 0.08] });
 
-/** The bow up and the string drawn `d` of the way to the cheek (0 at the bow, 1 full). */
-function aim(d: number, o: Aim = {}): G {
+/** The body round a bow: side-on, leaning back to shoot high, eyes on the mark. */
+function body(o: Aim): { g: G; bow: BowAim } {
   const up = o.up ?? 0;
+  const cant = o.cant ?? 0;
+  const lean = -0.04 - up * 0.25 + (o.lean ?? 0);
+  const roll = (o.roll ?? 0) - 0.25 * cant;
   return {
-    L: bowArm(o),
-    R: [1.5 + up * 0.8, 0.45 + 0.35 * d, -0.2 - 0.5 * d, 0.3 + 2.1 * d, 0.6, 0.1],
-    fistR: 0.75,
-    turn: -0.85 + (o.turn ?? 0),
-    lean: -0.04 - up * 0.25 + (o.lean ?? 0),
-    roll: -0.25 * (o.cant ?? 0),
-    down: 0.05 + (o.down ?? 0),
-    side: 0.05 + (o.side ?? 0),
-    fwd: -0.02 + (o.fwd ?? 0),
-    head: o.head ?? 0,
+    g: {
+      turn: SIDE_ON + (o.turn ?? 0),
+      lean,
+      roll,
+      down: 0.05 + (o.down ?? 0),
+      side: 0.05 + (o.side ?? 0),
+      fwd: -0.02 + (o.fwd ?? 0),
+      head: (o.head ?? 0) - up * 0.4,
+      gaze: -SIDE_ON * 0.25,
+      fistL: 1,
+    },
+    bow: { up, cant, turn: o.turn, lean: lean + 0.04, roll },
   };
 }
 
-/** The string let go: fingers open and the hand flies back past the ear. */
+/** The bow up and the string drawn `d` of the way to the chin (0 just nocked at the bow, 1 full). */
+function aim(d: number, o: Aim = {}): G {
+  const { g, bow } = body(o);
+  const h = drawPlaces(d, bow);
+  return { ...g, L: bowReach('L', h.L), R: bowReach('R', h.R), fistR: 0.75 };
+}
+
+/** The string let go: fingers open and the hand flies back along the jaw. */
 function loose(o: Aim = {}, far = 1): G {
-  const up = o.up ?? 0;
-  const g = aim(1, o);
-  g.R = [1.5 + up * 0.8, 0.8 + 0.15 * far, -0.7 - 0.1 * far, 2.4 - 0.25 * far, 0.6, 0.1];
-  g.fistR = 0.1;
-  return g;
+  const { g, bow } = body(o);
+  const h = loosePlaces(bow, far);
+  return { ...g, L: bowReach('L', h.L), R: bowReach('R', h.R), fistR: 0.1 };
 }
 
 /** The bow lowered and the string hand dropped: a shot finished. */
 function after(o: Aim = {}): G {
-  const g = aim(0, o);
-  g.L = [0.9, 0.55, 0.15, 0.4, 0.3];
+  const { g } = body(o);
+  g.L = bowReach('L', restPlace(0, (o.turn ?? 0) + 0.3));
   g.R = [0.5, 0.45, 0.1, 0.9, 0.3];
   g.fistR = 0.3;
   g.turn = -0.45 + (o.turn ?? 0);
+  g.roll = 0;
   return g;
 }
 
@@ -87,9 +95,9 @@ const MARKSMAN: Record<string, Spec> = {
   /** Two fingers touched below the eye, then pointed at the quarry: marked. */
   huntersMark: {
     keys: [
-      [0.14, { R: [1.4, -0.35, 1.2, 2.55, 0.3], L: [0.5, 0.45, 0.15, 0.6, 0.3], fistR: 0.5, head: 0.05, turn: -0.15 }, true],
-      [0.24, { R: [1.6, 0.1, 0.2, 0.05, 1.2, -0.2], L: [0.5, 0.45, 0.15, 0.6, 0.3], fistR: 0.5, turn: 0.2, lean: 0.12, fwd: 0.1, head: 0.1 }],
-      [0.5, { R: [1.55, 0.1, 0.2, 0.1, 1.2, -0.2], L: [0.5, 0.45, 0.15, 0.6, 0.3], fistR: 0.5, turn: 0.2, lean: 0.1, fwd: 0.08, head: 0.1 }],
+      [0.14, { R: [1.4, -0.35, 1.2, 2.55, 0.3], L: BOW_LOW, fistR: 0.5, head: 0.05, turn: -0.15 }, true],
+      [0.24, { R: [1.6, 0.1, 0.2, 0.05, 1.2, -0.2], L: BOW_LOW, fistR: 0.5, turn: 0.2, lean: 0.12, fwd: 0.1, head: 0.1 }],
+      [0.5, { R: [1.55, 0.1, 0.2, 0.1, 1.2, -0.2], L: BOW_LOW, fistR: 0.5, turn: 0.2, lean: 0.1, fwd: 0.08, head: 0.1 }],
     ],
     glow: 'right',
     end: 0.85,
@@ -135,7 +143,7 @@ const MARKSMAN: Record<string, Spec> = {
       [0.12, aim(0.3, { up: 0.12, side: 0.08 })],
       [0.3, aim(1.15, { up: 0.12, side: 0.1, lean: -0.08, head: 0.08 }), true],
       [0.36, loose({ up: 0.12, side: 0.1, lean: -0.08 }, 1.2)],
-      [0.5, { ...loose({ up: 0.0, side: 0.1 }, 1.3), L: [0.6, 0.65, 0.15, 0.3, 0.3] }],
+      [0.5, { ...loose({ up: 0.0, side: 0.1 }, 1.3), L: BOW_LOW }],
     ],
     steps: [step('R', 0.04, -0.3, -0.2)],
     contact: 0.36,
@@ -155,10 +163,10 @@ const MARKSMAN: Record<string, Spec> = {
   /** The whole body leaned over sideways to find the angle off the wall. */
   bankShot: {
     keys: [
-      [0.1, { ...aim(0.4, { up: 0.1, turn: -0.2 }), roll: 0.35, side: -0.2 }],
-      [0.24, { ...aim(1, { up: 0.1, turn: -0.25 }), roll: 0.4, side: -0.25 }, true],
-      [0.29, { ...loose({ up: 0.1, turn: -0.25 }, 0.9), roll: 0.4, side: -0.25 }],
-      [0.46, { ...loose({ up: 0.05, turn: -0.2 }, 1.0), roll: 0.3, side: -0.2 }],
+      [0.1, aim(0.4, { up: 0.1, turn: -0.2, roll: 0.35, side: -0.25 })],
+      [0.24, aim(1, { up: 0.1, turn: -0.25, roll: 0.4, side: -0.3 }), true],
+      [0.29, loose({ up: 0.1, turn: -0.25, roll: 0.4, side: -0.3 }, 0.9)],
+      [0.46, loose({ up: 0.05, turn: -0.2, roll: 0.3, side: -0.25 }, 1.0)],
     ],
     contact: 0.29,
     end: 0.75,
@@ -239,10 +247,10 @@ const WILDCRAFT: Record<string, Spec> = {
   /** An arrow drawn from the quiver, dipped at the hip, and studied at the eye. */
   venomCoat: {
     keys: [
-      [0.14, { R: [2.5, 0.3, -0.7, 2.3, 0.3], L: [0.8, 0.5, 0.15, 0.6, 0.3], head: -0.1, turn: 0.2 }, true],
-      [0.28, { R: [0.25, 0.45, 0.2, 1.5, 0.3, -0.4], L: [0.8, 0.5, 0.15, 0.6, 0.3], head: 0.3, lean: 0.15, turn: -0.25, down: 0.1 }, true],
-      [0.44, { R: [1.35, -0.2, 1.1, 2.0, 0.3], L: [0.8, 0.5, 0.15, 0.6, 0.3], head: 0.1, turn: 0.05 }],
-      [0.66, { R: [1.3, -0.2, 1.1, 2.05, 0.3], L: [0.8, 0.5, 0.15, 0.6, 0.3], head: 0.12 }],
+      [0.14, { R: [2.5, 0.3, -0.7, 2.3, 0.3], L: BOW_LOW, head: -0.1, turn: 0.2 }, true],
+      [0.28, { R: [0.25, 0.45, 0.2, 1.5, 0.3, -0.4], L: BOW_LOW, head: 0.3, lean: 0.15, turn: -0.25, down: 0.1 }, true],
+      [0.44, { R: [1.35, -0.2, 1.1, 2.0, 0.3], L: BOW_LOW, head: 0.1, turn: 0.05 }],
+      [0.66, { R: [1.3, -0.2, 1.1, 2.05, 0.3], L: BOW_LOW, head: 0.12 }],
     ],
     contact: 0.44,
     glow: 'right',
@@ -251,9 +259,9 @@ const WILDCRAFT: Record<string, Spec> = {
   /** Sunk into a squat behind the upright bow, head ducked, perfectly still. */
   camouflage: {
     keys: [
-      [0.16, { L: [1.1, 0.1, 0.9, 1.4, 0.3], R: [0.9, -0.1, 0.9, 1.9, 0.3], lean: 0.3, down: 0.6, head: 0.2 }, true],
-      [0.32, { L: [1.0, -0.05, 1.0, 1.6, 0.3], R: [0.8, -0.2, 1.0, 2.1, 0.3], lean: 0.45, down: 1.2, head: 0.45 }],
-      [0.62, { L: [1.0, -0.05, 1.0, 1.62, 0.3], R: [0.8, -0.2, 1.0, 2.1, 0.3], lean: 0.44, down: 1.18, head: 0.42 }],
+      [0.16, { L: BOW_UP, R: [0.9, -0.1, 0.9, 1.9, 0.3], lean: 0.3, down: 0.6, head: 0.2 }, true],
+      [0.32, { L: BOW_UP, R: [0.8, -0.2, 1.0, 2.1, 0.3], lean: 0.45, down: 1.2, head: 0.45 }],
+      [0.62, { L: BOW_UP, R: [0.8, -0.2, 1.0, 2.1, 0.3], lean: 0.44, down: 1.18, head: 0.42 }],
     ],
     glow: 'both',
     end: 1.0,
@@ -284,9 +292,9 @@ const WILDCRAFT: Record<string, Spec> = {
   /** The nest weighed in the hand and lobbed underarm, gently, out ahead. */
   waspNest: {
     keys: [
-      [0.14, { R: [-0.4, 0.35, 0.1, 0.4, 0.3, 0.4], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.6, lean: 0.25, down: 0.3, turn: -0.3 }, true],
-      [0.26, { R: [1.2, 0.3, 0.1, 0.2, 0.3, 0.6], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.1, lean: 0.05, down: 0.1, turn: 0.15, head: -0.05 }],
-      [0.46, { R: [1.1, 0.35, 0.1, 0.3, 0.3, 0.5], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.1, lean: 0.04, down: 0.08, turn: 0.12 }],
+      [0.14, { R: [-0.4, 0.35, 0.1, 0.4, 0.3, 0.4], L: BOW_LOW, fistR: 0.6, lean: 0.25, down: 0.3, turn: -0.3 }, true],
+      [0.26, { R: [1.2, 0.3, 0.1, 0.2, 0.3, 0.6], L: BOW_LOW, fistR: 0.1, lean: 0.05, down: 0.1, turn: 0.15, head: -0.05 }],
+      [0.46, { R: [1.1, 0.35, 0.1, 0.3, 0.3, 0.5], L: BOW_LOW, fistR: 0.1, lean: 0.04, down: 0.08, turn: 0.12 }],
     ],
     steps: [step('L', 0.12, 0.35)],
     contact: 0.26,
@@ -295,7 +303,7 @@ const WILDCRAFT: Record<string, Spec> = {
   /** A two-finger whistle, then the left forearm raised level for the bird. */
   kestrel: {
     keys: [
-      [0.12, { R: [1.5, -0.2, 1.1, 2.4, 0.3], L: [0.8, 0.5, 0.15, 0.6, 0.3], fistR: 0.5, head: 0.12 }],
+      [0.12, { R: [1.5, -0.2, 1.1, 2.4, 0.3], L: BOW_LOW, fistR: 0.5, head: 0.12 }],
       [0.26, { R: [1.45, -0.2, 1.1, 2.4, 0.3], L: [1.6, 0.9, -0.3, 1.6, 0.3], fistR: 0.5, fistL: 1, head: -0.25, lean: -0.1 }, true],
       [0.5, { R: [0.6, 0.45, 0.1, 0.9, 0.3], L: [1.65, 0.95, -0.3, 1.55, 0.3], fistL: 1, head: -0.3, lean: -0.12 }],
     ],
@@ -388,8 +396,8 @@ const VOLLEY: Record<string, Spec> = {
   /** The arrowhead struck along the thigh to light it, then drawn and loosed. */
   explosiveTip: {
     keys: [
-      [0.1, { R: [0.1, 0.5, 0.0, 0.5, 0.3, -0.3], L: [0.8, 0.55, 0.15, 0.5, 0.3], fistR: 0.75, lean: 0.15, turn: -0.2, head: 0.25 }, true],
-      [0.16, { R: [0.7, 0.35, 0.3, 0.3, 0.3, 0.2], L: [0.8, 0.55, 0.15, 0.5, 0.3], fistR: 0.75, lean: 0.1, turn: -0.3, head: 0.2 }],
+      [0.1, { R: [0.1, 0.5, 0.0, 0.5, 0.3, -0.3], L: BOW_LOW, fistR: 0.75, lean: 0.15, turn: -0.2, head: 0.25 }, true],
+      [0.16, { R: [0.7, 0.35, 0.3, 0.3, 0.3, 0.2], L: BOW_LOW, fistR: 0.75, lean: 0.1, turn: -0.3, head: 0.2 }],
       [0.28, aim(1, { up: 0.08 }), true],
       [0.33, loose({ up: 0.08 }, 1.0)],
       [0.48, loose({ up: 0.05 }, 1.1)],
@@ -429,8 +437,8 @@ const VOLLEY: Record<string, Spec> = {
   /** The string hand run over the quiver's fletching, then the bow lifted with a flourish. */
   openQuiver: {
     keys: [
-      [0.12, { R: [2.6, 0.35, -0.8, 2.2, 0.3], L: [0.9, 0.55, 0.15, 0.4, 0.3], fistR: 0.2, head: -0.15, turn: 0.25 }],
-      [0.24, { R: [2.3, 0.75, -0.5, 1.6, 0.3], L: [0.9, 0.55, 0.15, 0.4, 0.3], fistR: 0.1, head: -0.1, turn: 0.35 }, true],
+      [0.12, { R: [2.6, 0.35, -0.8, 2.2, 0.3], L: BOW_LOW, fistR: 0.2, head: -0.15, turn: 0.25 }],
+      [0.24, { R: [2.3, 0.75, -0.5, 1.6, 0.3], L: BOW_LOW, fistR: 0.1, head: -0.1, turn: 0.35 }, true],
       [0.38, { R: [1.2, 0.6, 0.1, 0.8, 0.3], L: [2.2, 0.7, 0.1, 0.4, 0.4], fistR: 0.2, head: 0.05, turn: -0.1, lean: -0.08 }],
       [0.6, { R: [1.1, 0.6, 0.1, 0.85, 0.3], L: [2.1, 0.7, 0.1, 0.45, 0.4], fistR: 0.2, head: 0.05, turn: -0.08, lean: -0.06 }],
     ],

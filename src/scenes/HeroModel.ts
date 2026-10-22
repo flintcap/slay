@@ -10,6 +10,7 @@ import { wearArmour, removeArmour, type WornArmour } from '../art/hero/Armour';
 import { CapeCloth } from '../art/hero/CapeCloth';
 import { holdItem, weaponGrip } from '../art/hero/Hold';
 import { dressOutfit } from '../art/items/Outfit';
+import { BowString } from '../art/items/BowString';
 
 export { weaponGrip };
 import { HeroAnimator, type OffHand } from '../art/hero/Animator';
@@ -57,6 +58,8 @@ function offHandKind(category: string | undefined): OffHand {
   }
 }
 
+const _hand = new THREE.Vector3();
+
 interface Held {
   key: string;
   /** Armour grown on the body, or a model in a socket. */
@@ -72,6 +75,8 @@ export class DressedHero {
   /** Rig bones by name. */
   readonly bones: Record<string, THREE.Bone>;
   private held = new Map<EquipSlot, Held>();
+  /** The held bow's string, drawn by the string hand while shooting. */
+  private bowString: BowString | null = null;
   private rng: Random;
   /** Set glow and auras (`items/Outfit.ts`), and the set pieces they were made for. */
   private outfit: THREE.Object3D[] = [];
@@ -154,6 +159,15 @@ export class DressedHero {
   /** Moves the cloth on; call once a frame after the animator. */
   tickCloth(dt: number): void {
     this.capeCloth?.tick(dt);
+  }
+
+  /** Lets the string hand draw the bow; call once a frame after the animator. */
+  tickBow(dt: number): void {
+    const s = this.bowString;
+    if (!s) return;
+    const hand = this.body.rig.sockets.mainHand;
+    hand.updateWorldMatrix(true, false);
+    s.update(dt, hand.getWorldPosition(_hand), this.animator.fingerCurl('R'), this.animator.inAction);
   }
 
   /** Puts the cloth on the cape worn now, or takes it off. */
@@ -330,7 +344,12 @@ export class DressedHero {
     const grip = weaponGrip(base?.category, base?.slot === 'twoHand');
     // A bow is held in the left hand; the right draws.
     const hand = grip === 'bow' ? 'offHand' : slot === 'offHand' ? 'offHand' : 'mainHand';
-    const node = holdItem(rig, hand, model, base?.category === 'shield' ? 'shield' : grip);
+    const hold = base?.category === 'shield' || base?.category === 'crossbow' ? base.category : grip;
+    const node = holdItem(rig, hand, model, hold);
+    if (base?.category === 'bow') {
+      this.bowString?.dispose();
+      this.bowString = BowString.on(model);
+    }
     // Tools find the weapon by the game slot it came from.
     node.parent!.userData.socketSlot = slot;
     return { model };
@@ -345,6 +364,10 @@ export class DressedHero {
       disposeTree(h.worn.object);
     }
     if (h.model) {
+      if (this.bowString?.bow === h.model) {
+        this.bowString.dispose();
+        this.bowString = null;
+      }
       const node = h.model.parent;
       if (node?.parent?.userData.socketSlot === slot) delete node.parent.userData.socketSlot;
       if (node && node.name.startsWith('hold:')) node.removeFromParent();

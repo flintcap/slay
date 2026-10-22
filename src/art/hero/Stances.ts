@@ -9,6 +9,7 @@
 import type { Pose } from './Pose';
 import { CH } from './Pose';
 import { FORM_STANCES, type FormStance } from './forms/FormStances';
+import { restPlace, type BowPlace } from './Archery';
 
 export type Stance =
   | 'unarmed'
@@ -95,6 +96,12 @@ function longMove(p: Pose, b: StanceBody, side: 'L' | 'R', run: number): void {
   p.arm(side, 0.2, 0.32 + 0.1 * b.build, 0.02, 0.75 + 0.4 * run, -0.65, 0, 0.1);
   p.reach(side, [sgn(side) * 0.8 * b.h, 4.0 * b.h, 0.7 * b.h], [sgn(side) * 0.12, 1, 0.35 + 0.2 * run]);
   p.fist(side, 1);
+}
+/** The bow hand placed (`Archery.ts` heads to metres), the wrist straight. */
+function holdBow(p: Pose, b: StanceBody, at: BowPlace): void {
+  p.set('handL', 0, 0, 0);
+  p.reach('L', [at.at[0] * b.h, at.at[1] * b.h, at.at[2] * b.h], at.dir);
+  p.fist('L', 1);
 }
 /** A dagger low and forward, point back along the forearm. */
 function daggerIdle(p: Pose, b: StanceBody, side: 'L' | 'R'): void {
@@ -318,16 +325,18 @@ export const STANCES: Record<Stance, StanceDef> = {
     crouch: 0.0028,
   },
   // Bow in the left hand, low and canted; the string hand free.
+  // The bow low by the left hip, top limb tipped forward across the body
+  // (`Archery.ts`); the string hand loose and ready.
   bow: {
     idle(p, b) {
-      p.arm('L', 0.25, 0.2 + 0.1 * b.build, -0.1, 0.55, 0.2, 0, -0.3);
-      p.fist('L', 1);
-      relaxed(p, 'R', b, 0.15, 0.55);
-      p.fist('R', 0.6);
+      p.arm('L', 0.3, 0.2 + 0.1 * b.build, -0.1, 0.6, 0.2, 0, 0);
+      holdBow(p, b, restPlace(0));
+      relaxed(p, 'R', b, 0.2, 0.6);
+      p.fist('R', 0.5);
     },
     move(p, b, run) {
-      p.arm('L', 0.15, 0.2 + 0.1 * b.build, -0.1, 0.45 + 0.6 * run, 0.2, 0, -0.3);
-      p.fist('L', 1);
+      p.arm('L', 0.25, 0.2 + 0.1 * b.build, -0.1, 0.6 + 0.4 * run, 0.2, 0, 0);
+      holdBow(p, b, restPlace(run));
       relaxed(p, 'R', b);
       runArm(p, 'R', b, run);
     },

@@ -17,6 +17,7 @@ import type { EquipSlot, ItemRarity } from '../src/types';
 import { HERO_LOOKS } from '../src/art/hero/Looks';
 import { loadMeshCache } from '../src/art/hero/MeshCache';
 import { HeroAnimator } from '../src/art/hero/Animator';
+import { BowString } from '../src/art/items/BowString';
 import { ACTION_NAMES, actionFor } from '../src/art/hero/Actions';
 // Every class's skill gestures, so `--actions=skill.<id>` can show them.
 import '../src/art/hero/gestures';
@@ -181,6 +182,8 @@ interface Actor {
   mover: THREE.Group;
   /** Holds the mover and the floor grid, for shooting. */
   world: THREE.Group;
+  /** A held bow's string, drawn as the game draws it. */
+  bow?: BowString | null;
 }
 
 function actor(cls: CharClassId, stance: Stance, name = `${cls}-${stance}`, kit?: string, rarity: ItemRarity = 'unique'): Actor {
@@ -194,10 +197,14 @@ function actor(cls: CharClassId, stance: Stance, name = `${cls}-${stance}`, kit?
     }
     setHeroHidden(hero, hidden);
   }
+  let bow: BowString | null = null;
   for (const [slot, id, grip] of STANCE_ITEMS[stance]) {
     const base = ITEM_BASES.find((b) => b.id === id);
     if (!base) continue;
-    holdItem(hero.rig, slot, buildItemModel(base.visual, new Random(7), 'rare'), grip);
+    const model = buildItemModel(base.visual, new Random(7), 'rare');
+    // As the game holds it (`HeroModel.put`): a crossbow has its own turn.
+    holdItem(hero.rig, slot, model, base.category === 'crossbow' ? 'crossbow' : grip);
+    if (base.category === 'bow') bow = BowString.on(model);
   }
   const anim = new HeroAnimator(hero.rig.bones);
   anim.setStance(stance);
@@ -206,7 +213,7 @@ function actor(cls: CharClassId, stance: Stance, name = `${cls}-${stance}`, kit?
   anim.follow(mover);
   const world = new THREE.Group();
   world.add(mover);
-  return { hero, anim, mover, world };
+  return { hero, anim, mover, world, bow };
 }
 
 /** A path for the mover: position and heading at time t. */
@@ -218,6 +225,11 @@ function simulate(a: Actor, from: number, to: number, drive: Drive, each?: (t: n
   for (let t = from; t < to - 1e-6; t += dt) {
     drive(t, a.mover, dt);
     a.anim.update(dt);
+    if (a.bow) {
+      const hand = a.hero.rig.sockets.mainHand;
+      hand.updateWorldMatrix(true, false);
+      a.bow.update(dt, hand.getWorldPosition(new THREE.Vector3()), a.anim.fingerCurl('R'), a.anim.inAction);
+    }
     each?.(t + dt);
   }
 }
@@ -625,13 +637,18 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
     const stance = (f.stance as Stance | undefined) ?? CLASS_STANCE[cls];
     const list = (f.actions ?? 'attack1#0,attack1#1,attack1#2,thrust,slam,lunge,cast,shoot').split(',');
-    const TW = 210;
-    const TH = 300;
+    // `--tile=1.5` draws each frame bigger; `--dist=2` and `--aim=0.8` (share of
+    // the height) bring the camera in on the hands and head.
+    const tile = Number(f.tile ?? 1);
+    const TW = Math.round(210 * tile);
+    const TH = Math.round(300 * tile);
     const COLS = 8;
+    const aimY = Number(f.aim ?? 0.5);
+    if (f.bow) STANCE_ITEMS.bow = [['offHand', f.bow, 'bow']];
     // Two views a row: three-quarter from the front, and the game's camera from above.
     const views: Array<[number, number, number]> = [
-      [Number(f.view ?? 0.7), 0.15, 3.9],
-      [Number(f.view ?? 0.7) + 0.5, 0.95, 4.4],
+      [Number(f.view ?? 0.7), 0.15, Number(f.dist ?? 3.9)],
+      [Number(f.view ?? 0.7) + 0.5, 0.95, Number(f.dist ?? 3.9) + 0.5],
     ];
     // `--front`: the three-quarter view only, half the sheet to read.
     if (f.front) views.length = 1;
@@ -658,7 +675,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
           simulate(a, t, next, still);
           t = next;
           const H = a.hero.look.shape.height;
-          const tgt = new THREE.Vector3(0, H * 0.5, 0);
+          const tgt = new THREE.Vector3(0, H * aimY, 0);
           shoot(g, a.world, { x: k * TW, y: r * TH, w: TW, h: TH, yaw, target: tgt, dist, floor: true, pitch });
           if (k === ck) {
             g.strokeStyle = '#d04040';
@@ -684,6 +701,7 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
     const cls = (f.class ?? 'warden').split(',')[0] as CharClassId;
     const stance = (f.stance as Stance | undefined) ?? CLASS_STANCE[cls];
     const list = (f.actions ?? 'attack1#0,attack1#1,attack1#2').split(',');
+    if (f.bow) STANCE_ITEMS.bow = [['offHand', f.bow, 'bow']];
     const lines: string[] = [];
     const v = (o: THREE.Vector3) => `${o.x.toFixed(2)} ${o.y.toFixed(2)} ${o.z.toFixed(2)}`.padEnd(17);
     for (const spec of list) {
@@ -783,6 +801,8 @@ export const SHEETS: Record<string, (f: Record<string, string>) => Promise<strin
       const [id, grip] = f.main.split(':');
       for (const st of list) STANCE_ITEMS[st] = [['mainHand', id!, grip ?? 'sword'], ...STANCE_ITEMS[st].filter(([sl]) => sl !== 'mainHand')];
     }
+    // --bow=xbow.siege puts another bow or crossbow in the bow hand.
+    if (f.bow) STANCE_ITEMS.bow = [['offHand', f.bow, 'bow']];
     // --off=shield.tower puts another shield in the off hand.
     if (f.off) for (const st of list) STANCE_ITEMS[st] = [...STANCE_ITEMS[st].filter(([sl]) => sl !== 'offHand'), ['offHand', f.off, 'shield']];
     const TW = 220;

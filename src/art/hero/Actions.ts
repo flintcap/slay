@@ -18,6 +18,7 @@
 import { CH, type Pose, type Side } from './Pose';
 import type { Stance, StanceBody } from './Stances';
 import { FORM_CHAINS, type FormKind } from './forms/FormActions';
+import { SIDE_ON, drawPlaces, loosePlaces, mirrored, type BowAim, type BowPlace } from './Archery';
 
 export type MoveKind =
   | 'blade'
@@ -118,7 +119,7 @@ function weight(p: Pose, c: ActionCtx, fwd: number, down: number, side = 0): voi
  * pointing, heads, character space, for a right-handed blow (+X left, +Z
  * ahead; mirrored for the left hand). `cock` and `flex` set the wrist.
  */
-interface Reach {
+export interface Reach {
   at: [number, number, number];
   dir: [number, number, number];
   cock?: number;
@@ -401,25 +402,36 @@ export function moveKind(stance: Stance, grip: string, category?: string): MoveK
 // Shots
 // ---------------------------------------------------------------------------
 
+/** A bow hand's place as a reach, the wrist straight. */
+function bowReach(side: Side, b: BowPlace): Reach {
+  const m = mirrored(side, b);
+  return { at: m.at, dir: m.dir, cock: 0, flex: 0 };
+}
+
 /**
- * The bow held out on the left arm, the string drawn to the cheek. Bow side
- * toward the target: the hips and chest turn right and the arms swing back
- * to aim straight ahead.
+ * An archer's body round two placed hands (`Archery.ts`): side-on to the
+ * target, leaning back to shoot high, eyes down the arrow.
+ */
+function archer(p: Pose, c: ActionCtx, hands: { L: BowPlace; R: BowPlace }, o: BowAim, fistR: number): void {
+  place(p, c, 'L', bowReach('L', hands.L));
+  place(p, c, 'R', bowReach('R', hands.R));
+  p.fist('L', 1);
+  p.fist('R', fistR);
+  trunk(p, SIDE_ON + (o.turn ?? 0), o.lean ?? 0, o.roll ?? 0);
+  // The trunk's turn leaves the eyes a quarter of it short of the target.
+  p.add('neck', 0, -SIDE_ON * 0.1, 0);
+  p.add('head', -(o.up ?? 0) * 0.4, -SIDE_ON * 0.15, 0.06);
+}
+
+/**
+ * The bow raised, the string hand meeting it, the string drawn to the chin
+ * and let go: the arrow nocked and drawn by both hands (the string follows
+ * the drawing fingers, `items/BowString.ts`).
  */
 function shot(o: { up?: number; quick?: boolean } = {}): ActionDef {
   const up = o.up ?? 0;
-  const [tn, td, tr, tf, te] = o.quick ? [0.06, 0.14, 0.18, 0.3, 0.5] : [0.1, 0.24, 0.3, 0.46, 0.72];
-  const aim = (p: Pose, draw: number, c: ActionCtx) => {
-    trunk(p, -0.85, -0.04 - up * 0.25, 0);
-    p.add('neck', 0, 0.3, 0);
-    p.add('head', -up * 0.4, 0.4, 0);
-    // Bow arm straight out at the target.
-    arm(p, 'L', [1.55 + up, 0.75, 0.15, 0.1, 0.3, 0, 0]);
-    // String hand from the bow back to the cheek.
-    arm(p, 'R', [1.5 + up * 0.8, 0.45 + 0.35 * draw, -0.2 - 0.5 * draw, 0.3 + 2.1 * draw, 0.6, 0.1, 0]);
-    p.fist('R', 0.75);
-    weight(p, c, -0.02, 0.05, 0.05);
-  };
+  const aim: BowAim = { up, lean: -0.04 - up * 0.25 };
+  const [tn, td, tr, tf, te] = o.quick ? [0.07, 0.15, 0.18, 0.3, 0.5] : [0.11, 0.24, 0.3, 0.46, 0.72];
   return {
     contact: tr,
     event: 'release',
@@ -428,19 +440,25 @@ function shot(o: { up?: number; quick?: boolean } = {}): ActionDef {
     plantFeet: true,
     keys: [
       k(0, rest),
-      k(tn, (p, c) => aim(p, 0.1, c)),
-      k(td, (p, c) => aim(p, 1, c), true),
+      k(tn, (p, c) => {
+        archer(p, c, drawPlaces(0, aim), aim, 0.75);
+        weight(p, c, -0.01, 0.03, 0.03);
+      }),
+      k(
+        td,
+        (p, c) => {
+          archer(p, c, drawPlaces(1, aim), aim, 0.75);
+          weight(p, c, -0.02, 0.05, 0.05);
+        },
+        true,
+      ),
       k(tr, (p, c) => {
-        aim(p, 1.05, c);
-        // The release: fingers open and the hand flies back past the ear.
-        p.add('upperArmR', 0, 0.15, 0.1);
-        p.add('foreArmR', 0.15, 0, 0);
-        p.fist('R', 0.1);
+        archer(p, c, loosePlaces(aim, 1), aim, 0.1);
+        weight(p, c, -0.02, 0.05, 0.05);
       }),
       k(tf, (p, c) => {
-        aim(p, 1.0, c);
-        p.add('upperArmR', -0.05, 0.25, 0.2);
-        p.fist('R', 0.2);
+        archer(p, c, loosePlaces(aim, 1.2), aim, 0.2);
+        weight(p, c, -0.02, 0.04, 0.04);
       }),
       k(te, rest),
     ],
@@ -1006,7 +1024,7 @@ const FIXED: Record<string, ActionDef> = {
 };
 
 /** What `SkillActions.ts` builds its gestures from. */
-export const kit = { k, rest, arm, place, trunk, weight, glowAt };
+export const kit = { k, rest, arm, place, trunk, weight, glowAt, bowReach };
 
 /**
  * Adds a named action (townsfolk at their work, a talk gesture) that `play`

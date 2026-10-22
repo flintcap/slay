@@ -1005,6 +1005,7 @@ export class Player {
     this.animator.setCondition(this.bodyCondition);
     this.animator.update(dt);
     this.hero.tickCloth(dt);
+    this.hero.tickBow(dt);
     this.shape.update(dt);
     this.updateBodyTint(dt);
   }

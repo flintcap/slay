@@ -443,6 +443,11 @@ export class HeroAnimator {
     return { clip: tr.name, t: tr.t, contact: tr.def.contact ?? null };
   }
 
+  /** How shut a hand's fingers are now, 0 open .. 1 a fist (`Pose.fist`). */
+  fingerCurl(side: 'L' | 'R'): number {
+    return clamp(this.pose.c[BONE_INDEX[side === 'L' ? 'fingersL' : 'fingersR'] * 3]! / 1.35, 0, 1);
+  }
+
   /** Spell light in the hands right now, 0..1. */
   get castGlow(): number {
     const tr = this.track;

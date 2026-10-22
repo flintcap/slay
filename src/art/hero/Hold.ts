@@ -27,6 +27,13 @@ export function holdTurn(grip: string, slot: 'mainHand' | 'offHand'): THREE.Quat
       // swung out wide of the body. Tip the head back in toward the shoulder.
       q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), slot === 'offHand' ? -MACE_TUCK : MACE_TUCK);
       break;
+    case 'bow':
+    case 'crossbow':
+      // The grip up through the fist, the arrow out along the knuckles and
+      // the string back toward the wrist: a bow is made shooting along +Z.
+      // A crossbow is first stood the same way (`CROSSBOW_STAND`).
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+      break;
     default:
       break;
   }
@@ -38,6 +45,13 @@ const MACE_TUCK = 0.35;
 
 /** How far a shield's board stands off the fist, in metres. */
 const SHIELD_STANDOFF = 0.06;
+
+/**
+ * A crossbow is made shooting along +Y with its groove on +Z. Turned on its
+ * own, inside the hold, it shoots along +Z with the groove up +Y like a bow,
+ * so placed hands (`Pose.reach`, which aim the hold's +Y) treat both alike.
+ */
+const CROSSBOW_STAND = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 1).normalize(), Math.PI);
 
 /** How far up the shaft the main hand takes a staff, as a share of its length. */
 const STAFF_HOLD = 0.33;
@@ -65,6 +79,7 @@ export function holdItem(rig: HeroRig, slot: 'mainHand' | 'offHand', model: THRE
   // it. Held at the board, the fist came out through the face: push the board
   // out so the fist sits on the handle with the knuckles behind the board.
   if (grip === 'shield') model.position.z += SHIELD_STANDOFF;
+  if (grip === 'crossbow') model.quaternion.copy(CROSSBOW_STAND);
   node.add(model);
   socket.add(node);
   return node;

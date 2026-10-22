@@ -36,6 +36,8 @@ export interface G {
   side?: number;
   /** Extra head tip, + down. */
   head?: number;
+  /** Extra head turn, + to the character's left: the eyes kept on a mark the trunk turned from. */
+  gaze?: number;
   /** Finger curl, 1 a fist. */
   fistR?: number;
   fistL?: number;
@@ -104,6 +106,10 @@ function pose(main: G, i: number, alt: Spec['alt']): (p: Pose, c: ActionCtx) => 
     trunk(p, g.turn ?? 0, g.lean ?? 0, g.roll ?? 0);
     if (g.spin) p.add('pelvis', 0, g.spin, 0);
     if (g.head) p.add('head', g.head, 0, 0);
+    if (g.gaze) {
+      p.add('neck', 0, g.gaze * 0.4, 0);
+      p.add('head', 0, g.gaze * 0.6, 0.06);
+    }
     weight(p, c, g.fwd ?? 0, g.down ?? 0, g.side ?? 0);
   };
 }
