@@ -826,6 +826,8 @@ class DragController {
   private onEnd: (() => void) | null = null;
   /** Where the ghost hangs from the pointer, in px from its top-left. */
   private hold = { x: 26, y: 26 };
+  /** The ghost's zoom: what the thing picked up was drawn at. */
+  private zoom = 1;
   /** The pointer, last seen. */
   x = 0;
   y = 0;
@@ -845,6 +847,9 @@ class DragController {
     this.hold = hold ?? { x: 26, y: 26 };
 
     const g = div('drag-ghost');
+    // As big as what was picked up, in a zoomed side panel too.
+    this.zoom = (ev.target instanceof HTMLElement && ev.target.currentCSSZoom) || uiScale();
+    g.style.zoom = String(this.zoom);
     // The body tilts with the swing of the pointer, so the item feels held
     // rather than pasted to the cursor.
     const body = div('drag-ghost-body');
@@ -958,9 +963,9 @@ class DragController {
     this.x = x;
     this.y = y;
     if (!this.ghost) return;
-    // The ghost is drawn at the menus' scale (`.drag-ghost` zoom), so its
-    // own pixels are screen pixels over that scale.
-    const z = uiScale();
+    // The ghost is drawn at the zoom of what it carries, so its own pixels
+    // are screen pixels over that zoom.
+    const z = this.zoom;
     this.ghost.style.transform = `translate3d(${x / z - this.hold.x}px, ${y / z - this.hold.y}px, 0)`;
     const swing = Math.max(-14, Math.min(14, (x - this.lastX) * 0.9));
     this.tilt += (swing - this.tilt) * 0.35;
@@ -1044,14 +1049,43 @@ function emitSides(): void {
   for (const p of panelStack) {
     const side = p.side;
     if (!side) continue;
-    // Both in the UI layer's own pixels, so the UI scale cancels out.
-    cover[side] = Math.max(cover[side], Math.min(1, p.frame.offsetWidth / Math.max(1, uiWidth())));
+    // Measured on screen, so the side zoom is in it; then in the UI layer's own pixels.
+    const w = p.frame.getBoundingClientRect().width / uiScale();
+    cover[side] = Math.max(cover[side], Math.min(1, w / Math.max(1, uiWidth())));
   }
   if (cover.left === lastCover.left && cover.right === lastCover.right) return;
   lastCover = cover;
   events.emit('ui:sides', cover);
 }
 let lastCover = { left: 0, right: 0 };
+
+/** A side panel's layout, as drawn on a window with room for it and no more. */
+const SIDE_W = 640;
+const SIDE_H = 900;
+/** Above a side panel, and between it and the HUD under it, in the UI layer's pixels. */
+const SIDE_TOP = 8;
+const SIDE_GAP = 16;
+/** The most of the window's width one side panel may take, so the hero keeps the middle. */
+const SIDE_MAX_COVER = 0.4;
+
+/**
+ * Sizes the side panels to the window. Each runs from the top to a gap above
+ * the orbs (`--hud-reach`, HUD `measureReach`); on a window taller than its
+ * layout the whole panel is drawn bigger (`--side-zoom`) so it fills that
+ * height rather than leaving its lower part empty. Never smaller than drawn:
+ * a short window scrolls the panel instead, so the text stays readable.
+ */
+export function fitSidePanels(): void {
+  const root = document.documentElement;
+  const reach = parseFloat(root.style.getPropertyValue('--hud-reach')) || 156;
+  const tall = uiHeight() - SIDE_TOP - reach - SIDE_GAP;
+  const zoom = Math.max(1, Math.min(tall / SIDE_H, (uiWidth() * SIDE_MAX_COVER) / SIDE_W));
+  root.style.setProperty('--side-zoom', zoom.toFixed(4));
+  // In the panel's own pixels, which its zoom then draws bigger.
+  root.style.setProperty('--side-w', `${Math.min(SIDE_W, (uiWidth() * 0.5) / zoom).toFixed(1)}px`);
+  root.style.setProperty('--side-h', `${Math.max(240, tall / zoom).toFixed(1)}px`);
+  emitSides();
+}
 
 /** Whether a side panel is open on `side` (that panel, when `id` is given). */
 export function isSideOpen(side: PanelSide, id?: string): boolean {
@@ -1356,7 +1390,7 @@ export class Panel {
     this.raise();
     if (!this.opts.quiet) uiSfx('ui.open', 0.8);
     this.opts.onOpen?.();
-    if (this.side) emitSides();
+    if (this.side) fitSidePanels();
   }
 
   close(): void {
@@ -1389,7 +1423,7 @@ export class Panel {
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', () => {
     for (const p of panelStack) p.applyPlace();
-    emitSides();
+    fitSidePanels();
   });
 }
 

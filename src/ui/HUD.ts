@@ -43,6 +43,7 @@ import {
   tip,
   STAT_LABEL,
   ORNAMENT,
+  fitSidePanels,
   type MinimapPip,
 } from './Widgets';
 import { requestItemIcon, skillIconUri, statusIconUri, warmItemIcons } from '../art/Icons';
@@ -953,6 +954,7 @@ export class HUD {
     if (!Number.isFinite(top)) return;
     const reach = Math.ceil(uiHeight() - top / uiScale());
     document.documentElement.style.setProperty('--hud-reach', `${reach}px`);
+    fitSidePanels();
   }
 
   // -- events --------------------------------------------------------------

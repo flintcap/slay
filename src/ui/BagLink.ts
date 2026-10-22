@@ -24,8 +24,6 @@ export interface BagVerb {
 }
 
 let lent: { owner: string; verb: BagVerb } | null = null;
-/** Equipment was opened for the counter, so it closes with it. */
-let openedFor: string | null = null;
 
 /** The verb the bag has on loan, if any. */
 export function bagVerb(): BagVerb | null {
@@ -35,28 +33,20 @@ export function bagVerb(): BagVerb | null {
 /** A counter panel opened: it lends its verb and brings the bag up beside it. */
 export function lendBag(owner: string, verb: BagVerb): void {
   lent = { owner, verb };
-  if (!isSideOpen('right', 'inventory')) {
-    openedFor = owner;
-    events.emit('ui:open', { panel: 'inventory' });
-  }
+  if (!isSideOpen('right', 'inventory')) events.emit('ui:open', { panel: 'inventory' });
   events.emit('ui:refresh', {});
 }
 
 /**
- * A counter panel closed. The bag goes too if it came up for it, unless the
- * player went straight on to another left-hand panel.
+ * A counter panel closed, and the bag goes with it, even when it was open
+ * before: unless the player went straight on to another counter.
  */
 export function returnBag(owner: string): void {
   if (lent?.owner === owner) lent = null;
-  const ours = openedFor === owner;
-  if (ours) openedFor = null;
   // A panel opening on the left closes the one there before it lends its own
   // verb, so wait for the swap to finish before deciding.
   queueMicrotask(() => {
-    if (ours) {
-      if (lent) openedFor = lent.owner;
-      else if (!isSideOpen('left')) events.emit('ui:close', { panel: 'inventory' });
-    }
+    if (!lent) events.emit('ui:close', { panel: 'inventory' });
     events.emit('ui:refresh', {});
   });
 }

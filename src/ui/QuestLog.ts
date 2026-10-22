@@ -40,7 +40,7 @@ export class QuestLogPanel {
       icon: 'quest',
       side: 'left',
     });
-    this.panel.frame.classList.add('panel-quest');
+    this.panel.frame.classList.add('panel-quest', 'panel-text');
     this.body = div('');
     this.panel.body.appendChild(this.body);
 

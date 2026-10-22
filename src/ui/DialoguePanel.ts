@@ -91,6 +91,7 @@ export class DialoguePanel implements DialogueView {
       icon: 'quest',
       side: 'left',
     });
+    this.panel.frame.classList.add('panel-text');
     const root = div('dlg');
     this.sigil = div('dlg-sigil');
     const main = div('');

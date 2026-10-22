@@ -6210,7 +6210,7 @@
    ]
   },
   {
-   "key": "Five arrows in one flat sweep of the bow, fanned wide. Every one can crit, and up close several find the same target.",
+   "key": "Five arrows (+1 per rank) in one flat sweep of the bow, fanned wide. Each one flies through every enemy in its path, every one can crit, and up close several find the same target.",
    "files": [
     "data/classSkills/ranger.ts"
    ]

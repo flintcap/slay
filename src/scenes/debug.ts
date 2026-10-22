@@ -21,6 +21,7 @@ import { assetStats } from '../core/Assets';
 import { setRunDirector } from '../world/DungeonGen';
 import { shifterDebug } from './shifterDebug';
 import { makeTrinket } from '../sim/Trinkets';
+import { openDialogueFor } from '../ui/DialoguePanel';
 
 /**
  * Debug surface exposed as `window.SLAY.debug`. The Playwright screenshot
@@ -113,6 +114,11 @@ export function installDebug(engine: Engine): Record<string, unknown> {
     /** How many monster positions went non-finite and were put back (`Enemy.update`). */
     positionRepairs(): number {
       return enemyPositionRepairs;
+    },
+
+    /** Opens a town NPC's conversation, as pressing E beside them does. */
+    talk(npcId: string): boolean {
+      return openDialogueFor(`talk:${npcId}`);
     },
 
     /** Whether a panel (inventory, settings, pause...) is open right now. */

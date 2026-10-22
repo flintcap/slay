@@ -1250,9 +1250,11 @@ input.slider::-moz-range-thumb {
 /* Side panels (Panel `side`). Each stands on its own screen edge, from the
    top down to a gap above the action bar, so the middle of the screen stays
    clear for the hero. The HUD measures how high the bar reaches, the orbs'
-   wings included, as `--hud-reach` (HUD `measureReach`). Flush to the edge,
-   so the outer corners go square, and they slide in from that edge rather
-   than grow. */
+   wings included, as `--hud-reach` (HUD `measureReach`). On a tall window
+   the whole panel is drawn bigger to fill that height (`--side-zoom`, with
+   its size in its own pixels as `--side-w` and `--side-h`: Widgets
+   `fitSidePanels`). Flush to the edge, so the outer corners go square, and
+   they slide in from that edge rather than grow. */
 .panel-wrap.panel-side {
   padding-top: 8px;
 }
@@ -1263,8 +1265,9 @@ input.slider::-moz-range-thumb {
   place-items: start end;
 }
 .panel-side .panel {
-  width: min(640px, 50cqw);
-  height: calc(100cqh - 8px - var(--hud-reach, calc(156px * var(--hud-scale, 1))) - 16px);
+  zoom: var(--side-zoom, 1);
+  width: var(--side-w, min(640px, 50cqw));
+  height: var(--side-h, calc(100cqh - 8px - var(--hud-reach, calc(156px * var(--hud-scale, 1))) - 16px));
   max-width: none;
   max-height: none;
 }
@@ -1279,8 +1282,21 @@ input.slider::-moz-range-thumb {
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
   transform: translateX(28px);
 }
+/* Whatever a side panel holds sits in the middle of its height, at eye level,
+   not tucked up under the title with the bottom left bare. Safe, so a long
+   one still scrolls from its top. */
 .panel-side .panel-body {
   padding: var(--s4);
+  align-content: safe center;
+}
+/* A side panel of a few lines (a conversation, the contract) sets them larger. */
+.panel-side .panel-text .empty-state-text {
+  font-size: var(--fs-lg);
+  max-width: 340px;
+}
+.panel-side .panel-quest .quest-flavor,
+.panel-side .panel-quest .quest-obj-desc {
+  font-size: var(--fs-lg);
 }
 
 /* Relief and grain. Two generated textures in one overlay layer. */
