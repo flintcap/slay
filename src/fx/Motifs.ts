@@ -131,6 +131,10 @@ export const MOTIF_SHAPES = {
   motes: { k: 'puff', emitter: 'puff.motes', scale: 1.6 },
   /** Air torn along behind a heavy shaft (the Ranger's `rn.wake`). */
   'wind streaks': { k: 'puff', emitter: 'rn.wake', scale: 1, aim: true },
+  /** Flecks off a brittle shaft as it leaves the bow (the Ranger's `rn.chips`). */
+  'bark chips': { k: 'puff', emitter: 'rn.chips', scale: 1, aim: true },
+  /** Steel sparks where an arrow glances on (the Ranger's `rn.glance`). */
+  'glance sparks': { k: 'puff', emitter: 'rn.glance', scale: 0.7, aim: true },
 } as const satisfies Record<string, MotifDraw>;
 
 export type MotifShape = keyof typeof MOTIF_SHAPES;

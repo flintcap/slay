@@ -31,7 +31,7 @@ import type { HitKind } from '../../fx/CombatFeel';
 import type { EffectSystem, School } from '../../fx/Effects';
 import type { BurstOpts } from '../../fx/Particles';
 import { getBase } from '../../sim/Loot';
-import { RUSH_SPEED, travelTime } from '../../sim/Speed';
+import { RUSH_SPEED, ownAttackShare, travelTime } from '../../sim/Speed';
 import { skillAction } from '../../art/hero/SkillActions';
 import { SELF_POWER } from '../../data/skillPower';
 import { paladinFX, riteLook, type RiteMark } from '../../fx/paladin/RiteLooks';
@@ -396,7 +396,7 @@ function answer(g: Guard, attacker: Target | null): void {
   if (!t) return;
   const target = t;
   p.faceTowards(target.root.position.x, target.root.position.z);
-  const swing = r.attackTime / Math.max(0.1, r.def.attackTime ?? 1);
+  const swing = r.attackTime / Math.max(0.1, ownAttackShare(r.def));
   p.beginAction(skillAction('turnTheBlade.answer') ?? 'thrust', swing * ANSWER_SWINGS);
   const id = p.actionId;
   host.later(p.contactIn, () => {

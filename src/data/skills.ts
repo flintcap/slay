@@ -1706,7 +1706,8 @@ const BLADEWORK = build('bladework', [
     dmg: [1.2, 0.2],
     type: 'physical',
     fx: 'melee.strike',
-    attackTime: 1,
+    // Quicker than a basic attack.
+    attackTime: 0.8,
     p: { critBonus: 15, critPerRank: 1.5, single: 1 },
   },
   {

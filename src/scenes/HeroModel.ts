@@ -167,7 +167,7 @@ export class DressedHero {
     if (!s) return;
     const hand = this.body.rig.sockets.mainHand;
     hand.updateWorldMatrix(true, false);
-    s.update(dt, hand.getWorldPosition(_hand), this.animator.fingerCurl('R'), this.animator.inAction);
+    s.update(dt, hand.getWorldPosition(_hand), this.animator.fingerCurl('R'), this.animator.drawing);
   }
 
   /** Puts the cloth on the cape worn now, or takes it off. */

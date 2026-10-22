@@ -436,7 +436,6 @@ export class TownScene extends GameScene {
     this.town.update(dt, elapsed);
     this.updateMarkers(dt, elapsed);
     this.rig.follow(this.player.root);
-    this.rig.setCursor(input.worldPoint);
     this.rig.update(dt, elapsed);
     this.fx.update(dt, elapsed);
     this.decals.update(dt);

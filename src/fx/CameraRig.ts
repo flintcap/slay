@@ -3,9 +3,9 @@
  *
  * Game feel is mostly camera. This rig owns:
  *
- *  - a critically-damped follow so the camera never overshoots or rubber-bands;
- *  - cursor look-ahead, clamped, so aiming reveals what you are aiming at
- *    without the view sliding off the player;
+ *  - a follow locked on the hero: the view never trails behind or leans after
+ *    the cursor (owner's rule). Cursor look-ahead is there for a caller that
+ *    asks for it (`setCursor`); the game never does;
  *  - wall collision — a slab test against the dungeon's AABB colliders, pulling
  *    in fast and pushing back out slowly so doorways do not strobe;
  *  - **trauma-based screen shake**: callers add trauma, the rig shakes by
@@ -60,10 +60,13 @@ const DEFAULTS: Required<CameraRigOptions> = {
   fov: 46,
   near: 0.35,
   far: 260,
-  lookAhead: 0.3,
+  lookAhead: 0,
   lookAheadMax: 4.2,
   stiffness: 9.5,
 };
+
+/** Within this many metres the view sits right on the hero; farther (a warp) it eases there. */
+const LOCK_RANGE = 3;
 
 const _target = new THREE.Vector3();
 const _desired = new THREE.Vector3();
@@ -414,7 +417,12 @@ export class CameraRig {
     }
 
     // --- follow ------------------------------------------------------------
-    // Critically damped spring: no overshoot, frame-rate independent.
+    // Locked on the hero. A jump (a warp, a scene load) still eases in on the
+    // critically damped spring below so it never snaps across the map.
+    if (this.goal.distanceToSquared(this.smooth) < LOCK_RANGE * LOCK_RANGE) {
+      this.smooth.copy(this.goal);
+      this.smoothVel.set(0, 0, 0);
+    }
     const k = this.opts.stiffness;
     const step = Math.min(camDt, 1 / 30);
     _tmp.copy(this.goal).sub(this.smooth).multiplyScalar(k * k * step);

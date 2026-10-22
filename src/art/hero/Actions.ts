@@ -83,6 +83,8 @@ export interface ActionDef {
   glow?: { at: (t: number) => number; hands: 'left' | 'right' | 'both' };
   /** The hand a weapon blow strikes with. */
   side?: Side;
+  /** The string hand nocks and draws the bow (`items/BowString.ts`); other actions never catch the string. */
+  draws?: boolean;
 }
 
 export type Arm = [number, number, number, number, number?, number?, number?];
@@ -438,6 +440,7 @@ function shot(o: { up?: number; quick?: boolean } = {}): ActionDef {
     recover: tf,
     full: true,
     plantFeet: true,
+    draws: true,
     keys: [
       k(0, rest),
       k(tn, (p, c) => {

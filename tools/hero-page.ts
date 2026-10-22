@@ -228,7 +228,7 @@ function simulate(a: Actor, from: number, to: number, drive: Drive, each?: (t: n
     if (a.bow) {
       const hand = a.hero.rig.sockets.mainHand;
       hand.updateWorldMatrix(true, false);
-      a.bow.update(dt, hand.getWorldPosition(new THREE.Vector3()), a.anim.fingerCurl('R'), a.anim.inAction);
+      a.bow.update(dt, hand.getWorldPosition(new THREE.Vector3()), a.anim.fingerCurl('R'), a.anim.drawing);
     }
     each?.(t + dt);
   }

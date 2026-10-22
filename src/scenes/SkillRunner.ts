@@ -176,12 +176,6 @@ const RANGED_CATEGORIES: ItemCategory[] = ['bow', 'crossbow'];
 const DUAL_BLOW_DAMAGE = 1.2343;
 /** With two blades, the main hand's share of a one-blow melee skill; the off hand lands the rest. */
 const DUAL_SKILL_MAIN = 0.6;
-/**
- * With two blades a melee skill's blows hit this much harder than with one
- * (it also takes longer, `DUAL_SKILL_STRETCH` in `sim/Speed.ts`). A fixed
- * number, never derived from the skill's time.
- */
-const DUAL_SKILL_DAMAGE = 1.35;
 
 /**
  * True when both hands hold a melee weapon.
@@ -1334,7 +1328,7 @@ export class SkillRunner {
       ? {
         def, rank, player, aim: target.clone().setY(0), dir: dir.clone(), ctx, enemies, boss,
         packet: makePacket,
-        blowPacket: isDualWielding(player) ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket,
+        blowPacket: makePacket,
         num, color, time: actTime, clip, hitSound: sound.hit,
       }
       : null;
@@ -1362,7 +1356,7 @@ export class SkillRunner {
           def, rank, player, aim: target.clone().setY(0), dir: dir.clone(),
           world: { ctx, enemies, boss, player },
           packet: makePacket,
-          blowPacket: dual ? (m = 1) => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket,
+          blowPacket: makePacket,
           num, school, color, actTime, clip: own ?? clip, hitSound: sound.hit, shed: sig.trail, burst: sig.emitter, density: sig.density,
           critX: Math.max(100, player.stats.critDamage) / 100,
         });
@@ -1384,7 +1378,7 @@ export class SkillRunner {
           // `attackTime`, two blades stretched, in `actTime`.
           const spin = (def.effect ?? '').includes('channel');
           const skillTime = actTime;
-          const blowPacket = dual ? (m = 1): DamagePacket => makePacket(m * DUAL_SKILL_DAMAGE) : makePacket;
+          const blowPacket = makePacket;
           player.beginAction(clip, skillTime);
           const wide = (def.effect ?? '').includes('cleave') || (def.effect ?? '').includes('multiSlash');
           // A committed single-target skill lands like one: heavier stop, harder

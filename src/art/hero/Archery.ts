@@ -43,6 +43,8 @@ const DRAW = 2.9;
 const REST = 0.2;
 /** How far behind the grip the string hangs at rest. */
 const BRACE = 0.55;
+/** At rest, how far up the bow from the grip the string hand holds it, heads. */
+const CARRY = 0.72;
 /** The pelvis, which the trunk turns about. */
 const PELVIS_Y = 4.02;
 
@@ -120,15 +122,28 @@ export function loosePlaces(o: BowAim = {}, far = 1): { L: BowPlace; R: BowPlace
 }
 
 /**
- * The bow at rest in the bow hand: low by the left hip, the top limb tipped
- * forward and across the body, the arrow pointed at the ground ahead. `run`
- * carries it a little higher and more upright, out of the knees' way;
- * `turn` swings it round with a trunk turned that much.
+ * The bow at rest in the bow hand: low before the left of the belly, the top
+ * limb tipped forward and across the body, the arrow pointed at the ground
+ * ahead. `run` carries it a little higher and more upright, out of the
+ * knees' way; `turn` swings it round with a trunk turned that much.
  */
 export function restPlace(run = 0, turn = 0): BowPlace {
-  const at = _g.set(0.66 + 0.06 * run, 4.0 + 0.1 * run, 0.95 + 0.15 * run).applyAxisAngle(Y, turn * TURN_SHARE);
+  const at = _g.set(0.5 + 0.06 * run, 4.1 + 0.1 * run, 1.1 + 0.15 * run).applyAxisAngle(Y, turn * TURN_SHARE);
   const dir = _d.set(-0.42 + 0.12 * run, 0.66 + 0.1 * run, 0.62).normalize().applyAxisAngle(Y, turn * TURN_SHARE);
   return { at: out(at), dir: out(dir) };
+}
+
+/**
+ * The bow at the ready in both hands: the bow hand as `restPlace`, the
+ * string hand closed round the upper limb a hand's width above it, so the
+ * bow is carried in both. Placed on the bow's own line, it is on the bow
+ * however the wrist turns it; the string, off to one side, was missed.
+ * A shot starts from here.
+ */
+export function readyPlaces(run = 0, turn = 0): { L: BowPlace; R: BowPlace } {
+  const L = restPlace(run, turn);
+  _n.copy(_g).addScaledVector(_d, CARRY);
+  return { L, R: { at: out(_n), dir: L.dir } };
 }
 
 /** A place in the gesture convention: written for the right hand, mirrored for the left. */

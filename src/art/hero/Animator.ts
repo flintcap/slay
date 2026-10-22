@@ -436,6 +436,11 @@ export class HeroAnimator {
     return !!this.track && !this.track.done && !this.track.def.loop;
   }
 
+  /** True while the running action draws the bow (`ActionDef.draws`). */
+  get drawing(): boolean {
+    return !!this.track && !this.track.done && !!this.track.def.draws;
+  }
+
   /** The running action: its name, natural time and contact key. Null while only moving. */
   get actionState(): { clip: string; t: number; contact: number | null } | null {
     const tr = this.track;
@@ -1026,7 +1031,9 @@ export class HeroAnimator {
     // not follow the shoulder, so its target swings instead: forward and back
     // with the stride, dipping at each end. Held dead still, it read as a
     // weapon nailed to the air while the body ran under it.
-    for (const [ch, w, s] of [[CH.reachR, sr, 1], [CH.reachL, sl, -1]] as const) {
+    // Both hands on one bow swing with the bow hand, or they would pull it apart.
+    const one = !!stance.together;
+    for (const [ch, w, s] of [[CH.reachR, one ? sl : sr, one ? -1 : 1], [CH.reachL, sl, -1]] as const) {
       const on = p.c[ch]!;
       if (on <= 0 || w <= 0) continue;
       const k = amp * w * on * b.h;

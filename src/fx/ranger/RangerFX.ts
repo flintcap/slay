@@ -12,6 +12,9 @@
  *    (`shatter`, `splinterFly`).
  *  - Pierce Shot: torn air down its line (the `rn.wake` motif) and the
  *    shaft punching out of the far side of each enemy (`punchThrough`).
+ *  - Splinter Shot leaving the bow in flecks (the `rn.chips` motif);
+ *    Ricochet throwing sparks off each enemy it glances from (`glance`, and
+ *    the `rn.glance` motif).
  *  - The traps: a noose, a plate, a wire on two stakes, a hanging nest, each
  *    with a glint as it arms and its own burst as it goes (`trapLook`,
  *    `trapSpring`); spikes driven up through the floor (`spikesUp`); the
@@ -104,6 +107,22 @@ const EM: Record<string, Emitter> = {
       L({ sprite: SPRITE.glint, variants: 4, count: 5, ramp: STEEL, speed: [9, 15], spread: 0.12, radius: 0.08, size: [0.025, 0.04], grow: 0.5, life: [0.08, 0.14], heat: [1, 0.5], emit: 0.9, occl: 0.2, stretch: 3.5, drag: 5, fade: 2.4, tint: false }),
       L({ sprite: SPRITE.shard, count: 8, ramp: BONE, speed: [4, 8], spread: 0.35, up: 0.15, radius: 0.1, size: [0.03, 0.05], grow: 0.7, life: [0.3, 0.5], heat: [0.7, 0.3], emit: 0.6, occl: 0.6, gravity: -9, drag: 1.2, spin: 10, ground: true, bounce: 0.2, tint: false }),
       L({ sprite: SPRITE.smoke, count: 2, ramp: DUST, speed: [1.2, 2.4], spread: 0.45, radius: 0.15, size: [0.25, 0.4], grow: 1.8, life: [0.35, 0.6], heat: [0.05, 0], emit: 0.04, occl: 0.5, drag: 2.4, fade: 1.2, tint: false }),
+    ],
+  },
+  /** Splinter Shot leaving the bow: flecks off a brittle shaft, thrown on along the shot. */
+  'rn.chips': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.shard, count: 6, ramp: BARK, speed: [2.5, 5], spread: 0.4, up: 0.15, radius: 0.06, size: [0.025, 0.045], grow: 0.6, life: [0.3, 0.5], heat: [0.6, 0.3], emit: 0.5, occl: 0.6, gravity: -9, drag: 1.4, spin: 12, ground: true, bounce: 0.2, tint: false }),
+      L({ sprite: SPRITE.glint, variants: 4, count: 2, ramp: BONE, speed: [4, 7], spread: 0.15, radius: 0.04, size: [0.02, 0.03], grow: 0.4, life: [0.08, 0.14], heat: [0.9, 0.4], emit: 0.7, occl: 0.3, stretch: 2.5, drag: 5, fade: 2.2, tint: false }),
+    ],
+  },
+  /** Ricochet glancing off what it struck: a spray of steel sparks and grit thrown on along the next leg. */
+  'rn.glance': {
+    school: 'physical',
+    layers: [
+      L({ sprite: SPRITE.glint, variants: 4, count: 8, ramp: STEEL, speed: [5, 10], spread: 0.55, up: 0.2, radius: 0.06, size: [0.02, 0.035], grow: 0.4, life: [0.1, 0.2], heat: [1, 0.6], emit: 1, occl: 0.2, stretch: 3, drag: 4, gravity: -4, fade: 2.4, tint: false }),
+      L({ sprite: SPRITE.shard, count: 4, ramp: BONE, speed: [2, 4], spread: 0.7, up: 0.4, radius: 0.08, size: [0.025, 0.04], grow: 0.6, life: [0.3, 0.5], heat: [0.6, 0.3], emit: 0.5, occl: 0.6, gravity: -9, drag: 1.2, spin: 10, ground: true, bounce: 0.2, tint: false }),
     ],
   },
   /** A trap snapping shut: cord and leaf thrown up. */
@@ -284,6 +303,11 @@ export function shatter(effects: EffectSystem, x: number, z: number, dir: THREE.
 /** Pierce Shot passing through what stands at (x, z), going on along `dir`. */
 export function punchThrough(effects: EffectSystem, x: number, z: number, dir: THREE.Vector3): void {
   effects.fx.burst('rn.punch', x + dir.x * 0.35, 1.15, z + dir.z * 0.35, { count: 15, dir });
+}
+
+/** Ricochet glancing off what stands at (x, z), going on along `dir`. */
+export function glance(effects: EffectSystem, x: number, z: number, dir: THREE.Vector3): void {
+  effects.fx.burst('rn.glance', x, 1.05, z, { count: 12, dir });
 }
 
 /** One splinter flying `stop` metres from `from` along `dir`. */

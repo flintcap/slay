@@ -1876,7 +1876,6 @@ export class DungeonScene extends GameScene {
     this.passiveMovement(dt, ctx);
     this.passiveTick(dt, ctx);
     this.rig.follow(this.player.root);
-    this.rig.setCursor(input.worldPoint);
     this.rig.update(rawDt, elapsed);
     // Real time, so numbers keep moving through slow motion.
     if (this.player) this.combatText?.update(rawDt, this.camera, this.player.position);

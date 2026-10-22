@@ -46,6 +46,8 @@ export interface G {
    * the off hand follows the grip even though `R` moved it.
    */
   grip?: boolean;
+  /** The string hand is on the string, nocking or drawing: the action draws the bow. */
+  nock?: boolean;
   /**
    * The whole body turned about its own axis, radians (+ to the character's
    * left): a spin. Keys a quarter turn apart run round the short way, so a
@@ -119,6 +121,7 @@ function gesture(s: Spec): ActionDef {
   s.keys.forEach(([t, g, hold], i) => keys.push(k(t, pose(g, i, s.alt), hold ?? false)));
   if (!s.loop) keys.push(k(s.end ?? 0.8, rest));
   const def: ActionDef = { keys, full: true, plantFeet: !s.free };
+  if (s.keys.some(([, g]) => g.nock)) def.draws = true;
   if (s.loop) {
     def.loop = true;
     def.glow = { at: () => 1, hands: s.glow ?? 'both' };

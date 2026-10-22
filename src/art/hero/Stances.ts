@@ -9,7 +9,7 @@
 import type { Pose } from './Pose';
 import { CH } from './Pose';
 import { FORM_STANCES, type FormStance } from './forms/FormStances';
-import { restPlace, type BowPlace } from './Archery';
+import { readyPlaces, type BowPlace } from './Archery';
 
 export type Stance =
   | 'unarmed'
@@ -50,6 +50,8 @@ export interface StanceDef {
   move(p: Pose, b: StanceBody, run: number): void;
   /** Arm swing with the stride, [left, right], 0 held still .. 1 free. */
   swing: [number, number];
+  /** Both placed hands hold one thing (a bow at the ready): they swing as one, with the left. */
+  together?: boolean;
   /** Feet while standing, [left, right]. */
   feet(b: StanceBody): [StanceFeet, StanceFeet];
   /** Knee bend while standing, metres the pelvis drops. */
@@ -97,11 +99,19 @@ function longMove(p: Pose, b: StanceBody, side: 'L' | 'R', run: number): void {
   p.reach(side, [sgn(side) * 0.8 * b.h, 4.0 * b.h, 0.7 * b.h], [sgn(side) * 0.12, 1, 0.35 + 0.2 * run]);
   p.fist(side, 1);
 }
-/** The bow hand placed (`Archery.ts` heads to metres), the wrist straight. */
-function holdBow(p: Pose, b: StanceBody, at: BowPlace): void {
-  p.set('handL', 0, 0, 0);
-  p.reach('L', [at.at[0] * b.h, at.at[1] * b.h, at.at[2] * b.h], at.dir);
+/**
+ * Both hands placed on the bow (`Archery.ts` heads to metres), the wrists
+ * straight: the bow hand shut on the grip, the string hand's fingers laid
+ * on the string, not yet curled to take it (`items/BowString.ts`).
+ */
+function holdBow(p: Pose, b: StanceBody, at: { L: BowPlace; R: BowPlace }): void {
+  for (const side of ['L', 'R'] as const) {
+    const h = at[side];
+    p.set(side === 'L' ? 'handL' : 'handR', 0, 0, 0);
+    p.reach(side, [h.at[0] * b.h, h.at[1] * b.h, h.at[2] * b.h], h.dir);
+  }
   p.fist('L', 1);
+  p.fist('R', 0.85);
 }
 /** A dagger low and forward, point back along the forearm. */
 function daggerIdle(p: Pose, b: StanceBody, side: 'L' | 'R'): void {
@@ -324,23 +334,22 @@ export const STANCES: Record<Stance, StanceDef> = {
     feet: (b) => feet(b, 0.42, 0.14),
     crouch: 0.0028,
   },
-  // Bow in the left hand, low and canted; the string hand free.
-  // The bow low by the left hip, top limb tipped forward across the body
-  // (`Archery.ts`); the string hand loose and ready.
+  // The bow at the ready in both hands, low before the belly: the bow hand
+  // on the grip, the string hand on the string where an arrow is nocked
+  // (`Archery.ts`). Carried so on the move too, the hands swinging as one.
   bow: {
     idle(p, b) {
-      p.arm('L', 0.3, 0.2 + 0.1 * b.build, -0.1, 0.6, 0.2, 0, 0);
-      holdBow(p, b, restPlace(0));
-      relaxed(p, 'R', b, 0.2, 0.6);
-      p.fist('R', 0.5);
+      p.arm('L', 0.3, 0.2 + 0.1 * b.build, -0.1, 0.9, 0.2, 0, 0);
+      p.arm('R', 0.35, 0.15 + 0.1 * b.build, 0.2, 1.2, 0.2, 0, 0);
+      holdBow(p, b, readyPlaces(0));
     },
     move(p, b, run) {
-      p.arm('L', 0.25, 0.2 + 0.1 * b.build, -0.1, 0.6 + 0.4 * run, 0.2, 0, 0);
-      holdBow(p, b, restPlace(run));
-      relaxed(p, 'R', b);
-      runArm(p, 'R', b, run);
+      p.arm('L', 0.25, 0.2 + 0.1 * b.build, -0.1, 0.9 + 0.3 * run, 0.2, 0, 0);
+      p.arm('R', 0.3, 0.15 + 0.1 * b.build, 0.2, 1.2 + 0.2 * run, 0.2, 0, 0);
+      holdBow(p, b, readyPlaces(run));
     },
-    swing: [0.5, 1],
+    swing: [0.5, 0.5],
+    together: true,
     feet: (b) => feet(b, 0.42, 0.14),
     crouch: 0.0028,
   },

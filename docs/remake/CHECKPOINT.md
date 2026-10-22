@@ -682,6 +682,30 @@ Update this file and push it after every finished step.
   fixed 152 px, 2 px short of the wings at 1080p. Equipment's hero picture
   went from 0.72 to 0.68 so the panel still fits without scrolling. Real
   frames: 1080p 16 px gap, nothing but Character scrolls; 1366x768 17 px gap.
+- #181-#188 Owner batch: Fan Fire gains an arrow per rank and pierces; new
+  Pierce Shot look; title columns stand on the floor; side menus grow to
+  the orbs on big screens and center their contents; closing a shop,
+  stash or anvil closes the Equipment bag it opened; dragging an item or
+  skill off a menu no longer walks the hero.
+- #189 Ranger holds the bow in both hands at rest: the right hand sits on
+  the bow's own axis (`Archery.readyPlaces`, CARRY), so the IK roll does
+  not matter; the stance swings both hands together. The string hooks only
+  while an action draws (`ActionDef.draws`, gesture key `nock`,
+  `Animator.drawing`).
+- #190 Splinter Shot and Ricochet lose the shared chevron look: bark chips
+  thrust and glance sparks that zig-zag to each next target
+  (`rn.chips`, `rn.glance`).
+- #191/#193 Skill speed rule (owner: "All skills should use the same
+  starting attack speed or cast speed as a default attack"). A skill's
+  attack time is its own share (never above 1) of the weapon's basic
+  attack time, two blades included; cast time starts at the base cast
+  time or less; gear, legacy and buffs scale on top (`Speed.ownAttackShare`,
+  `ownCastTime`). The two-blade skill stretch and its damage make-up went.
+  Precise Cut runs at 0.8 of a basic attack. Data values above 1 / above
+  0.5 s are clamped in code.
+- #192 Camera locked on the hero at all times: no cursor look-ahead, and
+  within 3 m the view snaps to the hero each frame (the spring only
+  carries warps). The side-panel shift that keeps the hero in view stays.
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

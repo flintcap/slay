@@ -389,9 +389,10 @@ export interface SkillDef {
    */
   timing?: 'attack' | 'spell';
   /**
-   * Attack skills: one use takes this many swings (or shots) of the weapon in
-   * hand. 1 is one swing; 1.5 a heavy blow; 0.85 a quick cut. Left out, the
-   * family's (`ATTACK_FACTOR`, else 1). Never changes damage per hit.
+   * Attack skills: one use takes this share of a basic attack with the weapon
+   * in hand. 1 is one basic attack; 0.85 a quick cut. Never above 1 (a skill
+   * is never slower than a basic attack, `sim/Speed.ts`). Never changes
+   * damage per hit.
    */
   attackTime?: number;
   /**

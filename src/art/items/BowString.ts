@@ -131,15 +131,16 @@ export class BowString {
 
   /**
    * Moves the string on. `hand` is the string hand's grip in world space,
-   * `curl` how shut its fingers are (0..1), `acting` whether an action has
-   * the body (a stance never draws).
+   * `curl` how shut its fingers are (0..1), `drawing` whether a drawing action
+   * has the body (`ActionDef.draws`): the string hand rests by the string in
+   * the stance and in other actions, and never catches it there.
    */
-  update(dt: number, hand: THREE.Vector3, curl: number, acting: boolean): void {
+  update(dt: number, hand: THREE.Vector3, curl: number, drawing: boolean): void {
     this.bow.updateWorldMatrix(true, false);
     const p = this.bow.worldToLocal(_p.copy(hand));
     if (this.hooked) {
-      if (!acting || curl < LET_GO || p.distanceTo(this.rest) > REACH) this.letGo();
-    } else if (acting && curl >= HOOK && (nearString(p, this.top, this.bot) < CATCH || this.inDraw(p))) {
+      if (!drawing || curl < LET_GO || p.distanceTo(this.rest) > REACH) this.letGo();
+    } else if (drawing && curl >= HOOK && (nearString(p, this.top, this.bot) < CATCH || this.inDraw(p))) {
       this.hooked = true;
       this.shiver = -1;
     }

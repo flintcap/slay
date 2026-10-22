@@ -9,11 +9,13 @@
  *   the weapon in hand: `1 / baseSpeed` seconds (`ItemBase.baseSpeed`, attacks
  *   a second). Bare hands swing at `UNARMED_APS`. Two blades take turns, one
  *   blow a swing, at `DUAL_SWING_RATE` times the two weapons' average pace.
- * - **Attack skills** take `SkillDef.attackTime` swings (default by family,
- *   `ATTACK_FACTOR`). With two blades a melee skill takes `DUAL_SKILL_STRETCH`
- *   times as long, so the left blade's swing fits in it.
- * - **Spells** take `SkillDef.castTime` seconds (default by family,
- *   `CAST_BASE`; `BASE_CAST_TIME` otherwise), whatever is in hand.
+ * - **Attack skills** start at the basic attack's pace with what is in hand
+ *   (two blades: one blade's turn) and take `SkillDef.attackTime` of it
+ *   (default by family, `ATTACK_FACTOR`). Never more than 1: a skill is as
+ *   quick as a basic attack or quicker (owner's rule).
+ * - **Spells** start at a plain cast, `BASE_CAST_TIME`, and take
+ *   `SkillDef.castTime` seconds (default by family, `CAST_BASE`), never more
+ *   than the plain cast, whatever is in hand.
  * - **Speed from gear and buffs** is summed as a percentage and goes through
  *   `speedMultiplier`: diminishing returns that approach +`SPEED_SOFTCAP`%
  *   and never reach it. Slows on the hero (chill, entangle) are not summed
@@ -44,21 +46,16 @@ export const UNARMED_APS = 1.4;
 export const BASE_CAST_TIME = 0.5;
 /** Two blades swing this much more often than one, each swing one blade. */
 export const DUAL_SWING_RATE = 1.3;
-/** A melee skill with two blades takes this much longer than with one. */
-export const DUAL_SKILL_STRETCH = 1.35;
 
 /** Weapon categories that strike in melee, and so pair as two blades. */
 const MELEE: ReadonlySet<ItemCategory> = new Set(['sword', 'axe', 'mace', 'dagger', 'spear']);
 const RANGED: ReadonlySet<ItemCategory> = new Set(['bow', 'crossbow']);
 
 /**
- * Attack skills: a use is this many swings of the weapon, by effect family.
- * Anything not listed takes one swing.
+ * Attack skills: a use is this share of a basic attack, by effect family.
+ * Anything not listed takes one. Never more than 1.
  */
-export const ATTACK_FACTOR: Readonly<Record<string, number>> = {
-  whirlwind: 1.4,
-  slam: 1.5,
-};
+export const ATTACK_FACTOR: Readonly<Record<string, number>> = {};
 /** Spells: a cast takes this many seconds, by effect family. */
 export const CAST_BASE: Readonly<Record<string, number>> = {
   heal: 0.35,
@@ -69,14 +66,11 @@ export const CAST_BASE: Readonly<Record<string, number>> = {
   banner: 0.35,
   self: 0.35,
   absorb: 0.35,
-  channel: 0.8,
 };
 /** Families that are always a weapon's work: swung, never cast. */
 const ATTACK_FAMILIES: ReadonlySet<string> = new Set(['melee', 'cleave', 'whirlwind', 'slam', 'wave', 'rite']);
 /** Families that are loosed: a bow's draw with a bow in hand, a throw of steel with a blade in hand. */
 const LOOSED_FAMILIES: ReadonlySet<string> = new Set(['projectile', 'bolt', 'cone', 'beam', 'chain', 'meteor', 'sky']);
-/** Families where two blades take turns inside the skill. */
-const TWO_BLADE_FAMILIES: ReadonlySet<string> = new Set(['melee', 'cleave']);
 
 /**
  * The multiplier on action rate from summed speed (`pct`, gear + passives +
@@ -174,13 +168,25 @@ export function skillTiming(def: SkillDef, hands: Hands): 'attack' | 'spell' {
 export interface Pace {
   /** One plain swing (or shot) of the weapon at this attack speed. */
   swing: number;
-  /** The skill used as an attack: its own swings, two blades stretched. */
+  /** The skill used as an attack: its share of a basic attack. */
   attack: number;
   /** The skill cast as a spell: its own cast time at this cast speed. */
   cast: number;
   timing: 'attack' | 'spell';
   /** The one of the two this skill takes. */
   time: number;
+}
+
+/** A skill's own share of a basic attack's time: its `attackTime`, never above 1. */
+export function ownAttackShare(def: SkillDef): number {
+  const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
+  return Math.min(1, def.attackTime ?? ATTACK_FACTOR[family] ?? 1);
+}
+
+/** A skill's own cast time, seconds before cast speed: never above a plain cast. */
+export function ownCastTime(def: SkillDef): number {
+  const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
+  return Math.min(BASE_CAST_TIME, def.castTime ?? CAST_BASE[family] ?? BASE_CAST_TIME);
 }
 
 /**
@@ -194,13 +200,13 @@ export function skillPace(
   castMult: number,
   knob: (key: 'attackTime' | 'castTime', v: number) => number = (_k, v) => v,
 ): Pace {
-  const family = (def.effect ?? 'melee').split('.')[0] ?? 'melee';
   const per = Math.max(0.05, hands.aps * attackMult);
   const swing = Math.max(1 / ATTACK_RATE_CAP, 1 / per);
-  const factor = Math.max(0.1, knob('attackTime', def.attackTime ?? ATTACK_FACTOR[family] ?? 1));
-  const stretch = hands.dual && TWO_BLADE_FAMILIES.has(family) ? DUAL_SKILL_STRETCH : 1;
-  const attack = Math.max(1 / ATTACK_RATE_CAP, (factor * stretch) / per);
-  const cast = castSeconds(Math.max(0.05, knob('castTime', def.castTime ?? CAST_BASE[family] ?? BASE_CAST_TIME)), castMult);
+  // From the basic attack's pace (two blades: one blade's turn), quicker
+  // only; a skill-bending unique still has its say after.
+  const factor = Math.max(0.1, knob('attackTime', ownAttackShare(def)));
+  const attack = Math.max(1 / ATTACK_RATE_CAP, factor * basicTime(hands, attackMult));
+  const cast = castSeconds(Math.max(0.05, knob('castTime', ownCastTime(def))), castMult);
   const timing = skillTiming(def, hands);
   return { swing, attack, cast, timing, time: timing === 'attack' ? attack : cast };
 }

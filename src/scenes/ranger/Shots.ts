@@ -20,7 +20,7 @@ import type { HitKind } from '../../fx/CombatFeel';
 import type { School } from '../../fx/Effects';
 import { tr } from '../../core/I18n';
 import { addBonus } from '../../sim/Combat';
-import { punchThrough, rainVolley, shatter, splinterFly, thicketStand, clearThickets } from '../../fx/ranger/RangerFX';
+import { glance, punchThrough, rainVolley, shatter, splinterFly, thicketStand, clearThickets } from '../../fx/ranger/RangerFX';
 import { EXTRA, PIERCE_ALL, type RangerCast, type RangerHost, type RangerWorld, type Target } from './RangerTypes';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -787,8 +787,15 @@ function carom(v: Volley, r: RangerCast): void {
       // The first leg leaves with the string, the rest as the arrow glances on.
       if (start <= 0) fly();
       else v.host.later(start, fly);
+      const on = path[i + 1];
       v.host.later(t0, () => {
-        if (t.life <= 0 || !r.player.alive) return;
+        if (!r.player.alive) return;
+        // Sparks off each one it glances from, thrown on toward the next.
+        if (on) {
+          const d = on.root.position.clone().sub(to).setY(0);
+          if (d.lengthSq() > 1e-6) glance(v.host.effects, to.x, to.z, d.normalize());
+        }
+        if (t.life <= 0) return;
         quiet(v.host, () => arrowHit(v, t, v.packet(Math.pow(1 - falloff, i)), { fromX: a.x, fromZ: a.z, sure: true }));
       });
     });

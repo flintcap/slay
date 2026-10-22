@@ -54,7 +54,7 @@ function body(o: Aim): { g: G; bow: BowAim } {
 function aim(d: number, o: Aim = {}): G {
   const { g, bow } = body(o);
   const h = drawPlaces(d, bow);
-  return { ...g, L: bowReach('L', h.L), R: bowReach('R', h.R), fistR: 0.75 };
+  return { ...g, L: bowReach('L', h.L), R: bowReach('R', h.R), fistR: 0.75, nock: true };
 }
 
 /** The string let go: fingers open and the hand flies back along the jaw. */
