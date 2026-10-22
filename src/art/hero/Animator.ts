@@ -489,7 +489,7 @@ export class HeroAnimator {
    */
   play(name: string, opts: PlayOpts = {}): void {
     if (name === 'hurt') {
-      this.flinch(1);
+      this.flinch(0.55);
       return;
     }
     if (LOCO.has(name)) {
@@ -511,7 +511,7 @@ export class HeroAnimator {
       const tr = this.track;
       // Never knock a blow out of the hands before it lands.
       if (tr && !tr.done && tr.def.contact !== undefined && tr.t < tr.def.contact) {
-        this.flinch(1.4);
+        this.flinch(0.8);
         return;
       }
     }

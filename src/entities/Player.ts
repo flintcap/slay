@@ -222,6 +222,10 @@ export class Player {
   /** A skill carrying the body while it plays: metres a second, and seconds left (`carry`). */
   private carryX = 0;
   private carryZ = 0;
+  /** A shove still being slid out (`shove`): speed (m/s) and seconds left. */
+  private knockX = 0;
+  private knockZ = 0;
+  private knockLeft = 0;
   private carryLeft = 0;
   /** A skill spinning the body: radians a second, seconds left, and the facing it ends on. */
   private spinRate = 0;
@@ -561,6 +565,10 @@ export class Player {
    * across a room and then walking straight back to where you were standing is
    * not a knockback.
    */
+  /** The farthest a blow moves the hero (m), and how long it takes (s). */
+  static readonly SHOVE_MAX = 0.45;
+  static readonly SHOVE_TIME = 0.12;
+
   shove(force: number, from?: { x: number; z: number }): void {
     const f = Math.max(-6, Math.min(6, force));
     if (f === 0) return;
@@ -578,13 +586,17 @@ export class Player {
       }
     }
     // A pull never drags the hero past what pulled them.
-    let push = f * 0.16;
+    let push = Math.max(-Player.SHOVE_MAX, Math.min(Player.SHOVE_MAX, f * 0.09));
     if (from && push < 0) push = Math.max(push, -Math.max(0, Math.hypot(this.root.position.x - from.x, this.root.position.z - from.z) - 1));
-    this.root.position.x += dx * push;
-    this.root.position.z += dz * push;
+    // Slid there over a moment, through the same walls as walking
+    // (`tryMove`). Set straight onto the spot, a shove by a wall left the
+    // hero inside it, where no step could be taken.
+    this.knockX = (dx * push) / Player.SHOVE_TIME;
+    this.knockZ = (dz * push) / Player.SHOVE_TIME;
+    this.knockLeft = Player.SHOVE_TIME;
     this.moveTarget = null;
-    // A real shove throws the body back a step; a nudge is just the flinch.
-    if (Math.abs(f) >= 1.5 && this.alive) this.animator.play('stagger', { fade: 0.05 });
+    // Only a heavy blow throws the body back a step; the rest is the flinch.
+    if (Math.abs(f) >= 3 && this.alive) this.animator.play('stagger', { fade: 0.05 });
   }
 
   /**
@@ -1232,6 +1244,17 @@ export class Player {
     const speedStat = 1 + (this.stats.moveSpeed + tail) / 100;
     const baseSpeed = 4.6 * speedStat;
 
+    // Somewhere no body can stand (pressed into a wall or a prop, or a
+    // collider that came up under it): out to the nearest place that can,
+    // or no step would ever be taken again.
+    if (!this.canStand(this.root.position.x, this.root.position.z, ctx)) this.unstick(ctx);
+
+    if (this.knockLeft > 0) {
+      const s = Math.min(dt, this.knockLeft);
+      this.knockLeft -= s;
+      this.tryMove(this.knockX * s, this.knockZ * s, ctx);
+    }
+
     if (this.dodgeCd > 0) this.dodgeCd = Math.max(0, this.dodgeCd - dt);
     if (this.dodgeTime > 0) {
       this.dodgeTime -= dt;
@@ -1485,6 +1508,34 @@ export class Player {
       if (!pushed) break;
     }
     return { x: nx, z: nz, nx: bnx, nz: bnz };
+  }
+
+  /**
+   * Moves the body to the nearest spot it can stand on, searched in rings
+   * out to 3 m. Pushed out along the deepest contact first, which is the
+   * short way out of a wall.
+   */
+  private unstick(ctx: PlayerContext): void {
+    const p = this.root.position;
+    const out = this.resolve(p.x, p.z, p.x, p.z, ctx);
+    if (this.canStand(out.x, out.z, ctx)) {
+      p.x = out.x;
+      p.z = out.z;
+      return;
+    }
+    for (let r = 0.25; r <= 3; r += 0.25) {
+      const n = Math.max(8, Math.round(r * 16));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const x = p.x + Math.cos(a) * r;
+        const z = p.z + Math.sin(a) * r;
+        if (this.canStand(x, z, ctx)) {
+          p.x = x;
+          p.z = z;
+          return;
+        }
+      }
+    }
   }
 
   private canStand(x: number, z: number, ctx: PlayerContext): boolean {
