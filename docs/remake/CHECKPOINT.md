@@ -852,6 +852,25 @@ Update this file and push it after every finished step.
   2.8 -> 1.8 ms (p90 6.7 -> 3.6). Drops merge to one mesh per material
   (`compactModel`), still drops stop updating their matrices once landed,
   and `updateLoot` walks only the spinning or bobbing parts.
+- #215 Frame cost split (whole frames, densest knot at depth 12, low
+  quality, unminified build): getting the picture ready to draw is about
+  three quarters of the CPU, the simulation a quarter, layout and style
+  about 2 ms. Two cuts on the drawing side. The sun's shadow is drawn from
+  inside the frame's own render, which has just worked out every matrix,
+  yet each shadow pass's render walked the whole scene again (3,500 nodes
+  in a crowd, most of them monster bones): `ShadowCache` now turns that
+  walk off for the pass. Its per-frame pass for moving casters also hides
+  every subtree with nothing moving in it (found when the still casters
+  are marked, found again when one moves or a subtree gains a child), so
+  it stops culling the whole level to draw a few bodies. The level's own
+  parts (all but the torch lights and drips) are frozen with `freezeStill`
+  as the camp's are. Same 80 frames before/after: JS per frame 40.8 ->
+  36.9 ms, matrix walks 3.6 -> 1.7 ms, the sun's shadow 5.2 -> 3.5 ms,
+  render median 25.4 -> 22.2 ms. Sun shadows are unchanged on screen.
+  Monster shadows were already lean (out of view they cast none; packed
+  bodies share one instanced shadow draw), so they were left as they are.
+  Still the biggest share: per-object uniform updates and uploads (about
+  7 ms), which only fewer separate parts per monster will cut.
 
 ## Phase 0d log
 

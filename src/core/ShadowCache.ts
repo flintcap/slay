@@ -39,6 +39,67 @@ interface Still {
 /** What a marked scene keeps: its still casters. */
 const stills = new WeakMap<THREE.Object3D, Still[]>();
 
+/**
+ * Per scene: the subtrees with nothing in them the moving pass would draw
+ * (only still casters, or nothing that casts), hidden from that pass so it
+ * does not walk and cull the whole level every frame to draw a few bodies.
+ * `kids` catches a subtree that was given a new child since.
+ */
+interface Quiet {
+  obj: THREE.Object3D;
+  kids: number;
+}
+const quiets = new WeakMap<THREE.Object3D, { roots: THREE.Object3D[]; list: Quiet[] | null }>();
+
+/** Whether the moving pass would draw `o` itself, or a light stands there (a light hidden from a pass changes its light count). */
+function loud(o: THREE.Object3D): boolean {
+  if ((o as THREE.Light).isLight) return true;
+  const r = o as THREE.Mesh & { isPoints?: boolean; isLine?: boolean; isSprite?: boolean };
+  return !!(r.isMesh || r.isPoints || r.isLine || r.isSprite) && r.castShadow && !r.userData.staticShadow;
+}
+
+/** The largest quiet subtrees under `roots` (never a root itself: things are added to those later). */
+function findQuiet(roots: THREE.Object3D[]): Quiet[] {
+  const quiet = new Map<THREE.Object3D, boolean>();
+  const isQuiet = (o: THREE.Object3D): boolean => {
+    let q = !loud(o);
+    for (const c of o.children) if (!isQuiet(c)) q = false;
+    quiet.set(o, q);
+    return q;
+  };
+  const out: Quiet[] = [];
+  const visit = (o: THREE.Object3D): void => {
+    for (const c of o.children) {
+      if (quiet.get(c)) out.push({ obj: c, kids: c.children.length });
+      else visit(c);
+    }
+  };
+  for (const r of roots) {
+    isQuiet(r);
+    visit(r);
+  }
+  return out;
+}
+
+/** The scene's quiet subtrees now, worked out again after anything changed. */
+function quietOf(scene: THREE.Object3D): Quiet[] {
+  const q = quiets.get(scene);
+  if (!q) return [];
+  if (q.list) {
+    for (const s of q.list) {
+      if (s.obj.children.length !== s.kids || !s.obj.parent) {
+        q.list = null;
+        break;
+      }
+    }
+  }
+  if (!q.list) {
+    q.roots = q.roots.filter((r) => placeOf(r, scene) !== 'gone');
+    q.list = findQuiet(q.roots);
+  }
+  return q.list;
+}
+
 /** Material fields a solid caster's shadow can depend on (`ShadowNodes.ts`). */
 type ShadowMat = THREE.Material & {
   alphaMap?: unknown;
@@ -103,6 +164,9 @@ export function markStaticShadows(scene: THREE.Scene, root: THREE.Object3D): num
     n++;
   });
   stills.set(scene, list);
+  const q = quiets.get(scene);
+  const roots = (q?.roots ?? []).filter((r) => r !== root && placeOf(r, scene) !== 'gone');
+  quiets.set(scene, { roots: [...roots, root], list: null });
   return n;
 }
 
@@ -131,6 +195,8 @@ function unchanged(list: Still[], scene: THREE.Object3D): boolean {
       (im.isInstancedMesh && (im.instanceMatrix.version !== s.version || im.count !== s.count));
     if (moved) {
       delete s.obj.userData.staticShadow;
+      const q = quiets.get(scene);
+      if (q) q.list = null;
       list.splice(i, 1);
       same = false;
       continue;
@@ -191,6 +257,8 @@ const movingOnly: RenderObjectFn = (o, s, c, g, m, gr, l, cc, p) => {
   if (!o.userData.staticShadow) base!(o, s, c, g, m, gr, l, cc, p);
 };
 let installed = false;
+/** The quiet subtrees one moving pass hid, to show again. */
+const hidden: THREE.Object3D[] = [];
 
 /**
  * Teaches three's shadow node to keep still casters' shadows. `gate` is the
@@ -216,7 +284,7 @@ export function installShadowCache(gate: { skipped: number } | null): void {
   };
 
   const render = proto.renderShadow;
-  proto.renderShadow = function (this: ShadowNodeLike, frame) {
+  const draw = function (this: ShadowNodeLike, frame: { renderer: THREE.Renderer; scene: THREE.Scene }): void {
     const { light, shadow, shadowMap } = this;
     const { renderer, scene } = frame;
     const fn = renderer.getRenderObjectFunction() as RenderObjectFn | null;
@@ -286,15 +354,42 @@ export function installShadowCache(gate: { skipped: number } | null): void {
       renderer.setRenderObjectFunction(movingOnly as never);
       const clear = renderer.autoClear;
       renderer.autoClear = false;
+      // Subtrees with nothing moving in them are hidden from this pass: it
+      // walked and culled every wall and prop of the level each frame only
+      // for `movingOnly` to turn them all away.
+      const hid = hidden;
+      hid.length = 0;
+      for (const s of quietOf(scene)) {
+        if (s.obj.visible) {
+          s.obj.visible = false;
+          hid.push(s.obj);
+        }
+      }
       try {
         renderer.render(scene, cam);
       } finally {
+        for (const o of hid) o.visible = true;
+        hid.length = 0;
         renderer.autoClear = clear;
       }
     } finally {
       renderer.setRenderObjectFunction(fn as never);
       base = null;
       scene.name = name;
+    }
+  };
+  // A shadow is drawn from inside the frame's own render, after that render
+  // has worked out every matrix in the scene. Each shadow pass's render
+  // walked the whole scene again (thousands of bones in a crowd) for
+  // nothing: it is told not to.
+  proto.renderShadow = function (this: ShadowNodeLike, frame) {
+    const scene = frame.scene;
+    const auto = scene.matrixWorldAutoUpdate;
+    scene.matrixWorldAutoUpdate = false;
+    try {
+      draw.call(this, frame);
+    } finally {
+      scene.matrixWorldAutoUpdate = auto;
     }
   };
 }

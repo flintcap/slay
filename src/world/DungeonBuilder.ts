@@ -57,6 +57,7 @@ import { Drips, type DripSite } from './Ambience';
 import { hallLifts } from './Halls';
 import { bakeBounce } from './Bounce';
 import { setBounce, type BounceFrame } from '../core/BounceLight';
+import { freezeStill } from '../core/Freeze';
 
 /** One usable thing in the world, and the instance slot that draws it. */
 export interface Interactable {
@@ -800,6 +801,10 @@ export class DungeonMesh {
     this.buildShafts(rng);
     this.buildStairs(rng);
     this.markStillCasters();
+    // Everything but the torch lights (re-aimed as the hero walks) and the
+    // falling drips stops having its matrices rebuilt each frame. Flames,
+    // marks and props move by their instance matrices, not their own.
+    freezeStill(this.root, [...this.lights, this.drips?.root]);
     yield;
     this.buildColliders();
   }
