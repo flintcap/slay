@@ -12,6 +12,7 @@ import { taau } from 'three/addons/tsl/display/TAAUNode.js';
 import { traa } from 'three/addons/tsl/display/TRAANode.js';
 import { sharpen } from 'three/addons/tsl/display/SharpenNode.js';
 import './NodeNames';
+import './TextureSize';
 import './ShadowNodes';
 import { uploadCanvasesWithoutWaiting } from './CanvasUpload';
 import { ShaderGate } from './ShaderGate';

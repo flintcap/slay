@@ -63,6 +63,13 @@ export const HOOKS: readonly ThreeHook[] = [
     check: { on: 'use' },
   },
   {
+    id: 'TextureSource.getSize',
+    ours: 'src/core/TextureSize.ts',
+    theirs: 'src/textures/TextureSource.js',
+    needs: ['getSize( target )', 'target.set( data.width, data.height, data.depth || 0 );'],
+    check: { on: 'class', test: () => fn(THREE.TextureSource.prototype, 'getSize') },
+  },
+  {
     id: 'WGSLNodeBuilder.getUniformFromNode',
     ours: 'src/core/NodeNames.ts',
     theirs: 'src/renderers/webgpu/nodes/WGSLNodeBuilder.js',

@@ -201,12 +201,13 @@ export class PackDraws {
   private packs = new Map<string, Pack>();
   /** Each part's pack, while it rides in one (its own mesh hidden). */
   private riding = new Map<THREE.SkinnedMesh, Pack>();
-  /** How long each part has looked the way it does now, and under which key. */
-  private plain = new Map<THREE.SkinnedMesh, { key: string; t: number; stamp: number }>();
+  /**
+   * How long each part has looked the way it does now, under which key, and
+   * the key it is listed under in `want` this frame (null when not listed).
+   */
+  private plain = new Map<THREE.SkinnedMesh, { key: string; t: number; stamp: number; want: string | null }>();
   private parts = new WeakMap<THREE.Object3D, THREE.SkinnedMesh[]>();
   private want = new Map<string, THREE.SkinnedMesh[]>();
-  /** The key each part in `want` is listed under this frame. */
-  private wantKey = new Map<THREE.SkinnedMesh, string>();
   private stamp = 0;
 
   constructor(private readonly parent: THREE.Object3D) {}
@@ -219,8 +220,6 @@ export class PackDraws {
     const stamp = ++this.stamp;
     const want = this.want;
     for (const list of want.values()) list.length = 0;
-    const wantKey = this.wantKey;
-    wantKey.clear();
     for (const root of roots) {
       if (!shown(root)) continue;
       for (const sm of this.partsOf(root)) {
@@ -230,16 +229,18 @@ export class PackDraws {
         const key = keyOf(sm);
         if (!key) continue;
         let p = this.plain.get(sm);
-        if (!p || p.key !== key || p.stamp !== stamp - 1) this.plain.set(sm, (p = { key, t: 0, stamp }));
-        else {
-          p.t += dt;
-          p.stamp = stamp;
-        }
+        if (!p) this.plain.set(sm, (p = { key, t: 0, stamp, want: null }));
+        else if (p.key !== key || p.stamp !== stamp - 1) {
+          p.key = key;
+          p.t = 0;
+        } else p.t += dt;
+        p.stamp = stamp;
+        p.want = null;
         if (pack?.key === key || p.t >= SETTLE) {
           let list = want.get(key);
           if (!list) want.set(key, (list = []));
           list.push(sm);
-          wantKey.set(sm, key);
+          p.want = key;
         }
       }
     }
@@ -247,12 +248,13 @@ export class PackDraws {
     for (const pack of this.packs.values()) {
       for (let s = 0; s < pack.slots.length; s++) {
         const sm = pack.slots[s];
-        if (sm && wantKey.get(sm) !== pack.key) this.leave(pack, s);
+        if (sm && (this.plain.get(sm)?.want ?? null) !== pack.key) this.leave(pack, s);
       }
     }
-    for (const [key, list] of want) {
+    // forEach, not for-of over entries: no [key, value] pair made per entry.
+    want.forEach((list, key) => {
       // Too few to share a draw: one already riding leaves below.
-      if (list.length < 2) continue;
+      if (list.length < 2) return;
       const pack = this.packs.get(key) ?? this.make(key, list[0]!);
       let changed = false;
       for (const sm of list) {
@@ -267,16 +269,18 @@ export class PackDraws {
       }
       if (pack.members < 2) {
         for (let s = 0; s < pack.slots.length; s++) if (pack.slots[s]) this.leave(pack, s);
-        continue;
+        return;
       }
       if (changed) this.seat(pack);
-    }
+    });
     for (const pack of this.packs.values()) {
       if (pack.members < 2) for (let s = 0; s < pack.slots.length; s++) if (pack.slots[s]) this.leave(pack, s);
       pack.mesh.visible = pack.members >= 2;
     }
     // Forget parts not seen this frame.
-    for (const [sm, p] of this.plain) if (p.stamp !== stamp) this.plain.delete(sm);
+    this.plain.forEach((p, sm, plain) => {
+      if (p.stamp !== stamp) plain.delete(sm);
+    });
   }
 
   /** Gives every part back its own draw and frees the pack draws (between floors). */
@@ -292,7 +296,6 @@ export class PackDraws {
     this.riding.clear();
     this.plain.clear();
     this.want.clear();
-    this.wantKey.clear();
   }
 
   /** Pack draws on screen and the parts riding in them, for debug readouts. */
