@@ -17,6 +17,39 @@ export function swapSide(name: string): string {
 }
 
 /**
+ * A key read once into flat arrays: its bone names, their mirrored names and
+ * its numbers. Keys are laid on every posed monster every frame, and walking
+ * the object and renaming sides with a pattern each time made garbage.
+ */
+interface Compiled {
+  names: string[];
+  mirrored: string[];
+  /** 0 a bone, 1 `$hips`, 2 `$body`. */
+  kind: Uint8Array;
+  v: Float64Array;
+}
+
+const compiledKeys = new WeakMap<Key, Compiled>();
+
+function compiled(k: Key): Compiled {
+  let c = compiledKeys.get(k);
+  if (c) return c;
+  const names = Object.keys(k);
+  const n = names.length;
+  c = { names, mirrored: names.map(swapSide), kind: new Uint8Array(n), v: new Float64Array(n * 3) };
+  for (let i = 0; i < n; i++) {
+    const name = names[i]!;
+    const v = k[name]!;
+    c.kind[i] = name === '$hips' ? 1 : name === '$body' ? 2 : 0;
+    c.v[i * 3] = v[0] ?? 0;
+    c.v[i * 3 + 1] = v[1] ?? 0;
+    c.v[i * 3 + 2] = v[2] ?? 0;
+  }
+  compiledKeys.set(k, c);
+  return c;
+}
+
+/**
  * Lays a key onto the pose at weight `w`. `$hips` is an offset of the hips
  * bone in hip heights (x left, y up, z forward); `$body` the whole body.
  * `mirror` swaps left and right.
@@ -24,24 +57,22 @@ export function swapSide(name: string): string {
 export function key(a: CreatureAnimator, k: Key, w: number, mirror = false): void {
   if (w <= 1e-4) return;
   const H = a.hipY;
-  for (const name in k) {
-    const v = k[name]!;
-    const x = v[0] ?? 0;
-    let y = v[1] ?? 0;
-    let z = v[2] ?? 0;
-    if (name === '$hips' || name === '$body') {
+  const c = compiled(k);
+  const v = c.v;
+  const names = mirror ? c.mirrored : c.names;
+  for (let i = 0; i < names.length; i++) {
+    const x = v[i * 3]!;
+    const kind = c.kind[i];
+    if (kind !== 0) {
+      const y = v[i * 3 + 1]!;
+      const z = v[i * 3 + 2]!;
       const mx = mirror ? -x : x;
-      if (name === '$hips') a.move(a.has('hips') ? 'hips' : 'body', mx * H * w, y * H * w, z * H * w);
+      if (kind === 1) a.move(a.has('hips') ? 'hips' : 'body', mx * H * w, y * H * w, z * H * w);
       else a.body(mx * H * w, y * H * w, z * H * w);
       continue;
     }
-    let n = name;
-    if (mirror) {
-      n = swapSide(name);
-      y = -y;
-      z = -z;
-    }
-    a.rot(n, x * w, y * w, z * w);
+    const s = mirror ? -w : w;
+    a.rot(names[i]!, x * w, v[i * 3 + 1]! * s, v[i * 3 + 2]! * s);
   }
 }
 

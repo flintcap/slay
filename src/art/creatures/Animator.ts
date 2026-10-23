@@ -125,6 +125,25 @@ const _fkU = new THREE.Quaternion();
 const _fkL = new THREE.Quaternion();
 const _fkE = new THREE.Quaternion();
 const _e = new THREE.Euler();
+
+/**
+ * `q` from XYZ Euler angles, as three's setFromEuler, without the Euler in
+ * between; most bones of a pose are unturned and skip the trig.
+ */
+function quatXYZ(q: THREE.Quaternion, x: number, y: number, z: number): void {
+  if (x === 0 && y === 0 && z === 0) {
+    q.set(0, 0, 0, 1);
+    return;
+  }
+  const c1 = Math.cos(x / 2), c2 = Math.cos(y / 2), c3 = Math.cos(z / 2);
+  const s1 = Math.sin(x / 2), s2 = Math.sin(y / 2), s3 = Math.sin(z / 2);
+  q.set(
+    s1 * c2 * c3 + c1 * s2 * s3,
+    c1 * s2 * c3 - s1 * c2 * s3,
+    c1 * c2 * s3 + s1 * s2 * c3,
+    c1 * c2 * c3 - s1 * s2 * s3,
+  );
+}
 const _s = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const _knee = new THREE.Vector3();
@@ -844,9 +863,9 @@ export class CreatureAnimator {
     const n = this.names.length;
     const P = this.pose;
     // Local rotations and positions from the pose.
+    const R = P.rot;
     for (let i = 0; i < n; i++) {
-      _e.set(P.rot[i * 3]!, P.rot[i * 3 + 1]!, P.rot[i * 3 + 2]!, 'XYZ');
-      this.lQuat[i]!.setFromEuler(_e);
+      quatXYZ(this.lQuat[i]!, R[i * 3]!, R[i * 3 + 1]!, R[i * 3 + 2]!);
       this.lPos[i]!.copy(this.restPos[i]!).add(_v.set(P.pos[i * 3]!, P.pos[i * 3 + 1]!, P.pos[i * 3 + 2]!));
     }
     // The root bone carries the whole-body transform.

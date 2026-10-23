@@ -106,6 +106,9 @@ function arms2(a: CreatureAnimator): void {
   }
 }
 
+/** The robe panels' bones, front, back, left, right: upper then lower. */
+const ROBES = (['F', 'B', 'L', 'R'] as const).map((n) => [`robe${n}1`, `robe${n}2`] as const);
+
 /** The specter: an upright trunk over robes, no legs. */
 export function poseSpecter(a: CreatureAnimator): void {
   const H = a.info.height;
@@ -119,11 +122,12 @@ export function poseSpecter(a: CreatureAnimator): void {
   a.rot('spine', 0.1 * g, 0, 0);
   a.rot('head', -0.2 * g + Math.sin(a.time * 0.7 + a.offset) * 0.08, a.wobble(0.5) * 0.25, 0);
   const trail = 0.5 * g + 0.08;
-  for (const [n, k] of [['F', 0], ['B', 1], ['L', 2], ['R', 3]] as const) {
+  for (let k = 0; k < ROBES.length; k++) {
     const ph = a.time * 2.2 + a.offset + k * 1.3;
     const wv = Math.sin(ph) * (0.12 + 0.12 * g);
-    a.rot(`robe${n}1`, trail * 0.6 + wv, 0, Math.cos(ph * 0.8) * 0.1);
-    a.rot(`robe${n}2`, trail * 0.5 + Math.sin(ph - 0.9) * (0.18 + 0.15 * g), 0, Math.cos(ph * 0.8 - 0.7) * 0.15);
+    const r = ROBES[k]!;
+    a.rot(r[0], trail * 0.6 + wv, 0, Math.cos(ph * 0.8) * 0.1);
+    a.rot(r[1], trail * 0.5 + Math.sin(ph - 0.9) * (0.18 + 0.15 * g), 0, Math.cos(ph * 0.8 - 0.7) * 0.15);
   }
   // Arms: claws reaching, or trailing when it rushes.
   const reach = 1 - g;

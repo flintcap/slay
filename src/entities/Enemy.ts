@@ -228,6 +228,9 @@ export interface EnemyPlate {
 /** How many times a monster's position went non-finite and was repaired (soak reads it). */
 export let enemyPositionRepairs = 0;
 
+/** Hands out each body's pose slot (Enemy.poseSlot). */
+let nextPoseSlot = 0;
+
 export class Enemy implements Combatant {
   private lastGoodX = 0;
   private lastGoodZ = 0;
@@ -292,6 +295,8 @@ export class Enemy implements Combatant {
    */
   poseEvery = 1;
   private poseTick = 0;
+  /** Spreads bodies posed every few frames over those frames, not all on one. */
+  private readonly poseSlot = nextPoseSlot++ & 3;
   private poseDt = 0;
   private shadowCasters: THREE.Mesh[] | null = null;
 
@@ -940,7 +945,7 @@ export class Enemy implements Combatant {
     }
     if (!this.inView) {
       this.poseDt = 0;
-      this.poseTick = 0;
+      this.poseTick = this.poseSlot;
     } else {
       this.poseDt = Math.min(0.1, this.poseDt + dt);
       if (++this.poseTick >= this.poseEvery) this.solvePose(ctx.elapsed);

@@ -138,6 +138,16 @@ const POSE_FAR = 14;
 /** Metres from the hero past which a monster in view is posed at a third the rate. */
 const POSE_EDGE = 22;
 /**
+ * Monsters posed last frame above which the screen counts as a crowd: then
+ * every tier past the near ring steps down once, and the near ring itself
+ * shrinks so it holds about this many.
+ */
+const POSE_CROWD = 30;
+/** Metres of the near ring (posed every frame) at POSE_CROWD bodies in view. */
+const POSE_CLOSE = 9;
+/** The near ring never shrinks below this: what the hero is fighting. */
+const POSE_CLOSE_MIN = 4.5;
+/**
  * Screen height (CSS pixels) under which a monster is drawn from its
  * lower-detail copy: rats and bats on every preset, most of a pack on Low.
  */
@@ -1520,6 +1530,8 @@ export class DungeonScene extends GameScene {
    * aimed at a skeleton land on the skeleton.
    */
   private acting: Enemy | null = null;
+  /** Monsters in view and alive last frame (their bodies are posed). */
+  private posedLast = 0;
   /**
    * The position monster abilities aim at, handed out as `ctx.playerPos`.
    *
@@ -1689,6 +1701,11 @@ export class DungeonScene extends GameScene {
     // Bodies shorter on screen than this draw their lower-detail copies.
     const pxPerM = window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
     const lowPx = LOW_DETAIL_PX[this.engine.renderer.qualityLevel];
+    // In a big fight, every far body steps down one pose rate: the crowd
+    // still moves, and the frame keeps its pace.
+    const crowd = this.posedLast > POSE_CROWD ? 1 : 0;
+    const close = crowd ? Math.max(POSE_CLOSE_MIN, POSE_CLOSE * Math.sqrt(POSE_CROWD / this.posedLast)) : 0;
+    let posed = 0;
     for (let i = 0; i < this.enemies.length; i++) {
       const e = this.enemies[i]!;
       const dx = e.root.position.x - px;
@@ -1703,7 +1720,8 @@ export class DungeonScene extends GameScene {
       // edge of the screen every third (its motion reads the same at the
       // lower rate; the near ones keep every frame).
       const d2 = dx * dx + dz * dz;
-      e.poseEvery = d2 > POSE_EDGE * POSE_EDGE ? 3 : d2 > POSE_FAR * POSE_FAR ? 2 : 1;
+      e.poseEvery = (d2 > POSE_EDGE * POSE_EDGE ? 3 : d2 > POSE_FAR * POSE_FAR ? 2 : d2 > close * close ? 1 : 1 - crowd) + crowd;
+      if (e.inView && e.alive) posed++;
       // A living body well out of view (it is not posed and casts no shadow)
       // also stops having its thirty-odd bones' world matrices rebuilt every
       // frame: with a floor's hundred-plus monsters that was the largest
@@ -1756,6 +1774,7 @@ export class DungeonScene extends GameScene {
       }
     }
     this.acting = null;
+    this.posedLast = posed;
     // Bodies of one look in view share a draw (after any of them changed its material this frame, it leaves next frame).
     (this.packs ??= new PackDraws(this.scene)).update(this.packRoots, dt);
     this.aimPos.copy(this.player.position);
@@ -2492,16 +2511,30 @@ export class DungeonScene extends GameScene {
       questTokens.exit(this.run.quest);
       void (async () => {
         const { fadeTo } = await import('../core/Engine');
-        await fadeTo(1, 320);
-        beginLoad(6);
-        await this.loadLevelPaced(this.levelIndex + 1);
-        // The new area's shaders link behind the curtain, not during the fade-in.
-        await this.bossPortraitReady();
-        await this.engine.prime(this);
+        let built = false;
+        try {
+          await fadeTo(1, 320);
+          beginLoad(6);
+          await this.loadLevelPaced(this.levelIndex + 1);
+          built = true;
+          // The new area's shaders link behind the curtain, not during the fade-in.
+          await this.bossPortraitReady();
+          await this.engine.prime(this);
+        } catch (err) {
+          reportError('area', err);
+        }
+        // Whatever happened, never leave the screen black and the hero frozen.
         endLoad();
         this.engine.clock.update();
-        await fadeTo(0, 420);
-        this.transitioning = false;
+        if (built) {
+          await fadeTo(0, 420);
+          this.transitioning = false;
+          return;
+        }
+        // A half-built area cannot be played (it stays held, not updated):
+        // home, as a scene that fails to load goes.
+        toast(tr('Something went wrong getting there. You are safe.'), 'bad');
+        void this.engine.goTo('town');
       })();
     } else {
       // Run complete — bank the depth and return to town.

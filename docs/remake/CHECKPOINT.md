@@ -823,6 +823,21 @@ Update this file and push it after every finished step.
   585 -> 356, depth 12 10.9 -> 7.5 / 938 -> 458, depth 20 8.0 -> 6.3 /
   704 -> 370. Still over the 6 ms and 200 KB budgets at depth 12 and 20
   (they were before the crowds too); the rest is posing and AI work.
+- #211 Black screen on the way to the next area (tester). Not reproduced:
+  probes walked every area of tiers 2-25, some mid-fight, with no error and
+  the new area drawn each time. `DungeonScene.takeExit` now catches a
+  failure mid-load: the curtain always lifts, and an area that did not
+  build sends the hero home with the same toast as `Engine.goTo`.
+- #212 Cheaper monster posing. `Keys.key` lays compiled key poses (names,
+  mirrored names and numbers cached per key object) instead of walking the
+  object and renaming sides each frame; `Animator.solve` turns Euler angles
+  into quaternions itself and skips unturned bones; the specter's robe bone
+  names are built once. In a crowd (over 30 bodies in view) every tier past
+  the near ring poses one step slower, and the near ring shrinks from 9 m
+  to hold about 30 (never under 4.5 m); bodies posed every few frames are
+  spread over those frames. Densest knot at depth 12: 70 -> 60 poses per
+  frame, GC 106 -> 46 ms over 90 steps. check-perf depth 12: updateMs 7.5
+  -> 5.8 (inside the 6 ms budget), alloc KB per step 458 -> 391.
 
 ## Phase 0d log
 
