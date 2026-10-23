@@ -806,6 +806,23 @@ Update this file and push it after every finished step.
 - #208 The see-through map follows the area (owner: kept showing the old
   area). Every area of a map shares one seed, so `MapOverlay` now repaints
   when the level object or its explored grid changes, not the seed.
+- #209 One hero shadow under the open sky (owner: two shadows on Gallows
+  Fen). `Renderer.applyShadows` finds the casting sun or moon first; while
+  one casts, the hero lantern throws none.
+- #210 Speed with the bigger crowds. Monster AI asks `entities/Crowd.ts`
+  (8 m grid, built once a frame) who is near instead of walking every
+  monster; `claimSlot` reads its neighbours' angles once. Monsters past 22 m
+  pose every third frame; creature bones skip three's Euler sync; pack draw
+  keys are memoized and the per-frame part map is gone. The big one:
+  three's `TextureSource.getSize` wrote `undefined` (a depth texture with no
+  size yet) into a shared Vector3, and V8 then kept every Vector3 field
+  boxed, so each position write made garbage. `core/TextureSize.ts` writes
+  NaN instead (hook listed in `ThreeHooks`). Depth 12, 387 monsters:
+  garbage per step 656 -> 278 KB, median update 3.4 -> 2.3 ms, p90 9.7 ->
+  6.3 ms. check-perf updateMs / alloc KB per step: depth 1 7.7 -> 4.9 /
+  585 -> 356, depth 12 10.9 -> 7.5 / 938 -> 458, depth 20 8.0 -> 6.3 /
+  704 -> 370. Still over the 6 ms and 200 KB budgets at depth 12 and 20
+  (they were before the crowds too); the rest is posing and AI work.
 
 ## Phase 0d log
 
