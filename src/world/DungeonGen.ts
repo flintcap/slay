@@ -30,6 +30,7 @@ import type {
   MapExit,
   MapZone,
   MonsterRank,
+  MonsterRole,
   PropPlacement,
   QuestDef,
   QuestInstance,
@@ -602,11 +603,16 @@ export function zoneBudget(depth: number, floorTiles: number, heat: number): num
   // it. That was the wrong end to fix: the crowd is the game, and the class was
   // the problem — a caster whose main attribute bought no damage at all. The
   // attribute is fixed, so the crowd comes back.
-  const soft = 100 + 260 * (1 - Math.exp(-curve / 120));
-  // Density guard: never more than one monster per ~11 walkable tiles. Still a
+  //
+  // Raised after "maps need way more monster mobs": one monster per ~28
+  // walkable tiles left long walks between packs. Plain packs then grew
+  // (`plainPackSize`), and the budget grew with them so there are more packs
+  // as well as bigger ones.
+  const soft = 300 + 780 * (1 - Math.exp(-curve / 120));
+  // Density guard: never more than one monster per ~5 walkable tiles. Still a
   // guard rather than the driver, but it now lets a big open floor carry a
   // crowd proportional to its size instead of the same pack a small one gets.
-  const byArea = floorTiles / 11;
+  const byArea = floorTiles / 5;
   // Later zones of a map are hotter than the first.
   const rampe = 0.85 + 0.3 * clamp(heat, 0, 1);
   // Difficulty widens or thins every floor.
@@ -634,6 +640,42 @@ export function championDensity(depth: number): number {
   // has to stay a step, so the slope and the ceiling both come down.
   return clamp((0.07 + depth * 0.0028) * dif.eliteDensity, 0, 0.2);
 }
+
+/**
+ * How many come in a plain pack, by what leads it. Small quick things come in
+ * crowds, big slow ones in twos and threes, the way a floor reads at a glance:
+ * a tide of rats, a line of archers, a pair of ogres.
+ */
+const PLAIN_PACK: Record<MonsterRole, readonly [number, number]> = {
+  swarm: [9, 16],
+  melee: [5, 10],
+  ambusher: [4, 8],
+  ranged: [4, 7],
+  caster: [3, 6],
+  support: [3, 5],
+  brute: [2, 4],
+};
+
+/**
+ * How full a plain pack turns out, so no two read the same: a few stragglers,
+ * a band, a horde or now and then a throng. [share, size multiplier].
+ */
+const PACK_MOODS: ReadonlyArray<readonly [number, number]> = [
+  [0.2, 0.55],
+  [0.45, 1],
+  [0.25, 1.6],
+  [0.1, 2.4],
+];
+
+/** The headcount of a plain pack led by `leaderId`. */
+function plainPackSize(leaderId: string, rng: Rng): number {
+  const [lo, hi] = PLAIN_PACK[getMonster(leaderId)?.role ?? 'melee'];
+  const mood = rng.weighted(PACK_MOODS, (m) => m[0])[1];
+  return Math.max(1, Math.min(36, Math.round(rng.int(lo, hi) * mood)));
+}
+
+/** The most monsters one area (one load) is given, all its zones together. */
+const AREA_MONSTER_CAP = 720;
 
 /** One rank below, for the retinue behind a pack leader. */
 const STEP_DOWN: Record<MonsterRank, MonsterRank> = {
@@ -1521,6 +1563,12 @@ function placeSpawns(
     if (zones[z]?.role === 'boss') b = Math.round(b * 0.45);
     return b;
   });
+  // One load carries at most this many, however many zones share it: every
+  // monster is a body built behind the portal's fade and kept in memory.
+  const areaTotal = budgets.reduce((n, b) => n + b, 0);
+  if (areaTotal > AREA_MONSTER_CAP) {
+    for (let z = 0; z < budgets.length; z++) budgets[z] = Math.round(budgets[z]! * (AREA_MONSTER_CAP / areaTotal));
+  }
   const placedIn = new Array<number>(nz).fill(0);
   const full = (): boolean => placedIn.every((p, z) => p >= budgets[z]!);
 
@@ -1558,6 +1606,8 @@ function placeSpawns(
   // A run theme only moves which monster fills a slot: its favoured families
   // weigh more, and a few of them from its guest biome may join the pool.
   // Counts and numbers are untouched. Rolled on its own stream.
+  // The pools before a theme's guests join them: what a pack's kind is drawn from.
+  const baseLen = idsByZone.map((ids) => ids.length);
   const theme = runTheme(level.runTheme);
   const weightsByZone: Array<number[] | null> = idsByZone.map((ids, z) => {
     const b = zones[z]?.biome ?? level.biome;
@@ -1587,6 +1637,26 @@ function placeSpawns(
       if (r < 0) return ids[i]!;
     }
     return ids[ids.length - 1]!;
+  };
+  // A pack's leader. The theme-blind draw sets what kind of pack it is (and
+  // so its size, `plainPackSize`); a run theme then only picks who of that
+  // kind leads, on its own stream, so a theme never moves a pack's size or
+  // any roll after it.
+  const leadStreams = new Map<number, Rng>();
+  const pickLeader = (): { leaderId: string; sizeBy: string } => {
+    const ids = idsByZone[zoneNow]!;
+    if (ids.length === 0) return { leaderId: 'skeleton', sizeBy: 'skeleton' };
+    const base = rng.pick(ids.slice(0, baseLen[zoneNow]));
+    const w = weightsByZone[zoneNow];
+    if (!w) return { leaderId: base, sizeBy: base };
+    const role = getMonster(base)?.role;
+    let trng = leadStreams.get(zoneNow);
+    if (!trng) {
+      trng = streamFor(level.seed, `runTheme:lead:${depth}:${level.entry.x},${level.entry.y}:${zoneNow}`);
+      leadStreams.set(zoneNow, trng);
+    }
+    const kin = ids.map((id, i) => ({ id, w: getMonster(id)?.role === role ? w[i]! : 0 })).filter((k) => k.w > 0);
+    return { leaderId: kin.length ? trng.weighted(kin, (k) => k.w).id : base, sizeBy: base };
   };
 
   const usedTile = new Set<number>();
@@ -1627,18 +1697,20 @@ function placeSpawns(
       rank = 'champion';
     }
 
-    // Pack size.
+    const { leaderId, sizeBy } = pickLeader();
+
+    // Pack size. Ranked packs stay small; plain ones are sized by what leads
+    // them and how full this one happens to be (`plainPackSize`).
     let packSize: number;
     if (rank === 'rare') packSize = rng.int(3, 5);
     else if (rank === 'elite') packSize = rng.int(3, 6);
     else if (rank === 'champion') packSize = rng.int(2, 4);
-    else packSize = rng.int(2, 5);
+    else packSize = plainPackSize(sizeBy, rng);
     packSize = Math.max(1, Math.round(packSize * (1 + swarmTier * 0.12)));
     if (kindHere === 'ambush') packSize = Math.round(packSize * 1.5);
 
     const affixCount = affixCountFor(rank, depth);
     const packAffixes = affixCount > 0 ? catalog.affixes(depth, rng.fork(`aff${packId}`), affixCount) : [];
-    const leaderId = pickId();
     const id = packId++;
 
     // A rare pack's leader is sometimes somebody in particular.

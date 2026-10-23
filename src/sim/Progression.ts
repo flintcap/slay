@@ -96,9 +96,20 @@ export function levelUpRewards(level: number): LevelUpReward {
 /** How much more XP each rank pays than a normal monster. */
 const KILL_XP_RANK: Record<MonsterRank, number> = { normal: 1, champion: 1.9, elite: 3.2, rare: 5, boss: 22 };
 
+/**
+ * Each kill's share now floors carry about three times the monsters they did
+ * (bigger plain packs, more packs), so a tier still levels the hero at the
+ * pace the curve was built for (check-levels).
+ */
+function crowdXp(depth: number): number {
+  // Deep areas hit the per-area cap (`AREA_MONSTER_CAP`), so their crowd grew
+  // less and each kill keeps more of its old share.
+  return Math.min(0.75, 0.4 + Math.max(0, depth - 25) * 0.006);
+}
+
 /** XP the hero gets for a kill at a depth: what DungeonScene grants and the gate shows. */
 export function killXp(depth: number, rank: MonsterRank): number {
-  return Math.round((8 + depth * 6) * KILL_XP_RANK[rank] * activeDifficulty().xp * legacyXpMultiplier());
+  return Math.max(1, Math.round((8 + depth * 6) * KILL_XP_RANK[rank] * crowdXp(depth) * activeDifficulty().xp * legacyXpMultiplier()));
 }
 
 /**

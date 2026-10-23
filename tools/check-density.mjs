@@ -30,11 +30,11 @@ const pad = (s, n) => String(s).padEnd(n);
 const table = (title, rows) => {
   console.log(`\n=== ${title} ===`);
   console.log(
-    `${pad('', 14)} ${pad('tiles', 7)} ${pad('props', 7)} ${pad('/100', 7)} ${pad('mobs', 6)} ${pad('/100', 7)} bare`,
+    `${pad('', 14)} ${pad('tiles', 7)} ${pad('props', 7)} ${pad('/100', 7)} ${pad('mobs', 6)} ${pad('/100', 7)} ${pad('packs', 6)} bare`,
   );
   for (const r of rows) {
     console.log(
-      `${pad(r.key, 14)} ${pad(r.tiles, 7)} ${pad(r.props, 7)} ${pad(r.propsPer100, 7)} ${pad(r.monsters, 6)} ${pad(r.monstersPer100, 7)} ${r.barePct}%`,
+      `${pad(r.key, 14)} ${pad(r.tiles, 7)} ${pad(r.props, 7)} ${pad(r.propsPer100, 7)} ${pad(r.monsters, 6)} ${pad(r.monstersPer100, 7)} ${pad(r.packs, 6)} ${r.barePct}%`,
     );
   }
 };
@@ -42,3 +42,8 @@ console.log(`${d.floors} floors`);
 table('by layout', d.byLayout);
 table('by biome', d.byBiome);
 table('by depth', d.byDepth);
+
+// Plain packs by headcount: a wide spread is the point, not a single size.
+const total = d.plainSizes.reduce((n, [, c]) => n + c, 0);
+console.log('\n=== plain packs by headcount ===');
+for (const [n, c] of d.plainSizes) console.log(`${pad(n, 4)} ${pad(((c / total) * 100).toFixed(1) + '%', 7)} ${'#'.repeat(Math.round((c / total) * 200))}`);

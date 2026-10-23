@@ -778,6 +778,34 @@ Update this file and push it after every finished step.
   the landing schedule never knew of it. Abilities now name it
   (`followUp`); both landings are checked and kept. check-tactics passes and
   is off the known-failures list.
+- #205 Portals take [E] (owner: walked into them by accident while looting).
+  The way on, the portal home after the boss and the trinket portal to town
+  no longer take a hero who walks into them; standing within reach shows an
+  [E] prompt and the key takes it (`DungeonScene.tickWays`, which also runs
+  the waypoint). A prop in reach still wins the key. The checks that put the
+  hero on the exit now press E (mapflow, check-lag, the class tour).
+- #206 Menus never move the camera (owner). The side-panel frame shift is
+  gone, with its `ui:sides` event: the hero stays in the middle of the
+  screen whatever is open.
+- #207 Bigger, varied packs (owner: "maps need way more monster mobs",
+  "normal mob packs need to spawn in bigger dense numbers", "not every mob
+  pack should be the same density"). Plain packs now size by the leader's
+  role (`PLAIN_PACK`: swarm 9-16 down to brute 2-4) times a mood roll
+  (`PACK_MOODS`: stragglers x0.55, band x1, horde x1.6, throng x2.4), capped
+  at 36. Elite packs stay small (rare 3-5, elite 3-6, champion 2-4). Zone
+  soft cap 300 + 780 curve, area guard one per ~5 walkable tiles, and
+  `AREA_MONSTER_CAP` 720 scales every zone down when an area would pass it.
+  Run themes pick a same-role leader on their own stream and size by the
+  base pick, so check-themes still sees the same counts. To keep leveling
+  pace and loot sane with ~3x the monsters: `crowdXp` (0.4, rising to 0.75
+  past tier 25) on kill XP, and normal monsters drop less (gold 0.45x,
+  potions 0.07, material 0.075, socketables 0.016). check-density, monsters
+  per hundred walkable tiles: 2.6 -> 7.9 (tiers 1-10), 3.5 -> 9.8 (11-20),
+  4.0 -> 10.7 (21-30); plain packs 2 to 36, most 3-12. check-economy: gold
+  about +30%, items about +35%, levels keep pace (check-levels gap -1..3).
+- #208 The see-through map follows the area (owner: kept showing the old
+  area). Every area of a map shares one seed, so `MapOverlay` now repaints
+  when the level object or its explored grid changes, not the seed.
 
 ## Phase 0d log
 

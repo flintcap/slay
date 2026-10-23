@@ -1229,7 +1229,7 @@ function rollItemAt(ilvl: number, rng: Rng, opts: ItemRoll): Item {
  * depth 22, two at depth 40.
  */
 const CHARM_DROP_CHANCE: Record<MonsterRank, number> = {
-  normal: 0.0005,
+  normal: 0.00025,
   champion: 0.003,
   elite: 0.006,
   rare: 0.012,
@@ -1294,7 +1294,7 @@ export function rollSocketable(ilvl: number, rng: Rng): Item | null {
  * super potion and a level-50 one is not handed a minor.
  */
 const POTION_DROP_CHANCE: Record<MonsterRank, number> = {
-  normal: 0.11,
+  normal: 0.07,
   champion: 0.3,
   elite: 0.42,
   rare: 0.55,
@@ -1347,8 +1347,11 @@ interface RankProfile {
   materialRolls: number;
 }
 
+// A plain monster pays less than it did: floors now carry about three times
+// as many, in bigger packs, and a floor should pay a little more for that,
+// not three times as much.
 const RANK_PROFILE: Record<MonsterRank, RankProfile> = {
-  normal: { items: 0, bonusChance: 0.17, goldMul: 1, socketableChance: 0.035, materialRolls: 0 },
+  normal: { items: 0, bonusChance: 0.08, goldMul: 0.45, socketableChance: 0.016, materialRolls: 0 },
   champion: { items: 0, bonusChance: 0.62, goldMul: 2.4, socketableChance: 0.1, materialRolls: 1 },
   elite: { items: 1, bonusChance: 0.5, goldMul: 4.2, socketableChance: 0.17, materialRolls: 1 },
   rare: { items: 2, bonusChance: 0.55, goldMul: 7, socketableChance: 0.26, materialRolls: 2 },
@@ -1402,7 +1405,7 @@ export function rollDrops(
   const pool = materialDropPool(lvl, rank);
   if (pool.length > 0) {
     let rolls = profile.materialRolls;
-    if (rank === 'normal' && rng.chance(0.16)) rolls = 1;
+    if (rank === 'normal' && rng.chance(0.075)) rolls = 1;
     for (let i = 0; i < rolls; i++) {
       const mat = rng.weighted(pool, (mmat) => mmat.weight / Math.pow(1.9, mmat.tier - 1));
       const amount = mat.tier >= 4 ? 1 : mat.tier === 3 ? rng.int(1, 2) : rng.int(1, 3);

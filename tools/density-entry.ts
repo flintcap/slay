@@ -59,6 +59,7 @@ interface Sample {
   walkable: number;
   props: number;
   monsters: number;
+  packs: number;
   bare: number;
 }
 
@@ -115,15 +116,28 @@ function sample(level: DungeonLevel, depth: number): Sample {
     walkable: walk.length,
     props: level.props.length,
     monsters: level.spawns.length,
+    packs: new Set(level.spawns.map((s) => s.packId)).size,
     bare,
   };
 }
 
 const samples: Sample[] = [];
+/** Plain packs by headcount, over every floor: how much one pack differs from the next. */
+const plainSizes = new Map<number, number>();
 for (let i = 0; i < 200; i++) {
   const depth = 1 + (i % 30);
   const run = generateRun(depth, 0x1d05 + i * 5171, 'warden');
-  for (const level of run.levels) samples.push(sample(level, depth));
+  for (const level of run.levels) {
+    samples.push(sample(level, depth));
+    const packs = new Map<number, { n: number; plain: boolean }>();
+    for (const s of level.spawns) {
+      const p = packs.get(s.packId) ?? { n: 0, plain: true };
+      p.n++;
+      if (s.rank !== 'normal') p.plain = false;
+      packs.set(s.packId, p);
+    }
+    for (const p of packs.values()) if (p.plain) plainSizes.set(p.n, (plainSizes.get(p.n) ?? 0) + 1);
+  }
 }
 
 function roll(key: (s: Sample) => string): Array<Record<string, number | string>> {
@@ -138,6 +152,7 @@ function roll(key: (s: Sample) => string): Array<Record<string, number | string>
       const walk = list.reduce((n, s) => n + s.walkable, 0);
       const props = list.reduce((n, s) => n + s.props, 0);
       const mons = list.reduce((n, s) => n + s.monsters, 0);
+      const packs = list.reduce((n, s) => n + s.packs, 0);
       const bare = list.reduce((n, s) => n + s.bare, 0);
       return {
         key: k,
@@ -147,6 +162,7 @@ function roll(key: (s: Sample) => string): Array<Record<string, number | string>
         propsPer100: +((props / Math.max(1, walk)) * 100).toFixed(1),
         monsters: Math.round(mons / list.length),
         monstersPer100: +((mons / Math.max(1, walk)) * 100).toFixed(1),
+        packs: Math.round(packs / list.length),
         barePct: +((bare / Math.max(1, walk)) * 100).toFixed(1),
       };
     })
@@ -159,5 +175,6 @@ console.log(
     byLayout: roll((s) => s.layout),
     byBiome: roll((s) => s.biome),
     byDepth: roll((s) => `depth ${Math.ceil(s.depth / 10) * 10 - 9}-${Math.ceil(s.depth / 10) * 10}`),
+    plainSizes: [...plainSizes.entries()].sort((a, b) => a[0] - b[0]),
   }),
 );

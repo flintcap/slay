@@ -27,6 +27,7 @@ import { Random } from '../src/core/RNG';
 import { save } from '../src/core/Save';
 import { generateRun, isPlainChest } from '../src/world/DungeonGen';
 import { createCharacter, grantXp } from '../src/sim/Character';
+import { killXp } from '../src/sim/Progression';
 import { bindLegacyAccount } from '../src/sim/Legacy';
 import { canEquip, getBase, rollDrops, rollItem, vendorPrice } from '../src/sim/Loot';
 import { upgradeCost } from '../src/sim/Crafting';
@@ -38,7 +39,6 @@ bindLegacyAccount(() => save.account);
 const problems: string[] = [];
 const CLASSES: CharClassId[] = ['warden', 'mage', 'shadowblade', 'revenant', 'ranger', 'shapeshifter', 'paladin'];
 const REPORT_AT = [1, 3, 5, 10, 15, 20, 30];
-const RANK_XP: Record<MonsterRank, number> = { boss: 22, rare: 5, elite: 3.2, champion: 1.9, normal: 1 };
 
 interface Row {
   depth: number;
@@ -73,7 +73,7 @@ for (const cls of CLASSES) {
     let gold = 0;
     const items: Item[] = [];
     const kill = (rank: MonsterRank) => {
-      grantXp(c, Math.round((8 + depth * 6) * RANK_XP[rank]));
+      grantXp(c, killXp(depth, rank));
       const ilvl = rank === 'boss' ? bossIlvl(depth) : payoutIlvl(depth, rank === 'normal' ? 0 : 2);
       const d = rollDrops(ilvl, rank, rng);
       gold += d.gold;
