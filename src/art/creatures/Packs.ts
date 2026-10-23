@@ -197,6 +197,10 @@ function shown(root: THREE.Object3D): boolean {
   return false;
 }
 
+const emptyWant = (w: { n: number }): void => {
+  w.n = 0;
+};
+
 export class PackDraws {
   private packs = new Map<string, Pack>();
   /** Each part's pack, while it rides in one (its own mesh hidden). */
@@ -207,7 +211,11 @@ export class PackDraws {
    */
   private plain = new Map<THREE.SkinnedMesh, { key: string; t: number; stamp: number; want: string | null }>();
   private parts = new WeakMap<THREE.Object3D, THREE.SkinnedMesh[]>();
-  private want = new Map<string, THREE.SkinnedMesh[]>();
+  /**
+   * Parts wanting each pack this frame: the first `n` of `items`. Emptied by
+   * zeroing `n`; `length = 0` threw the storage away to be grown again.
+   */
+  private want = new Map<string, { items: THREE.SkinnedMesh[]; n: number }>();
   private stamp = 0;
 
   constructor(private readonly parent: THREE.Object3D) {}
@@ -219,10 +227,15 @@ export class PackDraws {
   update(roots: readonly THREE.Object3D[], dt: number): void {
     const stamp = ++this.stamp;
     const want = this.want;
-    for (const list of want.values()) list.length = 0;
-    for (const root of roots) {
+    want.forEach(emptyWant);
+    // Index loops: a for-of made a small throwaway object a pass until the
+    // browser fully optimized this, every part of every body every frame.
+    for (let ri = 0; ri < roots.length; ri++) {
+      const root = roots[ri]!;
       if (!shown(root)) continue;
-      for (const sm of this.partsOf(root)) {
+      const parts = this.partsOf(root);
+      for (let pi = 0; pi < parts.length; pi++) {
+        const sm = parts[pi]!;
         const pack = this.riding.get(sm);
         // Hidden by something else (not by riding): leave it be.
         if (!pack && !sm.visible) continue;
@@ -238,8 +251,8 @@ export class PackDraws {
         p.want = null;
         if (pack?.key === key || p.t >= SETTLE) {
           let list = want.get(key);
-          if (!list) want.set(key, (list = []));
-          list.push(sm);
+          if (!list) want.set(key, (list = { items: [], n: 0 }));
+          list.items[list.n++] = sm;
           p.want = key;
         }
       }
@@ -254,10 +267,11 @@ export class PackDraws {
     // forEach, not for-of over entries: no [key, value] pair made per entry.
     want.forEach((list, key) => {
       // Too few to share a draw: one already riding leaves below.
-      if (list.length < 2) return;
-      const pack = this.packs.get(key) ?? this.make(key, list[0]!);
+      if (list.n < 2) return;
+      const pack = this.packs.get(key) ?? this.make(key, list.items[0]!);
       let changed = false;
-      for (const sm of list) {
+      for (let li = 0; li < list.n; li++) {
+        const sm = list.items[li]!;
         if (this.riding.get(sm) === pack) continue;
         const s = pack.slots.indexOf(null);
         if (s < 0) break;

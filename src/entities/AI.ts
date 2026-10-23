@@ -21,7 +21,7 @@ import type { MonsterDef, MonsterRole } from '../types';
 import type { CombatContext, AbilityDef } from './Abilities';
 import { angleDelta, angleTo, clamp, dist, dist2, getAbility } from './Abilities';
 import type { Enemy } from './Enemy';
-import { crowdNear } from './Crowd';
+import { crowdHits, crowdNear } from './Crowd';
 import { events } from '../core/Events';
 
 export type AIMode =
@@ -53,9 +53,11 @@ function hero(ctx: CombatContext): THREE.Vector3 {
 }
 
 /** Neighbours of one question (`crowdNear`); no question asks another while it reads them. */
-const _near: Enemy[] = [];
+const _near = crowdHits();
 /** Angles round the hero of the awake monsters near it, for `claimSlot`. */
 const _slotAngles: number[] = [];
+/** behindLineOffset's answer, read at once by its one caller. */
+const _behind = { x: 0, z: 0 };
 /** How far round the hero a taken slot is counted. */
 const SLOT_REACH = 20;
 
@@ -635,7 +637,8 @@ export class AIBrain {
     let bestScore = Infinity;
     let bestReal = Infinity;
     let bestPulls = false;
-    for (const m of list) {
+    for (let mi = 0; mi < list.length; mi++) {
+      const m = list[mi]!;
       const real = dist(p.x, p.z, m.x, m.z);
       if (real > MINION_NOTICE) continue;
       // A taunt only pulls while it has a free hand. A full one is just a body.
@@ -921,8 +924,8 @@ export class AIBrain {
     let wz = 0;
     let wsum = 0;
     const near = crowdNear(ctx.enemies, p.x, p.z, 18, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       if (dist2(p.x, p.z, q.x, q.z) > 18 * 18) continue;
@@ -974,7 +977,8 @@ export class AIBrain {
     let swarm = 0;
     let ready = 0;
     const h = hero(ctx);
-    for (const m of pack.members) {
+    for (let mi = 0; mi < pack.members.length; mi++) {
+      const m = pack.members[mi]!;
       if (m.archetype !== 'swarm' || !m.self.alive || m.isDormant) continue;
       swarm++;
       const q = m.self.root.position;
@@ -992,8 +996,8 @@ export class AIBrain {
     let best: Enemy | null = null;
     let bestD = radius * radius;
     const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive || !e.ai || e.ai.isDormant) continue;
       if (!BACK_LINE.has(e.ai.archetype)) continue;
       const q = e.root.position;
@@ -1085,14 +1089,16 @@ export class AIBrain {
     const mine = angleTo(h.x, h.z, p.x, p.z);
     // Where the others stand round the hero, worked out once rather than per
     // slot. Only those near the hero hold a slot.
-    _slotAngles.length = 0;
+    // Written by count, never emptied with `length = 0`, which would throw the
+    // storage away and allocate it again on the next push.
+    let taken = 0;
     const near = crowdNear(ctx.enemies, h.x, h.z, SLOT_REACH, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       if (dist2(h.x, h.z, q.x, q.z) > SLOT_REACH * SLOT_REACH) continue;
-      _slotAngles.push(angleTo(h.x, h.z, q.x, q.z));
+      _slotAngles[taken++] = angleTo(h.x, h.z, q.x, q.z);
     }
     const SLOTS = 10;
     let best = mine;
@@ -1102,7 +1108,7 @@ export class AIBrain {
       // Prefer slots near where we already stand (no silly orbiting) but heavily
       // penalise slots another enemy has taken.
       let score = -Math.abs(angleDelta(mine, a)) * 0.9;
-      for (let j = 0; j < _slotAngles.length; j++) {
+      for (let j = 0; j < taken; j++) {
         const delta = Math.abs(angleDelta(_slotAngles[j]!, a));
         if (delta < 0.55) score -= (0.55 - delta) * 6;
       }
@@ -1115,15 +1121,15 @@ export class AIBrain {
   }
 
   /** Nudge that keeps back-liners behind the nearest front-liner. */
-  private behindLineOffset(ctx: CombatContext): { x: number; z: number } {
+  private behindLineOffset(ctx: CombatContext): Readonly<{ x: number; z: number }> {
     const p = this.self.root.position;
     let bestD = Infinity;
     let shieldX = 0;
     let shieldZ = 0;
     // A front-liner further off than this shields nothing.
     const near = crowdNear(ctx.enemies, p.x, p.z, SLOT_REACH, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive) continue;
       if (e.role !== 'melee' && e.role !== 'brute' && e.role !== 'swarm') continue;
       const q = e.root.position;
@@ -1134,10 +1140,16 @@ export class AIBrain {
         shieldZ = q.z;
       }
     }
-    if (bestD === Infinity) return { x: 0, z: 0 };
+    if (bestD === Infinity) {
+      _behind.x = 0;
+      _behind.z = 0;
+      return _behind;
+    }
     // Push away from the player along the line through the front-liner.
     const a = angleTo(hero(ctx).x, hero(ctx).z, shieldX, shieldZ);
-    return { x: Math.sin(a) * 1.6, z: Math.cos(a) * 1.6 };
+    _behind.x = Math.sin(a) * 1.6;
+    _behind.z = Math.cos(a) * 1.6;
+    return _behind;
   }
 
   private nearestAlly(ctx: CombatContext, radius: number): Enemy | null {
@@ -1145,8 +1157,8 @@ export class AIBrain {
     let best: Enemy | null = null;
     let bestD = radius * radius;
     const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       const d = dist2(p.x, p.z, q.x, q.z);
@@ -1169,8 +1181,8 @@ export class AIBrain {
     let sz = 0;
     // Wide enough for the largest pair of bodies.
     const near = crowdNear(ctx.enemies, p.x, p.z, myR + 4, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;
       const dx = p.x - q.x;
@@ -1322,8 +1334,8 @@ export class AIBrain {
     const r2 = radius * radius;
     let worst = 1;
     const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;
       if (dist2(p.x, p.z, q.x, q.z) > r2) continue;
@@ -1336,8 +1348,8 @@ export class AIBrain {
   private alliesEngaged(ctx: CombatContext): boolean {
     const h = hero(ctx);
     const near = crowdNear(ctx.enemies, h.x, h.z, 7, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       if (dist2(h.x, h.z, q.x, q.z) < 7 * 7) return true;
@@ -1350,8 +1362,8 @@ export class AIBrain {
     const r2 = radius * radius;
     let n = 0;
     const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
-    for (let i = 0; i < near.length; i++) {
-      const e = near[i]!;
+    for (let i = 0; i < near.n; i++) {
+      const e = near.list[i]!;
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;
       if (dist2(p.x, p.z, q.x, q.z) <= r2) n++;

@@ -250,7 +250,8 @@ export class FieldPool {
 
   update(dt: number): void {
     const rankWas = BOOST.rank;
-    for (const f of this.fields) {
+    for (let fi = 0; fi < this.fields.length; fi++) {
+      const f = this.fields[fi]!;
       if (!f.active) continue;
       f.t += dt;
       if (f.stopped || f.t >= f.dur) {

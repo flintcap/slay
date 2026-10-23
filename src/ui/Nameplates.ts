@@ -94,7 +94,9 @@ interface Candidate {
   plate: Plate | null;
 }
 
-const byDistance = (a: Candidate, b: Candidate): number => a.dist - b.dist;
+// -1, 0 or 1 rather than the difference: a fractional result was boxed, a
+// small piece of garbage every comparison of the sort.
+const byDistance = (a: Candidate, b: Candidate): number => (a.dist < b.dist ? -1 : a.dist > b.dist ? 1 : 0);
 
 function hex(n: number): string {
   return '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -257,8 +259,10 @@ export class NameplateLayer {
    * Positions a plate over every living target in view. Call once per frame
    * after the camera has been updated.
    */
-  update(camera: THREE.Camera, targets: Iterable<PlateTarget>, focus: THREE.Vector3, width: number, height: number): void {
-    for (const p of this.pool) p.inUse = false;
+  update(camera: THREE.Camera, targets: readonly PlateTarget[], focus: THREE.Vector3, width: number, height: number): void {
+    // Index loops throughout: a for-of made a small throwaway object a pass
+    // until the browser fully optimized this, every monster every frame.
+    for (let pi = 0; pi < this.pool.length; pi++) this.pool[pi]!.inUse = false;
     const now = performance.now();
     const dt = this.lastT ? Math.min(0.1, (now - this.lastT) / 1000) : 0;
     this.lastT = now;
@@ -268,9 +272,12 @@ export class NameplateLayer {
     const forward = this.tmpFwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
 
     let n = 0;
+    // Counted, not emptied with `length = 0`, which threw the list's storage
+    // away to be grown again next frame.
     const ordinary = this.ordinaryScratch;
-    ordinary.length = 0;
-    for (const t of targets) {
+    let no = 0;
+    for (let ti = 0; ti < targets.length; ti++) {
+      const t = targets[ti]!;
       if (t.life <= 0) continue;
 
       const world = t.root.position;
@@ -306,16 +313,16 @@ export class NameplateLayer {
       c.sy = (-proj.y * 0.5 + 0.5) * height;
       c.ordinary = isOrdinary;
       c.keep = true;
-      if (isOrdinary) ordinary.push(c);
+      if (isOrdinary) ordinary[no++] = c;
     }
 
     // Thin the crowd: past the cap, only the nearest ordinary monsters keep a
     // plate. Everyone with a rank keeps theirs.
-    if (ordinary.length > this.maxOrdinaryPlates) {
+    ordinary.length = no;
+    if (no > this.maxOrdinaryPlates) {
       ordinary.sort(byDistance);
-      for (let i = this.maxOrdinaryPlates; i < ordinary.length; i++) ordinary[i]!.keep = false;
+      for (let i = this.maxOrdinaryPlates; i < no; i++) ordinary[i]!.keep = false;
     }
-    ordinary.length = 0;
 
     // Each monster keeps the plate it wore last frame. Handed out in order
     // instead, one monster stepping in or out of view moved every plate after
@@ -326,7 +333,8 @@ export class NameplateLayer {
       c.plate = null;
       if (!c.keep) continue;
       const d = c.t.nameplate;
-      for (const p of this.pool) {
+      for (let pi = 0; pi < this.pool.length; pi++) {
+        const p = this.pool[pi]!;
         if (!p.inUse && p.src === d) {
           p.inUse = true;
           c.plate = p;
@@ -376,7 +384,8 @@ export class NameplateLayer {
     // Drop references so a disposed scene's monsters are not kept alive.
     for (let i = 0; i < n; i++) this.cands[i]!.t = null as unknown as PlateTarget;
 
-    for (const p of this.pool) {
+    for (let pi = 0; pi < this.pool.length; pi++) {
+      const p = this.pool[pi]!;
       if (!p.inUse && p.root.style.display !== 'none') {
         p.root.style.display = 'none';
         p.src = null;

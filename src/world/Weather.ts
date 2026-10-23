@@ -190,6 +190,15 @@ interface Look {
   down: boolean;
 }
 
+/** One kind's share of the weather now. */
+interface Mix {
+  kind: WeatherKind;
+  rate: number;
+  now: number;
+  acc: number;
+  splash: number;
+}
+
 const LOOKS: Record<WeatherKind, Look> = {
   snow: {
     layer: lay({ sprite: SPRITE.ember, ramp: R_SNOW, speed: [0.5, 1], spread: 0.35, size: [0.035, 0.07], life: [6, 8.5], emit: 0.45, occl: 0.3, heat: [0.8, 0.6], gravity: -0.3, drag: 0.3, turb: 0.4, fade: 0.8, ground: true }),
@@ -240,7 +249,9 @@ export class Weather {
   private fx: WeatherFx;
   private level: DungeonLevel;
   /** How strongly each kind falls now, 0..1 of its recipe rate, eased. */
-  private mix = new Map<WeatherKind, { rate: number; now: number; acc: number; splash: number }>();
+  private mix = new Map<WeatherKind, Mix>();
+  /** The same entries as a list: a frame walks it by index, which leaves no garbage. */
+  private mixList: Mix[] = [];
   private windAngle: number;
   private wind = 0;
   private windWant = 0;
@@ -256,7 +267,11 @@ export class Weather {
       const r = weatherFor(z.biome, z.outdoor, level.variant, rng);
       return themeFits(theme, z.biome) ? withTheme(r, theme, z.outdoor) : r;
     });
-    for (const k of Object.keys(LOOKS) as WeatherKind[]) this.mix.set(k, { rate: 0, now: 0, acc: 0, splash: 0 });
+    for (const k of Object.keys(LOOKS) as WeatherKind[]) {
+      const m: Mix = { kind: k, rate: 0, now: 0, acc: 0, splash: 0 };
+      this.mix.set(k, m);
+      this.mixList.push(m);
+    }
   }
 
   /** Every kind this level can show anywhere (for warm-up and checks). */
@@ -277,7 +292,7 @@ export class Weather {
     if (zi !== this.zone && this.recipes[zi]) {
       this.zone = zi;
       const r = this.recipes[zi]!;
-      for (const m of this.mix.values()) m.rate = 0;
+      for (let mi = 0; mi < this.mixList.length; mi++) this.mixList[mi]!.rate = 0;
       for (const f of r.falls) this.mix.get(f.kind)!.rate = f.rate;
       this.windWant = r.wind;
     }
@@ -290,7 +305,9 @@ export class Weather {
     const wz = Math.sin(a) * this.wind * gust;
     const rng = this.fx.rng;
 
-    for (const [kind, m] of this.mix) {
+    for (let mi = 0; mi < this.mixList.length; mi++) {
+      const m = this.mixList[mi]!;
+      const kind = m.kind;
       const target = m.rate > 0 ? 1 : 0;
       m.now += (target - m.now) * k;
       if (m.now < 0.01) {

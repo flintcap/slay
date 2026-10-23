@@ -25,35 +25,70 @@ const SPAN = 1 << 13;
 
 let managed: readonly Enemy[] | null = null;
 let dirty = true;
-const cells = new Map<number, Enemy[]>();
-const spare: Enemy[][] = [];
+
+/**
+ * A run of monsters: the first `n` of `items`. Emptied by zeroing `n`, never
+ * by `length = 0`, which throws the array's storage away so the next fill
+ * allocates it again.
+ */
+interface Run {
+  items: Enemy[];
+  n: number;
+}
+
+/**
+ * What one question found: read the first `n` of `list`. Keep one per caller
+ * and pass it back each time; it is refilled in place.
+ */
+export interface CrowdHits {
+  list: ReadonlyArray<Enemy | undefined>;
+  n: number;
+  /** The storage behind `list` (unless `list` is the whole monster list). */
+  readonly store: Array<Enemy | undefined>;
+}
+
+export function crowdHits(): CrowdHits {
+  const store: Array<Enemy | undefined> = [];
+  return { list: store, n: 0, store };
+}
+
+// Cells are kept from frame to frame (emptied, not dropped), so a rebuild
+// makes no garbage: clearing the map threw its table away every frame.
+const cells = new Map<number, Run>();
+/** The cells holding someone since the last build. */
+const used: Run[] = [];
+let usedN = 0;
 
 const cellOf = (v: number): number => Math.floor(v / CELL);
 const keyOf = (cx: number, cz: number): number => (cx + SPAN) * 2 * SPAN + (cz + SPAN);
 
 /** The scene's monster list, its monsters about to move this frame. */
 export function markCrowd(list: readonly Enemy[] | null): void {
+  // A new floor's list: the old floor's cells go.
+  if (list !== managed) {
+    cells.clear();
+    used.length = 0;
+    usedN = 0;
+  }
   managed = list;
   dirty = true;
 }
 
 function build(list: readonly Enemy[]): void {
-  for (const arr of cells.values()) {
-    arr.length = 0;
-    spare.push(arr);
-  }
-  cells.clear();
+  for (let i = 0; i < usedN; i++) used[i]!.n = 0;
+  usedN = 0;
   for (let i = 0; i < list.length; i++) {
     const e = list[i]!;
     if (!e.alive) continue;
     const p = e.root.position;
     const k = keyOf(cellOf(p.x), cellOf(p.z));
-    let arr = cells.get(k);
-    if (!arr) {
-      arr = spare.pop() ?? [];
-      cells.set(k, arr);
+    let run = cells.get(k);
+    if (!run) {
+      run = { items: [], n: 0 };
+      cells.set(k, run);
     }
-    arr.push(e);
+    if (run.n === 0) used[usedN++] = run;
+    run.items[run.n++] = e;
   }
   dirty = false;
 }
@@ -63,10 +98,16 @@ function build(list: readonly Enemy[]): void {
  * (or `list` itself when the scene does not keep a grid for it). Nearer
  * than `r` is the caller's own check.
  */
-export function crowdNear(list: readonly Enemy[], x: number, z: number, r: number, out: Enemy[]): readonly Enemy[] {
-  if (list !== managed) return list;
+export function crowdNear(list: readonly Enemy[], x: number, z: number, r: number, out: CrowdHits): CrowdHits {
+  if (list !== managed) {
+    out.list = list;
+    out.n = list.length;
+    return out;
+  }
   if (dirty) build(list);
-  out.length = 0;
+  const store = out.store;
+  const was = out.list === store ? out.n : 0;
+  let n = 0;
   const rr = r + MARGIN;
   const x0 = cellOf(x - rr);
   const x1 = cellOf(x + rr);
@@ -74,10 +115,15 @@ export function crowdNear(list: readonly Enemy[], x: number, z: number, r: numbe
   const z1 = cellOf(z + rr);
   for (let cx = x0; cx <= x1; cx++) {
     for (let cz = z0; cz <= z1; cz++) {
-      const arr = cells.get(keyOf(cx, cz));
-      if (!arr) continue;
-      for (let i = 0; i < arr.length; i++) out.push(arr[i]!);
+      const run = cells.get(keyOf(cx, cz));
+      if (!run) continue;
+      const items = run.items;
+      for (let i = 0; i < run.n; i++) store[n++] = items[i];
     }
   }
+  // Let go of what the last answer held past this one.
+  for (let i = n; i < was; i++) store[i] = undefined;
+  out.list = store;
+  out.n = n;
   return out;
 }

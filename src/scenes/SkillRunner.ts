@@ -3637,26 +3637,41 @@ export class SkillRunner {
    * handed to the plate layer directly. This adapts them.
    */
   minionPlates(): Array<{ root: THREE.Object3D; life: number; nameplate: PlateData; plateHeight: number }> {
-    const out: Array<{ root: THREE.Object3D; life: number; nameplate: PlateData; plateHeight: number }> = [];
-    for (const t of this.turrets) {
+    // One list and one plate per minion, kept and refreshed: built afresh
+    // they were three objects a minion a frame.
+    const out = this.plateList;
+    out.length = 0;
+    for (let i = 0; i < this.turrets.length; i++) {
+      const t = this.turrets[i]!;
       if (!t.body || t.maxLife <= 0 || t.life <= 0) continue;
-      out.push({
-        root: t.body,
-        life: t.life,
-        plateHeight: 1.7,
-        nameplate: {
-          name: MINION_NAME[t.skillId] ?? tr('Minion'),
-          rank: 'normal',
-          affixes: [],
+      let p = this.plateOf.get(t);
+      if (!p) {
+        p = {
+          root: t.body,
           life: t.life,
-          maxLife: t.maxLife,
-          color: 0x8fd67a,
-          level: 0,
-        },
-      });
+          plateHeight: 1.7,
+          nameplate: {
+            name: MINION_NAME[t.skillId] ?? tr('Minion'),
+            rank: 'normal',
+            affixes: [],
+            life: t.life,
+            maxLife: t.maxLife,
+            color: 0x8fd67a,
+            level: 0,
+          },
+        };
+        this.plateOf.set(t, p);
+      }
+      p.root = t.body;
+      p.life = t.life;
+      p.nameplate.life = t.life;
+      p.nameplate.maxLife = t.maxLife;
+      out.push(p);
     }
     return out;
   }
+  private readonly plateList: Array<{ root: THREE.Object3D; life: number; nameplate: PlateData; plateHeight: number }> = [];
+  private readonly plateOf = new WeakMap<object, { root: THREE.Object3D; life: number; nameplate: PlateData; plateHeight: number }>();
 
   /**
    * What is currently fighting for you, for the HUD.
@@ -4259,7 +4274,9 @@ export class SkillRunner {
   private seenDead = new WeakSet<Enemy>();
 
   private markCorpses(enemies: Enemy[]): void {
-    for (const e of enemies) {
+    // An index loop: a for-of over every monster made garbage each frame.
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i]!;
       if (e.life > 0 || this.seenDead.has(e) || e.def.object) continue;
       this.seenDead.add(e);
       this.corpses.push({ x: e.root.position.x, z: e.root.position.z, maxLife: e.maxLife, curses: e.cursesCarried(), at: this.runTime });

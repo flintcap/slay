@@ -207,12 +207,14 @@ export class GroundLabelLayer {
    * boss's pile of drops did that dozens of times in one frame).
    */
   private measure(placed: readonly Placed[]): void {
-    for (const p of placed) {
+    for (let pi = 0; pi < placed.length; pi++) {
+      const p = placed[pi]!;
       if (p.l.w >= 0 || p.l.shown) continue;
       p.l.shown = true;
       p.l.root.style.display = '';
     }
-    for (const p of placed) {
+    for (let pi = 0; pi < placed.length; pi++) {
+      const p = placed[pi]!;
       const l = p.l;
       if (l.w >= 0) continue;
       l.w = l.name.offsetWidth + 4;
@@ -222,20 +224,24 @@ export class GroundLabelLayer {
 
   update(
     camera: THREE.Camera,
-    entries: Iterable<GroundEntry>,
+    entries: readonly GroundEntry[],
     focus: THREE.Vector3,
     width: number,
     height: number,
     shiftHeld: boolean
   ): void {
-    for (const l of this.pool) l.inUse = false;
+    for (let li = 0; li < this.pool.length; li++) {
+      const l = this.pool[li]!;
+      l.inUse = false;
+    }
 
     camera.updateMatrixWorld();
     const placed = this.placed;
     let n = 0;
 
     const pending = this.pending;
-    for (const e of entries) {
+    for (let ei = 0; ei < entries.length; ei++) {
+      const e = entries[ei]!;
       const dx = e.pos.x - focus.x;
       const dz = e.pos.z - focus.z;
       const d2 = dx * dx + dz * dz;
@@ -282,7 +288,9 @@ export class GroundLabelLayer {
       }
     }
     placed.length = n;
-    pending.length = 0;
+    // Cut to this frame's count, not emptied: `length = 0` threw the storage
+    // away to be grown again next frame.
+    pending.length = n;
     this.measure(placed);
 
     // Declutter: best rarity first, then nearest, keep their spot; anything
@@ -291,7 +299,8 @@ export class GroundLabelLayer {
     placed.sort((a, b) => b.rank - a.rank || a.d2 - b.d2);
     const boxes = this.boxes;
     let nb = 0;
-    for (const p of placed) {
+    for (let pi = 0; pi < placed.length; pi++) {
+      const p = placed[pi]!;
       const half = p.l.w / 2;
       let bottom = p.y;
       for (let guard = 0; guard < 12; guard++) {
@@ -335,7 +344,8 @@ export class GroundLabelLayer {
       }
     }
 
-    for (const l of this.pool) {
+    for (let li = 0; li < this.pool.length; li++) {
+      const l = this.pool[li]!;
       if (!l.inUse && l.shown) {
         l.shown = false;
         l.root.style.display = 'none';

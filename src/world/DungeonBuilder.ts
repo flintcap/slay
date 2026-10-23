@@ -2419,13 +2419,15 @@ export class DungeonMesh {
   /**
    * The nearest unused interactable within `range` metres, or null.
    *
-   * Linear over the level's interactables, which is a few dozen. Called only
-   * when the player presses the use key, never per frame.
+   * Linear over the level's interactables, which is a few dozen. Called
+   * once a frame for the use prompt, so it walks by index: a for-of over an
+   * array left garbage behind on every step.
    */
   nearestInteractable(x: number, z: number, range: number): Interactable | null {
     let best: Interactable | null = null;
     let bestD = range * range;
-    for (const it of this.interactables) {
+    for (let ii = 0; ii < this.interactables.length; ii++) {
+      const it = this.interactables[ii]!;
       if (it.used) continue;
       const dx = it.x - x;
       const dz = it.z - z;

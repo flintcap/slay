@@ -233,18 +233,30 @@ export class Input {
   };
 
   isDown(action: ActionName): boolean {
-    for (const [code, act] of Object.entries(this.binds)) {
-      if (act === action && this.down.has(code)) return true;
-    }
+    const codes = this.codesFor(action);
+    for (let i = 0; i < codes.length; i++) if (this.down.has(codes[i]!)) return true;
     return false;
   }
 
   wasPressed(action: ActionName): boolean {
-    for (const [code, act] of Object.entries(this.binds)) {
-      if (act === action && this.pressedThisFrame.has(code)) return true;
-    }
+    const codes = this.codesFor(action);
+    for (let i = 0; i < codes.length; i++) if (this.pressedThisFrame.has(codes[i]!)) return true;
     return false;
   }
+
+  /**
+   * The keys bound to an action, worked out once: asked many times a frame,
+   * listing every binding afresh each time was a heap of small arrays.
+   */
+  private codesFor(action: ActionName): readonly string[] {
+    let codes = this.boundCodes.get(action);
+    if (!codes) {
+      codes = Object.entries(this.binds).filter(([, act]) => act === action).map(([code]) => code);
+      this.boundCodes.set(action, codes);
+    }
+    return codes;
+  }
+  private readonly boundCodes = new Map<ActionName, string[]>();
 
   keyDown(code: string): boolean {
     return this.down.has(code);

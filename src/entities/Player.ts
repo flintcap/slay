@@ -945,7 +945,8 @@ export class Player {
     const res = this.status.update(dt, this.stats.life);
     if (res.heal > 0) this.heal(res.heal);
     if (res.mana > 0) this.restoreMana(res.mana);
-    for (const d of res.damage) {
+    for (let di = 0; di < res.damage.length; di++) {
+      const d = res.damage[di]!;
       if (!this.alive) break;
       this.life -= d.amount;
       events.emit('player:damaged', {
@@ -1442,6 +1443,9 @@ export class Player {
     } else this.stuckFor = Math.max(0, this.stuckFor - 1 / 30);
   }
 
+  /** The colliders near a move, copied out for `resolve`. */
+  private readonly nearScratch: Array<PlayerContext['colliders'][number]> = [];
+
   /**
    * Pushes a body at (x, z), arriving from (ox, oz), back out of everything
    * it overlaps, along each surface's normal. Velocity into a surface is
@@ -1456,10 +1460,17 @@ export class Player {
     let bnx = 0;
     let bnz = 0;
     // Only what is near: a floor holds several hundred colliders.
-    const near = [...collidersNear(ctx.colliders, x, z, r + Math.hypot(x - ox, z - oz) + 0.5)];
+    // Copied out of the shared answer (canStand asks again meanwhile) into a
+    // list kept for it: spread into a new array it was garbage every step.
+    // Written by index and cut to size: `length = 0` threw its storage away.
+    const near = this.nearScratch;
+    const found = collidersNear(ctx.colliders, x, z, r + Math.hypot(x - ox, z - oz) + 0.5);
+    for (let i = 0; i < found.length; i++) near[i] = found[i]!;
+    near.length = found.length;
     for (let pass = 0; pass < 3; pass++) {
       let pushed = false;
-      for (const c of near) {
+      for (let ci = 0; ci < near.length; ci++) {
+        const c = near[ci]!;
         let px: number;
         let pz: number;
         let reach: number;

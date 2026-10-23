@@ -882,7 +882,7 @@ export class CreatureAnimator {
     // Legs onto their feet.
     if (this.ikW > 0.001) {
       const bodyQ = ri !== undefined ? this.mQuat[ri]! : _q2.identity();
-      for (const leg of this.legs) this.solveLeg(leg, bodyQ);
+      for (let gi = 0; gi < this.legs.length; gi++) this.solveLeg(this.legs[gi]!, bodyQ);
       // Partly solved legs moved their joints; bring model space back in step.
       if (this.ikW < 0.999) this.fk();
     }

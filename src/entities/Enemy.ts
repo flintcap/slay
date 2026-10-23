@@ -32,6 +32,7 @@ import { depthCurve } from '../sim/Difficulty';
 import { payoutIlvl } from '../sim/Payout';
 import { KNOCKBACK_METRES, rollDamage, mitigate, usualAttackRating } from '../sim/Combat';
 import { buildMonsterModel, creatureDetail, monsterArchetype, releaseMonsterModel, RigAnimator, type RigAction } from './MonsterModels';
+import type { RigDriveOpts } from '../art/creatures/Animator';
 import { AIBrain, resetPacks } from './AI';
 import {
   after,
@@ -228,6 +229,18 @@ export interface EnemyPlate {
 /** How many times a monster's position went non-finite and was repaired (soak reads it). */
 export let enemyPositionRepairs = 0;
 
+/** What a body's rig is driven with, one object refilled for every solve (the rig reads it, never keeps it). */
+const _drive: RigDriveOpts = { locomotion: 0, action: 'idle', actionT: 0, time: 0, deathT: 0 };
+
+/** The camera a body's draw detail is judged from (`Enemy.setDetailFor`). */
+export interface DetailView {
+  cam: THREE.Vector3;
+  /** Pixels per metre at one metre from the camera. */
+  pxPerM: number;
+  /** Bodies shorter on screen than this draw their lower-detail copies. */
+  lowPx: number;
+}
+
 /** Hands out each body's pose slot (Enemy.poseSlot). */
 let nextPoseSlot = 0;
 
@@ -322,16 +335,17 @@ export class Enemy implements Combatant {
   private lowDetail = false;
 
   /**
-   * Draws the body from its lower-detail copies while it stands under `px`
-   * pixels tall on screen, `dist` metres from a camera that shows `pxPerM`
-   * pixels per metre at one metre. A margin each way keeps a body near the
-   * line from flickering between the two.
+   * Draws the body from its lower-detail copies while it stands under
+   * `lowPx` pixels tall on screen, seen from `cam` by a camera that shows
+   * `pxPerM` pixels per metre at one metre. A margin each way keeps a body
+   * near the line from flickering between the two.
    */
-  setDetailFor(dist: number, pxPerM: number, px: number): void {
+  setDetailFor(view: DetailView): void {
     const info = this.bodyRoot.userData.creature as { height: number; length: number } | undefined;
     if (!info) return;
-    const tall = (Math.max(info.height, 0.7 * info.length) * this.bodyRoot.scale.y * pxPerM) / Math.max(1, dist);
-    const low = tall < px * (this.lowDetail ? 1.15 : 0.87);
+    const dist = view.cam.distanceTo(this.root.position);
+    const tall = (Math.max(info.height, 0.7 * info.length) * this.bodyRoot.scale.y * view.pxPerM) / Math.max(1, dist);
+    const low = tall < view.lowPx * (this.lowDetail ? 1.15 : 0.87);
     if (low === this.lowDetail) return;
     this.lowDetail = low;
     creatureDetail(this.bodyRoot, low);
@@ -641,7 +655,8 @@ export class Enemy implements Combatant {
    */
   private actionSpeed(): number {
     let pct = 0;
-    for (const st of this.statuses) {
+    for (let si = 0; si < this.statuses.length; si++) {
+      const st = this.statuses[si]!;
       const own = st.mods;
       const v = (own ?? statusDef(st.id)?.mods)?.attackSpeed;
       if (typeof v === 'number') pct += v * modScale(!!own, st.magnitude, st.stacks);
@@ -651,7 +666,8 @@ export class Enemy implements Combatant {
 
   private buffMul(key: keyof BuffMods): number {
     let m = 1;
-    for (const b of this.buffs) {
+    for (let bi = 0; bi < this.buffs.length; bi++) {
+      const b = this.buffs[bi]!;
       const v = b.mods[key];
       if (v !== undefined) m *= v;
     }
@@ -660,7 +676,8 @@ export class Enemy implements Combatant {
 
   private buffSum(key: keyof BuffMods): number {
     let m = 0;
-    for (const b of this.buffs) {
+    for (let bi = 0; bi < this.buffs.length; bi++) {
+      const b = this.buffs[bi]!;
       const v = b.mods[key];
       if (v !== undefined) m += v;
     }
@@ -984,19 +1001,20 @@ export class Enemy implements Combatant {
     const dt = this.poseDt;
     this.poseTick = 0;
     this.poseDt = 0;
-    this.rig?.update(dt, {
-      locomotion: this.locomotion,
-      action: this.spawnT > 0 ? 'spawn' : this.action,
-      actionT: this.spawnT > 0 ? 1 - this.spawnT : this.actionT,
-      time: elapsed,
-      deathT: 0,
-    });
+    const o = _drive;
+    o.locomotion = this.locomotion;
+    o.action = this.spawnT > 0 ? 'spawn' : this.action;
+    o.actionT = this.spawnT > 0 ? 1 - this.spawnT : this.actionT;
+    o.time = elapsed;
+    o.deathT = 0;
+    this.rig?.update(dt, o);
   }
 
   private get currentSpeed(): number {
     // The brain's own pace: a rusher sprinting in, a shaken pack faltering.
     let s = this.baseSpeed * this.buffMul('speed') * (this.ai?.speedMul ?? 1);
-    for (const st of this.statuses) {
+    for (let si = 0; si < this.statuses.length; si++) {
+      const st = this.statuses[si]!;
       const d = statusDef(st.id);
       if (!d) continue;
       // Anything the catalogue says cuts move speed does, rather than the two
@@ -1096,7 +1114,8 @@ export class Enemy implements Combatant {
 
   /** True when any status with this tag is running. Used by passive queries. */
   hasStatusTag(tag: string): boolean {
-    for (const s of this.statuses) {
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
       const def = statusDef(s.id);
       if (def?.tags?.includes(tag as never)) return true;
     }
@@ -1106,13 +1125,19 @@ export class Enemy implements Combatant {
   /** True when the named status is running. */
   hasStatus(id: string): boolean {
     // Plain loops: these run per monster per step, and a closure per call adds up.
-    for (const s of this.statuses) if (s.id === id) return true;
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
+      if (s.id === id) return true;
+    }
     return false;
   }
 
   /** How many stacks of a status are running. Zero when it is not. */
   stacksOf(id: string): number {
-    for (const s of this.statuses) if (s.id === id) return s.stacks ?? 0;
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
+      if (s.id === id) return s.stacks ?? 0;
+    }
     return 0;
   }
 
@@ -1140,14 +1165,20 @@ export class Enemy implements Combatant {
 
   /** Seconds left on a status, or 0 when it is not running. */
   statusLeft(id: string): number {
-    for (const s of this.statuses) if (s.id === id) return s.time;
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
+      if (s.id === id) return s.time;
+    }
     return 0;
   }
 
   /** How many of the named statuses are running, each counted once. Hex Upon Hex. */
   countStatuses(ids: ReadonlySet<string>): number {
     let n = 0;
-    for (const s of this.statuses) if (ids.has(s.id)) n++;
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
+      if (ids.has(s.id)) n++;
+    }
     return n;
   }
 
@@ -1173,7 +1204,8 @@ export class Enemy implements Combatant {
 
   /** True when anything the player put on it is still running. */
   get isDebuffed(): boolean {
-    for (const s of this.statuses) {
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
       const def = statusDef(s.id);
       if (def && def.polarity < 0) return true;
     }
@@ -1182,7 +1214,8 @@ export class Enemy implements Combatant {
 
   /** True when a bleed is running — the condition several passives read. */
   get isBleeding(): boolean {
-    for (const s of this.statuses) {
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
       if (s.dotType === 'physical') return true;
       const def = statusDef(s.id);
       if (def?.dot?.type === 'physical') return true;
@@ -1298,7 +1331,8 @@ export class Enemy implements Combatant {
    */
   private statusAdjustedStats(): Stats {
     let out: Stats | null = null;
-    for (const s of this.statuses) {
+    for (let si = 0; si < this.statuses.length; si++) {
+      const s = this.statuses[si]!;
       const own = s.mods;
       const mods = own ?? statusDef(s.id)?.mods;
       if (!mods) continue;
@@ -1898,13 +1932,13 @@ export class Enemy implements Combatant {
   private tickDeath(dt: number, ctx: CombatContext): void {
     this.deathT += dt * 1.25;
     const k = Math.min(1, this.deathT);
-    this.rig?.update(dt, {
-      locomotion: 0,
-      action: 'death',
-      actionT: k,
-      time: ctx.elapsed,
-      deathT: k,
-    });
+    const o = _drive;
+    o.locomotion = 0;
+    o.action = 'death';
+    o.actionT = k;
+    o.time = ctx.elapsed;
+    o.deathT = k;
+    this.rig?.update(dt, o);
     // Collapse, then sink and shrink away — no per-instance material clone
     // needed, which keeps the shared-material contract intact.
     if (this.deathT > 1) {

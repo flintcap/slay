@@ -30,7 +30,7 @@ import { BodyFX } from '../fx/BodyFX';
 import { Player } from '../entities/Player';
 import { CombatControls, PICK_SLACK, pickNear } from '../entities/Controls';
 import { planMiniBoss, attachMiniBoss } from '../entities/MiniBoss';
-import { Enemy, resetEnemyRuntime, type CombatContext } from '../entities/Enemy';
+import { Enemy, resetEnemyRuntime, type CombatContext, type DetailView } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 import { MONSTERS, MONSTER_AFFIXES, BOSSES } from '../data/monsters';
 import { BOSS_MOODS, getBoss } from '../data/bosses';
@@ -109,6 +109,8 @@ const _viewMat = new THREE.Matrix4();
 /** The hero's spot on screen, for the see-through map. */
 const _heroScreen = new THREE.Vector3();
 const _viewBall = new THREE.Sphere();
+/** What the detail check reads, filled once a frame (see `Enemy.setDetailFor`). */
+const _detail: DetailView = { cam: new THREE.Vector3(), pxPerM: 0, lowPx: 0 };
 /** A monster root's world-matrix walk, live and frozen (see the enemy loop in update). */
 const MATRIX_WALK = THREE.Object3D.prototype.updateMatrixWorld;
 /**
@@ -1667,7 +1669,10 @@ export class DungeonScene extends GameScene {
    */
   private balanceLights(): void {
     let ways = 0;
-    for (const l of this.wayLights) if (shownIn(l, this.scene)) ways++;
+    for (let li = 0; li < this.wayLights.length; li++) {
+      const l = this.wayLights[li]!;
+      if (shownIn(l, this.scene)) ways++;
+    }
     for (let i = 0; i < this.spareLights.length; i++) {
       const want = i < WAY_LIGHT_SLOTS - ways;
       if (this.spareLights[i]!.visible !== want) this.spareLights[i]!.visible = want;
@@ -1725,12 +1730,17 @@ export class DungeonScene extends GameScene {
     // out of view (the margin keeps edge bodies and their shadows posed).
     _viewMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
     _view.setFromProjectionMatrix(_viewMat);
-    this.packRoots.length = 0;
+    // Lists refilled each frame are written by count and cut to size after:
+    // `length = 0` threw their storage away, grown again push by push.
+    let riders = 0;
     // Who stands near whom is asked of a grid, sorted afresh once this frame.
     markCrowd(this.enemies);
     // Bodies shorter on screen than this draw their lower-detail copies.
-    const pxPerM = window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
-    const lowPx = LOW_DETAIL_PX[this.engine.renderer.qualityLevel];
+    // Handed over in one object: numbers passed one by one to a call per
+    // monster were each boxed, garbage a monster a frame.
+    _detail.cam.copy(this.camera.position);
+    _detail.pxPerM = window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
+    _detail.lowPx = LOW_DETAIL_PX[this.engine.renderer.qualityLevel];
     // In a big fight, every far body steps down one pose rate: the crowd
     // still moves, and the frame keeps its pace.
     const crowd = this.posedLast > POSE_CROWD ? 1 : 0;
@@ -1743,9 +1753,9 @@ export class DungeonScene extends GameScene {
       _viewBall.center.copy(e.root.position);
       _viewBall.radius = 4 + 2 * e.sizeScale;
       e.setInView(_view.intersectsSphere(_viewBall));
-      if (e.inView && e.alive) e.setDetailFor(this.camera.position.distanceTo(e.root.position), pxPerM, lowPx);
+      if (e.inView && e.alive) e.setDetailFor(_detail);
       const ride = e.packBody;
-      if (ride) this.packRoots.push(ride);
+      if (ride) this.packRoots[riders++] = ride;
       // Far from the hero, a body is posed every other frame, and at the
       // edge of the screen every third (its motion reads the same at the
       // lower rate; the near ones keep every frame).
@@ -1763,7 +1773,11 @@ export class DungeonScene extends GameScene {
         live = _view.intersectsSphere(_viewBall);
         if (!live) {
           const m = e.root.matrixWorld.elements;
-          _viewBall.center.set(m[12]!, m[13]!, m[14]!);
+          // Field by field: through set() each number was boxed.
+          const c = _viewBall.center;
+          c.x = m[12]!;
+          c.y = m[13]!;
+          c.z = m[14]!;
           live = _view.intersectsSphere(_viewBall);
         }
       }
@@ -1805,6 +1819,7 @@ export class DungeonScene extends GameScene {
     }
     this.acting = null;
     this.posedLast = posed;
+    this.packRoots.length = riders;
     // Bodies of one look in view share a draw (after any of them changed its material this frame, it leaves next frame).
     (this.packs ??= new PackDraws(this.scene)).update(this.packRoots, dt);
     this.aimPos.copy(this.player.position);
@@ -1858,14 +1873,16 @@ export class DungeonScene extends GameScene {
 
     if (this.groundLabels) {
       const shift = this.engine.input.keyDown('ShiftLeft') || this.engine.input.keyDown('ShiftRight');
-      this.labelScratch.length = 0;
-      for (const l of this.loot) {
+      let shown = 0;
+      for (let li = 0; li < this.loot.length; li++) {
+        const l = this.loot[li]!;
         if (l.hidden) {
           l.root.visible = shift;
           if (!shift) continue;
         }
-        if (l.item) this.labelScratch.push(l as { item: Item; root: THREE.Object3D; pos: THREE.Vector3 });
+        if (l.item) this.labelScratch[shown++] = l as { item: Item; root: THREE.Object3D; pos: THREE.Vector3 };
       }
+      this.labelScratch.length = shown;
       this.groundLabels.update(
         this.camera,
         this.labelScratch,
@@ -1882,10 +1899,14 @@ export class DungeonScene extends GameScene {
       // One list kept and refilled: spread into new arrays it was two
       // arrays of every monster on the floor, every frame.
       const targets = this.plateScratch;
-      targets.length = 0;
-      for (const e of this.enemies) targets.push(e);
-      if (this.boss) targets.push(this.boss);
-      for (const m of this.skills.minionPlates()) targets.push(m);
+      let nt = 0;
+      // Index loops, here and in the other per-frame walks: a for-of made a
+      // small throwaway object a step until the browser fully optimized it.
+      for (let ei = 0; ei < this.enemies.length; ei++) targets[nt++] = this.enemies[ei]!;
+      if (this.boss) targets[nt++] = this.boss;
+      const minions = this.skills.minionPlates();
+      for (let mi = 0; mi < minions.length; mi++) targets[nt++] = minions[mi]!;
+      targets.length = nt;
       this.plates.update(
         this.camera,
         targets,
@@ -2505,7 +2526,8 @@ export class DungeonScene extends GameScene {
       // Drop models declare their own motion rather than animating themselves.
       const movers = (l.movers ??= dropMovers(l.root));
       if (movers.length > 0 && l.root.visible) {
-        for (const o of movers) {
+        for (let oi = 0; oi < movers.length; oi++) {
+          const o = movers[oi]!;
           const d = o.userData as DropMotion;
           if (d.spin) o.rotation.y += dt * d.spin;
           if (d.bobAmplitude) o.position.y = Math.sin(elapsed * (d.bobSpeed ?? 1.6) + l.pos.x) * d.bobAmplitude;

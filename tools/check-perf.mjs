@@ -134,6 +134,30 @@ for (const depth of DEPTHS) {
       }
       // Let them notice and close in.
       for (let i = 0; i < 90; i++) await raf();
+      // Time the AI separately by wrapping each monster's update. Wrapped
+      // now, before the warm-up: wrapped after it, the change of callee threw
+      // the scene's compiled frame away and the measure ran on cold code.
+      const ai = (window.__perfAi = { ms: 0, wrapped: [] });
+      for (const e of scene.enemies ?? []) {
+        const orig = e.update;
+        e.update = function (...a) {
+          const t = performance.now();
+          try {
+            return orig.apply(this, a);
+          } finally {
+            ai.ms += performance.now() - t;
+          }
+        };
+        ai.wrapped.push([e, orig]);
+      }
+      // Then let the browser finish compiling the frame's code. The first few
+      // hundred steps of a session run in its slower tiers, which box every
+      // decimal number they touch; measured there, garbage read twice what a
+      // player meets after the first seconds of their first fight.
+      for (let i = 0; i < 300; i++) {
+        scene.update(1 / 60, engine.elapsed + i / 60);
+        if (i % 20 === 19) await new Promise((r) => setTimeout(r, 0));
+      }
       return { biome: depth === 0 ? 'town' : scene.level?.biome, layout: depth === 0 ? 'camp' : scene.level?.layout, monsters: mobs.length };
     },
     { depth, seed: SEED },
@@ -149,21 +173,9 @@ for (const depth of DEPTHS) {
   const cpu = await page.evaluate(async () => {
     const engine = window.SLAY.engine;
     const scene = engine.currentScene;
-    // Time the AI separately by wrapping each monster's update for the run.
-    let aiMs = 0;
-    const wrapped = [];
-    for (const e of scene.enemies ?? []) {
-      const orig = e.update;
-      e.update = function (...a) {
-        const t = performance.now();
-        try {
-          return orig.apply(this, a);
-        } finally {
-          aiMs += performance.now() - t;
-        }
-      };
-      wrapped.push([e, orig]);
-    }
+    // The AI timing wrappers went on before the warm-up (see above).
+    const ai = window.__perfAi;
+    ai.ms = 0;
     const samples = [];
     for (let i = 0; i < 30; i++) {
       const t0 = performance.now();
@@ -172,7 +184,8 @@ for (const depth of DEPTHS) {
       // Yield without letting the engine loop run its own update in between.
       await new Promise((r) => setTimeout(r, 0));
     }
-    for (const [e, orig] of wrapped) e.update = orig;
+    for (const [e, orig] of ai.wrapped) e.update = orig;
+    const aiMs = ai.ms;
     samples.sort((a, b) => a - b);
     const total = samples.reduce((a, b) => a + b, 0);
     let simulated = 0;

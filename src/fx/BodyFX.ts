@@ -759,7 +759,7 @@ export class BodyFX {
   update(dt: number, camera?: THREE.Camera | null): void {
     void camera;
     this.clock += dt;
-    for (const l of this.labs) if (l.active) this.upLab(l, dt);
+    for (let li = 0; li < this.labs.length; li++) if (this.labs[li]!.active) this.upLab(this.labs[li]!, dt);
 
     for (let i = this.actors.length - 1; i >= 0; i--) {
       const a = this.actors[i]!;

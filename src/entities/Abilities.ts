@@ -29,7 +29,7 @@ import type { DecalSystem } from '../fx/Decals';
 import type { EffectHandle } from '../fx/Effects';
 import { HAZARD_GLOW, HAZARD_LOOK, monsterFX } from '../fx/MonsterFX';
 import type { Enemy } from './Enemy';
-import { crowdNear } from './Crowd';
+import { crowdHits, crowdNear } from './Crowd';
 import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
@@ -619,15 +619,15 @@ export function lineHit(
 }
 
 /** The cells' answer for `alliesNear`, copied out before it returns. */
-const _allies: Enemy[] = [];
+const _allies = crowdHits();
 
 /** Nearby living allies, cheapest-first (squared distance, no sqrt). */
 export function alliesNear(ctx: CombatContext, x: number, z: number, radius: number, exclude?: string): Enemy[] {
   const out: Enemy[] = [];
   const r2 = radius * radius;
   const near = crowdNear(ctx.enemies, x, z, radius, _allies);
-  for (let i = 0; i < near.length; i++) {
-    const e = near[i]!;
+  for (let i = 0; i < near.n; i++) {
+    const e = near.list[i]!;
     if (!e.alive) continue;
     if (exclude && e.id === exclude) continue;
     const p = e.root.position;
@@ -874,7 +874,8 @@ export function fireSpread(
 }
 
 function tickProjectiles(dt: number, ctx: CombatContext): void {
-  for (const p of projectiles) {
+  for (let pi = 0; pi < projectiles.length; pi++) {
+    const p = projectiles[pi]!;
     if (!p.active) continue;
     p.life -= dt;
     if (p.life <= 0) {

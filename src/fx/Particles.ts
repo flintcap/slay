@@ -293,7 +293,8 @@ export class FXSystem {
     const picked = this.picked;
     const w = this.pickW;
     let n = 0;
-    for (const l of this.lights) {
+    for (let li = 0; li < this.lights.length; li++) {
+      const l = this.lights[li]!;
       if (!l.visible || !(l.intensity > 0.01) || !l.parent) continue;
       _lp.setFromMatrixPosition(l.matrixWorld);
       const reach = l.distance > 0 ? l.distance : 14;

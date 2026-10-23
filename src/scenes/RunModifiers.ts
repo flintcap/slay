@@ -321,7 +321,8 @@ export class RunModifiers {
 
   update(dt: number): void {
     const enemies = this.host.enemies();
-    for (const e of enemies) if (!this.touched.has(e)) this.strengthen(e);
+    // An index loop: a for-of over every monster made garbage each frame.
+    for (let i = 0; i < enemies.length; i++) if (!this.touched.has(enemies[i]!)) this.strengthen(enemies[i]!);
     const boss = this.host.boss();
     if (boss && !this.touched.has(boss)) this.strengthen(boss);
 
@@ -374,9 +375,9 @@ export class RunModifiers {
       }
     }
 
-    const fighting = enemies.some((e) => e.alive && e.life > 0 && e.root.position.distanceTo(pos) < 12);
+    // Only asked when an ambush can come: it walked every monster every frame.
     const ambush = this.tier('mod.ambush');
-    if (ambush && fighting) {
+    if (ambush && enemies.some((e) => e.alive && e.life > 0 && e.root.position.distanceTo(pos) < 12)) {
       this.ambushIn -= dt;
       if (this.ambushIn <= 0) {
         this.ambushIn = 38 - 6 * ambush;
