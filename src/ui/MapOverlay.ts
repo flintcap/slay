@@ -65,7 +65,13 @@ export class MapOverlay {
   /** The chart, a few pixels a tile, painted as ground is seen. */
   private chart: HTMLCanvasElement | OffscreenCanvas | null = null;
   private chartCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
-  private chartSeed = -1;
+  /**
+   * The area and the seen-ground record the chart was painted from. Every
+   * area of a map shares its seed, so the seed alone kept the last area's
+   * chart up after the way on.
+   */
+  private chartLevel: DungeonLevel | null = null;
+  private chartSeen: Uint8Array | null = null;
   private sinceRepaint = 0;
   private dpr = 1;
   private w = 0;
@@ -94,7 +100,7 @@ export class MapOverlay {
   toggle(): void {
     save.settings.mapOverlay = !save.settings.mapOverlay;
     save.touch();
-    this.chartSeed = -1;
+    this.chartLevel = null;
   }
 
   /**
@@ -108,9 +114,14 @@ export class MapOverlay {
     if (!show || !level || !this.ctx) return;
     this.resize();
     const explored = runtime.explored.get(level.seed);
-    if (!explored || explored.length !== level.width * level.height) return;
+    if (!explored || explored.length !== level.width * level.height) {
+      // Nothing seen of this area yet: no chart, not the last area's.
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      return;
+    }
 
-    if (this.chartSeed !== level.seed) {
+    if (this.chartLevel !== level || this.chartSeen !== explored) {
       this.paintChart(level, explored);
       this.sinceRepaint = 0;
     } else {
@@ -146,7 +157,8 @@ export class MapOverlay {
       this.chart = new OffscreenCanvas(w, h);
       this.chartCtx = this.chart.getContext('2d');
     }
-    this.chartSeed = level.seed;
+    this.chartLevel = level;
+    this.chartSeen = explored;
     this.paintRegion(level, explored, 0, 0, level.width, level.height);
   }
 
