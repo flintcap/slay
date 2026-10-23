@@ -1058,9 +1058,11 @@ export class Renderer {
     const q = this.quality;
     this.sun = null;
     scene.traverse((o) => {
+      if (!this.sun && (o as THREE.DirectionalLight).isDirectionalLight && (o as THREE.DirectionalLight).castShadow) this.sun = o as THREE.DirectionalLight;
+    });
+    scene.traverse((o) => {
       const l = o as THREE.DirectionalLight | THREE.PointLight | THREE.SpotLight;
       if (!l.isLight || !l.shadow) return;
-      if (!this.sun && (l as THREE.DirectionalLight).isDirectionalLight && l.castShadow) this.sun = l as THREE.DirectionalLight;
       let base = l.userData.shadowBase as ShadowBase | undefined;
       if (!base) {
         if (!l.castShadow) return;
@@ -1083,7 +1085,9 @@ export class Renderer {
       // every lit shader, and switching it back on reused shaders built
       // around the shadow three had freed when it went off: every frame then
       // failed and the screen went black.
-      const on = !point || (l.userData.lantern ? q.lanternShadow : q.pointShadows);
+      // Under a casting sun or moon the hero's lantern throws none: the hero
+      // already has the sky's shadow, and a second one beside it read as a bug.
+      const on = !point || (l.userData.lantern ? q.lanternShadow && !this.sun : q.pointShadows);
       l.castShadow = base.casts;
       l.shadow.intensity = on ? base.intensity : 0;
       if (l.userData.shadowTicked && on) this.ticked.add(l);

@@ -29,6 +29,7 @@ import type { DecalSystem } from '../fx/Decals';
 import type { EffectHandle } from '../fx/Effects';
 import { HAZARD_GLOW, HAZARD_LOOK, monsterFX } from '../fx/MonsterFX';
 import type { Enemy } from './Enemy';
+import { crowdNear } from './Crowd';
 import { tr } from '../core/I18n';
 
 // ---------------------------------------------------------------------------
@@ -617,11 +618,16 @@ export function lineHit(
   return true;
 }
 
+/** The cells' answer for `alliesNear`, copied out before it returns. */
+const _allies: Enemy[] = [];
+
 /** Nearby living allies, cheapest-first (squared distance, no sqrt). */
 export function alliesNear(ctx: CombatContext, x: number, z: number, radius: number, exclude?: string): Enemy[] {
   const out: Enemy[] = [];
   const r2 = radius * radius;
-  for (const e of ctx.enemies) {
+  const near = crowdNear(ctx.enemies, x, z, radius, _allies);
+  for (let i = 0; i < near.length; i++) {
+    const e = near[i]!;
     if (!e.alive) continue;
     if (exclude && e.id === exclude) continue;
     const p = e.root.position;

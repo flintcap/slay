@@ -138,6 +138,8 @@ const _gh = new THREE.Vector3();
 const _q3 = new THREE.Quaternion();
 const _q3b = new THREE.Quaternion();
 const _m1 = new THREE.Matrix4();
+/** Stands in for three's quaternion-to-Euler sync on posed bones (see the constructor). */
+const NO_EULER_SYNC = (): void => {};
 const TAU = Math.PI * 2;
 
 export class CreatureAnimator {
@@ -264,6 +266,11 @@ export class CreatureAnimator {
     this.names.forEach((n, i) => (this.index[n] = i));
     const n = this.names.length;
     this.bonesArr = this.names.map((nm) => bones[nm]!);
+    // three keeps each bone's Euler `rotation` in step with its quaternion,
+    // a matrix build and an angle solve on every write. The pose writes
+    // every bone's quaternion every frame and nothing reads a bone's Euler,
+    // so that sync was a fifth of the whole pose, monster by monster.
+    for (const b of this.bonesArr) b.quaternion._onChange(NO_EULER_SYNC);
     this.parent = new Int16Array(n);
     this.restPos = [];
     this.bindModel = [];

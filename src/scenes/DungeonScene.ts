@@ -88,6 +88,7 @@ import { beginLoad, breather, endLoad, loadStep, yieldIfLong } from '../core/Loa
 import { bakeLooks, dropQueuedLooks, type LookAsk } from '../world/BakePool';
 import { Weather } from '../world/Weather';
 import { markStaticShadows } from '../core/ShadowCache';
+import { markCrowd } from '../entities/Crowd';
 import { peril } from '../core/Peril';
 import { tr } from '../core/I18n';
 import { uiHeight, uiWidth } from '../core/UiScale';
@@ -134,6 +135,8 @@ const hiddenFar = new WeakSet<THREE.Object3D>();
 const WAY_LIGHT_SLOTS = 3;
 /** Metres from the hero past which a monster in view is posed at half rate. */
 const POSE_FAR = 14;
+/** Metres from the hero past which a monster in view is posed at a third the rate. */
+const POSE_EDGE = 22;
 /**
  * Screen height (CSS pixels) under which a monster is drawn from its
  * lower-detail copy: rats and bats on every preset, most of a pack on Low.
@@ -1681,6 +1684,8 @@ export class DungeonScene extends GameScene {
     _viewMat.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
     _view.setFromProjectionMatrix(_viewMat);
     this.packRoots.length = 0;
+    // Who stands near whom is asked of a grid, sorted afresh once this frame.
+    markCrowd(this.enemies);
     // Bodies shorter on screen than this draw their lower-detail copies.
     const pxPerM = window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
     const lowPx = LOW_DETAIL_PX[this.engine.renderer.qualityLevel];
@@ -1694,9 +1699,11 @@ export class DungeonScene extends GameScene {
       if (e.inView && e.alive) e.setDetailFor(this.camera.position.distanceTo(e.root.position), pxPerM, lowPx);
       const ride = e.packBody;
       if (ride) this.packRoots.push(ride);
-      // Far from the hero, a body is posed every other frame (its motion
-      // reads the same at half rate; the near ones keep every frame).
-      e.poseEvery = dx * dx + dz * dz > POSE_FAR * POSE_FAR ? 2 : 1;
+      // Far from the hero, a body is posed every other frame, and at the
+      // edge of the screen every third (its motion reads the same at the
+      // lower rate; the near ones keep every frame).
+      const d2 = dx * dx + dz * dz;
+      e.poseEvery = d2 > POSE_EDGE * POSE_EDGE ? 3 : d2 > POSE_FAR * POSE_FAR ? 2 : 1;
       // A living body well out of view (it is not posed and casts no shadow)
       // also stops having its thirty-odd bones' world matrices rebuilt every
       // frame: with a floor's hundred-plus monsters that was the largest
@@ -3082,6 +3089,7 @@ export class DungeonScene extends GameScene {
     this.runMods?.dispose();
     this.runMods = null;
     for (const e of this.enemies) e.dispose();
+    markCrowd(null);
     this.enemies = [];
     this.boss?.dispose();
     // Drops still on the floor: a level change disposed them, leaving the

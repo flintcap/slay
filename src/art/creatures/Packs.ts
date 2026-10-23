@@ -141,7 +141,40 @@ function slotsFor(bones: number): number {
  * The key a part packs under: geometry, material, shadow flags and bone
  * count. Null when it cannot ride in a pack draw.
  */
+/** A part's last key and what it was worked out from (`keyOf`). */
+interface KeyMemo {
+  mat: unknown;
+  geo: unknown;
+  sk: unknown;
+  flags: number;
+  key: string | null;
+}
+const keyMemo = new WeakMap<THREE.SkinnedMesh, KeyMemo>();
+
+/**
+ * Which pack draw a part can share, or null. Asked of every part in view
+ * every frame, so the answer is kept until the part's material, shape,
+ * skeleton or flags change: building it afresh was a string a part a frame.
+ */
 function keyOf(sm: THREE.SkinnedMesh): string | null {
+  const mat = sm.material as THREE.Material | THREE.Material[];
+  const flags =
+    (sm.castShadow ? 1 : 0) |
+    (sm.receiveShadow ? 2 : 0) |
+    (sm.userData.slOutline ? 4 : 0) |
+    (sm.userData.shadowOnly ? 8 : 0) |
+    (sm.children.length > 0 ? 16 : 0) |
+    (sm.bindMode === 'attached' ? 32 : 0) |
+    (!Array.isArray(mat) && mat.transparent ? 64 : 0) |
+    (!Array.isArray(mat) && mat.userData.shared ? 128 : 0);
+  const memo = keyMemo.get(sm);
+  if (memo && memo.mat === mat && memo.geo === sm.geometry && memo.sk === sm.skeleton && memo.flags === flags) return memo.key;
+  const key = workKey(sm);
+  keyMemo.set(sm, { mat, geo: sm.geometry, sk: sm.skeleton, flags, key });
+  return key;
+}
+
+function workKey(sm: THREE.SkinnedMesh): string | null {
   const mat = sm.material as THREE.Material | THREE.Material[];
   if (Array.isArray(mat) || !mat.userData.shared || mat.transparent) return null;
   if (sm.userData.shadowOnly && !sm.castShadow) return null;
@@ -172,6 +205,8 @@ export class PackDraws {
   private plain = new Map<THREE.SkinnedMesh, { key: string; t: number; stamp: number }>();
   private parts = new WeakMap<THREE.Object3D, THREE.SkinnedMesh[]>();
   private want = new Map<string, THREE.SkinnedMesh[]>();
+  /** The key each part in `want` is listed under this frame. */
+  private wantKey = new Map<THREE.SkinnedMesh, string>();
   private stamp = 0;
 
   constructor(private readonly parent: THREE.Object3D) {}
@@ -184,6 +219,8 @@ export class PackDraws {
     const stamp = ++this.stamp;
     const want = this.want;
     for (const list of want.values()) list.length = 0;
+    const wantKey = this.wantKey;
+    wantKey.clear();
     for (const root of roots) {
       if (!shown(root)) continue;
       for (const sm of this.partsOf(root)) {
@@ -202,15 +239,15 @@ export class PackDraws {
           let list = want.get(key);
           if (!list) want.set(key, (list = []));
           list.push(sm);
+          wantKey.set(sm, key);
         }
       }
     }
     // Leavers first, so their slots are free for joiners.
     for (const pack of this.packs.values()) {
-      const list = want.get(pack.key);
       for (let s = 0; s < pack.slots.length; s++) {
         const sm = pack.slots[s];
-        if (sm && !list?.includes(sm)) this.leave(pack, s);
+        if (sm && wantKey.get(sm) !== pack.key) this.leave(pack, s);
       }
     }
     for (const [key, list] of want) {
@@ -255,6 +292,7 @@ export class PackDraws {
     this.riding.clear();
     this.plain.clear();
     this.want.clear();
+    this.wantKey.clear();
   }
 
   /** Pack draws on screen and the parts riding in them, for debug readouts. */

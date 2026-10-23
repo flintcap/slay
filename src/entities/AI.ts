@@ -21,6 +21,7 @@ import type { MonsterDef, MonsterRole } from '../types';
 import type { CombatContext, AbilityDef } from './Abilities';
 import { angleDelta, angleTo, clamp, dist, dist2, getAbility } from './Abilities';
 import type { Enemy } from './Enemy';
+import { crowdNear } from './Crowd';
 import { events } from '../core/Events';
 
 export type AIMode =
@@ -50,6 +51,13 @@ const TAU = Math.PI * 2;
 function hero(ctx: CombatContext): THREE.Vector3 {
   return ctx.heroPos ?? ctx.playerPos;
 }
+
+/** Neighbours of one question (`crowdNear`); no question asks another while it reads them. */
+const _near: Enemy[] = [];
+/** Angles round the hero of the awake monsters near it, for `claimSlot`. */
+const _slotAngles: number[] = [];
+/** How far round the hero a taken slot is counted. */
+const SLOT_REACH = 20;
 
 /** How close a monster must be to notice a Veiled player. Arm's length. */
 const HIDDEN_NOTICE = 1.8;
@@ -912,7 +920,9 @@ export class AIBrain {
     let wx = 0;
     let wz = 0;
     let wsum = 0;
-    for (const e of ctx.enemies) {
+    const near = crowdNear(ctx.enemies, p.x, p.z, 18, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       if (dist2(p.x, p.z, q.x, q.z) > 18 * 18) continue;
@@ -981,7 +991,9 @@ export class AIBrain {
     const p = this.self.root.position;
     let best: Enemy | null = null;
     let bestD = radius * radius;
-    for (const e of ctx.enemies) {
+    const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive || !e.ai || e.ai.isDormant) continue;
       if (!BACK_LINE.has(e.ai.archetype)) continue;
       const q = e.root.position;
@@ -1069,7 +1081,19 @@ export class AIBrain {
     }
     this.slotLocked = 6;
     const p = this.self.root.position;
-    const mine = angleTo(hero(ctx).x, hero(ctx).z, p.x, p.z);
+    const h = hero(ctx);
+    const mine = angleTo(h.x, h.z, p.x, p.z);
+    // Where the others stand round the hero, worked out once rather than per
+    // slot. Only those near the hero hold a slot.
+    _slotAngles.length = 0;
+    const near = crowdNear(ctx.enemies, h.x, h.z, SLOT_REACH, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
+      if (e === this.self || !e.alive || e.ai?.isDormant) continue;
+      const q = e.root.position;
+      if (dist2(h.x, h.z, q.x, q.z) > SLOT_REACH * SLOT_REACH) continue;
+      _slotAngles.push(angleTo(h.x, h.z, q.x, q.z));
+    }
     const SLOTS = 10;
     let best = mine;
     let bestScore = -Infinity;
@@ -1078,11 +1102,8 @@ export class AIBrain {
       // Prefer slots near where we already stand (no silly orbiting) but heavily
       // penalise slots another enemy has taken.
       let score = -Math.abs(angleDelta(mine, a)) * 0.9;
-      for (const e of ctx.enemies) {
-        if (e === this.self || !e.alive || e.ai?.isDormant) continue;
-        const q = e.root.position;
-        const ea = angleTo(hero(ctx).x, hero(ctx).z, q.x, q.z);
-        const delta = Math.abs(angleDelta(ea, a));
+      for (let j = 0; j < _slotAngles.length; j++) {
+        const delta = Math.abs(angleDelta(_slotAngles[j]!, a));
         if (delta < 0.55) score -= (0.55 - delta) * 6;
       }
       if (score > bestScore) {
@@ -1099,7 +1120,10 @@ export class AIBrain {
     let bestD = Infinity;
     let shieldX = 0;
     let shieldZ = 0;
-    for (const e of ctx.enemies) {
+    // A front-liner further off than this shields nothing.
+    const near = crowdNear(ctx.enemies, p.x, p.z, SLOT_REACH, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive) continue;
       if (e.role !== 'melee' && e.role !== 'brute' && e.role !== 'swarm') continue;
       const q = e.root.position;
@@ -1120,7 +1144,9 @@ export class AIBrain {
     const p = this.self.root.position;
     let best: Enemy | null = null;
     let bestD = radius * radius;
-    for (const e of ctx.enemies) {
+    const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       const d = dist2(p.x, p.z, q.x, q.z);
@@ -1141,7 +1167,10 @@ export class AIBrain {
     const myR = this.self.hitRadius;
     let sx = 0;
     let sz = 0;
-    for (const e of ctx.enemies) {
+    // Wide enough for the largest pair of bodies.
+    const near = crowdNear(ctx.enemies, p.x, p.z, myR + 4, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;
       const dx = p.x - q.x;
@@ -1292,7 +1321,9 @@ export class AIBrain {
     const p = this.self.root.position;
     const r2 = radius * radius;
     let worst = 1;
-    for (const e of ctx.enemies) {
+    const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;
       if (dist2(p.x, p.z, q.x, q.z) > r2) continue;
@@ -1304,7 +1335,9 @@ export class AIBrain {
   /** True when any ally is close enough to the hero to be trading blows. */
   private alliesEngaged(ctx: CombatContext): boolean {
     const h = hero(ctx);
-    for (const e of ctx.enemies) {
+    const near = crowdNear(ctx.enemies, h.x, h.z, 7, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive || e.ai?.isDormant) continue;
       const q = e.root.position;
       if (dist2(h.x, h.z, q.x, q.z) < 7 * 7) return true;
@@ -1316,7 +1349,9 @@ export class AIBrain {
     const p = this.self.root.position;
     const r2 = radius * radius;
     let n = 0;
-    for (const e of ctx.enemies) {
+    const near = crowdNear(ctx.enemies, p.x, p.z, radius, _near);
+    for (let i = 0; i < near.length; i++) {
+      const e = near[i]!;
       if (e === this.self || !e.alive) continue;
       const q = e.root.position;
       if (dist2(p.x, p.z, q.x, q.z) <= r2) n++;
