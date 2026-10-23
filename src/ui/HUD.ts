@@ -126,6 +126,12 @@ function probeScene(scene: object): SceneProbe {
 
   const visit = (obj: unknown, depth: number): void => {
     if (!obj || typeof obj !== 'object' || seen.has(obj) || depth > 2) return;
+    // Never look inside three.js matrices. The `v[0]` test below reads every
+    // array it meets; once it runs hot, the engine turns each number-only array
+    // it touches into a slow mixed array. Touching one matrix spread that to
+    // every matrix made after it, and all matrix maths then made garbage.
+    const m = obj as { isMatrix4?: boolean; isMatrix3?: boolean; isMatrix2?: boolean };
+    if (m.isMatrix4 || m.isMatrix3 || m.isMatrix2) return;
     seen.add(obj);
     const rec = obj as Record<string, unknown>;
 

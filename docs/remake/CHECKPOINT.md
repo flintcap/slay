@@ -872,6 +872,20 @@ Update this file and push it after every finished step.
   Still the biggest share: per-object uniform updates and uploads (about
   7 ms), which only fewer separate parts per monster will cut.
 
+- #216 Per-frame garbage (owner: "do the garbage"). check-perf now wraps
+  its AI timers and runs 300 warm-up steps before it measures, so it reads
+  warm code as players run it (wrapping after warm-up threw the scene loop
+  back to cold code). Hot lists are reused and written by count instead of
+  emptied with `length = 0`, which freed and rebuilt their storage each
+  frame (crowd hits, pack lists, plate targets, labels, nameplates), and
+  hot for-of loops became index loops. The big one: the HUD's structural
+  `probeScene` read `v[0]` of every array it met. Once that ran hot, V8
+  turned the number-only arrays it touched into mixed arrays, starting with
+  a town light's matrix; the Matrix4 birth site learned it, so 6,603 of
+  6,686 town matrices (and every matrix after) did boxed maths. The probe
+  now skips matrices: 0 of 6,686. Alloc KB per step, depth 0/12/32:
+  121/409/645 -> 54/109/191 (budget 200); update ms at depth 32 7.2 -> 3.2.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,
