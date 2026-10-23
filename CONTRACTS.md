@@ -1247,15 +1247,13 @@ export function closeAllPanels(): void;
  *  one closes the other panel on the same side. */
 side?: 'left' | 'right';
 export function isSideOpen(side: PanelSide, id?: string): boolean;
-/** Bus: what share of the window width each side covers, 0..1, on every change. */
-'ui:sides': { left: number; right: number };
 ```
 
 Right: `inventory`, `skills`. Left: `character`, `stash`, `vendor`,
 `alchemist`, `blacksmith`, `questLog`, `journal` and the town NPC panels.
-The map, pause, settings and story screens stay in the middle. CameraRig
-listens to `ui:sides` and slides its look point so the hero stands in the
-middle of the free space (in world space, since TRAA owns the view offset).
+The map, pause, settings and story screens stay in the middle. Side panels
+open over the world and never move the camera: the hero stays in the middle
+of the screen whatever is open.
 
 The vault, the shops and the forge carry no copy of the pack. On open they
 call `lendBag(owner, verb)`, which opens Equipment beside them and gives its

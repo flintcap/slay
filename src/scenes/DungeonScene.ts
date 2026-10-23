@@ -315,7 +315,8 @@ export class DungeonScene extends GameScene {
   private returnPortalY = 0;
   /** The town waypoint by a map's first arrival: [E] there gives the map up. */
   private waypoint: THREE.Object3D | null = null;
-  private nearWaypoint = false;
+  /** The way out the hero stands at, whose [E] prompt is up. */
+  private nearWay: 'waypoint' | 'exit' | 'home' | null = null;
   /** The waypoint's and the return portal's looks (props stream). */
   private waypointLook: WayLook | null = null;
   /** Zero-intensity stand-ins, and the way-on lights they balance (balanceLights). */
@@ -993,7 +994,7 @@ export class DungeonScene extends GameScene {
       this.waypointLook = null;
       this.waypoint = null;
     }
-    this.nearWaypoint = false;
+    this.nearWay = null;
     if (this.level.waypoint) this.buildWaypoint(this.mesh.tileToWorld(this.level.waypoint.x, this.level.waypoint.y));
     if (doorOpen) {
       const spot = this.doorSpot();
@@ -1763,7 +1764,6 @@ export class DungeonScene extends GameScene {
 
     this.reapDead(ctx);
     this.updateLoot(dt, elapsed, input);
-    this.checkExit();
 
     onSurviveTick(this.run.quest, dt);
 
@@ -1842,8 +1842,6 @@ export class DungeonScene extends GameScene {
     this.portalLook?.update(dt, this.camera);
     if (this.homeDoor) {
       this.homeDoor.look.update(dt, this.camera);
-      const d = this.homeDoor.at;
-      if (Math.hypot(this.player.position.x - d.x, this.player.position.z - d.z) < 1.0) this.stepHome();
     }
     this.waypointLook?.update(dt);
     this.remains?.update(dt);
@@ -1925,7 +1923,7 @@ export class DungeonScene extends GameScene {
     const marked = hover ?? (lock?.alive ? lock : null);
     this.engine.renderer.setOutline(marked ? marked.root : null);
     this.tickInteractables(input, ctx);
-    this.tickWaypoint(input);
+    this.tickWays(input);
   }
 
   /**
@@ -2478,11 +2476,9 @@ export class DungeonScene extends GameScene {
     }
   }
 
-  private checkExit(): void {
-    if (this.transitioning) return;
-    if (!this.exitOpen) return;
-    if (this.player.position.distanceTo(this.exitPos) > 1.6) return;
-
+  /** Through the way on: the next area, or home with the tier banked. */
+  private takeExit(): void {
+    if (this.transitioning || !this.exitOpen) return;
     if (this.levelIndex + 1 < this.run.levels.length) {
       this.transitioning = true;
       audio.play('stairs');
@@ -2616,7 +2612,7 @@ export class DungeonScene extends GameScene {
     if (!loud) return;
     this.effects.gateway(at.x, at.y, at.z, 0xa8f0ff, 'open');
     audio.play('portal');
-    toast(tr('A portal to town opens. Step through to go home.'), 'good');
+    toast(tr('A portal to town opens. Press E at it to go home.'), 'good');
   }
 
   private closeHomeDoor(): void {
@@ -2920,22 +2916,55 @@ export class DungeonScene extends GameScene {
   }
 
   /**
-   * [E] at the waypoint takes the hero home and gives the map up. Props come
-   * first: when a chest sits in reach its prompt wins.
+   * [E] at a way out: the town waypoint, the way on, the portal home after
+   * the boss and the trinket portal. Walking into a portal used to take it,
+   * so a hero picking up loot beside one got pulled out of the area. Props
+   * come first: when a chest sits in reach its prompt wins.
    */
-  private tickWaypoint(input: Engine['input']): void {
-    if (!this.waypoint || this.transitioning) return;
-    const near = !this.nearProp && this.player.position.distanceTo(this.waypoint.position) <= DungeonScene.INTERACT_RANGE;
-    if (near !== this.nearWaypoint) {
-      this.nearWaypoint = near;
-      // Leaving the ring for a prop keeps the prop's prompt on screen.
-      if (near) toast(tr('[E] Waypoint: return to town (this map is lost)'), 'info');
+  private tickWays(input: Engine['input']): void {
+    if (this.transitioning) return;
+    const way = this.nearProp ? null : this.nearestWay();
+    if (way !== this.nearWay) {
+      this.nearWay = way;
+      // Leaving a way for a prop keeps the prop's prompt on screen.
+      if (way) toast(this.wayPrompt(way), 'info');
       else if (!this.nearProp) toast('', 'info');
     }
-    if (!near || !input.wasPressed('interact')) return;
-    this.transitioning = true;
-    this.nearWaypoint = false;
+    if (!way || !input.wasPressed('interact')) return;
+    this.nearWay = null;
     toast('', 'info');
+    if (way === 'waypoint') this.takeWaypoint();
+    else if (way === 'home') this.stepHome();
+    else this.takeExit();
+  }
+
+  /** The closest way out in reach, if any. */
+  private nearestWay(): 'waypoint' | 'exit' | 'home' | null {
+    const p = this.player.position;
+    let best: 'waypoint' | 'exit' | 'home' | null = null;
+    let bestD = DungeonScene.INTERACT_RANGE;
+    const consider = (way: 'waypoint' | 'exit' | 'home', at: THREE.Vector3): void => {
+      const d = Math.hypot(p.x - at.x, p.z - at.z);
+      if (d > bestD) return;
+      bestD = d;
+      best = way;
+    };
+    if (this.waypoint) consider('waypoint', this.waypoint.position);
+    if (this.homeDoor) consider('home', this.homeDoor.at);
+    if (this.exitOpen) consider('exit', this.exitPos);
+    return best;
+  }
+
+  private wayPrompt(way: 'waypoint' | 'exit' | 'home'): string {
+    if (way === 'waypoint') return tr('[E] Waypoint: return to town (this map is lost)');
+    if (way === 'home') return tr('[E] Portal to town');
+    return this.levelIndex + 1 < this.run.levels.length ? tr('[E] Go on to the next area') : tr('[E] Take the portal home');
+  }
+
+  /** The waypoint takes the hero home and gives the map up. */
+  private takeWaypoint(): void {
+    if (!this.waypoint) return;
+    this.transitioning = true;
     audio.play('waypoint', { x: this.waypoint.position.x, z: this.waypoint.position.z });
     this.effects.gateway(this.waypoint.position.x, this.waypoint.position.y, this.waypoint.position.z, 0xffc861, 'use');
     // Given up at its own ring, a map costs nothing but itself.
@@ -3014,10 +3043,13 @@ export class DungeonScene extends GameScene {
     this.rig.snap();
   }
 
-  /** The trinket portal and what an area holds, for the portal check; `walk` puts the hero in the portal. */
+  /** The trinket portal and what an area holds, for the portal check; `walk` takes the portal as [E] would. */
   debugPortal(walk: boolean): Record<string, unknown> {
     const d = this.homeDoor;
-    if (walk && d) this.player.position.set(d.at.x, d.at.y, d.at.z);
+    if (walk && d) {
+      this.player.position.set(d.at.x, d.at.y, d.at.z);
+      this.stepHome();
+    }
     return {
       door: d ? { x: d.at.x, z: d.at.z } : null,
       level: this.levelIndex,

@@ -33,7 +33,7 @@ export const TIPS: readonly string[] = [
   tr('The memorial keeps every name. The vault keeps everything else.'),
   tr('Harder difficulties drop better loot and more of it. They also hit harder.'),
   tr('E talks to townsfolk and opens chests and doors.'),
-  tr('Beating the boss opens a portal home. Step through it to bank the tier.'),
+  tr('Beating the boss opens a portal home. Press E at it to bank the tier.'),
 ];
 
 /** A tip that is not the one just shown. */

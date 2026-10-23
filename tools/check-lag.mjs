@@ -754,11 +754,12 @@ async function visit(label) {
         const from = scene.levelIndex;
         const p = scene.player;
         const t0 = performance.now();
-        // The exit only opens to a hero standing on it; keep putting them there.
+        // The exit takes [E] from a hero standing at it; keep putting them there.
         while (scene.levelIndex === from && performance.now() - t0 < 120000) {
           const e = scene.exitPos;
           p.position.set(e.x, p.position.y, e.z);
           p.root.position.copy(p.position);
+          if (!scene.transitioning) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', key: 'e' })); }
           await new Promise((r) => setTimeout(r, 50));
         }
         while (scene.transitioning && performance.now() - t0 < 180000) await new Promise((r) => setTimeout(r, 20));

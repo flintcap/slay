@@ -129,8 +129,6 @@ export interface GameEvents {
   'potion:drunk': { kind: 'life' | 'mana' };
   'ui:open': { panel: string };
   'ui:close': { panel: string };
-  /** How much of the window the open left and right side panels cover, 0..1 (`ui/Widgets.ts`). */
-  'ui:sides': { left: number; right: number };
   'settings:changed': Record<string, never>;
   /** The game clock stopped or started again (pause menu, a pausing panel, a hidden tab). */
   'game:paused': { paused: boolean };

@@ -41,7 +41,7 @@ export const TRINKETS: readonly TrinketDef[] = [
     use: 'portal',
     text: [
       tr('Right-click in a map: opens a portal to town.'),
-      tr('Step through to go home and keep everything.'),
+      tr('Press E at it to go home and keep everything.'),
       tr('Step back through it in town to return; it closes behind you.'),
       tr('Right-click the portal in town to close it and end the map.'),
       tr('Breaks when used.'),

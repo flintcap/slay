@@ -1049,21 +1049,6 @@ const PANEL_Z = 40;
  */
 const panelStack: Panel[] = [];
 
-/** How much of the window each side's open panel covers, 0..1, for the camera. */
-function emitSides(): void {
-  const cover = { left: 0, right: 0 };
-  for (const p of panelStack) {
-    const side = p.side;
-    if (!side) continue;
-    // Measured on screen, so the side zoom is in it; then in the UI layer's own pixels.
-    const w = p.frame.getBoundingClientRect().width / uiScale();
-    cover[side] = Math.max(cover[side], Math.min(1, w / Math.max(1, uiWidth())));
-  }
-  if (cover.left === lastCover.left && cover.right === lastCover.right) return;
-  lastCover = cover;
-  events.emit('ui:sides', cover);
-}
-let lastCover = { left: 0, right: 0 };
 
 /** A side panel's layout, as drawn on a window with room for it and no more. */
 const SIDE_W = 640;
@@ -1093,7 +1078,6 @@ export function fitSidePanels(): void {
   // In the panel's own pixels, which its zoom then draws bigger.
   root.style.setProperty('--side-w', `${Math.min(SIDE_W, (uiWidth() * 0.5) / zoom).toFixed(1)}px`);
   root.style.setProperty('--side-h', `${Math.max(240, tall / zoom).toFixed(1)}px`);
-  emitSides();
 }
 
 /** Whether a side panel is open on `side` (that panel, when `id` is given). */
@@ -1458,7 +1442,6 @@ export class Panel {
     if (!this.opts.quiet) uiSfx('ui.close', 0.8);
     this.opts.onClose?.();
     hoverHooks.hide?.();
-    if (this.side) emitSides();
   }
 
   toggle(): void {

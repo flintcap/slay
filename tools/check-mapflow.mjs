@@ -111,7 +111,11 @@ try {
     const e = s.exitPos;
     s.player.root.position.set(e.x, e.y, e.z);
     s.player.stop();
-    for (let i = 0; i < 400 && s.levelIndex === from; i++) await new Promise((r) => requestAnimationFrame(r));
+    // The way on takes [E]; walking into it does nothing.
+    for (let i = 0; i < 400 && s.levelIndex === from; i++) {
+      if (!s.transitioning) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', key: 'e' })); }
+      await new Promise((r) => requestAnimationFrame(r));
+    }
     return { from, to: s.levelIndex };
   });
   if (moved.skipped) console.log('skip  the first area is already the boss area');
@@ -205,11 +209,14 @@ try {
     const portal = !!s.returnPortal?.parent;
     const gateOpen = s.arenaGate ? !s.arenaGate.sealed : true;
     const recordBefore = S.save.account.current.depthRecord;
-    // Step into the portal.
+    // Stand at the portal and press [E].
     const e = s.exitPos;
     s.player.root.position.set(e.x, e.y, e.z);
     s.player.stop();
-    for (let i = 0; i < 300 && !cleared; i++) await step(1);
+    for (let i = 0; i < 300 && !cleared; i++) {
+      if (!s.transitioning) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', key: 'e' })); }
+      await step(1);
+    }
     for (const off of offs) off?.();
     return { map, phasesDefined, phases, killed, sealed, reward, portal, gateOpen, cleared, recordBefore, depth: s.run.depth };
   });
@@ -221,7 +228,7 @@ try {
     ok(fight.reward > 0, 'the boss leaves a reward', `${fight.reward} drops`);
     ok(fight.portal, 'the way home opens');
     ok(fight.gateOpen, 'the arena gate opens again');
-    ok(fight.cleared, 'stepping into the portal clears the map');
+    ok(fight.cleared, '[E] at the portal clears the map');
   }
   const wentHome = await page
     .waitForFunction(() => window.SLAY.engine.currentSceneId === 'town' && !window.SLAY.engine.transitioning, null, { timeout: 600000, polling: 500 })

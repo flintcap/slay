@@ -441,7 +441,10 @@ export async function classTour({ page, step, arrive, key, frames, setName, clas
       const e = s.exitPos;
       s.player.root.position.set(e.x, e.y, e.z);
       s.player.stop();
-      for (let i = 0; i < 600 && (s.levelIndex === from || s.transitioning); i++) await new Promise((r) => requestAnimationFrame(r));
+      for (let i = 0; i < 600 && (s.levelIndex === from || s.transitioning); i++) {
+        if (s.levelIndex === from && !s.transitioning) { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyE', key: 'e' })); }
+        await new Promise((r) => requestAnimationFrame(r));
+      }
       return { from, to: s.levelIndex, enemies: s.enemies.length, zone: s.level.zones?.[0]?.name };
     });
     if (r.to !== r.from + 1) throw new Error(`${r.from} -> ${r.to}`);

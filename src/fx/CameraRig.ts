@@ -163,14 +163,6 @@ export class CameraRig {
   private distanceMul = 1;
   private zoomBias = 0;
 
-  /**
-   * Where the hero should stand across the screen, as a share of its width
-   * from the middle (negative is left). A side panel open on the right moves
-   * the hero left into the part of the world still showing.
-   */
-  private frameShift = 0;
-  private frameNow = 0;
-
   private orbitOn = false;
   private orbitSpeed = 0.09;
   private orbitYaw = 0;
@@ -196,9 +188,6 @@ export class CameraRig {
       events.on('boss:engaged', () => {
         this.punchIn(0.16, 1.5);
         this.shake(0.35, 0.5);
-      }),
-      events.on('ui:sides', ({ left, right }) => {
-        this.frameShift = (left - right) / 2;
       }),
       events.on('boss:killed', () => {
         this.slowMo(0.35, 1.4);
@@ -452,20 +441,8 @@ export class CameraRig {
     _target.x += this.kickX;
     _target.z += this.kickZ;
 
-    // --- side panels -------------------------------------------------------
-    // The look point slides sideways rather than the projection shifting:
-    // TRAA owns the camera's view offset and resets it every frame. Reduced
-    // motion jumps straight there.
-    this.frameNow = this.noPunch
-      ? this.frameShift
-      : this.frameNow + (this.frameShift - this.frameNow) * (1 - Math.exp(-7 * rawDt));
-    if (Math.abs(this.frameNow) > 1e-4) {
-      const halfW = this.boom * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2) * this.camera.aspect;
-      const yawNow = this.opts.yaw + (this.orbitOn ? this.orbitYaw : 0);
-      const slide = -this.frameNow * 2 * halfW;
-      _target.x += Math.cos(yawNow) * slide;
-      _target.z -= Math.sin(yawNow) * slide;
-    }
+    // Side panels open over the world and never move the camera: the hero
+    // stays in the middle of the screen whatever is open.
 
     // --- boom + collision --------------------------------------------------
     const yaw = this.opts.yaw + (this.orbitOn ? this.orbitYaw : 0);

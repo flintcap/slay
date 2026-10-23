@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9275,
+ "count": 9278,
  "strings": [
   {
    "key": "Beating iron…",
@@ -34334,6 +34334,12 @@
    ]
   },
   {
+   "key": "Press E at it to go home and keep everything.",
+   "files": [
+    "data/trinkets.ts"
+   ]
+  },
+  {
    "key": "Right-click in a map: opens a portal to town.",
    "files": [
     "data/trinkets.ts"
@@ -34353,12 +34359,6 @@
   },
   {
    "key": "Step back through it in town to return; it closes behind you.",
-   "files": [
-    "data/trinkets.ts"
-   ]
-  },
-  {
-   "key": "Step through to go home and keep everything.",
    "files": [
     "data/trinkets.ts"
    ]
@@ -42557,7 +42557,7 @@
    ]
   },
   {
-   "key": "A portal to town opens. Step through to go home.",
+   "key": "A portal to town opens. Press E at it to go home.",
    "files": [
     "scenes/DungeonScene.ts"
    ]
@@ -42793,6 +42793,24 @@
   },
   {
    "key": "Your portal to town is already open.",
+   "files": [
+    "scenes/DungeonScene.ts"
+   ]
+  },
+  {
+   "key": "[E] Go on to the next area",
+   "files": [
+    "scenes/DungeonScene.ts"
+   ]
+  },
+  {
+   "key": "[E] Portal to town",
+   "files": [
+    "scenes/DungeonScene.ts"
+   ]
+  },
+  {
+   "key": "[E] Take the portal home",
    "files": [
     "scenes/DungeonScene.ts"
    ]
@@ -54945,7 +54963,7 @@
    ]
   },
   {
-   "key": "Beating the boss opens a portal home. Step through it to bank the tier.",
+   "key": "Beating the boss opens a portal home. Press E at it to bank the tier.",
    "files": [
     "ui/tips.ts"
    ]
