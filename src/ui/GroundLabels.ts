@@ -35,6 +35,15 @@ interface Label {
   /** Short-form size, measured once per contents change. */
   w: number;
   h: number;
+  /** The item and form its contents were last built for. */
+  paintedUid: string;
+  paintedFull: boolean;
+  /** What was last written to the page, so a still label writes nothing. */
+  shownX: number;
+  shownY: number;
+  shownLift: number;
+  shown: boolean;
+  detailed: boolean;
 }
 
 /** Rarities that get the full treatment: gilt caps and a light shaft. */
@@ -48,6 +57,13 @@ interface Placed {
   d2: number;
 }
 
+interface Box {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
 const GAP = 3;
 
 function hex(n: number): string {
@@ -57,7 +73,16 @@ function hex(n: number): string {
 export class GroundLabelLayer {
   private container: HTMLDivElement;
   private pool: Label[] = [];
+  /** The label each item wore last frame: it keeps it while it stays in view. */
+  private byUid = new Map<string, Label>();
   private tmp = new THREE.Vector3();
+  private placed: Placed[] = [];
+  private placedPool: Placed[] = [];
+  /** The entries behind `placed`, by index, for this frame. */
+  private pending: GroundEntry[] = [];
+  /** Whether `placed[i]` kept last frame's label. */
+  private kept: boolean[] = [];
+  private boxes: Box[] = [];
 
   /** Set by the scene each frame; the uid the cursor is currently over. */
   hovered: string | null = null;
@@ -104,7 +129,7 @@ export class GroundLabelLayer {
     root.append(beam, name, type, detail, tether);
     this.container.appendChild(root);
 
-    const label: Label = { root, name, type, detail, tether, uid: '', inUse: true, w: 0, h: 0 };
+    const label: Label = { root, name, type, detail, tether, uid: '', inUse: true, w: 0, h: 0, paintedUid: '', paintedFull: false, shownX: NaN, shownY: NaN, shownLift: 0, shown: true, detailed: false };
 
     root.addEventListener('pointerenter', () => {
       this.hovered = label.uid;
@@ -131,10 +156,10 @@ export class GroundLabelLayer {
 
   /** Rebuilds a label's contents only when the item under it changes. */
   private paint(l: Label, item: Item, detailed: boolean): void {
-    const key = `${item.uid}|${detailed ? 'full' : 'short'}`;
-    if (l.root.dataset.key === key) return;
-    const sameItem = l.root.dataset.key?.startsWith(`${item.uid}|`) ?? false;
-    l.root.dataset.key = key;
+    if (l.paintedUid === item.uid && l.paintedFull === detailed) return;
+    const sameItem = l.paintedUid === item.uid;
+    l.paintedUid = item.uid;
+    l.paintedFull = detailed;
 
     // Gems wear their own stone colour and runes a single shared orange, so a
     // ruby reads red on the floor and a rune is never lost in a pile of grey
@@ -171,12 +196,27 @@ export class GroundLabelLayer {
     l.detail.classList.toggle('is-full', detailed);
     l.root.classList.toggle('has-beam', BEAM.has(item.rarity));
 
-    // Measure the short form once per item: the declutter pass works in these
-    // sizes, and reading layout every frame for every label is not free.
-    if (!sameItem) {
-      l.root.style.display = '';
+    // The short form is measured once per item (`measure`): the declutter
+    // pass works in these sizes, and reading layout every frame is not free.
+    if (!sameItem) l.w = -1;
+  }
+
+  /**
+   * Sizes of labels just built, read together after every label is written:
+   * a read between writes lays the page out again, once per new label (a
+   * boss's pile of drops did that dozens of times in one frame).
+   */
+  private measure(placed: readonly Placed[]): void {
+    for (const p of placed) {
+      if (p.l.w >= 0 || p.l.shown) continue;
+      p.l.shown = true;
+      p.l.root.style.display = '';
+    }
+    for (const p of placed) {
+      const l = p.l;
+      if (l.w >= 0) continue;
       l.w = l.name.offsetWidth + 4;
-      l.h = l.name.offsetHeight + (tag ? l.type.offsetHeight + 2 : 0);
+      l.h = l.name.offsetHeight + (l.type.style.display === 'none' ? 0 : l.type.offsetHeight + 2);
     }
   }
 
@@ -191,8 +231,10 @@ export class GroundLabelLayer {
     for (const l of this.pool) l.inUse = false;
 
     camera.updateMatrixWorld();
-    const placed: Placed[] = [];
+    const placed = this.placed;
+    let n = 0;
 
+    const pending = this.pending;
     for (const e of entries) {
       const dx = e.pos.x - focus.x;
       const dz = e.pos.z - focus.z;
@@ -203,34 +245,60 @@ export class GroundLabelLayer {
       const proj = head.project(camera);
       if (proj.z > 1) continue;
       if (proj.x < -1.1 || proj.x > 1.1 || proj.y < -1.1 || proj.y > 1.1) continue;
-
-      const l = this.acquire();
-      l.uid = e.item.uid;
+      const p = (this.placedPool[n] ??= { l: this.pool[0]!, x: 0, y: 0, rank: 0, d2: 0 });
+      placed[n] = p;
+      p.x = (proj.x * 0.5 + 0.5) * width;
+      p.y = (-proj.y * 0.5 + 0.5) * height;
+      p.rank = RARITY_ORDER.indexOf(e.item.rarity);
+      p.d2 = d2;
+      // An item keeps the label it wore last frame: one handed to another
+      // item is rebuilt and measured again, which forces a page layout.
+      const own = this.byUid.get(e.item.uid);
+      const keep = own && own.uid === e.item.uid ? own : null;
+      if (keep) {
+        keep.inUse = true;
+        p.l = keep;
+      }
+      this.kept[n] = keep !== null;
+      pending[n++] = e;
+    }
+    // New arrivals take whatever label nobody in view is wearing.
+    for (let i = 0; i < n; i++) {
+      const e = pending[i]!;
+      const p = placed[i]!;
+      if (!this.kept[i]) {
+        const l = this.acquire();
+        this.byUid.delete(l.uid);
+        l.uid = e.item.uid;
+        this.byUid.set(l.uid, l);
+        p.l = l;
+      }
+      const l = p.l;
       const detailed = shiftHeld && this.hovered === e.item.uid;
       this.paint(l, e.item, detailed);
-      l.root.classList.toggle('is-detailed', detailed);
-
-      placed.push({
-        l,
-        x: (proj.x * 0.5 + 0.5) * width,
-        y: (-proj.y * 0.5 + 0.5) * height,
-        rank: RARITY_ORDER.indexOf(e.item.rarity),
-        d2,
-      });
+      if (l.detailed !== detailed) {
+        l.detailed = detailed;
+        l.root.classList.toggle('is-detailed', detailed);
+      }
     }
+    placed.length = n;
+    pending.length = 0;
+    this.measure(placed);
 
     // Declutter: best rarity first, then nearest, keep their spot; anything
     // that would overlap a placed label is lifted above it. A handful of
     // labels at most, so the pairwise pass is cheap.
     placed.sort((a, b) => b.rank - a.rank || a.d2 - b.d2);
-    const boxes: Array<{ x0: number; x1: number; y0: number; y1: number }> = [];
+    const boxes = this.boxes;
+    let nb = 0;
     for (const p of placed) {
       const half = p.l.w / 2;
       let bottom = p.y;
       for (let guard = 0; guard < 12; guard++) {
         const top = bottom - p.l.h;
         let hit: { y0: number } | null = null;
-        for (const b of boxes) {
+        for (let k = 0; k < nb; k++) {
+          const b = boxes[k]!;
           if (p.x + half <= b.x0 || p.x - half >= b.x1) continue;
           if (bottom <= b.y0 || top >= b.y1) continue;
           if (!hit || b.y0 < hit.y0) hit = b;
@@ -238,21 +306,38 @@ export class GroundLabelLayer {
         if (!hit) break;
         bottom = hit.y0 - GAP;
       }
-      boxes.push({ x0: p.x - half, x1: p.x + half, y0: bottom - p.l.h, y1: bottom });
-      const lift = p.y - bottom;
+      const b = (boxes[nb++] ??= { x0: 0, x1: 0, y0: 0, y1: 0 });
+      b.x0 = p.x - half;
+      b.x1 = p.x + half;
+      b.y0 = bottom - p.l.h;
+      b.y1 = bottom;
+      const lift = Math.round(p.y - bottom);
       const l = p.l;
-      l.root.style.transform = `translate(-50%,-100%) translate(${p.x.toFixed(1)}px, ${bottom.toFixed(1)}px)`;
-      l.root.style.display = '';
-      if (lift > 2) {
-        l.tether.style.height = `${lift.toFixed(0)}px`;
-        l.root.classList.add('is-lifted');
-      } else if (l.root.classList.contains('is-lifted')) {
-        l.root.classList.remove('is-lifted');
+      // Written only when it moved: a hundred labels on a still screen
+      // otherwise restyle the page every frame.
+      const x = Math.round(p.x * 2) / 2;
+      const y = Math.round(bottom * 2) / 2;
+      if (x !== l.shownX || y !== l.shownY) {
+        l.shownX = x;
+        l.shownY = y;
+        l.root.style.transform = `translate(-50%,-100%) translate(${x}px, ${y}px)`;
+      }
+      if (!l.shown) {
+        l.shown = true;
+        l.root.style.display = '';
+      }
+      if (lift !== l.shownLift) {
+        if (lift > 2) {
+          l.tether.style.height = `${lift}px`;
+          if (l.shownLift <= 2) l.root.classList.add('is-lifted');
+        } else if (l.shownLift > 2) l.root.classList.remove('is-lifted');
+        l.shownLift = lift;
       }
     }
 
     for (const l of this.pool) {
-      if (!l.inUse) {
+      if (!l.inUse && l.shown) {
+        l.shown = false;
         l.root.style.display = 'none';
         l.root.classList.remove('is-hover');
       }

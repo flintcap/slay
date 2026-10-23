@@ -261,7 +261,8 @@
   {
    "key": "Something went wrong getting there. You are safe.",
    "files": [
-    "core/Engine.ts"
+    "core/Engine.ts",
+    "scenes/DungeonScene.ts"
    ]
   },
   {

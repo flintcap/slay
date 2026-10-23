@@ -251,6 +251,36 @@ interface GroundLoot {
   bornAt: number;
   /** Hidden by the loot filter. Still there: Shift shows it. */
   hidden?: boolean;
+  /** Parts that move on their own (spin, bob, orbit), found once when laid. */
+  movers?: THREE.Object3D[];
+  /** Landed and its parts' matrices frozen: it costs nothing while it lies there. */
+  still?: boolean;
+}
+
+interface DropMotion {
+  spin?: number;
+  bobAmplitude?: number;
+  bobSpeed?: number;
+  orbit?: { radius: number; phase: number; y: number };
+}
+
+/** The parts of a drop that animate themselves. */
+function dropMovers(root: THREE.Object3D): THREE.Object3D[] {
+  const out: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    const d = o.userData as DropMotion;
+    if (d.spin || d.bobAmplitude || d.orbit) out.push(o);
+  });
+  return out;
+}
+
+/** A landed drop's parts stop rebuilding their matrices every frame. */
+function freezeDrop(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    if (o === root) return;
+    o.updateMatrix();
+    o.matrixAutoUpdate = false;
+  });
 }
 
 /**
@@ -2473,20 +2503,23 @@ export class DungeonScene extends GameScene {
         l.root.position.y = 0.28;
       }
       // Drop models declare their own motion rather than animating themselves.
-      l.root.traverse((o) => {
-        const d = o.userData as {
-          spin?: number;
-          bobAmplitude?: number;
-          bobSpeed?: number;
-          orbit?: { radius: number; phase: number; y: number };
-        };
-        if (d.spin) o.rotation.y += dt * d.spin;
-        if (d.bobAmplitude) o.position.y = Math.sin(elapsed * (d.bobSpeed ?? 1.6) + l.pos.x) * d.bobAmplitude;
-        if (d.orbit) {
-          const a = elapsed * 0.9 + d.orbit.phase;
-          o.position.set(Math.cos(a) * d.orbit.radius, d.orbit.y, Math.sin(a) * d.orbit.radius);
+      const movers = (l.movers ??= dropMovers(l.root));
+      if (movers.length > 0 && l.root.visible) {
+        for (const o of movers) {
+          const d = o.userData as DropMotion;
+          if (d.spin) o.rotation.y += dt * d.spin;
+          if (d.bobAmplitude) o.position.y = Math.sin(elapsed * (d.bobSpeed ?? 1.6) + l.pos.x) * d.bobAmplitude;
+          if (d.orbit) {
+            const a = elapsed * 0.9 + d.orbit.phase;
+            o.position.set(Math.cos(a) * d.orbit.radius, d.orbit.y, Math.sin(a) * d.orbit.radius);
+          }
         }
-      });
+      } else if (!l.still && movers.length === 0 && age >= 0.45 && !this.lootFx.owns(l.root)) {
+        // Lying still for good: only the root's own matrix is kept up (a
+        // pickup flies the root, and its parts ride along).
+        l.still = true;
+        freezeDrop(l.root);
+      }
 
       // Gold is collected by walking over it; items wait to be clicked.
       if (l.gold > 0 && l.pos.distanceTo(this.player.position) < pickupRadius + 0.4) {

@@ -838,6 +838,20 @@ Update this file and push it after every finished step.
   spread over those frames. Densest knot at depth 12: 70 -> 60 poses per
   frame, GC 106 -> 46 ms over 90 steps. check-perf depth 12: updateMs 7.5
   -> 5.8 (inside the 6 ms budget), alloc KB per step 458 -> 391.
+- #213 Ceiling light shafts read as floating slabs (owner, hive tier 14).
+  The camera looks down past the dissolved ceiling, so the cone's bright
+  top end showed as a hard lid in mid-air. `buildShafts` now fades each
+  cone to nothing at both ends (6 height rings), fades its silhouette edges
+  by how square they face the camera, and lays a soft pool of the same
+  light on the floor where it lands. `mergeSimple` keeps normals.
+- #214 Ground loot cost (owner asked). At depth 12 with 150 drops: update
+  0.9 ms with none or all hidden by the filter, 2.8 ms shown; the labels
+  were nearly all of it. `GroundLabelLayer` keeps each item on its own
+  label, measures new labels after all writes (no forced layout per
+  label), and writes transform, class and display only when they change:
+  2.8 -> 1.8 ms (p90 6.7 -> 3.6). Drops merge to one mesh per material
+  (`compactModel`), still drops stop updating their matrices once landed,
+  and `updateLoot` walks only the spinning or bobbing parts.
 
 ## Phase 0d log
 

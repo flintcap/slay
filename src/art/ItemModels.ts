@@ -17,6 +17,7 @@
  */
 
 import * as THREE from 'three';
+import { compactModel } from './ModelBudget';
 import { RARITY_COLOR, type Item, type ItemRarity, type ItemVisual, type Rng } from '../types';
 import { buildItem, type ItemFamily } from './items/Model';
 import { glowShell } from './items/Aura';
@@ -117,7 +118,9 @@ function dropTemplate(visual: ItemVisual, rng: Rng, rarity: ItemRarity, item: It
   const key = JSON.stringify([visual, rarity, item.baseId, item.uniqueId ?? '', item.setId ?? '']);
   let t = dropTemplates.get(key);
   if (t) return t;
-  t = buildItemModel(visual, rng, rarity, item);
+  // Merged to one mesh per material: a drop lying in the world drew one call
+  // per part (blade, guard, grip, rivets), ten or more for one sword.
+  t = compactModel(buildItemModel(visual, rng, rarity, item));
   t.traverse((o) => {
     const mesh = o as THREE.Mesh;
     const g = mesh.geometry;

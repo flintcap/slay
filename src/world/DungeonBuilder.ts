@@ -19,7 +19,7 @@
  */
 
 import * as THREE from 'three/webgpu';
-import { attribute, distance, materialOpacity, positionWorld, smoothstep, texture, uniform, uv, vec4 } from 'three/tsl';
+import { attribute, distance, materialOpacity, normalView, positionViewDirection, positionWorld, smoothstep, texture, uniform, uv, vec4 } from 'three/tsl';
 import { andMask, asBasic, matColor, pixelDither, setNodeTextures } from '../core/Tsl';
 import type { BiomeDef, DungeonLevel, PropPlacement, Rng, SolidMap } from '../types';
 import { Noise, clamp, lerp } from '../art/Noise';
@@ -2758,8 +2758,9 @@ export class DungeonMesh {
 
   /**
    * Cheap god rays: additive cones with a vertex-colour gradient that fades to
-   * black (= invisible under additive blending) at the floor. No depth write, no
-   * sorting problems, one draw call for the whole level.
+   * black (= invisible under additive blending) at both ends, over a soft pool
+   * where each lands. No depth write, no sorting problems, one draw call for
+   * the whole level.
    */
   private buildShafts(rng: Rng): void {
     const art = this.art;
@@ -2787,26 +2788,45 @@ export class DungeonMesh {
       const h = top;
       const rTop = rng.range(0.5, 1.1);
       const rBot = rTop + rng.range(1.4, 3.0);
-      const geo = new THREE.CylinderGeometry(rTop, rBot, h, 9, 1, true);
+      // Rings up the height so the fade below is a curve, not one straight ramp.
+      const geo = new THREE.CylinderGeometry(rTop, rBot, h, 12, 6, true);
       const posAttr = geo.getAttribute('position');
       const colours = new Float32Array(posAttr.count * 3);
       for (let i = 0; i < posAttr.count; i++) {
         const yy = posAttr.getY(i);
-        // +h/2 at the top of the cylinder, -h/2 at the floor.
+        // 0 at the floor, 1 at the ceiling.
         const t = clamp((yy + h / 2) / h, 0, 1);
-        // The camera looks down on the top of the cone, so the top is what
-        // fills the screen: ease it off where the shaft leaves the ceiling.
-        const a = Math.pow(t, 2.1) * 0.5 * (1 - 0.6 * clamp((t - 0.7) / 0.3, 0, 1));
+        // The camera looks down from above the ceiling line, which is drawn
+        // away around the hero: a shaft bright at the top hung there as a
+        // lit slab in mid-air (owner: "floating"). It now comes out of the
+        // dark, strongest a metre or two up, and lands in a pool of light.
+        const a = 0.42 * smoothstepN(0, 0.12, t) * (1 - smoothstepN(0.4, 0.92, t));
         colours[i * 3] = colour.r * a;
         colours[i * 3 + 1] = colour.g * a;
         colours[i * 3 + 2] = colour.b * a;
       }
       geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-      geo.deleteAttribute('normal');
       geo.deleteAttribute('uv');
       const base = this.floorHeight(c.x, c.y);
       geo.translate(this.tileX(c.x), base + h / 2, this.tileZ(c.y));
       parts.push(geo);
+
+      // Where it lands: a soft pool on the floor, brightest in the middle.
+      const pool = new THREE.CircleGeometry(rBot * 0.75, 20);
+      pool.rotateX(-Math.PI / 2);
+      const pc = pool.getAttribute('position');
+      const pcol = new Float32Array(pc.count * 3);
+      for (let i = 0; i < pc.count; i++) {
+        const r = Math.hypot(pc.getX(i), pc.getZ(i)) / (rBot * 0.75);
+        const a = 0.3 * (1 - r);
+        pcol[i * 3] = colour.r * a;
+        pcol[i * 3 + 1] = colour.g * a;
+        pcol[i * 3 + 2] = colour.b * a;
+      }
+      pool.setAttribute('color', new THREE.BufferAttribute(pcol, 3));
+      pool.deleteAttribute('uv');
+      pool.translate(this.tileX(c.x), base + 0.04, this.tileZ(c.y));
+      parts.push(pool);
     }
 
     const merged = mergeSimple(parts);
@@ -2825,8 +2845,13 @@ export class DungeonMesh {
       side: THREE.FrontSide,
       toneMapped: false,
     });
-    // Shafts thin out around the hero so a beam never sits over the fight.
-    node.opacityNode = materialOpacity.mul(smoothstep(2.5, 6.5, distance(positionWorld.xz, uniform(this.heroXZ))).mul(0.8).add(0.2));
+    // Shafts thin out around the hero so a beam never sits over the fight,
+    // and fade where the cone turns edge-on, so its outline is soft light
+    // rather than the hard edge of a solid.
+    const facing = normalView.dot(positionViewDirection).abs();
+    node.opacityNode = materialOpacity
+      .mul(smoothstep(2.5, 6.5, distance(positionWorld.xz, uniform(this.heroXZ))).mul(0.8).add(0.2))
+      .mul(smoothstep(0.0, 0.55, facing));
     const mat = asBasic(node);
     this.ownedMat.push(mat);
     this.shaftMat = mat;
@@ -3280,9 +3305,15 @@ const DX4 = [1, -1, 0, 0];
 const DY4 = [0, 0, 1, -1];
 
 /**
- * Position+colour-only merge for the light shafts. Local rather than shared
- * because these geometries deliberately carry no normals or uvs.
+ * Position, colour and normal merge for the light shafts. Local rather than
+ * shared because these geometries deliberately carry no uvs.
  */
+/** Smoothstep on plain numbers (the TSL one builds shader nodes). */
+function smoothstepN(e0: number, e1: number, x: number): number {
+  const t = clamp((x - e0) / (e1 - e0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
 function mergeSimple(list: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
   if (list.length === 0) return null;
   let vCount = 0;
@@ -3293,13 +3324,20 @@ function mergeSimple(list: THREE.BufferGeometry[]): THREE.BufferGeometry | null 
   }
   const pos = new Float32Array(vCount * 3);
   const col = new Float32Array(vCount * 3);
+  const nor = new Float32Array(vCount * 3);
   const idx = vCount > 65535 ? new Uint32Array(iCount) : new Uint16Array(iCount);
   let vo = 0;
   let io = 0;
   for (const g of list) {
     const p = g.getAttribute('position');
     const c = g.getAttribute('color');
+    const n = g.getAttribute('normal');
     for (let i = 0; i < p.count; i++) {
+      if (n) {
+        nor[(vo + i) * 3] = n.getX(i);
+        nor[(vo + i) * 3 + 1] = n.getY(i);
+        nor[(vo + i) * 3 + 2] = n.getZ(i);
+      }
       pos[(vo + i) * 3] = p.getX(i);
       pos[(vo + i) * 3 + 1] = p.getY(i);
       pos[(vo + i) * 3 + 2] = p.getZ(i);
@@ -3322,6 +3360,7 @@ function mergeSimple(list: THREE.BufferGeometry[]): THREE.BufferGeometry | null 
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   out.setIndex(new THREE.BufferAttribute(idx, 1));
   out.computeBoundingSphere();
   return out;
