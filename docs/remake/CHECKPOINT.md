@@ -894,6 +894,15 @@ Update this file and push it after every finished step.
   elites, rares and bosses keep every mark. The tactics stagger case now
   spawns champions, since ordinary brutes leave nothing to measure.
 
+- #218 Ground warnings for bosses only (owner, second thought on #217:
+  champions, elites and rares lose theirs too). `warnsOnGround` is now
+  `isBoss`; every affix power in `Enemy.tickAffixes` and the other affix
+  hooks goes through `tell()`, so they land unmarked. Mini-boss mechanic
+  marks (MiniBoss.ts) are left as they were. Tests: the tactics stagger case
+  times big windups from `notifyAbility` instead of decals; the elite deep
+  powers now require no mark, and their dodge cues read the affix cooldown
+  (or the lancer's root) instead of a decal.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

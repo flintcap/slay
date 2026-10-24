@@ -58,8 +58,10 @@ import {
   spawnHazard,
   summon,
   tickAbilityWorld,
+  tell,
   typeColor,
   warnsOnGround,
+  NO_TELL,
   type AbilityDef,
   type AbilityInstance,
   type BuffMods,
@@ -763,9 +765,9 @@ export class Enemy implements Combatant {
     const speed = this.actionSpeed();
     const windup = this.windupFor(def, speed);
 
-    // An elite's or boss's telegraph goes down the instant the windup starts, so
-    // its dangerous moves are readable and dodgeable. Ordinary monsters lay no
-    // ground mark (`warnsOnGround`); their wind-up pose and sound are the tell.
+    // A boss's telegraph goes down the instant the windup starts, so its
+    // dangerous moves are readable and dodgeable. Other monsters lay no ground
+    // mark (`warnsOnGround`); their wind-up pose and sound are the tell.
     if (def.telegraph && windup > 0.12 && warnsOnGround(this)) {
       const t = def.telegraph;
       const size = t.size * (t.atSelf ? (this.reach ?? this.sizeScale) : 1);
@@ -1678,7 +1680,7 @@ export class Enemy implements Combatant {
         const r = a.params?.radius ?? 1.3;
         const delay = a.params?.delay ?? 0.8;
         ctx.fx.burst('chips.stone', this.root.position.x, this.centerY, this.root.position.z, { count: 10, color: a.color });
-        const tel = ctx.decals.telegraph('circle', tx, tz, r, 0, delay, a.color);
+        const tel = tell(this, ctx, 'circle', tx, tz, r, 0, delay, a.color);
         const self = this;
         after(delay, (c) => {
           tel.cancel();
@@ -1802,7 +1804,7 @@ export class Enemy implements Combatant {
     this.funeralAt = ctx.elapsed + (params.cooldown ?? 1.2);
     const r = params.radius ?? 3;
     const delay = params.delay ?? 1.0;
-    const tel = ctx.decals.telegraph('circle', x, z, r, 0, delay, a.color);
+    const tel = tell(this, ctx, 'circle', x, z, r, 0, delay, a.color);
     const self = this;
     after(delay, (c) => {
       tel.cancel();
@@ -1823,7 +1825,7 @@ export class Enemy implements Combatant {
       switch (a.behavior) {
         case 'unstable': {
           const r = a.params?.radius ?? 4.5;
-          const tel = ctx.decals.telegraph('circle', p.x, p.z, r, 0, a.params?.delay ?? 0.9, a.color);
+          const tel = tell(this, ctx, 'circle', p.x, p.z, r, 0, a.params?.delay ?? 0.9, a.color);
           const self = this;
           after(a.params?.delay ?? 0.9, (c) => {
             tel.cancel();
@@ -2108,7 +2110,7 @@ export class Enemy implements Combatant {
           this.affixTimers[i] = params.interval ?? 4.5;
           const tx = ctx.playerPos.x;
           const tz = ctx.playerPos.z;
-          const tel = ctx.decals.telegraph('circle', tx, tz, params.radius ?? 2.6, 0, 0.9, a.color);
+          const tel = tell(this, ctx, 'circle', tx, tz, params.radius ?? 2.6, 0, 0.9, a.color);
           const self = this;
           after(0.9, (c) => {
             tel.cancel();
@@ -2143,7 +2145,7 @@ export class Enemy implements Combatant {
           this.affixTimers[i] = params.interval ?? 8;
           const tx = ctx.playerPos.x;
           const tz = ctx.playerPos.z;
-          const tel = ctx.decals.telegraph('ring', tx, tz, 1.8, 0, 0.8, a.color);
+          const tel = tell(this, ctx, 'ring', tx, tz, 1.8, 0, 0.8, a.color);
           const self = this;
           after(0.8, (c) => {
             tel.cancel();
@@ -2256,7 +2258,7 @@ export class Enemy implements Combatant {
           const tz = ctx.playerPos.z;
           const r = params.radius ?? 2.2;
           const delay = params.delay ?? 0.9;
-          const tel = ctx.decals.telegraph('circle', tx, tz, r, 0, delay, a.color);
+          const tel = tell(this, ctx, 'circle', tx, tz, r, 0, delay, a.color);
           const self = this;
           after(delay, (c) => {
             tel.cancel();
@@ -2310,7 +2312,7 @@ export class Enemy implements Combatant {
           const tz = p.z + Math.cos(ang) * len;
           this.facing = ang;
           this.rootTimer = windup;
-          const tel = ctx.decals.telegraph('line', p.x, p.z, len, ang, windup, a.color);
+          const tel = tell(this, ctx, 'line', p.x, p.z, len, ang, windup, a.color);
           const self = this;
           after(windup, (c) => {
             tel.cancel();
@@ -2347,7 +2349,7 @@ export class Enemy implements Combatant {
           // It plants its feet and rings: the wave covers the band from the
           // inner edge out, so the safe places are against it or well clear.
           this.rootTimer = Math.max(this.rootTimer, windup);
-          const tel = ctx.decals.telegraphEx('ring', x, z, outer, 0, windup, a.color, (1 - inner / outer) / 2);
+          const tel = warnsOnGround(this) ? ctx.decals.telegraphEx('ring', x, z, outer, 0, windup, a.color, (1 - inner / outer) / 2) : NO_TELL;
           const self = this;
           after(windup, (c) => {
             tel.cancel();
@@ -2402,7 +2404,7 @@ export class Enemy implements Combatant {
           const tz = z + Math.cos(ang) * len;
           this.facing = ang;
           this.rootTimer = Math.max(this.rootTimer, windup);
-          const tel = ctx.decals.telegraph('line', x, z, len, ang, windup, a.color);
+          const tel = tell(this, ctx, 'line', x, z, len, ang, windup, a.color);
           const self = this;
           after(windup, (c) => {
             tel.cancel();
@@ -2431,7 +2433,7 @@ export class Enemy implements Combatant {
           this.facing = mid;
           this.rootTimer = Math.max(this.rootTimer, windup);
           const beams = [mid - spread, mid, mid + spread];
-          const tels = beams.map((ang) => ctx.decals.telegraph('line', x, z, range, ang, windup, a.color));
+          const tels = beams.map((ang) => tell(this, ctx, 'line', x, z, range, ang, windup, a.color));
           const self = this;
           after(windup, (c) => {
             for (const t of tels) t.cancel();
@@ -2458,7 +2460,7 @@ export class Enemy implements Combatant {
           const tx = ctx.playerPos.x;
           const tz = ctx.playerPos.z;
           // The ring itself is the warning: where the nails come up.
-          const tel = ctx.decals.telegraph('ring', tx, tz, r, 0, windup, a.color);
+          const tel = tell(this, ctx, 'ring', tx, tz, r, 0, windup, a.color);
           const self = this;
           after(windup, (c) => {
             tel.cancel();
@@ -2492,7 +2494,7 @@ export class Enemy implements Combatant {
             const ang = turn + (k / ring) * Math.PI * 2;
             spots.push({ x: tx + Math.sin(ang) * spread, z: tz + Math.cos(ang) * spread });
           }
-          const tels = spots.map((q) => ctx.decals.telegraph('circle', q.x, q.z, r, 0, delay, a.color));
+          const tels = spots.map((q) => tell(this, ctx, 'circle', q.x, q.z, r, 0, delay, a.color));
           const self = this;
           after(delay, (c) => {
             for (const t of tels) t.cancel();
@@ -2517,7 +2519,7 @@ export class Enemy implements Combatant {
           const x = p.x;
           const z = p.z;
           this.rootTimer = Math.max(this.rootTimer, windup);
-          const tel = ctx.decals.telegraph('circle', x, z, r, 0, windup, a.color);
+          const tel = tell(this, ctx, 'circle', x, z, r, 0, windup, a.color);
           const self = this;
           after(windup, (c) => {
             tel.cancel();
@@ -2551,7 +2553,7 @@ export class Enemy implements Combatant {
           const tz = hero.z;
           const r = params.radius ?? 1.7;
           const delay = params.delay ?? 0.8;
-          const tel = ctx.decals.telegraph('circle', tx, tz, r, 0, delay, a.color);
+          const tel = tell(this, ctx, 'circle', tx, tz, r, 0, delay, a.color);
           const self = this;
           after(delay, (c) => {
             tel.cancel();

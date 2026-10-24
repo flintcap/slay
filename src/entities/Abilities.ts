@@ -125,8 +125,6 @@ export interface Combatant {
   readonly root: THREE.Group;
   readonly displayName: string;
   readonly isBoss: boolean;
-  /** 'normal' for an ordinary monster; elites and bosses have a higher rank. */
-  readonly rank?: string;
   readonly family: string;
   life: number;
   maxLife: number;
@@ -347,15 +345,16 @@ export function inCone(
 }
 
 /**
- * Only elites and bosses lay a warning on the ground before they strike. An
- * ordinary monster's spells and slams land with no marker (owner's call: the
- * marks cluttered big fights); its wind-up pose and sound still give it away.
+ * Only bosses lay a warning on the ground before they strike. Normal monsters,
+ * champions, elites and rares land their spells, slams and affix powers with
+ * no marker (owner's call: the marks cluttered fights); the wind-up pose and
+ * sound still give them away.
  */
-export function warnsOnGround(self: Pick<Combatant, 'isBoss' | 'rank'>): boolean {
-  return self.isBoss || (self.rank !== undefined && self.rank !== 'normal');
+export function warnsOnGround(self: Pick<Combatant, 'isBoss'>): boolean {
+  return self.isBoss;
 }
 
-const NO_TELL: { cancel(): void } = { cancel(): void {} };
+export const NO_TELL: { cancel(): void } = { cancel(): void {} };
 
 /** A ground warning from `self`, or a handle that does nothing when it lays none. */
 export function tell(

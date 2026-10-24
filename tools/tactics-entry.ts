@@ -13,7 +13,7 @@ import { Enemy, resetEnemyRuntime } from '../src/entities/Enemy';
 import { MONSTERS } from '../src/data/monsters';
 import { getAffix } from '../src/data/monsterAffixes';
 import { Random } from '../src/core/RNG';
-import type { CombatContext } from '../src/entities/Abilities';
+import type { AbilityDef, CombatContext } from '../src/entities/Abilities';
 import type { MonsterDef, MonsterRank, MonsterRole } from '../src/types';
 
 const DT = 1 / 30;
@@ -286,14 +286,26 @@ const dist = (e: Enemy, h: THREE.Vector3): number =>
 }
 
 // --- big telegraphs never land on top of each other ------------------------------
-// Champions, because only elites and bosses lay a ground mark to measure.
+// Only bosses lay a ground mark now, so this times each big windup itself: the
+// moment it would land, from the start of the windup.
 {
   const a = arena(11);
   const brutes = ofRole('brute', 8);
   const ring = brutes.map((d, i) => {
     const ang = (i / brutes.length) * Math.PI * 2;
-    return a.spawn(d, Math.sin(ang) * 2.5, Math.cos(ang) * 2.5, 'champion');
+    return a.spawn(d, Math.sin(ang) * 2.5, Math.cos(ang) * 2.5);
   });
+  for (const e of ring) {
+    const own = e.notifyAbility.bind(e);
+    const timed = e as unknown as { windupFor(def: AbilityDef, speed: number): number; actionSpeed(): number };
+    e.notifyAbility = (def, phase) => {
+      if (phase === 'windup' && def.telegraph) {
+        const windup = timed.windupFor(def, timed.actionSpeed());
+        if (windup >= 0.5) a.landings.push({ t: a.ctx.elapsed + windup, by: e.id });
+      }
+      own(def, phase);
+    };
+  }
   ring[0]!.ai!.wake(a.ctx);
   a.step(20);
   const t = a.landings.slice().sort((x, y) => x.t - y.t);
