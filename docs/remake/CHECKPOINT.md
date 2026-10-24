@@ -933,6 +933,13 @@ Update this file and push it after every finished step.
   drop, dropcost, items, loot, economy, uniques, legend, charms, setpower,
   starter, craft pass.
 
+- #222 Lucky drops (owner: "occasionally throw in higher tier items"). Every
+  dropped item (not shop stock) has an 8% chance (`LUCKY_CHANCE` in Loot.ts)
+  to roll 4-12 item levels above its tier: base, affix tiers, sockets and the
+  unique/set pool all read the raised level, and the item shows it. drops,
+  drop, dropcost, items, loot, economy, uniques, legend, charms, setpower,
+  starter, craft, save, story, equip, socket, jewelry pass.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

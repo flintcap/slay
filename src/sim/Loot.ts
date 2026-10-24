@@ -1160,9 +1160,18 @@ export interface ItemRoll {
   source?: DropSource;
 }
 
+/**
+ * Now and then a drop comes from deeper than the tier it fell in (owner: throw
+ * in higher tier items now and then): this chance, LUCKY_LEVELS item levels up.
+ * Shops never get it.
+ */
+export const LUCKY_CHANCE = 0.08;
+export const LUCKY_LEVELS: readonly [number, number] = [4, 12];
+
 function rollItemAt(ilvl: number, rng: Rng, opts: ItemRoll): Item {
   const hero = opts.classId ?? lootHero.classId;
-  const lvl = Math.max(1, Math.round(ilvl));
+  const lucky = opts.source !== 'vendor' && rng.chance(LUCKY_CHANCE);
+  const lvl = Math.max(1, Math.round(ilvl)) + (lucky ? rng.int(LUCKY_LEVELS[0], LUCKY_LEVELS[1]) : 0);
   const magicFind = opts.magicFind ?? 0;
   const base = pickBase(lvl, rng, opts.category, opts.classId);
   let rarity = opts.forceRarity ?? rollRarity(lvl, base.levelReq, magicFind, opts.source ?? 'normal', rng);
