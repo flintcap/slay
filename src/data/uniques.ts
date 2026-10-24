@@ -770,14 +770,15 @@ export function uniquePool(rarity: UniqueDef['rarity'], ilvl: number): UniqueDef
 
 /**
  * Drop weight. Older uniques stay in the pool forever (you can still find
- * Rixot's Keen at depth 90 — it is just worthless), but they fade hard so the
- * deep table is dominated by things worth picking up.
+ * Rixot's Keen at depth 90 — it is just worthless), but they fade fast once
+ * they are 8 levels behind, so each tier drops mostly its own uniques (owner:
+ * tier 18 still dropped the tier 5 ones).
  */
 export function uniqueDropWeight(def: UniqueDef, ilvl: number): number {
   if (def.ilvl > ilvl + 4) return 0;
   const over = ilvl - def.ilvl;
-  if (over <= 20) return def.weight;
-  return Math.max(def.weight * 0.05, def.weight * (1 - (over - 20) * 0.035));
+  if (over <= 8) return def.weight;
+  return Math.max(def.weight * 0.05, def.weight * (1 - (over - 8) * 0.08));
 }
 
 export const UNIQUE_COUNT = UNIQUES.length;

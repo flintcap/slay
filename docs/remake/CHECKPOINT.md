@@ -919,6 +919,20 @@ Update this file and push it after every finished step.
   bossfights, elites, aggro, hits, summon(s), monster-anim, roomrules, walk,
   lag pass; curve fails 7 of 35, the same cells as before this change.
 
+- #221 Deep tiers still dropped low items (owner: "tier 18 drops the same
+  items as tier 5"). Item level did rise (tier 18 = ilvl 21), but old bases
+  kept full drop weight for 28 levels and old uniques/sets for 20-22, so at
+  tier 18 the average base was level 9 and half the drops were level 9 or
+  less. Now a base, unique or set piece has full weight only while it is
+  within 6 (bases) or 8 (uniques, sets) levels of the drop, then fades 10% /
+  8% a level to a small floor. Bases fade inside their own category, so the
+  mix of weapons, armour and jewellery is unchanged. Tier 18: average base
+  9.3 -> 14.5, unique 13.0 -> 15.4; tier 40: base 23.9 -> 36.9, unique 30.3 ->
+  39.0. Side effect: old bases rolled magic/rare more easily, so blues and
+  rares are a little rarer deep down (tier 40 rares 1.38% -> 1.26%). drops,
+  drop, dropcost, items, loot, economy, uniques, legend, charms, setpower,
+  starter, craft pass.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

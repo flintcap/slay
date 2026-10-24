@@ -522,16 +522,16 @@ export function setPool(ilvl: number): SetPieceDef[] {
 }
 
 /**
- * Drop weight for one piece. Like uniques, old sets fade rather than vanish so
- * that the deep drop table stays dominated by things worth wearing.
+ * Drop weight for one piece. Like uniques, old sets fade (fast, once 8 levels
+ * behind) rather than vanish, so each tier drops mostly its own sets.
  */
 export function setPieceDropWeight(piece: SetPieceDef, ilvl: number): number {
   if (piece.ilvl > ilvl + 4) return 0;
   const parent = SET_BY_ID.get(piece.setId);
   const base = piece.weight * ((parent?.weight ?? 100) / 100);
   const over = ilvl - piece.ilvl;
-  if (over <= 22) return base;
-  return Math.max(base * 0.05, base * (1 - (over - 22) * 0.035));
+  if (over <= 8) return base;
+  return Math.max(base * 0.05, base * (1 - (over - 8) * 0.08));
 }
 
 export const SET_COUNT = SETS.length;

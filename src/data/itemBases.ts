@@ -1475,17 +1475,58 @@ export function classAffinity(base: ItemBase, classId?: CharClassId): number {
 }
 
 /**
- * Drop weight for a base at a given item level. Bases become available a few
- * levels early, peak, then slowly fade so the table keeps churning instead of
- * hard-swapping between tiers.
+ * How much of the drop table a base's whole category gets at an item level.
+ * Bases come in a few levels early and stay in reach for ~28 levels, so the
+ * mix of swords, rings and boots stays the same at every depth.
  */
-export function baseDropWeight(base: ItemBase, ilvl: number): number {
+function baseReach(base: ItemBase, ilvl: number): number {
   if (base.levelReq > ilvl + 2) return 0;
   const over = ilvl - base.levelReq;
   if (over < 0) return 0.25;
-  // Full weight for ~28 levels, then decay — never quite to zero.
   if (over <= 28) return 1;
   return Math.max(0.06, 1 - (over - 28) * 0.028);
+}
+
+/**
+ * How fresh a base is at an item level: full for the newest few, fading fast
+ * below that (owner: tier 18 still dropped the same low items as tier 5).
+ * Never quite zero, so an old base can still turn up now and then.
+ */
+function baseFreshness(base: ItemBase, ilvl: number): number {
+  if (base.levelReq > ilvl + 2) return 0;
+  const over = ilvl - base.levelReq;
+  if (over < 0) return 0.25;
+  if (over <= 6) return 1;
+  return Math.max(0.04, 1 - (over - 6) * 0.1);
+}
+
+/** Per category and item level: [total reach, total freshness]. */
+const CATEGORY_SUMS = new Map<string, [number, number]>();
+function categorySums(category: ItemCategory, ilvl: number): [number, number] {
+  const key = `${category}|${ilvl}`;
+  let sums = CATEGORY_SUMS.get(key);
+  if (!sums) {
+    sums = [0, 0];
+    for (const b of bases) {
+      if (b.category !== category) continue;
+      sums[0] += baseReach(b, ilvl);
+      sums[1] += baseFreshness(b, ilvl);
+    }
+    CATEGORY_SUMS.set(key, sums);
+  }
+  return sums;
+}
+
+/**
+ * Drop weight for a base at a given item level. Each category keeps its share
+ * of the table (`baseReach`), and inside it the share goes mostly to the bases
+ * nearest the level (`baseFreshness`), so deeper tiers drop deeper gear.
+ */
+export function baseDropWeight(base: ItemBase, ilvl: number): number {
+  const fresh = baseFreshness(base, ilvl);
+  if (fresh <= 0) return 0;
+  const [reach, total] = categorySums(base.category, ilvl);
+  return total > 0 ? (fresh * reach) / total : 0;
 }
 
 /** Rough gold value of the base before any affixes. Feeds `vendorPrice`. */
