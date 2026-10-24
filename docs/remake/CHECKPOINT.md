@@ -910,6 +910,15 @@ Update this file and push it after every finished step.
   with the decay as its clock and the stack count on the chip, and is
   removed when the stacks fall away.
 
+- #220 Monsters still walked too fast (owner). Every non-boss now walks at
+  0.85x its catalogue speed and never faster than 3.9 after hastes, affixes,
+  Swift and sprints (the hero walks at 4.6), so a hero on foot can always pull
+  away. Median walk 2.9 -> 2.5; the old 5.6 outliers (hornets, wisps, bats)
+  now top out at 3.9. Bosses keep their pace (slowing them moved the bells
+  rule's timing). Dashes, leaps and charges are untouched. tactics, fair,
+  bossfights, elites, aggro, hits, summon(s), monster-anim, roomrules, walk,
+  lag pass; curve fails 7 of 35, the same cells as before this change.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

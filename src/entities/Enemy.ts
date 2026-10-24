@@ -80,8 +80,19 @@ import { resolveCombo, type ComboHit } from './Combos';
 import { tr } from '../core/I18n';
 
 
-/** Fastest a monster may move while backing away from the hero (base hero speed is 5.4). */
+/** Fastest a monster may move while backing away from the hero (the hero walks at 4.6). */
 const RETREAT_SPEED_CAP = 3.4;
+/**
+ * Every monster but a boss walks at this share of its catalogue speed (owner:
+ * monsters felt too fast). Dashes, leaps and charges move on their own clocks
+ * and keep their full pace, so the threat is in the moves, not the chase.
+ */
+const MOVE_SCALE = 0.85;
+/**
+ * Fastest any non-boss walks, after hastes, affixes and sprints: well under the
+ * hero's 4.6, so a hero on foot can always pull away from a chaser.
+ */
+const CHASE_SPEED_CAP = 3.9;
 
 // Re-exported so the scene layer can pull the whole monster surface from here,
 // exactly as CONTRACTS.md specifies.
@@ -1017,6 +1028,7 @@ export class Enemy implements Combatant {
   private get currentSpeed(): number {
     // The brain's own pace: a rusher sprinting in, a shaken pack faltering.
     let s = this.baseSpeed * this.buffMul('speed') * (this.ai?.speedMul ?? 1);
+    if (!this.isBoss) s = Math.min(s * MOVE_SCALE, CHASE_SPEED_CAP);
     for (let si = 0; si < this.statuses.length; si++) {
       const st = this.statuses[si]!;
       const d = statusDef(st.id);
