@@ -125,6 +125,8 @@ export interface Combatant {
   readonly root: THREE.Group;
   readonly displayName: string;
   readonly isBoss: boolean;
+  /** 'normal' for an ordinary monster; elites and bosses have a higher rank. */
+  readonly rank?: string;
   readonly family: string;
   life: number;
   maxLife: number;
@@ -342,6 +344,32 @@ export function inCone(
   if (d < 0.001) return true;
   const a = angleTo(ox, oz, px, pz);
   return Math.abs(angleDelta(facing, a)) <= (halfDeg * Math.PI) / 180;
+}
+
+/**
+ * Only elites and bosses lay a warning on the ground before they strike. An
+ * ordinary monster's spells and slams land with no marker (owner's call: the
+ * marks cluttered big fights); its wind-up pose and sound still give it away.
+ */
+export function warnsOnGround(self: Pick<Combatant, 'isBoss' | 'rank'>): boolean {
+  return self.isBoss || (self.rank !== undefined && self.rank !== 'normal');
+}
+
+const NO_TELL: { cancel(): void } = { cancel(): void {} };
+
+/** A ground warning from `self`, or a handle that does nothing when it lays none. */
+export function tell(
+  self: Combatant,
+  ctx: CombatContext,
+  shape: 'circle' | 'cone' | 'line' | 'ring',
+  x: number,
+  z: number,
+  size: number,
+  rotation: number,
+  duration: number,
+  color: number,
+): { cancel(): void } {
+  return warnsOnGround(self) ? ctx.decals.telegraph(shape, x, z, size, rotation, duration, color) : NO_TELL;
 }
 
 /** Distance from a point to a segment, for line telegraphs. */
@@ -2394,7 +2422,7 @@ def({
     self.flashCast(0xff5a20);
     const tx = inst.targetX;
     const tz = inst.targetZ;
-    const tel = ctx.decals.telegraph('circle', tx, tz, 3.8, 0, 0.75, 0xff5a20);
+    const tel = tell(self, ctx, 'circle', tx, tz, 3.8, 0, 0.75, 0xff5a20);
     after(0.75, (c) => {
       tel.cancel();
       circleHit(self, c, tx, tz, 3.8, 3.0, 'fire', 'meteor', { knockback: 3 });
@@ -2430,7 +2458,7 @@ def({
     const r = Math.sqrt(ctx.rng.next()) * 8;
     const tx = p.x + Math.sin(a) * r;
     const tz = p.z + Math.cos(a) * r;
-    const tel = ctx.decals.telegraph('circle', tx, tz, 2.2, 0, 0.6, 0xff7020);
+    const tel = tell(self, ctx, 'circle', tx, tz, 2.2, 0, 0.6, 0xff7020);
     after(0.6, (c) => {
       tel.cancel();
       circleHit(self, c, tx, tz, 2.2, 1.4, 'fire', 'firestorm');
@@ -2971,7 +2999,7 @@ def({
   tags: ['ondeath'],
   onExecute: (self, ctx) => {
     const p = P(self);
-    const tel = ctx.decals.telegraph('circle', p.x, p.z, 4, 0, 0.8, 0xff6020);
+    const tel = tell(self, ctx, 'circle', p.x, p.z, 4, 0, 0.8, 0xff6020);
     after(0.8, (c) => {
       tel.cancel();
       circleHit(self, c, p.x, p.z, 4 * reachOf(self), 2.6, 'fire', 'death_explode', { knockback: 4 });
@@ -3000,7 +3028,7 @@ def({
     const x = p.x;
     const z = p.z;
     const r = 3.4 * reachOf(self);
-    const tel = ctx.decals.telegraph('circle', x, z, r, 0, 0.6, 0x8ee04a);
+    const tel = tell(self, ctx, 'circle', x, z, r, 0, 0.6, 0x8ee04a);
     after(0.6, (c) => {
       tel.cancel();
       circleHit(self, c, x, z, r, 1.4, 'poison', 'plague_death', {
@@ -3030,7 +3058,7 @@ def({
     const p = P(self);
     const x = p.x;
     const z = p.z;
-    const tel = ctx.decals.telegraph('ring', x, z, 4, 0, 0.6, 0x9ce0ff);
+    const tel = tell(self, ctx, 'ring', x, z, 4, 0, 0.6, 0x9ce0ff);
     after(0.6, (c) => {
       tel.cancel();
       for (let i = 0; i < 8; i++) {
@@ -3136,7 +3164,7 @@ def({
   onExecute: (self, ctx, inst) => {
     const t = ctx.nav.clampToWalkable(ctx.playerPos.x, ctx.playerPos.z);
     self.teleportTo(t.x, t.y, ctx);
-    const tel = ctx.decals.telegraph('circle', t.x, t.y, 3, 0, 0.55, 0xc0a070);
+    const tel = tell(self, ctx, 'circle', t.x, t.y, 3, 0, 0.55, 0xc0a070);
     after(0.55, (c) => {
       tel.cancel();
       circleHit(self, c, t.x, t.y, 3.2 * reachOf(self), 2.2, 'physical', 'burrow_emerge', { knockback: 4 });
@@ -3751,7 +3779,7 @@ def({
     // Strikes track the player with a beat of delay — keep moving.
     const tx = ctx.playerPos.x;
     const tz = ctx.playerPos.z;
-    const tel = ctx.decals.telegraph('circle', tx, tz, 2.0, 0, 0.5, 0xffe066);
+    const tel = tell(self, ctx, 'circle', tx, tz, 2.0, 0, 0.5, 0xffe066);
     after(0.5, (c) => {
       tel.cancel();
       circleHit(self, c, tx, tz, 2.0, 1.6, 'lightning', 'lightning_storm');

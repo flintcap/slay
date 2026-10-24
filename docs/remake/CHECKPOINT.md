@@ -886,6 +886,14 @@ Update this file and push it after every finished step.
   now skips matrices: 0 of 6,686. Alloc KB per step, depth 0/12/32:
   121/409/645 -> 54/109/191 (budget 200); update ms at depth 32 7.2 -> 3.2.
 
+- #217 Ground warnings for elites and bosses only (owner: the cast strips on
+  the floor cluttered fights). `warnsOnGround` in Abilities.ts: a monster of
+  rank 'normal' lays no telegraph decal, either the windup one in
+  `Enemy.tryStart` or the ones ability hooks place through `tell()`. Its
+  wind-up pose and sound still play, and its hits are unchanged. Champions,
+  elites, rares and bosses keep every mark. The tactics stagger case now
+  spawns champions, since ordinary brutes leave nothing to measure.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

@@ -59,6 +59,7 @@ import {
   summon,
   tickAbilityWorld,
   typeColor,
+  warnsOnGround,
   type AbilityDef,
   type AbilityInstance,
   type BuffMods,
@@ -762,9 +763,10 @@ export class Enemy implements Combatant {
     const speed = this.actionSpeed();
     const windup = this.windupFor(def, speed);
 
-    // The telegraph goes down the instant the windup starts — this is the whole
-    // contract with the player: every dangerous thing is readable and dodgeable.
-    if (def.telegraph && windup > 0.12) {
+    // An elite's or boss's telegraph goes down the instant the windup starts, so
+    // its dangerous moves are readable and dodgeable. Ordinary monsters lay no
+    // ground mark (`warnsOnGround`); their wind-up pose and sound are the tell.
+    if (def.telegraph && windup > 0.12 && warnsOnGround(this)) {
       const t = def.telegraph;
       const size = t.size * (t.atSelf ? (this.reach ?? this.sizeScale) : 1);
       const ox = t.atSelf ? this.root.position.x : inst.targetX;

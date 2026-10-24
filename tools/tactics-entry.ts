@@ -286,12 +286,13 @@ const dist = (e: Enemy, h: THREE.Vector3): number =>
 }
 
 // --- big telegraphs never land on top of each other ------------------------------
+// Champions, because only elites and bosses lay a ground mark to measure.
 {
   const a = arena(11);
   const brutes = ofRole('brute', 8);
   const ring = brutes.map((d, i) => {
     const ang = (i / brutes.length) * Math.PI * 2;
-    return a.spawn(d, Math.sin(ang) * 2.5, Math.cos(ang) * 2.5);
+    return a.spawn(d, Math.sin(ang) * 2.5, Math.cos(ang) * 2.5, 'champion');
   });
   ring[0]!.ai!.wake(a.ctx);
   a.step(20);
