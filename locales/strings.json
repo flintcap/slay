@@ -1,6 +1,6 @@
 {
  "_about": "Every line in SLAY a player can read, made by tools/i18n-extract.mjs: do not edit by hand. A language file (src/locales/<code>.json) maps each \"key\" to its translation; a plural entry maps to one string per plural form; see locales/README.md.",
- "count": 9278,
+ "count": 9279,
  "strings": [
   {
    "key": "Beating iron…",
@@ -18725,7 +18725,8 @@
   {
    "key": "Flurry",
    "files": [
-    "data/skills.ts"
+    "data/skills.ts",
+    "data/statuses.ts"
    ]
   },
   {
@@ -20324,6 +20325,12 @@
   },
   {
    "key": "Dread",
+   "files": [
+    "data/statuses.ts"
+   ]
+  },
+  {
+   "key": "Each hit you land adds a stack of attack speed and damage. The stacks fall away when you stop landing hits.",
    "files": [
     "data/statuses.ts"
    ]

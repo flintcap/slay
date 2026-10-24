@@ -1405,6 +1405,7 @@ export class DungeonScene extends GameScene {
       if (this.flurryIdle > (e.hitStackDecay || 2)) {
         st.hitStacks = 0;
         this.flurryIdle = 0;
+        this.player.status.remove('flurry');
       }
     }
 

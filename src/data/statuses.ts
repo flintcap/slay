@@ -645,6 +645,16 @@ export const STATUSES: StatusDef[] = [
     icon: 'lens',
     tags: ['buff'],
   }),
+  // Shows Flurry's stacks on the buff strip. The speed and damage themselves
+  // come from the passive (Player.attackSpeedPct, Passives), so no mods here.
+  def('flurry', tr('Flurry'), 1, {
+    desc: tr('Each hit you land adds a stack of attack speed and damage. The stacks fall away when you stop landing hits.'),
+    stacking: 'refresh',
+    baseDuration: 2,
+    color: 0x7fe0c0,
+    icon: 'flurry',
+    tags: ['buff'],
+  }),
   def('frenzy', tr('Frenzy'), 1, {
     desc: tr('Every kill feeds the next: +6% attack speed and +5% damage per stack.'),
     mods: mods({ attackSpeed: 6, enhancedDamage: 5 }),

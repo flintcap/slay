@@ -510,7 +510,7 @@ const STATUS_MAP: Record<string, string> = {
   acid: 'drop:1', anchor: 'anchor', arc: 'bolt', banner: 'banner', 'blade-storm': 'dagger:2', blood: 'drop', bolt: 'bolt',
   bramble: 'leaf', brand: 'brand', 'broken-sword': 'crack', bubble: 'bubble', chalice: 'chalice', 'chalice-light': 'chalice',
   char: 'flame:1', claw: 'claw', cloak: 'figure', coil: 'coil', coin: 'coin', crack: 'crack', crosshair: 'target:1',
-  drain: 'beam', droplet: 'drop', 'eye-closed': 'eye:2', fallen: 'skull', feather: 'feather', fist: 'fist', flame: 'flame',
+  drain: 'beam', droplet: 'drop', 'eye-closed': 'eye:2', fallen: 'skull', feather: 'feather', fist: 'fist', flurry: 'dagger', flame: 'flame',
   frost: 'flake', gash: 'claw', ghost: 'ghost', granite: 'boulder', hamstring: 'boot', hand: 'hand', heart: 'heart', hex: 'rune:3',
   hourglass: 'hourglass', 'ice-block': 'flake', leaf: 'leaf', lens: 'lens', link: 'chain', lungs: 'lungs', miasma: 'cloud',
   mute: 'mute', pyre: 'flame:1', rage: 'skull:1', rift: 'rift', shard: 'bone:1', shroud: 'figure', sigil: 'rune', siphon: 'chalice',

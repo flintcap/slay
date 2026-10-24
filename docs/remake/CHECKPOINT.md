@@ -903,6 +903,13 @@ Update this file and push it after every finished step.
   powers now require no mark, and their dodge cues read the affix cooldown
   (or the lancer's root) instead of a decal.
 
+- #219 Flurry had no buff chip (owner: "doesn't work or no icon"). It did
+  work (browser probe: 6 stacks, attack speed 6.9 -> 54.9%, gone 2 s after
+  the last hit) but lived only in `passiveState`, which the buff strip never
+  reads. A display-only 'flurry' status (no mods) now rides each landed hit
+  with the decay as its clock and the stack count on the chip, and is
+  removed when the stacks fall away.
+
 ## Phase 0d log
 
 1. #93 Phase 0d bugs (list in the plan doc, Claude Docs project a47249ba,

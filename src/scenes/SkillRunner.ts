@@ -3297,6 +3297,8 @@ export class SkillRunner {
       // --- Flurry ----------------------------------------------------------
       if (e.hitStackAttackSpeed > 0) {
         p.passiveState.hitStacks = Math.min(e.hitStackMax, p.passiveState.hitStacks + 1);
+        // The chip on the buff strip: one stack a hit, its clock the decay.
+        p.status.apply({ id: 'flurry', duration: e.hitStackDecay || 2, magnitude: 1, stacks: 1, maxStacks: Math.max(0, e.hitStackMax - 1) }, 'player');
       }
       // --- Storm Fury: a lightning hit quickens your casting for a while ----
       if (e.castStackPct > 0 && packet.type === 'lightning') {
